@@ -1,0 +1,357 @@
+# BloodLedger System Architecture
+
+**Status:** Sprint 0 baseline  
+**Baseline date:** 2026-07-13  
+**Scope:** Research prototype, not a production deployment design
+
+## 1. Architecture goals
+
+1. Preserve inventory events during connectivity interruptions.
+2. Enforce deterministic and auditable inventory/custody transitions.
+3. Keep patient and donor information outside every system boundary.
+4. Support a single operational institution now without preventing future
+   multi-organization Fabric expansion.
+5. Separate operational query performance from immutable audit evidence.
+6. Keep forecasting and recommendation logic reproducible and explainable.
+7. Make the local environment safe to start, inspect, stop, and reset.
+
+## 2. Context and trust boundaries
+
+```text
+Users and 2D scanners
+        |
+        v
+React web application
+        |
+        v
+Node.js application/API boundary
+   |           |             |
+   v           v             v
+PostgreSQL   Fabric       Python forecasting /
+read model   Gateway      recommendation worker
+and queue       |             |
+               v             |
+        Hyperledger Fabric <--+
+        (no direct ML/API calls from chaincode)
+```
+
+Trust boundaries exist between the browser and API, API and database, API and
+Fabric Gateway, organization identities and Fabric, and the application and ML
+service. Authentication at one boundary does not replace authorization at the
+next boundary.
+
+## 3. Technology direction
+
+| Area | Baseline choice | Status |
+|---|---|---|
+| Web | React, component-based web application | Accepted |
+| Application/API | Node.js; TypeScript preferred; REST-style HTTP API | Accepted |
+| Application data | PostgreSQL | Accepted |
+| Ledger | Hyperledger Fabric permissioned network | Accepted |
+| Chaincode | Node.js/TypeScript-compatible Fabric contract modules | Accepted |
+| Forecasting | Python service/worker | Accepted |
+| Containers | Docker Compose for local prototype services | Accepted |
+| Tests | JavaScript/TypeScript test runner compatible with the selected stack; Python test runner for ML | Accepted |
+| Scanner | Keyboard-wedge or browser-compatible 2D CMOS scanner supporting required ISBT 128 fixtures | Proposed pending hardware validation |
+| Fabric state database | LevelDB initially unless rich JSON queries are proven necessary on world state | Proposed |
+| Package manager | One lockfile and one Node package manager across the repository | Decide in S1-02 |
+
+Exact versions are deliberately not called "latest." Sprint 1 task `S1-02`
+must test and pin a compatible version set before infrastructure configuration
+is committed.
+
+## 4. Initial repository boundaries
+
+```text
+bloodledger/
+├── README.md
+├── AGENTS.md
+├── docs/
+├── apps/
+│   └── web/                 # activated in Sprint 5
+├── services/
+│   ├── api/                 # activated in Sprint 4/5
+│   └── forecasting/         # activated in Sprint 3
+├── chaincode/               # activated in Sprint 2
+├── database/
+│   ├── migrations/
+│   └── seeds/
+├── network/                 # Fabric configuration and lifecycle scripts
+├── scripts/                 # repository-level developer operations
+└── tests/
+```
+
+Sprint 1 may refine names, but a change to component boundaries requires an
+updated architecture decision.
+
+## 5. Component responsibilities
+
+### 5.1 Web application
+
+- Renders access-controlled inventory, request, alert, transfer, and audit views.
+- Captures scans and permitted device location evidence through the browser/API.
+- Clearly distinguishes local/pending, committed, stale, offline, failed, and
+  conflicted state.
+- Does not connect directly to PostgreSQL or Fabric.
+
+### 5.2 Node.js application/API
+
+- Authenticates sessions and enforces role plus institution authorization.
+- Validates request payloads using field allowlists.
+- Owns orchestration, idempotency, correlation IDs, and transaction status.
+- Writes durable local events before attempting ledger submission where needed.
+- Uses Fabric Gateway to evaluate and submit transactions.
+- Reconciles committed events into the PostgreSQL read model.
+- Invokes or reads forecast/recommendation outputs.
+- Runs scheduled expiry evaluation; chaincode itself is never a scheduler.
+
+### 5.3 PostgreSQL
+
+PostgreSQL is both the application database/read model and the durable offline
+event queue. These are distinct logical responsibilities represented by
+separate tables and transaction rules.
+
+It stores users, institutions, configuration, dashboard projections, requests,
+notifications, forecast outputs, and synchronization metadata. It is not the
+authoritative immutable history for accepted inventory and custody mutations.
+
+### 5.4 Hyperledger Fabric
+
+- Validates authorized inventory and transfer state changes.
+- Prevents duplicate assets and invalid transitions.
+- Preserves accepted business events and their audit metadata.
+- Emits domain events used to update projections.
+- Does not call databases, HTTP services, map services, or ML models.
+- Does not use a local clock, random values, or non-deterministic iteration.
+
+### 5.5 Forecasting and recommendation worker
+
+- Loads approved historical and operational data from the application boundary.
+- Cleans data with reproducible lineage and data-quality reports.
+- Trains/evaluates the approved baseline and candidate models.
+- Writes versioned forecasts and predicted surplus values.
+- Computes explainable BROA/RPS results off-chain.
+- Submits an approved result and its immutable input/configuration digest for
+  validation and recording; it does not mutate custody on its own.
+
+## 6. Data ownership
+
+| Data | Authoritative source | PostgreSQL role | On chain? |
+|---|---|---|:---:|
+| User accounts, password hashes, sessions | PostgreSQL/identity layer | Primary | No |
+| Institution profiles and facility coordinates | PostgreSQL configuration | Primary | Identifier/reference only if required |
+| Pending offline events | PostgreSQL queue | Primary until resolved | No, until accepted |
+| Blood-unit registration and custody events | Fabric ledger | Read projection and correlation | Yes |
+| Current ledger asset state | Fabric world state | Query projection | Yes |
+| Transfer request draft | PostgreSQL | Primary until submitted/approved | Usually no |
+| Accepted transfer/custody transitions | Fabric ledger | Read projection | Yes |
+| Notifications | PostgreSQL | Primary | No |
+| Forecast training records | Approved research/application store | Curated data | No |
+| Forecast results and metrics | PostgreSQL/model storage | Primary | No |
+| Approved recommendation evidence | Fabric ledger | Full explanation in PostgreSQL | Digest/core evidence only |
+| Audit transaction reference | Fabric ledger | Searchable index | Yes/reference |
+| Patient, donor, diagnosis, treatment data | Not stored | Prohibited | No |
+
+The ledger is not used as a general-purpose document database. On-chain schemas
+must minimize data and use an explicit allowlist.
+
+## 7. Conceptual PostgreSQL model
+
+The manuscript names six core tables. The proposal additionally requires
+forecast data, while offline resilience requires durable event state. The
+baseline logical model is therefore:
+
+| Table/domain | Purpose |
+|---|---|
+| `institutions` | Participating and modeled facilities, category, status, facility coordinates |
+| `users` | Application identity, role, institution, status, password hash/identity mapping |
+| `blood_units` | Query projection of unit metadata, custody, lifecycle, ledger version |
+| `transfer_requests` | Request details, urgency, ranking inputs, workflow state |
+| `transfers` | Selected units, sender/receiver, lifecycle, location evidence references |
+| `sync_events` | Durable local event payload, idempotency key, sequence, retry/conflict state |
+| `ledger_transactions` | Fabric transaction ID, correlation ID, commit status, block/time reference |
+| `notifications` | Alerts and user acknowledgement state |
+| `demand_forecasts` | Versioned forecasts, inputs window, prediction, metrics, stale status |
+| `algorithm_runs` | BROA/RPS input snapshot, normalized scores, weights, result, version |
+| `audit_logs` | Application/security audit events that do not duplicate the ledger |
+
+This is a conceptual schema, not authorization to create migrations. Sprint 1
+may create only an infrastructure/migration baseline after column-level design,
+privacy review, keys, constraints, and ownership are approved.
+
+Required cross-cutting fields include stable IDs, institution scope, created and
+updated timestamps, correlation and idempotency IDs, version/concurrency value,
+and status. All stored timestamps use UTC.
+
+## 8. Fabric network baseline
+
+### 8.1 Prototype topology
+
+- One Fabric organization representing Mary Mediatrix Medical Center.
+- One peer for the organization in the local prototype.
+- One development ordering node/service.
+- One channel for BloodLedger prototype transactions.
+- One organization CA or an explicitly documented development identity process.
+- TLS and MSP identities appropriate to the supported local environment.
+- PRC, DOH, and secondary institutions access the application; they do not host
+  peers or endorse transactions in the initial scope.
+
+This is a single-organization Fabric prototype. It must not be described as a
+live decentralized consortium deployment.
+
+### 8.2 Expansion topology
+
+Future primary blood-bank institutions may receive independent organizations,
+CAs, peers, operational ownership, and multi-organization endorsement policies.
+Their onboarding requires governance, certificate lifecycle, backup, monitoring,
+channel, privacy, and endorsement decisions not implemented in Sprint 1.
+
+### 8.3 Contract boundaries
+
+Begin with one deployable chaincode package containing coherent contract modules:
+
+- `InventoryContract` for registration and unit lifecycle; and
+- `TransferContract` for requests selected for ledger recording and custody.
+
+An expiry scheduler, ML model, BROA computation, RPS computation, and external
+location lookup do not run inside chaincode. Chaincode validates submitted state,
+authorization, configuration version/digest, and permitted transitions.
+
+## 9. Synchronization design
+
+1. The application assigns an idempotency key and correlation ID at capture.
+2. A local database transaction validates and durably queues the event.
+3. A worker claims events in stable institution/sequence order.
+4. Fabric submission uses the stable business identifier and validates current
+   world-state version.
+5. Commit status is observed before an event is marked committed.
+6. A committed ledger event updates the PostgreSQL read model idempotently.
+7. Projection failure is retried without resubmitting the ledger mutation.
+8. A stale or conflicting event is quarantined for explicit review.
+
+The application never reports a local pending event as ledger-confirmed.
+
+## 10. API design rules
+
+- Version application endpoints under a stable prefix such as `/api/v1`.
+- Use JSON schemas and a consistent error envelope.
+- Require an idempotency key on mutation endpoints where client retry is likely.
+- Return correlation ID and transaction status for traceability.
+- Use `202 Accepted` for asynchronous ledger operations when commit is pending.
+- Keep authorization server-side even if the UI hides an action.
+- Do not expose raw private keys, certificates, internal database IDs, or Fabric
+  connection material.
+- Produce a machine-readable OpenAPI document before the API implementation
+  sprint; it is not required for Sprint 1 infrastructure.
+
+## 11. Security and privacy
+
+### 11.1 Required controls
+
+- Field allowlists for on-chain and off-chain domain payloads.
+- Password hashing using a reviewed password-hashing algorithm.
+- Short-lived authenticated sessions/tokens and secure cookie/header handling.
+- Role and institution authorization at API and chaincode boundaries.
+- TLS for network communication outside isolated local test traffic.
+- Secret injection through untracked environment/secret files.
+- No generated private key or enrolled wallet material committed to Git.
+- Parameterized database access and schema validation.
+- Correlation-aware security and business audit logs with redaction.
+- Dependency, static, and secret scanning in later CI.
+
+### 11.2 Location data
+
+Location evidence is operationally sensitive. Store only dispatch/receipt points,
+accuracy/source, time, facility match result, and fallback flag. Do not collect a
+continuous route. Exact precision and retention require approval before Sprint 3.
+
+### 11.3 Research data separation
+
+Interview recordings, transcripts, consent forms, and UAT raw responses are
+research data and do not belong in this application repository or database.
+Only anonymized/approved fixtures and aggregate results may be added later.
+
+## 12. Forecasting and algorithms
+
+The proposal's simple stock-difference formula is a hypothesis, not a finalized
+training transformation. Stock changes may contain replenishment, transfer,
+expiry, and correction effects. A data-quality investigation must precede model
+training.
+
+The forecasting baseline should be compared with simple reproducible baselines
+(for example naive and rolling-average methods) using time-ordered validation.
+Metrics and operational thresholds must be accepted before claims of accuracy.
+
+Initial proposed surplus form:
+
+```text
+predicted distributable surplus =
+  current eligible stock
+  - forecast demand over the approved protection horizon
+  - approved safety allowance
+  - approved minimum reserve
+```
+
+BROA and RPS configurations are versioned data. The manuscript's narrative
+weights (`0.40/0.25/0.20/0.15`) conflict with pseudocode
+(`0.50/0.30/0.20`) and neither set is accepted here. Stakeholders must approve
+the final criteria, directions, normalization, weights, and test scenarios.
+
+## 13. Failure behavior and observability
+
+| Failure | Required behavior |
+|---|---|
+| PostgreSQL unavailable | Reject new local capture safely; do not imply persistence |
+| Fabric unavailable | Keep validated events queued; show degraded/offline status |
+| Fabric commit succeeds, projection fails | Retry projection only; never resubmit the mutation |
+| Duplicate submission | Return the existing result or deterministic duplicate error |
+| State conflict | Quarantine and show a resolvable conflict; never last-write-wins silently |
+| Forecast unavailable/stale | Display stale status and disable forecast-only recommendations |
+| Location unavailable | Use approved facility fallback with flag or block the transition |
+| Scheduler missed | Surface unhealthy/stale evaluation state; do not pretend chaincode ran |
+
+Every service must expose a health signal. Logs must contain service, severity,
+time, correlation ID, and safe event name without secrets or prohibited data.
+
+## 14. Environments
+
+| Environment | Purpose | Data |
+|---|---|---|
+| Local development | Individual setup and automated tests | Synthetic only |
+| Shared integration | Team end-to-end validation | Synthetic/approved anonymized fixtures |
+| UAT prototype | Guided stakeholder testing | Approved synthetic or anonymized data |
+| Pilot/parallel validation | Separate future gate; not implied by Sprint 1 | Requires institutional and privacy approval |
+
+## 15. Architecture decision register
+
+| ID | Status | Decision | Rationale/consequence |
+|---|---|---|---|
+| ADR-001 | Accepted | Treat the current network as one operational Fabric organization/peer | Reconciles approved scope; PRC second peer statements are superseded for the prototype |
+| ADR-002 | Accepted | PRC and DOH are read-only application users, not peer operators | Avoids unsupported endorsement/governance claims |
+| ADR-003 | Accepted | PostgreSQL is application DB/read model plus distinct durable sync queue | Supports queries and offline operation without confusing authority |
+| ADR-004 | Accepted | Fabric ledger owns accepted inventory/custody event history | Preserves immutable audit evidence |
+| ADR-005 | Accepted | Forecasting, BROA, RPS, and scheduling run off-chain | Required for external data access, versioning, evaluation, and deterministic chaincode |
+| ADR-006 | Accepted | Chaincode validates and records approved results/state transitions | Prevents autonomous external computation inside endorsement |
+| ADR-007 | Accepted | One deployable chaincode package initially, separated into contract modules | Reduces early lifecycle complexity while preserving modularity |
+| ADR-008 | Proposed | Use LevelDB unless chaincode rich queries require CouchDB | Avoids an unnecessary service; decide before Fabric Compose is finalized |
+| ADR-009 | Proposed | Backend uses an organizational Fabric service identity with authenticated user attribution | Avoids certificate-per-user complexity; threat model and audit needs must be reviewed |
+| ADR-010 | Accepted | Store UTC; render Asia/Manila | Makes ordering and cross-service timestamps consistent |
+| ADR-011 | Accepted | Keep exact GPS off-chain where possible; record minimal verified evidence/digest on chain | Data minimization; final schema awaits location policy |
+| ADR-012 | Proposed | Monorepo with web, API, ML, chaincode, network, database, and tests | Matches small team and coordinated prototype delivery |
+| ADR-013 | Proposed | Refine the manuscript's four tiers into five application roles by adding a Secondary Hospital User | Secondary request/receipt permissions otherwise have no explicit role; approve before Sprint 5 |
+
+## 16. Sprint 1 architecture gates
+
+Sprint 1 may begin with the accepted topology above. Before infrastructure files
+are considered complete, the team must also accept:
+
+- exact supported versions and host OS/WSL2 policy;
+- Node package manager and workspace approach;
+- LevelDB versus CouchDB;
+- development CA/identity process and Git exclusions;
+- service ports and environment-variable names;
+- initial PostgreSQL schema scope; and
+- health, reset, and clean-machine validation commands.
+
+Any change to ADR-001 through ADR-007 requires updating the Sprint 1 plan before
+the affected configuration is written.
