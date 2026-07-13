@@ -1,9 +1,16 @@
 # Sprint 1 — Infrastructure Provisioning
 
-**Status:** Planned; pending team acceptance  
-**Source schedule:** Updated Gantt lists June 29–July 9, 2026  
-**Note:** The manuscript says June 29–July 7, and Sprint 2 begins July 8. The team
-must publish one non-overlapping operational schedule before starting.
+**Status:** Approved; ready for infrastructure implementation
+
+**Scheduled dates:** June 29–July 9, 2026
+
+**Schedule authority:** `Updated_BloodLedger_Gantt.xlsx`
+**Approval recorded:** 2026-07-13
+
+The Gantt dates are the approved planning baseline. Because approval was
+recorded after the scheduled range, actual implementation and validation dates
+must also be recorded in the Sprint Review; the Gantt dates must not be reported
+as actual execution evidence when work occurred later.
 
 ## 1. Sprint goal
 
@@ -14,20 +21,24 @@ version-pinned commands.
 
 ## 2. Sprint 0 entry gate
 
-Sprint 1 may begin when:
+Sprint 1 is approved to begin. The following decisions are recorded:
 
-- `docs/PROJECT.md`, `docs/REQUIREMENTS.md`, `docs/ARCHITECTURE.md`, and
-  `docs/BACKLOG.md` are reviewed by all proponents;
-- ADR-001 through ADR-007 are accepted;
+- the Sprint 0 repository baseline is accepted for implementation planning;
+- ADR-001 through ADR-018 are accepted;
 - the team agrees that PRC and DOH are read-only application users in the
   initial topology;
 - prohibited data and the one-organization prototype limitation are understood;
-- this sprint's goal, scope, acceptance criteria, owners, and dates are accepted;
-- Docker/WSL2 or supported host prerequisites can be investigated safely; and
+- this sprint's goal, scope, acceptance criteria, owners, and Gantt dates are
+  accepted;
+- Windows 11, WSL2, Ubuntu 24.04 LTS, and Bash form the canonical workflow;
+- LevelDB, npm workspaces, Fabric CA, the migration-only PostgreSQL baseline,
+  and an infrastructure-only health contract are selected; and
 - no secrets or institutional production data are placed in the repository.
 
-The algorithm weights, API endpoints, UI design system, and feature-level rules
-do not block Sprint 1. They must be resolved before their relevant sprints.
+OCR is recorded as a proposed alternative or supplement to barcode/QR capture.
+It does not change Sprint 1 and must be evaluated before Sprint 4. Algorithm
+weights, API endpoints, UI design, and feature-level rules also do not block
+Sprint 1.
 
 ## 3. Included work
 
@@ -38,9 +49,9 @@ do not block Sprint 1. They must be resolved before their relevant sprints.
 - Provision one Mary Mediatrix Fabric development organization and peer.
 - Provision a development orderer and CA/identity process.
 - Create the BloodLedger development channel.
-- Deploy/invoke/query only a minimal infrastructure health contract if needed.
-- Establish migration/seed mechanisms and a reviewed infrastructure schema
-  baseline; do not implement feature business behavior.
+- Deploy, invoke, and query a disposable infrastructure-only health contract.
+- Establish the migration mechanism and a minimal bootstrap migration; do not
+  create the complete application schema or feature business behavior.
 - Add start, stop, health, log, and reset procedures.
 - Validate the process on every supported team machine.
 - Record review evidence, problems, decisions, and retrospective actions.
@@ -71,11 +82,12 @@ Acceptance:
 ### S1-02 — Select and pin the environment matrix
 
 **Backlog:** BL-INF-01  
-**Decisions:** package manager, Node.js, Python, Fabric, Fabric CA, Docker,
-PostgreSQL, host OS/WSL2 policy, LevelDB/CouchDB
+**Approved targets:** `docs/ARCHITECTURE.md` Section 3.1
 
 Acceptance:
 
+- Approved targets are installed or any necessary deviation is recorded as an
+  architecture decision.
 - Versions are mutually compatible and tested, not labeled "latest."
 - Version files and documentation report the same values.
 - Optional GUI tools such as DBeaver are distinguished from runtime needs.
@@ -102,19 +114,22 @@ Acceptance:
 - Connection works from documented CLI/tooling and optionally DBeaver.
 - Data persists across normal restart and is removed only by explicit reset.
 
-### S1-05 — Establish migration and seed baseline
+### S1-05 — Establish migration and bootstrap baseline
 
 **Backlog:** BL-INF-03  
-**Dependency:** approved column-level schema subset
+**Architecture:** ADR-017
 
 Acceptance:
 
-- Migrations apply from empty state and report their version.
-- Development seed data is synthetic and contains no prohibited information.
+- A minimal bootstrap migration applies from empty state and reports its status.
+- The complete domain tables are not created in Sprint 1.
+- Any development seed data is synthetic and used only when needed to validate
+  migration behavior.
 - Reapplying or rolling forward has documented behavior.
 
-The task may create infrastructure-only tables first if the full application
-schema is not ready. It must not guess columns from a diagram.
+Domain migrations begin only after their relevant requirements and column-level
+design are approved. A manuscript diagram is not sufficient authority to guess
+columns.
 
 ### S1-06 — Provision the Fabric development network
 
@@ -136,8 +151,8 @@ Acceptance:
 
 - The peer joins the approved development channel.
 - Channel and peer information can be queried.
-- A minimal health contract/transaction, if used, is explicitly disposable and
-  contains no BloodLedger feature logic.
+- The disposable infrastructure health contract can be installed, invoked, and
+  queried and contains no BloodLedger feature logic.
 
 ### S1-08 — Add operational commands
 
@@ -170,20 +185,42 @@ Acceptance:
 - Incomplete items return to the backlog with cause and owner.
 - Decisions and troubleshooting lessons update authoritative documentation.
 
-## 6. Architecture decisions due during Sprint 1
+## 6. Ownership matrix
 
-| Decision | Owner | Deadline | Blocking task |
-|---|---|---|---|
-| Final sprint dates | Scrum team | Before S1-02 | All |
-| Host OS and WSL2 policy | Infrastructure owner | S1-02 | S1-04/S1-06 |
-| Exact version matrix | Infrastructure owner | S1-02 | S1-04/S1-06 |
-| Node package manager/workspace | Development team | S1-02 | Repository setup |
-| LevelDB or CouchDB | Blockchain owner | Before S1-06 | Fabric Compose |
-| Development CA and identity lifecycle | Blockchain owner | Before S1-06 | Fabric network |
-| PostgreSQL schema subset | Data owner | Before S1-05 | Migrations |
-| Ports and environment names | Infrastructure owner | Before Compose | All services |
+The ownership mapping refines the Gantt's broader assignments. "All" means the
+three proponents participate; one accountable owner still coordinates evidence.
 
-## 7. Validation checklist
+| Task | Accountable | Reviewer/participants |
+|---|---|---|
+| S1-01 Sprint plan | Jopia | Buno and Lat |
+| S1-02 Environment matrix | Jopia | Lat and Buno |
+| S1-03 Repository/security rules | Lat | Jopia and Buno |
+| S1-04 PostgreSQL | Lat | Jopia and Buno |
+| S1-05 Migration/bootstrap | Lat | Buno and Jopia |
+| S1-06 Fabric network and CA | Jopia | Lat and Buno |
+| S1-07 Channel/health contract | Jopia | Buno and Lat |
+| S1-08 Operational commands | Jopia and Lat | Buno |
+| S1-09 Cross-machine validation | All | Cross-review |
+| S1-10 Review/retrospective | All | All |
+
+## 7. Approved decisions and validation obligations
+
+| Decision | Approved selection | Validation due |
+|---|---|---|
+| Sprint dates | June 29–July 9, 2026 (Gantt) | Record actual execution dates in review |
+| Host | Windows 11 + WSL2 Ubuntu 24.04 LTS | S1-02 clean-host check |
+| Scripts | Bash in WSL2 | S1-08 on every host |
+| Package management | npm workspaces | S1-02/version evidence |
+| Fabric | 2.5.16 LTS + Fabric CA 1.5.15 | S1-06/S1-07 |
+| State database | LevelDB | S1-06 configuration inspection |
+| PostgreSQL | 17.10; migration/bootstrap only | S1-04/S1-05 |
+| Identity model | Fabric CA development identities | S1-06 and secret scan |
+| Health transaction | Disposable infrastructure-only contract | S1-07 |
+| DBeaver | Optional | Connection check only, if used |
+| Spec Kit/custom skills | Deferred | Reconsider only after repeated need |
+| Service ports/environment names | Assign after collision check | Before Compose is finalized |
+
+## 8. Validation checklist
 
 - [ ] Documentation baseline reviewed.
 - [ ] Exact versions pinned and reproducible.
@@ -199,7 +236,7 @@ Acceptance:
 - [ ] Known failures and fixes are documented.
 - [ ] Sprint review evidence and retrospective are recorded.
 
-## 8. Sprint exit criteria
+## 9. Sprint exit criteria
 
 Sprint 1 is complete only when a team member can start from the documented
 prerequisites and independently:
@@ -216,7 +253,7 @@ The final command names will be written during Sprint 1 after they are tested.
 This planning document intentionally does not invent commands that do not yet
 exist.
 
-## 9. Risks and mitigations
+## 10. Risks and mitigations
 
 | Risk | Mitigation in this sprint |
 |---|---|
@@ -224,14 +261,15 @@ exist.
 | Generated crypto is committed | Git exclusions plus automated secret/private-key scan |
 | Single peer is presented as a consortium | Use the wording in ADR-001 and PROJECT.md |
 | Reset deletes unrelated data | Scope resources by project and require explicit confirmation |
-| Full schema design delays infrastructure | Use an approved minimal migration baseline; defer domain columns rather than guessing |
+| Full schema design delays infrastructure | Use the approved bootstrap-only migration baseline; defer domain columns |
 | Version drift | Pin versions and record validation outputs |
 
-## 10. Review record
+## 11. Review record
 
 To be completed during Sprint 1:
 
 - Review date:
+- Actual implementation dates:
 - Demonstrated by:
 - Reviewed by:
 - Environment(s):
@@ -239,7 +277,7 @@ To be completed during Sprint 1:
 - Incomplete items:
 - Evidence links:
 
-## 11. Retrospective
+## 12. Retrospective
 
 To be completed during Sprint 1:
 

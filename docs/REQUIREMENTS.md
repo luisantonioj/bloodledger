@@ -1,6 +1,6 @@
 # BloodLedger Software Requirements
 
-**Status:** Sprint 0 baseline  
+**Status:** Sprint 1 approved planning baseline
 **Baseline date:** 2026-07-13  
 **Requirement owners:** Buno, Jopia, and Lat
 
@@ -21,7 +21,7 @@
 The manuscript names four access tiers but also requires secondary hospitals to
 submit requests and confirm transfers. This baseline therefore separates a
 `Secondary Hospital User` from the inventory-holding hospital roles. The refined
-five-role model is proposed and must be approved before authentication/API work.
+five-role model is accepted in ADR-013.
 
 | ID | Role | Description |
 |---|---|---|
@@ -56,7 +56,9 @@ validate the submitting organization and attributes, not only the web session.
 
 The system shall register a supported blood-unit label, capturing at minimum the
 unit identifier, blood type, component, collection timestamp, and expiry
-timestamp without retyping encoded values.
+timestamp without retyping encoded values. Barcode/QR decoding is the accepted
+baseline. OCR is a proposed alternative or supplement and does not satisfy this
+requirement until `RQ-11` is resolved and its output is independently validated.
 
 Acceptance:
 
@@ -64,6 +66,8 @@ Acceptance:
 - A duplicate identifier creates no second unit.
 - A malformed or unsupported payload creates no inventory asset and reports a
   clear validation error.
+- OCR-derived values, if later approved, are never committed solely because text
+  was detected; required fields and confidence/confirmation rules must pass.
 - No donor or patient field is persisted.
 
 ### FR-02 — Enforce FEFO at dispatch
@@ -371,6 +375,7 @@ sprint:
 | RQ-08 | What precision and retention apply to location evidence? | Sprint 3 |
 | RQ-09 | Does receipt require two human signatures or institutional service identities plus authenticated user attribution? | Sprint 3 |
 | RQ-10 | What local verification changes a received unit to available inventory? | Sprint 3 |
+| RQ-11 | Will OCR supplement or replace barcode/QR capture, and what confidence, confirmation, label-fixture, privacy, and fallback rules make it acceptable? | Before Sprint 4 |
 
 Unanswered questions must not be guessed by a coding agent. The relevant task is
 blocked or implemented behind an explicitly approved prototype assumption.

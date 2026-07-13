@@ -1,6 +1,6 @@
 # BloodLedger Product Backlog
 
-**Status:** Sprint 0 prioritized baseline  
+**Status:** Sprint 1 approved prioritized baseline
 **Baseline date:** 2026-07-13  
 **Prioritization:** MoSCoW, then dependency order
 
@@ -67,7 +67,9 @@ Acceptance:
 Acceptance:
 
 - PostgreSQL is healthy and accessible using non-secret documented settings.
-- Migration and seed mechanisms are repeatable.
+- A minimal bootstrap migration can be applied, inspected, and recreated.
+- Complete domain tables are deferred until their column-level designs are
+  approved.
 - DBeaver is optional tooling, not a runtime dependency.
 
 ### BL-INF-04 — Infrastructure verification
@@ -184,6 +186,18 @@ version are stored and displayed; failure uses a safe fallback.
 
 Acceptance: approved fixtures parse consistently and invalid/prohibited payloads
 fail safely.
+
+### BL-SCN-02 — OCR label-capture feasibility
+
+**Priority:** Could | **Status:** Proposed | **Target:** Before/Sprint 4
+
+**Dependencies:** RQ-02, RQ-11, ADR-019
+**Requirements:** FR-01, NFR-01, NFR-04
+
+Acceptance: representative synthetic label fixtures are evaluated for field
+recognition accuracy, confidence behavior, user confirmation, privacy, failure
+handling, and scanner fallback. The outcome explicitly accepts OCR as a
+supplement, accepts it as a replacement, or rejects it for this prototype.
 
 ### BL-SYNC-01 — Durable offline queue
 

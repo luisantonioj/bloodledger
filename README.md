@@ -8,13 +8,14 @@ redistribution recommendations, and a web dashboard.
 
 ## Current status
 
-The repository is in the **Sprint 0 planning baseline**. No application or
-infrastructure implementation has started.
+The Sprint 0 baseline and Sprint 1 planning decisions are approved. Sprint 1 is
+ready for infrastructure implementation; no application or infrastructure code
+has been added yet.
 
 The documents have been drafted from the revised manuscript, updated research
 proposal, summary of revisions, and updated Gantt workbook. Sprint 0 becomes
-formally complete when all proponents review the baseline, resolve the Sprint 1
-schedule, and accept the entry gate in `docs/SPRINT-01.md`.
+formally complete with the decisions recorded in `docs/ARCHITECTURE.md` and the
+entry gate in `docs/SPRINT-01.md`.
 
 ## Prototype scope
 
@@ -25,20 +26,25 @@ schedule, and accept the entry gate in `docs/SPRINT-01.md`.
 - The system stores operational blood-unit and custody metadata only.
 - Patient records, donor names, PHI, blood disposal, continuous GPS tracking,
   cold-chain sensing, and autonomous transfer approval are out of scope.
+- OCR is under consideration as a later alternative or supplement to barcode/QR
+  label capture. It is not part of Sprint 1 and is not yet an approved
+  replacement for ISBT 128-compatible scanning.
 - The topology is designed for future expansion but is not a deployed
   multi-organization consortium.
 
 ## Planned technology direction
 
-- React web application
-- Node.js application/API
-- PostgreSQL application database, read model, and durable sync queue
-- Hyperledger Fabric ledger and deterministic chaincode
-- Python forecasting/recommendation service
-- Docker Compose local environment
+- Windows 11 with WSL2 Ubuntu 24.04 LTS and canonical Bash scripts
+- Docker Desktop 4.81.0 planning target
+- Hyperledger Fabric 2.5.16 LTS and Fabric CA 1.5.15
+- Node.js 24.17.0 LTS with npm workspaces
+- PostgreSQL 17.10
+- Python 3.13.14 for the later forecasting service
+- React 19.2.7 for the later web application
 
-Exact versions will be tested and pinned in Sprint 1; repository documentation
-must not depend on an unspecified "latest" version.
+These are approved planning targets. Sprint 1 must record installed versions and
+validate their compatibility before treating them as verified pins. The full
+matrix and official selection sources are in `docs/ARCHITECTURE.md` Section 3.
 
 ## Documentation map
 
@@ -84,16 +90,19 @@ bloodledger/
 Directories and implementation files will be created only when their sprint
 begins. This avoids presenting placeholders as completed work.
 
-## Before Sprint 1
+## Sprint 1 readiness
 
-The proponents must:
+The team has approved:
 
-1. review the four baseline documents and backlog;
-2. confirm the one-organization Fabric topology;
-3. accept or amend ADR-001 through ADR-007;
-4. resolve the Gantt/manuscript Sprint 1 date conflict;
-5. assign Sprint 1 owners and reviewers; and
-6. approve the Sprint 1 entry and exit criteria.
+1. the Gantt schedule of June 29–July 9, 2026;
+2. the one-organization Fabric topology;
+3. ADR-001 through ADR-018;
+4. the version targets and WSL2/Bash workflow;
+5. the migration/bootstrap-only PostgreSQL scope;
+6. Sprint 1 owners, validation obligations, and exit criteria.
+
+Actual implementation dates must be recorded separately because approval was
+entered after the original Gantt range.
 
 ## Setup
 

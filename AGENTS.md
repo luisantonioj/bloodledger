@@ -4,8 +4,10 @@ These instructions apply to the entire repository.
 
 ## 1. Current phase
 
-BloodLedger is at the Sprint 0 planning baseline. Do not add implementation code
-unless the user explicitly starts an implementation task or Sprint 1.
+BloodLedger has an approved Sprint 0 baseline and Sprint 1 implementation guide.
+Sprint 1 infrastructure implementation is ready, but no implementation code has
+started. Do not add code or infrastructure configuration unless the user
+explicitly authorizes that implementation work.
 
 The project is a research prototype. Never describe it as production-ready,
 clinically validated, regulator-approved, or a deployed multi-organization
@@ -102,6 +104,12 @@ or reference an `RQ-*` and stop the affected behavior until a decision exists.
 
 - Current prototype: one Mary Mediatrix Fabric organization/peer. PRC, DOH, and
   secondary hospitals are application users, not active peer operators.
+- Canonical development host: Windows 11 with WSL2 Ubuntu 24.04 LTS; canonical
+  project scripts use Bash and the working copy should normally live in the WSL
+  Linux filesystem.
+- Approved package management uses npm workspaces with one lockfile.
+- The initial Fabric state database is LevelDB and development identities use
+  Fabric CA.
 - PostgreSQL is the application/read database plus a logically separate durable
   synchronization queue.
 - Fabric ledger is authoritative for accepted inventory and custody history.
@@ -116,6 +124,11 @@ or reference an `RQ-*` and stop the affected behavior until a decision exists.
   committed, failed, stale, and conflicted states accurately.
 - Use UTC in storage and Asia/Manila for display.
 - Do not alter an applied database migration; add a new migration.
+- Sprint 1 creates only a migration/bootstrap baseline. Do not create the full
+  domain schema until the relevant column-level design is approved.
+- Barcode/QR scanning remains the accepted capture baseline. OCR is proposed for
+  later feasibility evaluation; do not implement or assume OCR behavior without
+  resolving `RQ-11` and ADR-019.
 - Avoid duplicating machine-readable contracts in prose once schemas,
   migrations, or OpenAPI become authoritative.
 

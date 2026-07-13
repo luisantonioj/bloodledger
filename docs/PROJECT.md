@@ -1,6 +1,6 @@
 # BloodLedger Project Context
 
-**Status:** Sprint 0 baseline  
+**Status:** Sprint 1 approved planning baseline
 **Baseline date:** 2026-07-13  
 **Owners:** Buno, Jopia, and Lat
 
@@ -94,6 +94,9 @@ The exact permissions are defined in `docs/REQUIREMENTS.md`.
 ## 6. Core capabilities
 
 - ISBT 128-compatible barcode/QR scan ingestion.
+- A documented OCR feasibility option that may later supplement or replace the
+  scanner path only after recognition accuracy, verification UX, and safety
+  constraints are approved.
 - Local event capture during connectivity loss and later synchronization.
 - Blood-unit inventory and lifecycle tracking.
 - City-wide inventory matrix with access-controlled detail.
@@ -148,6 +151,8 @@ The exact permissions are defined in `docs/REQUIREMENTS.md`.
 - Inventory metadata: unit identifier, blood type, component, collection and
   expiry timestamps, custody institution, status, and transaction timestamps.
 - Barcode/QR scanning using existing terminals and a compatible 2D scanner.
+- Planning and evaluation of OCR as an alternative label-capture method; OCR
+  implementation is not included until a later sprint decision is accepted.
 - On-premise, Docker-based application and infrastructure services.
 - One operational Fabric peer organization designed for later expansion.
 - Dashboard participation by modeled secondary institutions.
@@ -216,6 +221,7 @@ The exact permissions are defined in `docs/REQUIREMENTS.md`.
 | World state | Fabric's current materialized asset state, derived from ledger transactions |
 | Read model | PostgreSQL projection optimized for application queries |
 | Offline queue | Durable local records awaiting ledger submission or reconciliation |
+| OCR | Optical Character Recognition; a proposed label-capture option that requires verification before use |
 | PHI | Protected/personal health information; prohibited from this system |
 
 ## 13. Research and delivery risks
@@ -228,6 +234,7 @@ The exact permissions are defined in `docs/REQUIREMENTS.md`.
 | Connectivity interruption | Lost or conflicting inventory events | Durable queue, idempotency keys, version checks, and recovery tests | Backend owner |
 | Sensitive data is entered accidentally | Privacy breach | Field allowlists, validation, seed-data review, and security tests | Entire team |
 | Location evidence is missing or spoofed | Weak custody verification | Capture accuracy/source, use facility fallback flag, and require server validation | Backend owner |
+| OCR misreads blood-label data | Incorrect unit metadata could enter validation | Require confidence thresholds, field-level confirmation, fixtures, and scanner fallback before approval | Scan-ingestion owner |
 | Algorithm weights lack clinical approval | Unsafe or indefensible ranking | Keep weights configurable and proposed until stakeholder sign-off; log version used | Product owner |
 | Sprint dates overlap | Planning and delivery confusion | Treat `docs/SPRINT-01.md` as the operational schedule after team approval | Scrum team |
 | Scope expands to production operations | Prototype is used beyond evidence | Prominent prototype warnings and separate production-readiness gate | Project owner |

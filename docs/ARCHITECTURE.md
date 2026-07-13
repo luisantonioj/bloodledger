@@ -1,6 +1,6 @@
 # BloodLedger System Architecture
 
-**Status:** Sprint 0 baseline  
+**Status:** Sprint 1 approved planning baseline
 **Baseline date:** 2026-07-13  
 **Scope:** Research prototype, not a production deployment design
 
@@ -44,21 +44,68 @@ next boundary.
 
 | Area | Baseline choice | Status |
 |---|---|---|
-| Web | React, component-based web application | Accepted |
-| Application/API | Node.js; TypeScript preferred; REST-style HTTP API | Accepted |
+| Web | React 19.2.x, component-based web application | Accepted |
+| Application/API | Node.js 24 LTS; TypeScript preferred; REST-style HTTP API | Accepted |
 | Application data | PostgreSQL | Accepted |
-| Ledger | Hyperledger Fabric permissioned network | Accepted |
+| Ledger | Hyperledger Fabric 2.5 LTS permissioned network | Accepted |
 | Chaincode | Node.js/TypeScript-compatible Fabric contract modules | Accepted |
-| Forecasting | Python service/worker | Accepted |
+| Forecasting | Python 3.13 service/worker | Accepted |
 | Containers | Docker Compose for local prototype services | Accepted |
 | Tests | JavaScript/TypeScript test runner compatible with the selected stack; Python test runner for ML | Accepted |
-| Scanner | Keyboard-wedge or browser-compatible 2D CMOS scanner supporting required ISBT 128 fixtures | Proposed pending hardware validation |
-| Fabric state database | LevelDB initially unless rich JSON queries are proven necessary on world state | Proposed |
-| Package manager | One lockfile and one Node package manager across the repository | Decide in S1-02 |
+| Capture device | Keyboard-wedge/browser-compatible 2D scanner; OCR is an alternative under evaluation for Sprint 4 | Scanner accepted; OCR proposed |
+| Fabric state database | LevelDB for the initial prototype | Accepted |
+| Package manager | npm workspaces with one committed lockfile | Accepted |
+| Development host | Windows 11 with WSL2 and Ubuntu 24.04 LTS; Bash is canonical | Accepted |
 
-Exact versions are deliberately not called "latest." Sprint 1 task `S1-02`
-must test and pin a compatible version set before infrastructure configuration
-is committed.
+### 3.1 Approved version targets
+
+The manuscript's minimums were reviewed on 2026-07-13. These are approved
+planning targets. Sprint 1 task `S1-02` must record actual command output and
+confirm the combination before they become verified environment pins.
+
+| Software | Approved target | Manuscript value | Decision |
+|---|---:|---:|---|
+| Windows host | Windows 11, supported release | Windows 10/11 | Prefer Windows 11 for the team baseline |
+| WSL | WSL2 | Not specified | Canonical Linux execution environment |
+| Ubuntu | 24.04.4 LTS | Not specified | Stable WSL distribution with long support horizon |
+| Docker Desktop | 4.81.0 | Not specified | Windows packaging and WSL2 integration baseline |
+| Docker Engine | 29.6.1 target | 24.x or higher | Current security/bug-fix line; verify with Fabric images |
+| Docker Compose | Bundled supported Compose; record exact version | 2.20.x or higher | Use the Docker Desktop plugin, not a separate legacy binary |
+| Hyperledger Fabric | 2.5.16 LTS | 2.5.x LTS | Stay on the LTS line used by the manuscript |
+| Fabric CA | 1.5.15 | Not specified | Matches the Fabric 2.5 installation documentation |
+| Node.js | 24.17.0 LTS | 18.x LTS | Node 18 is EOL; use the supported LTS line |
+| npm | Version bundled with Node 24.17.0; record exact version | Not specified | Avoid an additional package-manager dependency |
+| PostgreSQL | 17.10 | 15.x or higher | Mature supported major through 2029 |
+| Git | 2.55.0 target; minimum 2.30 | 2.30.x or higher | Record each host's verified version |
+| Python | 3.13.14 | Not specified | Conservative supported line for later ML work |
+| Fabric Gateway client | `@hyperledger/fabric-gateway` 1.11.0 | Fabric SDK Node 2.5.x | Use the Gateway client API, not the legacy SDK label |
+| React | 19.2.7 | 18.x or higher | Approved planning target for Sprint 5 |
+| Browser | Vendor-supported Chrome or Edge; record exact UAT build | Chrome/Edge 115+ | Browser auto-updates make a fixed early planning build misleading |
+
+Docker Desktop bundles Engine and Compose components. If `4.81.0` supplies a
+different patched Engine or Compose version, the installed bundle output is the
+verified pin; the team must not mix independently installed Compose binaries.
+Later-sprint libraries remain planning targets until their sprint validates the
+complete dependency graph.
+
+### 3.2 Version-selection sources
+
+- Hyperledger Fabric installation and version parameters:
+  <https://hyperledger-fabric.readthedocs.io/en/release-2.5/install.html>
+- Hyperledger Fabric LTS policy and releases:
+  <https://github.com/hyperledger/fabric>
+- Fabric Gateway Node client:
+  <https://www.npmjs.com/package/@hyperledger/fabric-gateway>
+- Node.js supported releases:
+  <https://nodejs.org/en/about/previous-releases>
+- PostgreSQL version support:
+  <https://www.postgresql.org/support/versioning/>
+- Docker Desktop release notes:
+  <https://docs.docker.com/desktop/release-notes/>
+- Python releases: <https://www.python.org/downloads/>
+- React versions: <https://react.dev/versions>
+- Git releases: <https://git-scm.com/>
+- Ubuntu lifecycle: <https://ubuntu.com/about/release-cycle>
 
 ## 4. Initial repository boundaries
 
@@ -83,6 +130,11 @@ bloodledger/
 
 Sprint 1 may refine names, but a change to component boundaries requires an
 updated architecture decision.
+
+For the canonical WSL2 workflow, the implementation working copy should be
+cloned inside the WSL Linux filesystem (for example under `/home/<user>/`) rather
+than developed through `/mnt/c`, unless validation demonstrates an acceptable
+reason to retain a Windows-filesystem working copy.
 
 ## 5. Component responsibilities
 
@@ -175,9 +227,13 @@ baseline logical model is therefore:
 | `algorithm_runs` | BROA/RPS input snapshot, normalized scores, weights, result, version |
 | `audit_logs` | Application/security audit events that do not duplicate the ledger |
 
-This is a conceptual schema, not authorization to create migrations. Sprint 1
-may create only an infrastructure/migration baseline after column-level design,
-privacy review, keys, constraints, and ownership are approved.
+This is a conceptual schema, not authorization to create all domain migrations.
+Sprint 1 creates the migration mechanism and a minimal bootstrap migration used
+to prove apply/status/recreate behavior. It does not create the complete domain
+schema or the manuscript's six application tables before their column-level
+requirements, privacy classification, keys, constraints, and ownership are
+approved. Synthetic institution seed data may be added only if required to
+validate the migration mechanism.
 
 Required cross-cutting fields include stable IDs, institution scope, created and
 updated timestamps, correlation and idempotency IDs, version/concurrency value,
@@ -333,25 +389,30 @@ time, correlation ID, and safe event name without secrets or prohibited data.
 | ADR-005 | Accepted | Forecasting, BROA, RPS, and scheduling run off-chain | Required for external data access, versioning, evaluation, and deterministic chaincode |
 | ADR-006 | Accepted | Chaincode validates and records approved results/state transitions | Prevents autonomous external computation inside endorsement |
 | ADR-007 | Accepted | One deployable chaincode package initially, separated into contract modules | Reduces early lifecycle complexity while preserving modularity |
-| ADR-008 | Proposed | Use LevelDB unless chaincode rich queries require CouchDB | Avoids an unnecessary service; decide before Fabric Compose is finalized |
-| ADR-009 | Proposed | Backend uses an organizational Fabric service identity with authenticated user attribution | Avoids certificate-per-user complexity; threat model and audit needs must be reviewed |
+| ADR-008 | Accepted | Use LevelDB for the initial prototype | No accepted requirement needs rich world-state JSON queries; avoids an unnecessary service |
+| ADR-009 | Accepted | Backend uses an organizational Fabric service identity with authenticated user attribution | Avoids certificate-per-user complexity while preserving user audit attribution |
 | ADR-010 | Accepted | Store UTC; render Asia/Manila | Makes ordering and cross-service timestamps consistent |
 | ADR-011 | Accepted | Keep exact GPS off-chain where possible; record minimal verified evidence/digest on chain | Data minimization; final schema awaits location policy |
-| ADR-012 | Proposed | Monorepo with web, API, ML, chaincode, network, database, and tests | Matches small team and coordinated prototype delivery |
-| ADR-013 | Proposed | Refine the manuscript's four tiers into five application roles by adding a Secondary Hospital User | Secondary request/receipt permissions otherwise have no explicit role; approve before Sprint 5 |
+| ADR-012 | Accepted | Monorepo with web, API, ML, chaincode, network, database, and tests | Matches small team and coordinated prototype delivery |
+| ADR-013 | Accepted | Refine the manuscript's four tiers into five application roles by adding a Secondary Hospital User | Secondary request/receipt permissions otherwise have no explicit role |
+| ADR-014 | Accepted | Windows 11 + WSL2 Ubuntu 24.04 LTS is the canonical host; Bash is the canonical script language | Gives the Windows-based team one Linux-compatible Fabric workflow |
+| ADR-015 | Accepted | Use npm workspaces and one lockfile | Lowest additional tooling burden for the team |
+| ADR-016 | Accepted | Use Fabric CA for reproducible development identities | Aligns the prototype with MSP/X.509 identity concepts and future onboarding |
+| ADR-017 | Accepted | Sprint 1 creates only a migration/bootstrap baseline, not the full domain schema | Avoids guessing Sprint 2–5 fields while still proving database reproducibility |
+| ADR-018 | Accepted | Use a disposable infrastructure-only health contract in Sprint 1 | Proves install/invoke/query/commit without implementing inventory behavior |
+| ADR-019 | Proposed | OCR may supplement or replace barcode/QR capture after a Sprint 4 feasibility and safety decision | OCR recognition errors require confidence thresholds, verification UX, and label-fixture testing |
 
 ## 16. Sprint 1 architecture gates
 
-Sprint 1 may begin with the accepted topology above. Before infrastructure files
-are considered complete, the team must also accept:
+Sprint 1 is approved to begin with ADR-001 through ADR-018. Before its
+infrastructure files are considered complete, the team must verify:
 
-- exact supported versions and host OS/WSL2 policy;
-- Node package manager and workspace approach;
-- LevelDB versus CouchDB;
-- development CA/identity process and Git exclusions;
+- the approved target versions on every supported host;
+- Docker Desktop/Engine/Compose and Fabric 2.5.16 interoperability;
+- the Fabric CA identity lifecycle and Git exclusions;
 - service ports and environment-variable names;
-- initial PostgreSQL schema scope; and
+- bootstrap migration apply/status/recreate behavior; and
 - health, reset, and clean-machine validation commands.
 
-Any change to ADR-001 through ADR-007 requires updating the Sprint 1 plan before
+Any change to ADR-001 through ADR-018 requires updating the Sprint 1 plan before
 the affected configuration is written.
