@@ -243,17 +243,20 @@ and status. All stored timestamps use UTC.
 
 ### 8.1 Prototype topology
 
-- One Fabric organization representing Mary Mediatrix Medical Center.
+- One operational member organization representing Mary Mediatrix Medical
+  Center.
 - One peer for the organization in the local prototype.
-- One development ordering node/service.
+- One technical ordering organization (`OrdererMSP`) with one development
+  ordering node/service; it is not a second hospital consortium member.
 - One channel for BloodLedger prototype transactions.
-- One organization CA or an explicitly documented development identity process.
+- Separate Mediatrix and ordering-organization Fabric CAs as documented in
+  `network/README.md`.
 - TLS and MSP identities appropriate to the supported local environment.
 - PRC, DOH, and secondary institutions access the application; they do not host
   peers or endorse transactions in the initial scope.
 
-This is a single-organization Fabric prototype. It must not be described as a
-live decentralized consortium deployment.
+This is a single-operational-member Fabric prototype. It must not be described
+as a live decentralized consortium deployment.
 
 ### 8.2 Expansion topology
 
@@ -401,18 +404,25 @@ time, correlation ID, and safe event name without secrets or prohibited data.
 | ADR-017 | Accepted | Sprint 1 creates only a migration/bootstrap baseline, not the full domain schema | Avoids guessing Sprint 2–5 fields while still proving database reproducibility |
 | ADR-018 | Accepted | Use a disposable infrastructure-only health contract in Sprint 1 | Proves install/invoke/query/commit without implementing inventory behavior |
 | ADR-019 | Proposed | OCR may supplement or replace barcode/QR capture after a Sprint 4 feasibility and safety decision | OCR recognition errors require confidence thresholds, verification UX, and label-fixture testing |
+| ADR-020 | Accepted | Use the Sprint 1 network identifiers, service names, and development ports in `network/README.md` | Gives Compose, Fabric, scripts, and evidence one stable naming vocabulary |
+| ADR-021 | Accepted | Use separate Fabric CA administrators, node identities, channel administrators, and an organizational API service identity | Preserves least privilege and keeps end-user enrollment out of Sprint 1 |
+| ADR-022 | Accepted | Use `node-pg-migrate`, a separate migration owner/runtime role, and an `app` schema bootstrap without domain tables or seeds | Proves repeatable migrations while deferring feature schema decisions |
+| ADR-023 | Accepted | The disposable `HealthContract` records and reads deterministic probe IDs only | Proves chaincode lifecycle and ledger commitment without clocks or BloodLedger feature data |
+| ADR-024 | Accepted | Use separate stop, network reset, and full development reset levels scoped to the BloodLedger Compose project and repository-owned generated paths | Prevents reset operations from deleting unrelated Docker or filesystem resources |
 
 ## 16. Sprint 1 architecture gates
 
-Sprint 1 is approved to begin with ADR-001 through ADR-018. Before its
-infrastructure files are considered complete, the team must verify:
+Sprint 1 is approved to begin with ADR-001 through ADR-018 and ADR-020 through
+ADR-024. ADR-019 remains proposed for Sprint 4. Before the infrastructure files
+are considered complete, the team must verify:
 
 - the approved target versions on every supported host;
 - Docker Desktop/Engine/Compose and Fabric 2.5.16 interoperability;
 - the Fabric CA identity lifecycle and Git exclusions;
-- service ports and environment-variable names;
+- the identifiers, ports, and environment-variable names in `network/README.md`
+  and `database/README.md` on each host;
 - bootstrap migration apply/status/recreate behavior; and
 - health, reset, and clean-machine validation commands.
 
-Any change to ADR-001 through ADR-018 requires updating the Sprint 1 plan before
-the affected configuration is written.
+Any change to an accepted ADR requires updating the Sprint 1 plan and the
+authoritative operational document before the affected configuration is written.

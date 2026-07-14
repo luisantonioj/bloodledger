@@ -55,6 +55,9 @@ matrix and official selection sources are in `docs/ARCHITECTURE.md` Section 3.
 | [Architecture](docs/ARCHITECTURE.md) | Components, data ownership, Fabric topology, synchronization, security, and decisions |
 | [Product backlog](docs/BACKLOG.md) | Prioritized outcomes and sprint roadmap |
 | [Sprint 1 plan](docs/SPRINT-01.md) | Infrastructure sprint entry gate, tasks, decisions, validation, and exit criteria |
+| [Local development](docs/LOCAL-DEVELOPMENT.md) | Planned WSL2 workflow, version evidence, reset safety, and troubleshooting |
+| [Fabric network](network/README.md) | Network identifiers, ports, CA identities, generated material, and health contract |
+| [Development database](database/README.md) | PostgreSQL roles, environment names, migration baseline, and persistence |
 | [Agent instructions](AGENTS.md) | Task-based reading map and repository rules for AI-assisted work |
 
 ## Source-of-truth rule
@@ -87,8 +90,9 @@ bloodledger/
 └── tests/                  # grows with each sprint
 ```
 
-Directories and implementation files will be created only when their sprint
-begins. This avoids presenting placeholders as completed work.
+Operational directories may contain planning documentation before implementation.
+Configuration, scripts, migrations, contracts, and application files are added
+only when their sprint work is authorized and validated.
 
 ## Sprint 1 readiness
 
@@ -96,13 +100,13 @@ The team has approved:
 
 1. the Gantt schedule of June 29–July 9, 2026;
 2. the one-organization Fabric topology;
-3. ADR-001 through ADR-018;
+3. ADR-001 through ADR-018 and ADR-020 through ADR-024;
 4. the version targets and WSL2/Bash workflow;
 5. the migration/bootstrap-only PostgreSQL scope;
 6. Sprint 1 owners, validation obligations, and exit criteria.
 
-Actual implementation dates must be recorded separately because approval was
-entered after the original Gantt range.
+Actual implementation and validation dates are recorded separately in the
+Sprint Review.
 
 ## Setup
 
@@ -110,6 +114,10 @@ There are no setup commands yet because implementation has not begun. Tested,
 version-pinned setup and validation commands are Sprint 1 deliverables. Do not
 copy commands from a sample network into this README until they work against the
 repository-owned BloodLedger environment.
+
+The intended workflow, identifiers, database decisions, and safety boundaries
+are documented in `docs/LOCAL-DEVELOPMENT.md`, `network/README.md`, and
+`database/README.md`.
 
 ## Security and research-data notice
 

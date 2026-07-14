@@ -2,15 +2,14 @@
 
 **Status:** Approved; ready for infrastructure implementation
 
-**Scheduled dates:** June 29–July 9, 2026
+**Planning dates:** June 29–July 9, 2026
 
 **Schedule authority:** `Updated_BloodLedger_Gantt.xlsx`
 **Approval recorded:** 2026-07-13
 
-The Gantt dates are the approved planning baseline. Because approval was
-recorded after the scheduled range, actual implementation and validation dates
-must also be recorded in the Sprint Review; the Gantt dates must not be reported
-as actual execution evidence when work occurred later.
+The Gantt dates are the approved planning guide. Actual implementation and
+validation dates depend on the team and are recorded separately in the Sprint
+Review.
 
 ## 1. Sprint goal
 
@@ -24,7 +23,7 @@ version-pinned commands.
 Sprint 1 is approved to begin. The following decisions are recorded:
 
 - the Sprint 0 repository baseline is accepted for implementation planning;
-- ADR-001 through ADR-018 are accepted;
+- ADR-001 through ADR-018 and ADR-020 through ADR-024 are accepted;
 - the team agrees that PRC and DOH are read-only application users in the
   initial topology;
 - prohibited data and the one-organization prototype limitation are understood;
@@ -32,7 +31,8 @@ Sprint 1 is approved to begin. The following decisions are recorded:
   accepted;
 - Windows 11, WSL2, Ubuntu 24.04 LTS, and Bash form the canonical workflow;
 - LevelDB, npm workspaces, Fabric CA, the migration-only PostgreSQL baseline,
-  and an infrastructure-only health contract are selected; and
+  infrastructure-only health contract, network identifiers, identity model,
+  and reset-safety policy are selected; and
 - no secrets or institutional production data are placed in the repository.
 
 OCR is recorded as a proposed alternative or supplement to barcode/QR capture.
@@ -75,8 +75,8 @@ Sprint 1.
 
 Acceptance:
 
-- The schedule no longer overlaps Sprint 2.
-- Each task has one accountable owner and at least one reviewer.
+- Planning dates and actual execution dates are recorded separately.
+- Jopia is the accountable owner and Buno and Lat are reviewers.
 - Blockers and external approvals are visible.
 
 ### S1-02 — Select and pin the environment matrix
@@ -187,27 +187,27 @@ Acceptance:
 
 ## 6. Ownership matrix
 
-The ownership mapping refines the Gantt's broader assignments. "All" means the
-three proponents participate; one accountable owner still coordinates evidence.
+The ownership mapping refines the Gantt's broader assignments. Jopia is
+accountable for every Sprint 1 task; Buno and Lat review the work and evidence.
 
 | Task | Accountable | Reviewer/participants |
 |---|---|---|
 | S1-01 Sprint plan | Jopia | Buno and Lat |
-| S1-02 Environment matrix | Jopia | Lat and Buno |
-| S1-03 Repository/security rules | Lat | Jopia and Buno |
-| S1-04 PostgreSQL | Lat | Jopia and Buno |
-| S1-05 Migration/bootstrap | Lat | Buno and Jopia |
-| S1-06 Fabric network and CA | Jopia | Lat and Buno |
+| S1-02 Environment matrix | Jopia | Buno and Lat |
+| S1-03 Repository/security rules | Jopia | Buno and Lat |
+| S1-04 PostgreSQL | Jopia | Buno and Lat |
+| S1-05 Migration/bootstrap | Jopia | Buno and Lat |
+| S1-06 Fabric network and CA | Jopia | Buno and Lat |
 | S1-07 Channel/health contract | Jopia | Buno and Lat |
-| S1-08 Operational commands | Jopia and Lat | Buno |
-| S1-09 Cross-machine validation | All | Cross-review |
-| S1-10 Review/retrospective | All | All |
+| S1-08 Operational commands | Jopia | Buno and Lat |
+| S1-09 Cross-machine validation | Jopia | Buno and Lat |
+| S1-10 Review/retrospective | Jopia | Buno and Lat |
 
 ## 7. Approved decisions and validation obligations
 
 | Decision | Approved selection | Validation due |
 |---|---|---|
-| Sprint dates | June 29–July 9, 2026 (Gantt) | Record actual execution dates in review |
+| Sprint dates | June 29–July 9, 2026 planning guide | Record actual execution dates in review |
 | Host | Windows 11 + WSL2 Ubuntu 24.04 LTS | S1-02 clean-host check |
 | Scripts | Bash in WSL2 | S1-08 on every host |
 | Package management | npm workspaces | S1-02/version evidence |
@@ -218,7 +218,9 @@ three proponents participate; one accountable owner still coordinates evidence.
 | Health transaction | Disposable infrastructure-only contract | S1-07 |
 | DBeaver | Optional | Connection check only, if used |
 | Spec Kit/custom skills | Deferred | Reconsider only after repeated need |
-| Service ports/environment names | Assign after collision check | Before Compose is finalized |
+| Network identifiers and ports | `network/README.md` baseline; permit documented local overrides after collision check | Before Compose is finalized |
+| PostgreSQL bootstrap | `database/README.md` baseline | S1-04/S1-05 |
+| Reset safety | Three-tier policy in `docs/LOCAL-DEVELOPMENT.md` | S1-08/S1-09 |
 
 ## 8. Validation checklist
 

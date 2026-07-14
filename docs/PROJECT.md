@@ -236,7 +236,7 @@ The exact permissions are defined in `docs/REQUIREMENTS.md`.
 | Location evidence is missing or spoofed | Weak custody verification | Capture accuracy/source, use facility fallback flag, and require server validation | Backend owner |
 | OCR misreads blood-label data | Incorrect unit metadata could enter validation | Require confidence thresholds, field-level confirmation, fixtures, and scanner fallback before approval | Scan-ingestion owner |
 | Algorithm weights lack clinical approval | Unsafe or indefensible ranking | Keep weights configurable and proposed until stakeholder sign-off; log version used | Product owner |
-| Sprint dates overlap | Planning and delivery confusion | Treat `docs/SPRINT-01.md` as the operational schedule after team approval | Scrum team |
+| Actual work differs from planning dates | Inaccurate progress reporting | Record actual implementation and validation dates in the sprint review | Scrum team |
 | Scope expands to production operations | Prototype is used beyond evidence | Prominent prototype warnings and separate production-readiness gate | Project owner |
 
 ## 14. Source documents and precedence

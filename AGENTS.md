@@ -24,6 +24,9 @@ Use one home for each type of truth:
 | How is it structured and why? | `docs/ARCHITECTURE.md` |
 | What is planned overall? | `docs/BACKLOG.md` |
 | What is selected for the current sprint? | `docs/SPRINT-01.md` or its successor |
+| How should local setup and reset behave? | `docs/LOCAL-DEVELOPMENT.md` |
+| What Fabric names, identities, ports, and health contract apply? | `network/README.md` |
+| What PostgreSQL and migration rules apply? | `database/README.md` |
 | How should an agent work? | `AGENTS.md` |
 | How does a human enter the repository? | `README.md` |
 
@@ -45,6 +48,9 @@ Then read only what the task requires:
 | Scope, terminology, stakeholder question | Relevant `PROJECT.md` section |
 | Feature or business-rule work | Linked `FR-*`, `BR-*`, state model, and NFRs in `REQUIREMENTS.md` |
 | Infrastructure, data, API, blockchain, ML, security, or repository boundary | Relevant `ARCHITECTURE.md` section and ADRs |
+| Fabric network or CA work | `network/README.md` plus linked ADRs and sprint task |
+| PostgreSQL or migration work | `database/README.md` plus linked ADRs and sprint task |
+| Setup, validation, troubleshooting, or reset work | `docs/LOCAL-DEVELOPMENT.md` |
 | Prioritization or sprint selection | `BACKLOG.md` |
 | Architecture change | All core documents affected by the decision |
 
@@ -110,6 +116,10 @@ or reference an `RQ-*` and stop the affected behavior until a decision exists.
 - Approved package management uses npm workspaces with one lockfile.
 - The initial Fabric state database is LevelDB and development identities use
   Fabric CA.
+- Sprint 1 network identifiers, ports, CA identities, and disposable health
+  contract are authoritative in `network/README.md`.
+- Sprint 1 PostgreSQL roles and migration/bootstrap rules are authoritative in
+  `database/README.md`.
 - PostgreSQL is the application/read database plus a logically separate durable
   synchronization queue.
 - Fabric ledger is authoritative for accepted inventory and custody history.
@@ -126,6 +136,9 @@ or reference an `RQ-*` and stop the affected behavior until a decision exists.
 - Do not alter an applied database migration; add a new migration.
 - Sprint 1 creates only a migration/bootstrap baseline. Do not create the full
   domain schema until the relevant column-level design is approved.
+- Stop preserves data. Fabric reset and full development reset must follow the
+  scoped, confirmation-based policy in `docs/LOCAL-DEVELOPMENT.md`; global
+  Docker prune and deletion outside project-owned paths are forbidden.
 - Barcode/QR scanning remains the accepted capture baseline. OCR is proposed for
   later feasibility evaluation; do not implement or assume OCR behavior without
   resolving `RQ-11` and ADR-019.
@@ -138,7 +151,7 @@ These rules become active when code begins:
 
 - Prefer TypeScript for Node.js application and chaincode modules unless an ADR
   accepts another choice.
-- Use one package manager and committed lockfile after Sprint 1 selects it.
+- Use npm workspaces with one committed lockfile, as accepted in ADR-015.
 - Use descriptive English names; avoid unexplained abbreviations except domain
   terms defined in `PROJECT.md`.
 - Files: lowercase kebab-case unless a selected framework requires otherwise.
