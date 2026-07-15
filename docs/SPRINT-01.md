@@ -23,7 +23,7 @@ version-pinned commands.
 Sprint 1 is approved to begin. The following decisions are recorded:
 
 - the Sprint 0 repository baseline is accepted for implementation planning;
-- ADR-001 through ADR-018 and ADR-020 through ADR-024 are accepted;
+- ADR-001 through ADR-018 and ADR-020 through ADR-025 are accepted;
 - the team agrees that PRC and DOH are read-only application users in the
   initial topology;
 - prohibited data and the one-organization prototype limitation are understood;
@@ -209,6 +209,7 @@ accountable for every Sprint 1 task; Buno and Lat review the work and evidence.
 |---|---|---|
 | Sprint dates | June 29–July 9, 2026 planning guide | Record actual execution dates in review |
 | Host | Windows 11 + WSL2 Ubuntu 24.04 LTS | S1-02 clean-host check |
+| Docker bundle | Desktop 4.82.0 + Engine 29.6.1 + Compose 5.3.0 | S1-02 on remaining supported hosts |
 | Scripts | Bash in WSL2 | S1-08 on every host |
 | Package management | npm workspaces | S1-02/version evidence |
 | Fabric | 2.5.16 LTS + Fabric CA 1.5.15 | S1-06/S1-07 |

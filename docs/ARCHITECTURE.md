@@ -60,21 +60,23 @@ next boundary.
 ### 3.1 Approved version targets
 
 The manuscript's minimums were reviewed on 2026-07-13. These are approved
-planning targets. Sprint 1 task `S1-02` must record actual command output and
-confirm the combination before they become verified environment pins.
+targets. ADR-025 accepts the Docker bundle verified on Jopia's host on
+2026-07-15. Sprint 1 task `S1-02` must still record actual command output on
+the remaining supported hosts before the complete matrix is considered
+cross-machine verified.
 
 | Software | Approved target | Manuscript value | Decision |
 |---|---:|---:|---|
 | Windows host | Windows 11, supported release | Windows 10/11 | Prefer Windows 11 for the team baseline |
 | WSL | WSL2 | Not specified | Canonical Linux execution environment |
 | Ubuntu | 24.04.4 LTS | Not specified | Stable WSL distribution with long support horizon |
-| Docker Desktop | 4.81.0 | Not specified | Windows packaging and WSL2 integration baseline |
-| Docker Engine | 29.6.1 target | 24.x or higher | Current security/bug-fix line; verify with Fabric images |
-| Docker Compose | Bundled supported Compose; record exact version | 2.20.x or higher | Use the Docker Desktop plugin, not a separate legacy binary |
+| Docker Desktop | 4.82.0 | Not specified | Verified Windows packaging and WSL2 integration baseline on Jopia's host |
+| Docker Engine | 29.6.1 | 24.x or higher | Bundled with Docker Desktop 4.82.0 and verified with Fabric images |
+| Docker Compose | 5.3.0 | 2.20.x or higher | Use the Docker Desktop plugin, not a separate legacy binary |
 | Hyperledger Fabric | 2.5.16 LTS | 2.5.x LTS | Stay on the LTS line used by the manuscript |
 | Fabric CA | 1.5.15 | Not specified | Matches the Fabric 2.5 installation documentation |
 | Node.js | 24.17.0 LTS | 18.x LTS | Node 18 is EOL; use the supported LTS line |
-| npm | Version bundled with Node 24.17.0; record exact version | Not specified | Avoid an additional package-manager dependency |
+| npm | 11.13.0 bundled with Node 24.17.0 | Not specified | Avoid an additional package-manager dependency |
 | PostgreSQL | 17.10 | 15.x or higher | Mature supported major through 2029 |
 | Git | 2.55.0 target; minimum 2.30 | 2.30.x or higher | Record each host's verified version |
 | Python | 3.13.14 | Not specified | Conservative supported line for later ML work |
@@ -82,9 +84,10 @@ confirm the combination before they become verified environment pins.
 | React | 19.2.7 | 18.x or higher | Approved planning target for Sprint 5 |
 | Browser | Vendor-supported Chrome or Edge; record exact UAT build | Chrome/Edge 115+ | Browser auto-updates make a fixed early planning build misleading |
 
-Docker Desktop bundles Engine and Compose components. If `4.81.0` supplies a
-different patched Engine or Compose version, the installed bundle output is the
-verified pin; the team must not mix independently installed Compose binaries.
+Docker Desktop bundles Engine and Compose components. The accepted Jopia-host
+combination is Docker Desktop `4.82.0`, Engine `29.6.1`, and Compose `5.3.0`.
+Other supported hosts must record their installed bundle output and must not mix
+independently installed Compose binaries.
 Later-sprint libraries remain planning targets until their sprint validates the
 complete dependency graph.
 
@@ -409,11 +412,12 @@ time, correlation ID, and safe event name without secrets or prohibited data.
 | ADR-022 | Accepted | Use `node-pg-migrate`, a separate migration owner/runtime role, and an `app` schema bootstrap without domain tables or seeds | Proves repeatable migrations while deferring feature schema decisions |
 | ADR-023 | Accepted | The disposable `HealthContract` records and reads deterministic probe IDs only | Proves chaincode lifecycle and ledger commitment without clocks or BloodLedger feature data |
 | ADR-024 | Accepted | Use separate stop, network reset, and full development reset levels scoped to the BloodLedger Compose project and repository-owned generated paths | Prevents reset operations from deleting unrelated Docker or filesystem resources |
+| ADR-025 | Accepted | Use Docker Desktop 4.82.0 with bundled Engine 29.6.1 and Compose 5.3.0 as the Sprint 1 effective baseline | Supersedes the 4.81.0 planning target after Jopia-host WSL integration, Fabric image, and disposable container verification; remaining hosts still require S1-02 evidence |
 
 ## 16. Sprint 1 architecture gates
 
 Sprint 1 is approved to begin with ADR-001 through ADR-018 and ADR-020 through
-ADR-024. ADR-019 remains proposed for Sprint 4. Before the infrastructure files
+ADR-025. ADR-019 remains proposed for Sprint 4. Before the infrastructure files
 are considered complete, the team must verify:
 
 - the approved target versions on every supported host;

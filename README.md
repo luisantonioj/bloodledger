@@ -32,19 +32,20 @@ entry gate in `docs/SPRINT-01.md`.
 - The topology is designed for future expansion but is not a deployed
   multi-organization consortium.
 
-## Planned technology direction
+## Technology direction
 
 - Windows 11 with WSL2 Ubuntu 24.04 LTS and canonical Bash scripts
-- Docker Desktop 4.81.0 planning target
+- Docker Desktop 4.82.0 with Engine 29.6.1 and Compose 5.3.0
 - Hyperledger Fabric 2.5.16 LTS and Fabric CA 1.5.15
 - Node.js 24.17.0 LTS with npm workspaces
 - PostgreSQL 17.10
 - Python 3.13.14 for the later forecasting service
 - React 19.2.7 for the later web application
 
-These are approved planning targets. Sprint 1 must record installed versions and
-validate their compatibility before treating them as verified pins. The full
-matrix and official selection sources are in `docs/ARCHITECTURE.md` Section 3.
+These are approved targets. The Docker bundle is verified on Jopia's host;
+Sprint 1 must still record the remaining hosts' installed versions and validate
+the complete cross-machine matrix. The full matrix and official selection
+sources are in `docs/ARCHITECTURE.md` Section 3.
 
 ## Documentation map
 
@@ -100,7 +101,7 @@ The team has approved:
 
 1. the Gantt schedule of June 29–July 9, 2026;
 2. the one-organization Fabric topology;
-3. ADR-001 through ADR-018 and ADR-020 through ADR-024;
+3. ADR-001 through ADR-018 and ADR-020 through ADR-025;
 4. the version targets and WSL2/Bash workflow;
 5. the migration/bootstrap-only PostgreSQL scope;
 6. Sprint 1 owners, validation obligations, and exit criteria.

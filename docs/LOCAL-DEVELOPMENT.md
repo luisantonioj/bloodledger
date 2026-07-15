@@ -25,16 +25,16 @@ effective output rather than assuming the installed version matches the target.
 
 | Tool | Jopia effective version | Buno effective version | Lat effective version |
 |---|---|---|---|
-| Windows | Not recorded | Not recorded | Not recorded |
-| WSL | Not recorded | Not recorded | Not recorded |
-| Ubuntu | Not recorded | Not recorded | Not recorded |
-| Docker Desktop | Not recorded | Not recorded | Not recorded |
-| Docker Engine | Not recorded | Not recorded | Not recorded |
-| Docker Compose | Not recorded | Not recorded | Not recorded |
-| Git | Not recorded | Not recorded | Not recorded |
-| Node.js/npm | Not recorded | Not recorded | Not recorded |
-| Fabric/Fabric CA | Not recorded | Not recorded | Not recorded |
-| PostgreSQL | Not recorded | Not recorded | Not recorded |
+| Windows | Windows 11 build `22631.6199` | Not recorded | Not recorded |
+| WSL | `2.7.10.0`; kernel `6.18.33.2-2` | Not recorded | Not recorded |
+| Ubuntu | `24.04.4 LTS` | Not recorded | Not recorded |
+| Docker Desktop | `4.82.0` (build `233772`) | Not recorded | Not recorded |
+| Docker Engine | `29.6.1` | Not recorded | Not recorded |
+| Docker Compose | `5.3.0` | Not recorded | Not recorded |
+| Git | `2.43.0` | Not recorded | Not recorded |
+| Node.js/npm | Node.js `24.17.0`; npm `11.13.0`; nvm `0.40.5` | Not recorded | Not recorded |
+| Fabric/Fabric CA | Fabric `2.5.16`; Fabric CA `1.5.15` | Not recorded | Not recorded |
+| PostgreSQL | Not provisioned; deferred to S1-04 | Not recorded | Not recorded |
 
 A difference is not silently normalized. Jopia records the decision or deviation;
 Buno and Lat review the resulting supported baseline.
@@ -135,6 +135,7 @@ Add an entry only after the problem is observed:
 
 | Date | Host | Symptom | Root cause | Verified resolution | Affected versions |
 |---|---|---|---|---|---|
+| 2026-07-15 | Jopia Windows 11/Ubuntu 24.04 host | Docker Desktop exited and `docker` was unavailable in the integrated WSL distribution | The Docker inference manager could not remove the empty `dockerInference` runtime endpoint and cancelled backend startup | Removed the empty runtime endpoint, restarted Windows, and verified `docker version`, `docker compose version`, and `docker run --rm hello-world` | Docker Desktop `4.82.0` |
 
 Do not populate troubleshooting with speculative errors copied from external
 guides. A fix belongs here only after it is reproduced and verified against the
