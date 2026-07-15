@@ -1,0 +1,23 @@
+{
+  "name": "bloodledger",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Repository tooling for the BloodLedger research prototype",
+  "engines": {
+    "node": "24.17.0",
+    "npm": "11.13.0"
+  },
+  "packageManager": "npm@11.13.0",
+  "workspaces": [
+    "database"
+  ],
+  "scripts": {
+    "check:format": "node tests/repository/json-format.mjs",
+    "check:versions": "node tests/repository/version-consistency.mjs",
+    "check:ignore": "bash tests/repository/ignore-paths.sh",
+    "check:env": "node tests/repository/safe-env-template.mjs",
+    "check:workspace": "npm ls --workspaces --include-workspace-root --depth=0",
+    "check:foundation": "npm run check:format && npm run check:workspace && npm run check:versions && npm run check:ignore && npm run check:env",
+    "scan:secrets": "bash scripts/scan-secrets.sh"
+  }
+}

@@ -1,0 +1,35 @@
+# Local environment configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Node.js dependencies and package-manager diagnostics
+node_modules/
+npm-debug.log*
+
+# Build, test, coverage, and runtime output
+build/
+dist/
+coverage/
+logs/
+*.log
+
+# Fabric-generated identities, wallets, keys, and channel material
+network/generated/
+network/**/wallet/
+network/**/wallets/
+network/**/keystore/
+network/**/signcerts/
+network/**/channel-artifacts/
+*.key
+*_sk
+*.pem
+*.p12
+*.pfx
+
+# Local PostgreSQL data and project-volume mirrors
+database/data/
+database/.data/
+database/postgres-data/
+postgres-data/
+.postgres/

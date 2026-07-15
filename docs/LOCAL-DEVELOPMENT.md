@@ -1,6 +1,6 @@
 # BloodLedger Local Development Guide
 
-**Status:** Sprint 1 operational-document baseline; commands remain unverified
+**Status:** Sprint 1 operational-document baseline; service commands remain unverified
 
 This guide defines the intended local workflow and evidence format. Command
 examples are added only after Sprint 1 implementation validates them.
@@ -33,8 +33,8 @@ effective output rather than assuming the installed version matches the target.
 | Docker Compose | `5.3.0` | Not recorded | Not recorded |
 | Git | `2.43.0` | Not recorded | Not recorded |
 | Node.js/npm | Node.js `24.17.0`; npm `11.13.0`; nvm `0.40.5` | Not recorded | Not recorded |
-| Migration packages | `node-pg-migrate` `8.0.4`; `pg` `8.22.0` selected, not installed | Not recorded | Not recorded |
-| Gitleaks | `8.30.1` selected; official container validation not recorded | Not recorded | Not recorded |
+| Migration packages | `node-pg-migrate` `8.0.4`; `pg` `8.22.0`; root lockfile and clean install verified 2026-07-15 | Not recorded | Not recorded |
+| Gitleaks | `8.30.1`; official container and repository scans verified 2026-07-15; digest `sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f` | Not recorded | Not recorded |
 | Fabric/Fabric CA | Fabric `2.5.16`; Fabric CA `1.5.15` | Not recorded | Not recorded |
 | PostgreSQL | Not provisioned; deferred to S1-04 | Not recorded | Not recorded |
 

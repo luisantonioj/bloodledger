@@ -1,16 +1,17 @@
 # Sprint 1 — Infrastructure Provisioning
 
-**Status:** Approved; implementation-readiness decisions complete; implementation not started
+**Status:** Approved; implementation started
 
 **Planning dates:** June 29–July 9, 2026
 
 **Schedule authority:** `Updated_BloodLedger_Gantt.xlsx`
 **Approval recorded:** 2026-07-13
 **Implementation-readiness decisions recorded:** 2026-07-15
+**Actual implementation start:** 2026-07-15
 
-The Gantt dates are the approved planning guide. Actual implementation and
-validation dates depend on the team and are recorded separately in the Sprint
-Review.
+The Gantt dates are the approved planning guide. The actual implementation
+start is recorded above; remaining execution and validation dates depend on the
+team and are recorded separately in the Sprint Review.
 
 ## 1. Sprint goal
 
@@ -40,29 +41,6 @@ OCR is recorded as a proposed alternative or supplement to barcode/QR capture.
 It does not change Sprint 1 and must be evaluated before Sprint 4. Algorithm
 weights, API endpoints, UI design, and feature-level rules also do not block
 Sprint 1.
-
-### 2.1 Pre-implementation readiness record
-
-As of 2026-07-15, no open architecture, identity, port, migration-scope,
-health-check, evidence-format, or repository-boundary decision blocks Sprint 1
-implementation. ADR-026 through ADR-028 close the readiness gaps found during
-the final review.
-
-Implementation code and infrastructure configuration have not started. Actual
-execution dates remain blank until that work begins. The following completion
-dependencies remain visible but do not block the first implementation batch:
-
-| Dependency | State | Required evidence/decision |
-|---|---|---|
-| Explicit implementation authorization | Pending | Authorization to add Sprint 1 code and infrastructure configuration |
-| Jopia supported-host validation | Pending implementation | Jopia row in the Sprint Review host-validation table |
-| Buno supported-host validation | Pending implementation | Buno row in the Sprint Review host-validation table or a recorded blocker |
-| Lat supported-host validation | Pending implementation | Lat row in the Sprint Review host-validation table or a recorded blocker |
-| Buno and Lat review | Pending validation | Review dates and acknowledgments in the Sprint Review |
-
-No institutional or production-data approval is needed for the synthetic,
-local-only Sprint 1 infrastructure scope. Any move beyond that scope requires a
-new decision and the applicable institutional/privacy approval before work.
 
 ## 3. Included work
 

@@ -9,8 +9,9 @@ redistribution recommendations, and a web dashboard.
 ## Current status
 
 The Sprint 0 baseline and Sprint 1 planning decisions are approved. Sprint 1
-implementation-readiness decisions are complete; no application or
-infrastructure code has been added yet.
+implementation started on 2026-07-15 with the repository foundation. No
+PostgreSQL or Fabric services, migrations, chaincode, or application behavior
+have been implemented yet.
 
 The documents have been drafted from the revised manuscript, updated research
 proposal, summary of revisions, and updated Gantt workbook. Sprint 0 becomes
@@ -37,10 +38,13 @@ entry gate in `docs/SPRINT-01.md`.
 - Windows 11 with WSL2 Ubuntu and canonical Bash scripts
 - Docker Desktop with its bundled Engine and Compose plugin
 - Hyperledger Fabric LTS with Fabric CA
-- Node.js with npm workspaces
+- Node.js with npm workspaces and one root lockfile
 - PostgreSQL
-- Python for the later forecasting service
-- React for the later web application
+- Python for the later Sprint 3 forecasting service
+- React for the later Sprint 5 web application
+
+DBeaver is optional database-inspection tooling. It is not needed by the
+runtime or repository-foundation checks.
 
 Exact approved targets, compatibility notes, and selection sources live only in
 `docs/ARCHITECTURE.md` Section 3. Sprint 1 records effective host versions and
@@ -105,15 +109,25 @@ The team has approved:
 5. the migration/bootstrap-only PostgreSQL scope;
 6. Sprint 1 owners, validation obligations, and exit criteria.
 
-Actual implementation and validation dates are recorded separately in the
-Sprint Review.
+The actual implementation start is recorded in the sprint header. Remaining
+execution and validation dates are recorded separately in the Sprint Review.
 
-## Setup
+## Repository-foundation validation
 
-There are no setup commands yet because implementation has not begun. Tested,
-version-pinned setup and validation commands are Sprint 1 deliverables. Do not
-copy commands from a sample network into this README until they work against the
-repository-owned BloodLedger environment.
+With the approved Node.js and npm versions active, install the exact locked
+packages and run the repository checks:
+
+```bash
+npm ci --ignore-scripts
+npm run check:foundation
+npm run scan:secrets
+```
+
+The secret scan requires Docker access and uses the official Gitleaks container
+pinned in the repository. These commands validate only the S1-02/S1-03
+repository foundation; they do not start or validate PostgreSQL or Fabric.
+Service setup commands remain later Sprint 1 deliverables and must not be copied
+from a sample network.
 
 The intended workflow, identifiers, database decisions, and safety boundaries
 are documented in `docs/LOCAL-DEVELOPMENT.md`, `network/README.md`, and

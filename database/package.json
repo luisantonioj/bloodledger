@@ -1,0 +1,10 @@
+{
+  "name": "@bloodledger/database",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Sprint 1 migration-tool workspace; migrations begin in S1-05",
+  "devDependencies": {
+    "node-pg-migrate": "8.0.4",
+    "pg": "8.22.0"
+  }
+}
