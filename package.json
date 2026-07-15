@@ -19,6 +19,8 @@
     "check:workspace": "npm ls --workspaces --include-workspace-root --depth=0",
     "check:foundation": "npm run check:format && npm run check:workspace && npm run check:versions && npm run check:ignore && npm run check:env",
     "check:database": "node tests/database/static-baseline.mjs",
+    "check:fabric-identities": "bash tests/network/static-identities.sh",
+    "test:fabric-identities": "bash tests/network/identity-integration.sh",
     "test:database": "bash tests/database/integration.sh",
     "migrate:up": "npm run migrate:up --workspace @bloodledger/database",
     "migrate:status": "npm run migrate:status --workspace @bloodledger/database",

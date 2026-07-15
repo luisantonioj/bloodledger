@@ -1,0 +1,87 @@
+version: 1.5.15
+port: 7054
+debug: false
+
+tls:
+  enabled: true
+  certfile: tls-cert.pem
+  keyfile: tls-key.pem
+
+ca:
+  name: ca.orderer.bloodledger.local
+  keyfile: ca-key.pem
+  certfile: ca-cert.pem
+
+crl:
+  expiry: 24h
+
+registry:
+  maxenrollments: -1
+  identities: []
+
+db:
+  type: sqlite3
+  datasource: fabric-ca-server.db
+
+ldap:
+  enabled: false
+
+affiliations:
+  orderer: []
+
+signing:
+  default:
+    usage:
+      - digital signature
+    expiry: 8760h
+  profiles:
+    ca:
+      usage:
+        - cert sign
+        - crl sign
+      expiry: 43800h
+      caconstraint:
+        isca: true
+        maxpathlen: 0
+    tls:
+      usage:
+        - signing
+        - key encipherment
+        - server auth
+        - client auth
+      expiry: 8760h
+
+csr:
+  cn: ca.orderer.bloodledger.local
+  names:
+    - C: PH
+      O: BloodLedger Development
+      OU: OrdererMSP
+  hosts:
+    - localhost
+    - ca-orderer
+    - ca.orderer.bloodledger.local
+  ca:
+    expiry: 131400h
+    pathlength: 1
+
+bccsp:
+  default: SW
+  sw:
+    hash: SHA2
+    security: 256
+    filekeystore:
+      keystore: msp/keystore
+
+cfg:
+  identities:
+    passwordattempts: 10
+    allowremove: false
+  affiliations:
+    allowremove: false
+
+operations:
+  listenAddress: 127.0.0.1:9443
+
+metrics:
+  provider: disabled

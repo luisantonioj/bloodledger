@@ -1,6 +1,7 @@
 # BloodLedger Development Network
 
-**Status:** Approved Sprint 1 planning baseline; not yet implemented or verified
+**Status:** Approved Sprint 1 baseline; CA/identity portion implemented on the
+Jopia Codex environment, with supported-host verification still required
 
 This document is the authoritative source for Sprint 1 Fabric network names,
 development identities, ports, generated-material boundaries, and the disposable
@@ -213,3 +214,47 @@ BloodLedger working tree. The complete reset policy is in
 - `RecordProbe` commit and `ReadProbe` equality.
 - Secret/private-key scan result.
 - Stop, restart, network reset, and recreate results.
+
+## 10. Implemented CA and identity commands
+
+These commands cover only the S1-06 CA and identity foundation. They do not
+start a peer or orderer node, create a channel, or perform chaincode lifecycle
+work. Set both approved CA administrator password variables in an untracked
+`.env` copied from `.env.example`, or inject the same approved variables into
+the local process environment. The other approved local secrets may remain
+local to their own infrastructure workflow.
+
+```bash
+network/scripts/bootstrap-identities.sh
+network/scripts/validate-identities.sh
+```
+
+The bootstrap command starts only `ca-mediatrix` and `ca-orderer`, waits for
+their pinned Fabric CA 1.5.15 health checks, creates registration secrets below
+`network/generated/secrets/` with restrictive permissions, registers the
+approved identity types, and enrolls the MSP and TLS material. A completed,
+valid run is idempotent: rerunning bootstrap validates the existing output and
+makes no changes. Partial state fails safely.
+
+Identity-only development recreation is deliberately separate from the S1-08
+general reset interface. It displays the exact CA containers and generated
+paths, refuses unexpected CA volumes, preserves `.env` and PostgreSQL, and
+requires this literal confirmation token:
+
+```bash
+BLOODLEDGER_IDENTITY_RECREATE=REMOVE_BLOODLEDGER_CA_IDENTITIES \
+  network/scripts/recreate-identities.sh
+network/scripts/bootstrap-identities.sh
+```
+
+Static and live checks are:
+
+```bash
+npm run check:fabric-identities
+npm run test:fabric-identities
+```
+
+The live validation reports only Fabric CA/client versions and certificate
+subject/issuer metadata. It does not print registration secrets, keys, complete
+certificates, or connection material. Generated output remains entirely below
+`network/generated/` and is excluded from Git.

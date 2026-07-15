@@ -1,6 +1,58 @@
 name: bloodledger
 
 services:
+  ca-mediatrix:
+    image: hyperledger/fabric-ca:1.5.15
+    restart: unless-stopped
+    environment:
+      FABRIC_CA_SERVER_BOOTSTRAP_USER_PASS: ${MEDIATRIX_CA_ADMIN_USER:-mediatrix-ca-admin}:${MEDIATRIX_CA_ADMIN_PASSWORD:?set MEDIATRIX_CA_ADMIN_PASSWORD in the untracked .env file}
+      FABRIC_CA_SERVER_HOME: /work/fabric-ca/mediatrix
+    command:
+      - /bin/sh
+      - -c
+      - >-
+        if [ ! -f /work/fabric-ca/mediatrix/tls-cert.pem ]; then
+          fabric-ca-server init --home /work/fabric-ca/mediatrix --boot "$${FABRIC_CA_SERVER_BOOTSTRAP_USER_PASS}";
+        fi;
+        exec fabric-ca-server start --home /work/fabric-ca/mediatrix --boot "$${FABRIC_CA_SERVER_BOOTSTRAP_USER_PASS}"
+    ports:
+      - "127.0.0.1:7054:7054"
+    volumes:
+      - ./network/config/fabric-ca/mediatrix.yaml:/work/fabric-ca/mediatrix/fabric-ca-server-config.yaml:ro
+      - ./network/generated:/work
+    healthcheck:
+      test: ["CMD-SHELL", "fabric-ca-client getcainfo --url https://localhost:7054 --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null 2>&1"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  ca-orderer:
+    image: hyperledger/fabric-ca:1.5.15
+    restart: unless-stopped
+    environment:
+      FABRIC_CA_SERVER_BOOTSTRAP_USER_PASS: ${ORDERER_CA_ADMIN_USER:-orderer-ca-admin}:${ORDERER_CA_ADMIN_PASSWORD:?set ORDERER_CA_ADMIN_PASSWORD in the untracked .env file}
+      FABRIC_CA_SERVER_HOME: /work/fabric-ca/orderer
+    command:
+      - /bin/sh
+      - -c
+      - >-
+        if [ ! -f /work/fabric-ca/orderer/tls-cert.pem ]; then
+          fabric-ca-server init --home /work/fabric-ca/orderer --boot "$${FABRIC_CA_SERVER_BOOTSTRAP_USER_PASS}";
+        fi;
+        exec fabric-ca-server start --home /work/fabric-ca/orderer --boot "$${FABRIC_CA_SERVER_BOOTSTRAP_USER_PASS}"
+    ports:
+      - "127.0.0.1:8054:7054"
+    volumes:
+      - ./network/config/fabric-ca/orderer.yaml:/work/fabric-ca/orderer/fabric-ca-server-config.yaml:ro
+      - ./network/generated:/work
+    healthcheck:
+      test: ["CMD-SHELL", "fabric-ca-client getcainfo --url https://localhost:7054 --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null 2>&1"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
   postgres:
     image: postgres:17.10
     restart: unless-stopped
@@ -26,4 +78,3 @@ services:
 
 volumes:
   postgres-data:
-
