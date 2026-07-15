@@ -18,6 +18,48 @@ if find "${generated_root}/organizations" -mindepth 1 -print -quit | grep -q . |
   exit 1
 fi
 
+write_runtime_ca_config() {
+  local template="$1" target="$2" admin_user="$3" admin_password="$4"
+  local quoted_user quoted_password temporary
+  quoted_user="$(yaml_single_quote "${admin_user}")"
+  quoted_password="$(yaml_single_quote "${admin_password}")"
+  temporary="${target}.tmp"
+  awk -v user="${quoted_user}" -v password="${quoted_password}" '
+    $0 == "  identities: []" {
+      print "  identities:"
+      print "    - name: " user
+      print "      pass: " password
+      print "      type: client"
+      print "      affiliation: \"\""
+      print "      attrs:"
+      print "        hf.Registrar.Roles: \"*\""
+      print "        hf.Registrar.DelegateRoles: \"*\""
+      print "        hf.Revoker: true"
+      print "        hf.IntermediateCA: true"
+      print "        hf.GenCRL: true"
+      print "        hf.Registrar.Attributes: \"*\""
+      print "        hf.AffiliationMgr: true"
+      replaced = 1
+      next
+    }
+    { print }
+    END { if (!replaced) exit 1 }
+  ' "${template}" > "${temporary}"
+  mv "${temporary}" "${target}"
+  chmod 600 "${target}"
+}
+
+write_runtime_ca_config \
+  "${repository_root}/network/config/fabric-ca/mediatrix.yaml" \
+  "${generated_root}/fabric-ca/mediatrix/fabric-ca-server-config.yaml" \
+  "${MEDIATRIX_CA_ADMIN_USER:-mediatrix-ca-admin}" \
+  "${MEDIATRIX_CA_ADMIN_PASSWORD}"
+write_runtime_ca_config \
+  "${repository_root}/network/config/fabric-ca/orderer.yaml" \
+  "${generated_root}/fabric-ca/orderer/fabric-ca-server-config.yaml" \
+  "${ORDERER_CA_ADMIN_USER:-orderer-ca-admin}" \
+  "${ORDERER_CA_ADMIN_PASSWORD}"
+
 generate_ca_tls_material() {
   local ca_home="$1" common_name="$2" dns_name="$3"
   if [[ ! -f "${ca_home}/tls-cert.pem" || ! -f "${ca_home}/tls-key.pem" ]]; then
@@ -54,7 +96,7 @@ orderer_org="/work/organizations/ordererOrganizations/orderer.bloodledger.local"
 
 ca_exec ca-mediatrix sh -ceu '
   export FABRIC_CA_CLIENT_HOME=/work/fabric-ca/clients/mediatrix-registrar
-  fabric-ca-client enroll --url "https://${MEDIATRIX_CA_ADMIN_USER}:${MEDIATRIX_CA_ADMIN_PASSWORD}@ca-mediatrix:7054" --caname ca.mediatrix.bloodledger.local --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null
+  fabric-ca-client enroll --url "https://${MEDIATRIX_CA_ADMIN_USER}:${MEDIATRIX_CA_ADMIN_PASSWORD_ENCODED}@ca-mediatrix:7054" --caname ca.mediatrix.bloodledger.local --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null
   . /work/secrets/identity-secrets.env
   fabric-ca-client register --caname ca.mediatrix.bloodledger.local --id.name mediatrix-admin --id.secret "$MEDIATRIX_ADMIN_SECRET" --id.type admin --id.affiliation mediatrix --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null 2>&1
   fabric-ca-client register --caname ca.mediatrix.bloodledger.local --id.name peer0 --id.secret "$PEER0_SECRET" --id.type peer --id.affiliation mediatrix --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null 2>&1
@@ -63,7 +105,7 @@ ca_exec ca-mediatrix sh -ceu '
 
 ca_exec ca-orderer sh -ceu '
   export FABRIC_CA_CLIENT_HOME=/work/fabric-ca/clients/orderer-registrar
-  fabric-ca-client enroll --url "https://${ORDERER_CA_ADMIN_USER}:${ORDERER_CA_ADMIN_PASSWORD}@ca-orderer:7054" --caname ca.orderer.bloodledger.local --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null
+  fabric-ca-client enroll --url "https://${ORDERER_CA_ADMIN_USER}:${ORDERER_CA_ADMIN_PASSWORD_ENCODED}@ca-orderer:7054" --caname ca.orderer.bloodledger.local --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null
   . /work/secrets/identity-secrets.env
   fabric-ca-client register --caname ca.orderer.bloodledger.local --id.name orderer-admin --id.secret "$ORDERER_ADMIN_SECRET" --id.type admin --id.affiliation orderer --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null 2>&1
   fabric-ca-client register --caname ca.orderer.bloodledger.local --id.name orderer0 --id.secret "$ORDERER0_SECRET" --id.type orderer --id.affiliation orderer --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null 2>&1
@@ -83,6 +125,12 @@ ca_exec ca-orderer sh -ceu "
   fabric-ca-client enroll --url \"https://orderer0:\${ORDERER0_SECRET}@ca-orderer:7054\" --caname ca.orderer.bloodledger.local --mspdir '${orderer_org}/orderers/orderer0.orderer.bloodledger.local/msp' --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null
   fabric-ca-client enroll --url \"https://orderer0:\${ORDERER0_SECRET}@ca-orderer:7054\" --caname ca.orderer.bloodledger.local --enrollment.profile tls --csr.hosts orderer0.orderer.bloodledger.local --csr.hosts orderer0 --csr.hosts localhost --mspdir '${orderer_org}/orderers/orderer0.orderer.bloodledger.local/tls-enrollment' --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null
 "
+
+# Fabric CA runs as root in its pinned image. Transfer only the generated
+# project-owned paths to the invoking WSL user so host-side MSP assembly and
+# validation can operate without weakening their restrictive modes.
+ca_exec ca-mediatrix chown -R "$(id -u):$(id -g)" \
+  /work/organizations /work/fabric-ca /work/secrets
 
 "${repository_root}/network/scripts/assemble-msps.sh"
 touch "${completion_marker}"

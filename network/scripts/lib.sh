@@ -37,6 +37,27 @@ prepare_generated_root() {
     "${generated_root}/organizations" "${generated_root}/secrets"
 }
 
+yaml_single_quote() {
+  local escaped="${1//\'/\'\'}"
+  printf "'%s'" "${escaped}"
+}
+
+url_encode() {
+  local input="$1" output="" character encoded index
+  LC_ALL=C
+  for ((index = 0; index < ${#input}; index++)); do
+    character="${input:index:1}"
+    case "${character}" in
+      [a-zA-Z0-9.~_-]) output+="${character}" ;;
+      *)
+        printf -v encoded '%%%02X' "'${character}"
+        output+="${encoded}"
+        ;;
+    esac
+  done
+  printf '%s' "${output}"
+}
+
 ca_exec() {
   local service="$1"
   shift
@@ -47,10 +68,10 @@ ca_exec() {
   exec_environment+=( -e "MEDIATRIX_CA_ADMIN_USER=${MEDIATRIX_CA_ADMIN_USER:-mediatrix-ca-admin}" )
   exec_environment+=( -e "ORDERER_CA_ADMIN_USER=${ORDERER_CA_ADMIN_USER:-orderer-ca-admin}" )
   if [[ -n "${MEDIATRIX_CA_ADMIN_PASSWORD:-}" ]]; then
-    exec_environment+=( -e "MEDIATRIX_CA_ADMIN_PASSWORD=${MEDIATRIX_CA_ADMIN_PASSWORD}" )
+    exec_environment+=( -e "MEDIATRIX_CA_ADMIN_PASSWORD_ENCODED=$(url_encode "${MEDIATRIX_CA_ADMIN_PASSWORD}")" )
   fi
   if [[ -n "${ORDERER_CA_ADMIN_PASSWORD:-}" ]]; then
-    exec_environment+=( -e "ORDERER_CA_ADMIN_PASSWORD=${ORDERER_CA_ADMIN_PASSWORD}" )
+    exec_environment+=( -e "ORDERER_CA_ADMIN_PASSWORD_ENCODED=$(url_encode "${ORDERER_CA_ADMIN_PASSWORD}")" )
   fi
   "${compose[@]}" exec --no-TTY "${exec_environment[@]}" "${service}" "$@"
 }
