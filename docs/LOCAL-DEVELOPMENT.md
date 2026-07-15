@@ -33,6 +33,8 @@ effective output rather than assuming the installed version matches the target.
 | Docker Compose | `5.3.0` | Not recorded | Not recorded |
 | Git | `2.43.0` | Not recorded | Not recorded |
 | Node.js/npm | Node.js `24.17.0`; npm `11.13.0`; nvm `0.40.5` | Not recorded | Not recorded |
+| Migration packages | `node-pg-migrate` `8.0.4`; `pg` `8.22.0` selected, not installed | Not recorded | Not recorded |
+| Gitleaks | `8.30.1` selected; official container validation not recorded | Not recorded | Not recorded |
 | Fabric/Fabric CA | Fabric `2.5.16`; Fabric CA `1.5.15` | Not recorded | Not recorded |
 | PostgreSQL | Not provisioned; deferred to S1-04 | Not recorded | Not recorded |
 
@@ -54,6 +56,15 @@ Sprint 1 implementation will provide a small, stable interface for:
 
 Exact command names are not documented as working until S1-08/S1-09 verifies
 them. The root README will contain only the shortest tested quick start.
+
+The secret scan uses the official Gitleaks container pinned to `8.30.1`; never
+use its `latest` tag. S1-02 records the resolved container digest on each host.
+The tested repository command must scan committed history plus tracked and
+staged repository content, redact detected values, and fail closed when the
+scanner cannot run. Local `.env` and generated Fabric identities necessarily
+contain development secrets and remain outside Git; their protection is proved
+by ignore-path tests and tracked-file inspection rather than by committing or
+printing their contents for a directory scan.
 
 ## 4. Reset-safety policy
 
@@ -110,6 +121,12 @@ resources.
 
 ## 5. Validation evidence template
 
+Each proponent's concise result is recorded in the current sprint's Review
+record using the fields below. Raw terminal dumps, Docker inspection payloads,
+certificates, screenshots containing local secrets, and scanner reports
+containing detected values are not committed. A failing check is summarized
+with its safe error and resolution or blocker.
+
 For every team machine, record:
 
 - reviewer/name;
@@ -123,6 +140,7 @@ For every team machine, record:
 - Fabric reset/recreate result;
 - full development reset/recreate result;
 - secret/private-key scan result;
+- pinned Gitleaks version and resolved container digest;
 - deviations, errors, and resolution; and
 - date reviewed by Buno and Lat.
 

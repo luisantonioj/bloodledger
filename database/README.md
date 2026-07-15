@@ -16,12 +16,18 @@ database and migration mechanism; it does not create BloodLedger domain tables.
 | Migration role | `bloodledger_migrator` |
 | Runtime role | `bloodledger_app` |
 | Application schema | `app` |
-| Migration tool | `node-pg-migrate`, exact package version pinned during S1-02 |
+| Migration tool | `node-pg-migrate` `8.0.4` |
+| PostgreSQL Node driver | `pg` `8.22.0` |
 | Migration directory | `database/migrations/` |
 | Migration history | `public.pgmigrations` |
 | Default host binding | `127.0.0.1:5432` |
 | Persistent volume key | `postgres-data` within Compose project `bloodledger` |
 | Seed data | None in Sprint 1 unless a synthetic value is strictly needed to verify tooling |
+
+Both npm packages are exact development dependencies in the approved npm
+workspace and one root lockfile. Migration operations use a committed package
+script after that script is implemented and validated; documentation must not
+use an unpinned on-demand `npx` download.
 
 ## 2. Role separation
 

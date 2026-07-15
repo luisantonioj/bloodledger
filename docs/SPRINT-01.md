@@ -1,11 +1,12 @@
 # Sprint 1 — Infrastructure Provisioning
 
-**Status:** Approved; ready for infrastructure implementation
+**Status:** Approved; implementation-readiness decisions complete; implementation not started
 
 **Planning dates:** June 29–July 9, 2026
 
 **Schedule authority:** `Updated_BloodLedger_Gantt.xlsx`
 **Approval recorded:** 2026-07-13
+**Implementation-readiness decisions recorded:** 2026-07-15
 
 The Gantt dates are the approved planning guide. Actual implementation and
 validation dates depend on the team and are recorded separately in the Sprint
@@ -23,7 +24,7 @@ version-pinned commands.
 Sprint 1 is approved to begin. The following decisions are recorded:
 
 - the Sprint 0 repository baseline is accepted for implementation planning;
-- ADR-001 through ADR-018 and ADR-020 through ADR-025 are accepted;
+- ADR-001 through ADR-018 and ADR-020 through ADR-028 are accepted;
 - the team agrees that PRC and DOH are read-only application users in the
   initial topology;
 - prohibited data and the one-organization prototype limitation are understood;
@@ -39,6 +40,29 @@ OCR is recorded as a proposed alternative or supplement to barcode/QR capture.
 It does not change Sprint 1 and must be evaluated before Sprint 4. Algorithm
 weights, API endpoints, UI design, and feature-level rules also do not block
 Sprint 1.
+
+### 2.1 Pre-implementation readiness record
+
+As of 2026-07-15, no open architecture, identity, port, migration-scope,
+health-check, evidence-format, or repository-boundary decision blocks Sprint 1
+implementation. ADR-026 through ADR-028 close the readiness gaps found during
+the final review.
+
+Implementation code and infrastructure configuration have not started. Actual
+execution dates remain blank until that work begins. The following completion
+dependencies remain visible but do not block the first implementation batch:
+
+| Dependency | State | Required evidence/decision |
+|---|---|---|
+| Explicit implementation authorization | Pending | Authorization to add Sprint 1 code and infrastructure configuration |
+| Jopia supported-host validation | Pending implementation | Jopia row in the Sprint Review host-validation table |
+| Buno supported-host validation | Pending implementation | Buno row in the Sprint Review host-validation table or a recorded blocker |
+| Lat supported-host validation | Pending implementation | Lat row in the Sprint Review host-validation table or a recorded blocker |
+| Buno and Lat review | Pending validation | Review dates and acknowledgments in the Sprint Review |
+
+No institutional or production-data approval is needed for the synthetic,
+local-only Sprint 1 infrastructure scope. Any move beyond that scope requires a
+new decision and the applicable institutional/privacy approval before work.
 
 ## 3. Included work
 
@@ -208,20 +232,18 @@ accountable for every Sprint 1 task; Buno and Lat review the work and evidence.
 | Decision | Approved selection | Validation due |
 |---|---|---|
 | Sprint dates | June 29–July 9, 2026 planning guide | Record actual execution dates in review |
-| Host | Windows 11 + WSL2 Ubuntu 24.04 LTS | S1-02 clean-host check |
-| Docker bundle | Desktop 4.82.0 + Engine 29.6.1 + Compose 5.3.0 | S1-02 on remaining supported hosts |
+| Host and tool versions | `docs/ARCHITECTURE.md` Section 3.1 | S1-02 clean-host and compatibility checks |
 | Scripts | Bash in WSL2 | S1-08 on every host |
-| Package management | npm workspaces | S1-02/version evidence |
-| Fabric | 2.5.16 LTS + Fabric CA 1.5.15 | S1-06/S1-07 |
-| State database | LevelDB | S1-06 configuration inspection |
-| PostgreSQL | 17.10; migration/bootstrap only | S1-04/S1-05 |
-| Identity model | Fabric CA development identities | S1-06 and secret scan |
-| Health transaction | Disposable infrastructure-only contract | S1-07 |
+| Package management and migration tools | ADR-015, ADR-022, and ADR-027 | S1-02/S1-05 lockfile and migration evidence |
+| Fabric topology and state database | ADR-001, ADR-002, ADR-008, and `network/README.md` | S1-06/S1-07 |
+| Identity model | ADR-016, ADR-021, and `network/README.md` | S1-06 and secret scan |
+| Health transaction and node health | ADR-018, ADR-023, ADR-026, ADR-028, and `network/README.md` | S1-06/S1-08 |
+| PostgreSQL bootstrap | ADR-017, ADR-022, and `database/README.md` | S1-04/S1-05 |
+| Secret scanner | ADR-027 and `docs/LOCAL-DEVELOPMENT.md` | S1-02/S1-03/S1-09 |
+| Network identifiers and ports | ADR-020 and `network/README.md` | Before Compose is finalized |
+| Reset safety | ADR-024 and `docs/LOCAL-DEVELOPMENT.md` | S1-08/S1-09 |
 | DBeaver | Optional | Connection check only, if used |
 | Spec Kit/custom skills | Deferred | Reconsider only after repeated need |
-| Network identifiers and ports | `network/README.md` baseline; permit documented local overrides after collision check | Before Compose is finalized |
-| PostgreSQL bootstrap | `database/README.md` baseline | S1-04/S1-05 |
-| Reset safety | Three-tier policy in `docs/LOCAL-DEVELOPMENT.md` | S1-08/S1-09 |
 
 ## 8. Validation checklist
 
@@ -275,10 +297,16 @@ To be completed during Sprint 1:
 - Actual implementation dates:
 - Demonstrated by:
 - Reviewed by:
-- Environment(s):
 - Passed exit criteria:
 - Incomplete items:
-- Evidence links:
+
+### Host validation results
+
+| Validator | Environment and effective versions | Result | Blocker/deviation and safe evidence summary | Reviewed |
+|---|---|---|---|---|
+| Jopia | Pending | Pending | Pending | Pending |
+| Buno | Pending | Pending | Pending | Pending |
+| Lat | Pending | Pending | Pending | Pending |
 
 ## 12. Retrospective
 

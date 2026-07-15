@@ -1,7 +1,7 @@
 # BloodLedger System Architecture
 
 **Status:** Sprint 1 approved planning baseline
-**Baseline date:** 2026-07-13  
+**Baseline date:** 2026-07-15
 **Scope:** Research prototype, not a production deployment design
 
 ## 1. Architecture goals
@@ -77,8 +77,11 @@ cross-machine verified.
 | Fabric CA | 1.5.15 | Not specified | Matches the Fabric 2.5 installation documentation |
 | Node.js | 24.17.0 LTS | 18.x LTS | Node 18 is EOL; use the supported LTS line |
 | npm | 11.13.0 bundled with Node 24.17.0 | Not specified | Avoid an additional package-manager dependency |
+| `node-pg-migrate` | 8.0.4 | Not specified | Sprint 1 migration runner; pin exactly in the root lockfile |
+| `pg` | 8.22.0 | Not specified | Direct PostgreSQL driver required by the migration workspace; pin exactly in the root lockfile |
 | PostgreSQL | 17.10 | 15.x or higher | Mature supported major through 2029 |
 | Git | 2.55.0 target; minimum 2.30 | 2.30.x or higher | Record each host's verified version |
+| Gitleaks | 8.30.1 | Not specified | Run the official pinned container image for Git history plus tracked/staged content; record the resolved image digest during S1-02 |
 | Python | 3.13.14 | Not specified | Conservative supported line for later ML work |
 | Fabric Gateway client | `@hyperledger/fabric-gateway` 1.11.0 | Fabric SDK Node 2.5.x | Use the Gateway client API, not the legacy SDK label |
 | React | 19.2.7 | 18.x or higher | Approved planning target for Sprint 5 |
@@ -95,6 +98,8 @@ complete dependency graph.
 
 - Hyperledger Fabric installation and version parameters:
   <https://hyperledger-fabric.readthedocs.io/en/release-2.5/install.html>
+- Hyperledger Fabric peer/orderer operations health service:
+  <https://hyperledger-fabric.readthedocs.io/en/release-2.5/operations_service.html>
 - Hyperledger Fabric LTS policy and releases:
   <https://github.com/hyperledger/fabric>
 - Fabric Gateway Node client:
@@ -103,6 +108,12 @@ complete dependency graph.
   <https://nodejs.org/en/about/previous-releases>
 - PostgreSQL version support:
   <https://www.postgresql.org/support/versioning/>
+- `node-pg-migrate` package:
+  <https://www.npmjs.com/package/node-pg-migrate>
+- `pg` package:
+  <https://www.npmjs.com/package/pg>
+- Gitleaks releases and official container:
+  <https://github.com/gitleaks/gitleaks/releases>
 - Docker Desktop release notes:
   <https://docs.docker.com/desktop/release-notes/>
 - Python releases: <https://www.python.org/downloads/>
@@ -126,13 +137,38 @@ bloodledger/
 ├── database/
 │   ├── migrations/
 │   └── seeds/
-├── network/                 # Fabric configuration and lifecycle scripts
+├── network/                 # Sprint 1 Fabric configuration, lifecycle scripts,
+│   └── health-contract/     # and disposable infrastructure-only health contract
 ├── scripts/                 # repository-level developer operations
 └── tests/
 ```
 
 Sprint 1 may refine names, but a change to component boundaries requires an
 updated architecture decision.
+
+The disposable Sprint 1 health contract belongs below
+`network/health-contract/`, not below the Sprint 2 domain `chaincode/` boundary.
+It remains a separately named infrastructure probe and is never extended into
+`InventoryContract` or `TransferContract`.
+
+### 4.1 Directory ownership and activation
+
+Jopia is accountable for repository-boundary changes during Sprint 1. Buno and
+Lat review those changes and their evidence. Later sprint accountability must be
+confirmed by the relevant sprint plan before a deferred directory is activated.
+
+| Directory/component | Activation | Sprint 1 accountable/review |
+|---|---|---|
+| `docs/` | Sprint 0 onward | Jopia / Buno and Lat for Sprint 1 changes |
+| `database/` | Sprint 1 migration baseline; domain migrations later | Jopia / Buno and Lat |
+| `network/` | Sprint 1 | Jopia / Buno and Lat |
+| `network/health-contract/` | Sprint 1 only as a disposable infrastructure contract | Jopia / Buno and Lat |
+| `scripts/` | Sprint 1 | Jopia / Buno and Lat |
+| `tests/` | Sprint 1 onward, growing with each activated component | Same owner/reviewers as the component under test |
+| `chaincode/` | Sprint 2 | Deferred to the Sprint 2 ownership plan |
+| `services/forecasting/` | Sprint 3 | Deferred to the Sprint 3 ownership plan |
+| `services/api/` | Sprint 4/5 | Deferred to the activating sprint's ownership plan |
+| `apps/web/` | Sprint 5 | Deferred to the Sprint 5 ownership plan |
 
 For the canonical WSL2 workflow, the implementation working copy should be
 cloned inside the WSL Linux filesystem (for example under `/home/<user>/`) rather
@@ -413,14 +449,19 @@ time, correlation ID, and safe event name without secrets or prohibited data.
 | ADR-023 | Accepted | The disposable `HealthContract` records and reads deterministic probe IDs only | Proves chaincode lifecycle and ledger commitment without clocks or BloodLedger feature data |
 | ADR-024 | Accepted | Use separate stop, network reset, and full development reset levels scoped to the BloodLedger Compose project and repository-owned generated paths | Prevents reset operations from deleting unrelated Docker or filesystem resources |
 | ADR-025 | Accepted | Use Docker Desktop 4.82.0 with bundled Engine 29.6.1 and Compose 5.3.0 as the Sprint 1 effective baseline | Supersedes the 4.81.0 planning target after Jopia-host WSL integration, Fabric image, and disposable container verification; remaining hosts still require S1-02 evidence |
+| ADR-026 | Accepted | Place the disposable Sprint 1 `HealthContract` below `network/health-contract/`, outside the Sprint 2 domain `chaincode/` boundary | Keeps infrastructure validation code separate from inventory and transfer chaincode and resolves the Sprint activation ambiguity |
+| ADR-027 | Accepted | Pin `node-pg-migrate` 8.0.4, `pg` 8.22.0, and Gitleaks 8.30.1 for Sprint 1 | Makes migration and secret-scan evidence reproducible; the npm packages use the one root lockfile and Gitleaks uses its official versioned container image |
+| ADR-028 | Accepted | Use the Fabric operations `/healthz` endpoint on internal peer port 9443 and internal orderer port 8443, with no host publication | Supplies deterministic Compose health checks without expanding host bindings; operations TLS may be disabled only on the isolated development Compose network |
 
 ## 16. Sprint 1 architecture gates
 
 Sprint 1 is approved to begin with ADR-001 through ADR-018 and ADR-020 through
-ADR-025. ADR-019 remains proposed for Sprint 4. Before the infrastructure files
+ADR-028. ADR-019 remains proposed for Sprint 4. Before the infrastructure files
 are considered complete, the team must verify:
 
 - the approved target versions on every supported host;
+- the pinned migration packages and official Gitleaks container on every
+  supported host;
 - Docker Desktop/Engine/Compose and Fabric 2.5.16 interoperability;
 - the Fabric CA identity lifecycle and Git exclusions;
 - the identifiers, ports, and environment-variable names in `network/README.md`

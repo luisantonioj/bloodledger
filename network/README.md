@@ -50,7 +50,9 @@ logical service names, or ledger identifiers without an ADR update.
 | Orderer Fabric CA | `ca-orderer` | 7054 | `127.0.0.1:8054` |
 | Mediatrix peer | `peer0-mediatrix` | 7051 | `127.0.0.1:7051` |
 | Mediatrix peer chaincode endpoint | internal to Compose | 7052 | Not published |
+| Mediatrix peer operations health | internal to `peer0-mediatrix` | 9443 | Not published |
 | Ordering node | `orderer0` | 7050 | `127.0.0.1:7050` |
+| Ordering node operations health | internal to `orderer0` | 8443 | Not published |
 | PostgreSQL | `postgres` | 5432 | `127.0.0.1:5432` |
 
 Compose service discovery uses service names and container ports. Host bindings
@@ -61,6 +63,14 @@ configuration and validation evidence.
 Do not set fixed `container_name` values unless implementation proves they are
 necessary. The Compose project name should scope generated container, network,
 and volume names.
+
+Peer and orderer Compose health checks use the Fabric operations-service
+`/healthz` resource on their internal-only ports. Those ports are not published
+to the host. Operations TLS is disabled only for these read-only health and
+version endpoints on the isolated local-development Compose network; it is not
+a production TLS precedent. The CA services are checked with
+`fabric-ca-client getcainfo` through their existing CA endpoints and do not
+require additional ports. PostgreSQL uses its native readiness check.
 
 ## 4. Environment-variable names
 
@@ -136,6 +146,11 @@ and scripts may be committed once implementation is authorized and verified.
 
 ## 7. Disposable health contract specification
 
+The contract source and its package workspace live below
+`network/health-contract/`. Sprint 2 domain chaincode remains below
+`chaincode/`; the health contract is not moved into or reused by those domain
+contracts.
+
 ### 7.1 Purpose
 
 `bloodledger-health` proves the Fabric chaincode lifecycle, endorsement,
@@ -163,8 +178,10 @@ probe ID.
 - Initial definition sequence: `1`.
 - Endorsement: Mediatrix peer organization only for this one-organization
   development network.
-- Allowed submitters: the authenticated Mediatrix organization administrator or
-  approved organizational service identity used by the validation procedure.
+- Sprint 1 lifecycle administration and probe submission use the authenticated
+  `mediatrix-admin` identity. The `api-gateway` identity is enrolled to prove the
+  approved identity path but is not used for health-contract submission until
+  its application attributes and checks are accepted before Sprint 2.
 - The contract is never presented as BloodLedger feature chaincode.
 
 Before Sprint 2, the team either resets the development network to obtain a

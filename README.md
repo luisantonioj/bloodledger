@@ -8,9 +8,9 @@ redistribution recommendations, and a web dashboard.
 
 ## Current status
 
-The Sprint 0 baseline and Sprint 1 planning decisions are approved. Sprint 1 is
-ready for infrastructure implementation; no application or infrastructure code
-has been added yet.
+The Sprint 0 baseline and Sprint 1 planning decisions are approved. Sprint 1
+implementation-readiness decisions are complete; no application or
+infrastructure code has been added yet.
 
 The documents have been drafted from the revised manuscript, updated research
 proposal, summary of revisions, and updated Gantt workbook. Sprint 0 becomes
@@ -34,18 +34,17 @@ entry gate in `docs/SPRINT-01.md`.
 
 ## Technology direction
 
-- Windows 11 with WSL2 Ubuntu 24.04 LTS and canonical Bash scripts
-- Docker Desktop 4.82.0 with Engine 29.6.1 and Compose 5.3.0
-- Hyperledger Fabric 2.5.16 LTS and Fabric CA 1.5.15
-- Node.js 24.17.0 LTS with npm workspaces
-- PostgreSQL 17.10
-- Python 3.13.14 for the later forecasting service
-- React 19.2.7 for the later web application
+- Windows 11 with WSL2 Ubuntu and canonical Bash scripts
+- Docker Desktop with its bundled Engine and Compose plugin
+- Hyperledger Fabric LTS with Fabric CA
+- Node.js with npm workspaces
+- PostgreSQL
+- Python for the later forecasting service
+- React for the later web application
 
-These are approved targets. The Docker bundle is verified on Jopia's host;
-Sprint 1 must still record the remaining hosts' installed versions and validate
-the complete cross-machine matrix. The full matrix and official selection
-sources are in `docs/ARCHITECTURE.md` Section 3.
+Exact approved targets, compatibility notes, and selection sources live only in
+`docs/ARCHITECTURE.md` Section 3. Sprint 1 records effective host versions and
+deviations separately.
 
 ## Documentation map
 
@@ -101,7 +100,7 @@ The team has approved:
 
 1. the Gantt schedule of June 29–July 9, 2026;
 2. the one-organization Fabric topology;
-3. ADR-001 through ADR-018 and ADR-020 through ADR-025;
+3. ADR-001 through ADR-018 and ADR-020 through ADR-028;
 4. the version targets and WSL2/Bash workflow;
 5. the migration/bootstrap-only PostgreSQL scope;
 6. Sprint 1 owners, validation obligations, and exit criteria.
