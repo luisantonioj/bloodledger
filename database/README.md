@@ -1,6 +1,7 @@
 # BloodLedger Development Database
 
-**Status:** Approved Sprint 1 planning baseline; not yet implemented or verified
+**Status:** S1-04/S1-05 implemented and verified on Jopia's development host;
+Buno and Lat supported-host validation remains open
 
 This document is the authoritative source for Sprint 1 PostgreSQL identifiers,
 roles, migration scope, persistence, and reset behavior. Sprint 1 proves the
@@ -97,7 +98,48 @@ volume and migration history. The reset must scope selection to Compose project
 `bloodledger`, display the target first, and never remove unrelated volumes or
 database directories.
 
-## 7. Sprint 1 evidence
+## 7. Tested PostgreSQL and migration commands
+
+Run these commands from the repository root after copying the approved variable
+names to an untracked `.env` and filling all three database password values.
+The npm commands connect through the loopback host binding and read the
+migration credential from the process environment or untracked `.env`; they do
+not print the credential or a connection string.
+
+Before first start, confirm that the default host port is free:
+
+```bash
+ss -ltn '( sport = :5432 )'
+```
+
+If it is occupied, set only `POSTGRES_HOST_PORT` in the untracked `.env` to an
+available local port. Do not change the container port or loopback address.
+
+The following configuration, start, migration, status, and non-destructive stop
+commands were exercised by `npm run test:database` on 2026-07-15:
+
+```bash
+docker compose --project-name bloodledger config --quiet
+docker compose --project-name bloodledger up --detach --wait postgres
+npm run migrate:status
+npm run migrate:up
+npm run migrate:status
+docker compose --project-name bloodledger down
+```
+
+Before the first migration, status exits nonzero and lists the bootstrap as
+pending because `public.pgmigrations` does not yet exist. After apply it reports
+one applied and zero pending migrations. Reapplying reports no migrations to
+run and leaves one history row. Applied shared migrations are immutable; make
+corrections with a new ordered forward migration.
+
+The validation-only destructive path is implemented inside
+`tests/database/integration.sh`. It refuses to delete unless the project and
+volume labels resolve exactly to Compose project `bloodledger` and volume
+`postgres-data`, displays the target, and requires the literal validation token.
+It is not the general full-development reset command reserved for S1-08.
+
+## 8. Sprint 1 evidence
 
 - Effective PostgreSQL server and client versions.
 - Resolved host port.
@@ -107,3 +149,10 @@ database directories.
 - Normal restart persistence result.
 - Full reset/recreate result.
 - Confirmation that no domain tables, real data, or credentials were committed.
+
+Jopia-host validation on 2026-07-15 proved PostgreSQL server and client `17.10`,
+healthy startup, authenticated runtime-role connectivity, separated roles,
+`bloodledger_migrator` ownership of `app`, runtime usage without DDL, one
+`public.pgmigrations` row, idempotent reapply, zero tables in `app`, normal
+restart persistence, and exact-volume empty-state recreation. Buno and Lat have
+not yet repeated these checks on their supported hosts.

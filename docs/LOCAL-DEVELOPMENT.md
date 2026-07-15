@@ -1,6 +1,7 @@
 # BloodLedger Local Development Guide
 
-**Status:** Sprint 1 operational-document baseline; service commands remain unverified
+**Status:** Sprint 1 operational-document baseline; S1-04/S1-05 database
+commands verified on Jopia's host, integrated S1-08/S1-09 workflow pending
 
 This guide defines the intended local workflow and evidence format. Command
 examples are added only after Sprint 1 implementation validates them.
@@ -36,7 +37,7 @@ effective output rather than assuming the installed version matches the target.
 | Migration packages | `node-pg-migrate` `8.0.4`; `pg` `8.22.0`; root lockfile and clean install verified 2026-07-15 | Not recorded | Not recorded |
 | Gitleaks | `8.30.1`; official container and repository scans verified 2026-07-15; digest `sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f` | Not recorded | Not recorded |
 | Fabric/Fabric CA | Fabric `2.5.16`; Fabric CA `1.5.15` | Not recorded | Not recorded |
-| PostgreSQL | Not provisioned; deferred to S1-04 | Not recorded | Not recorded |
+| PostgreSQL | Server/client `17.10` (Debian `17.10-1.pgdg13+1`); Compose health, migration, persistence, and recreate checks verified 2026-07-15 | Not recorded | Not recorded |
 
 A difference is not silently normalized. Jopia records the decision or deviation;
 Buno and Lat review the resulting supported baseline.
@@ -56,6 +57,10 @@ Sprint 1 implementation will provide a small, stable interface for:
 
 Exact command names are not documented as working until S1-08/S1-09 verifies
 them. The root README will contain only the shortest tested quick start.
+
+The database-only commands proven for S1-04/S1-05 are documented in
+`database/README.md`. They do not establish the general repository operational
+interface or the root quick start.
 
 The secret scan uses the official Gitleaks container pinned to `8.30.1`; never
 use its `latest` tag. S1-02 records the resolved container digest on each host.

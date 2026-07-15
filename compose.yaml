@@ -1,0 +1,29 @@
+name: bloodledger
+
+services:
+  postgres:
+    image: postgres:17.10
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bloodledger_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?set POSTGRES_ADMIN_PASSWORD in the untracked .env file}
+      POSTGRES_MIGRATOR_USER: bloodledger_migrator
+      POSTGRES_MIGRATOR_PASSWORD: ${POSTGRES_MIGRATOR_PASSWORD:?set POSTGRES_MIGRATOR_PASSWORD in the untracked .env file}
+      POSTGRES_APP_USER: bloodledger_app
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD in the untracked .env file}
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/bootstrap:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bloodledger_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  postgres-data:
+

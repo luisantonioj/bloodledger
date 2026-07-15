@@ -2,7 +2,11 @@
   "name": "@bloodledger/database",
   "version": "0.0.0",
   "private": true,
-  "description": "Sprint 1 migration-tool workspace; migrations begin in S1-05",
+  "description": "Sprint 1 PostgreSQL migration and bootstrap workspace",
+  "scripts": {
+    "migrate:up": "node scripts/migrate.mjs",
+    "migrate:status": "node scripts/migration-status.mjs"
+  },
   "devDependencies": {
     "node-pg-migrate": "8.0.4",
     "pg": "8.22.0"
