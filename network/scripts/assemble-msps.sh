@@ -70,6 +70,21 @@ normalize_tls() {
 }
 normalize_tls "${peer_org}/peers/peer0.mediatrix.bloodledger.local" "${mediatrix_ca}"
 normalize_tls "${orderer_org}/orderers/orderer0.orderer.bloodledger.local" "${orderer_ca}"
+
+normalize_client_tls() {
+  local user="$1" ca_cert="$2"
+  local enrollment="${user}/tls-enrollment" target="${user}/tls"
+  local key cert
+  key="$(find "${enrollment}/keystore" -type f -print -quit)"
+  cert="$(find "${enrollment}/signcerts" -type f -print -quit)"
+  [[ -n "${key}" && -n "${cert}" ]]
+  mkdir -p "${target}"
+  cp "${ca_cert}" "${target}/ca.crt"
+  cp "${cert}" "${target}/client.crt"
+  cp "${key}" "${target}/client.key"
+  chmod 600 "${target}/client.key"
+}
+normalize_client_tls "${peer_org}/users/Admin@mediatrix.bloodledger.local" "${mediatrix_ca}"
+normalize_client_tls "${orderer_org}/users/Admin@orderer.bloodledger.local" "${orderer_ca}"
 find "${generated_root}" -type d -exec chmod go-rwx {} +
 find "${generated_root}" -type f -exec chmod go-rwx {} +
-

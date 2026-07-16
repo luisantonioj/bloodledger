@@ -310,3 +310,47 @@ absent and preserves them across restart. Explicit config volumes cover the
 upstream images' declared `/etc/hyperledger/fabric` volume, while each data
 volume covers `/var/hyperledger`; validation rejects anonymous node volumes.
 The check does not implement or exercise a reset.
+
+## 12. Implemented development channel commands
+
+These commands implement only the channel portion of S1-07. They do not
+package, install, approve, commit, invoke, or query the disposable health
+contract, and they are not the general operational interface reserved for
+S1-08.
+
+With the four S1-06 Fabric services already healthy, create or validate the
+approved channel, join the single development orderer through channel
+participation, and join the Mediatrix peer with:
+
+```bash
+network/scripts/create-channel.sh
+```
+
+The command uses the pinned `hyperledger/fabric-tools:2.5.16` image as an
+ephemeral tool container on the existing project-scoped Compose network. It
+generates blocks only below `network/generated/channel-artifacts/`, uses the
+`orderer-admin` mutual-TLS identity for the internal orderer administration
+endpoint, and uses the `mediatrix-admin` MSP for peer channel administration.
+On an existing channel it fetches and validates block zero against the approved
+template before reporting success; a mismatch stops without overwriting ledger
+state.
+
+Query orderer participation, peer membership, and initialized channel ledger
+information without printing certificates or keys with:
+
+```bash
+network/scripts/query-channel.sh
+```
+
+Static and live component checks are:
+
+```bash
+npm run check:fabric-channel
+npm run test:fabric-channel
+```
+
+The live check runs channel creation twice and verifies stable artifacts and
+membership. It preserves CA containers, the identity completion marker,
+PostgreSQL container state, and `postgres-data`. The health-contract lifecycle
+and transaction path remain explicitly deferred to the separately authorized
+S1-07 batch.

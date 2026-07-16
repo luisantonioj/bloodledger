@@ -114,6 +114,7 @@ ca_exec ca-orderer sh -ceu '
 ca_exec ca-mediatrix sh -ceu "
   . /work/secrets/identity-secrets.env
   fabric-ca-client enroll --url \"https://mediatrix-admin:\${MEDIATRIX_ADMIN_SECRET}@ca-mediatrix:7054\" --caname ca.mediatrix.bloodledger.local --mspdir '${peer_org}/users/Admin@mediatrix.bloodledger.local/msp' --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null
+  fabric-ca-client enroll --url \"https://mediatrix-admin:\${MEDIATRIX_ADMIN_SECRET}@ca-mediatrix:7054\" --caname ca.mediatrix.bloodledger.local --enrollment.profile tls --mspdir '${peer_org}/users/Admin@mediatrix.bloodledger.local/tls-enrollment' --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null
   fabric-ca-client enroll --url \"https://api-gateway:\${API_GATEWAY_SECRET}@ca-mediatrix:7054\" --caname ca.mediatrix.bloodledger.local --mspdir '${peer_org}/users/ApiGateway@mediatrix.bloodledger.local/msp' --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null
   fabric-ca-client enroll --url \"https://peer0:\${PEER0_SECRET}@ca-mediatrix:7054\" --caname ca.mediatrix.bloodledger.local --mspdir '${peer_org}/peers/peer0.mediatrix.bloodledger.local/msp' --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null
   fabric-ca-client enroll --url \"https://peer0:\${PEER0_SECRET}@ca-mediatrix:7054\" --caname ca.mediatrix.bloodledger.local --enrollment.profile tls --csr.hosts peer0.mediatrix.bloodledger.local --csr.hosts peer0-mediatrix --csr.hosts localhost --mspdir '${peer_org}/peers/peer0.mediatrix.bloodledger.local/tls-enrollment' --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null
@@ -122,6 +123,7 @@ ca_exec ca-mediatrix sh -ceu "
 ca_exec ca-orderer sh -ceu "
   . /work/secrets/identity-secrets.env
   fabric-ca-client enroll --url \"https://orderer-admin:\${ORDERER_ADMIN_SECRET}@ca-orderer:7054\" --caname ca.orderer.bloodledger.local --mspdir '${orderer_org}/users/Admin@orderer.bloodledger.local/msp' --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null
+  fabric-ca-client enroll --url \"https://orderer-admin:\${ORDERER_ADMIN_SECRET}@ca-orderer:7054\" --caname ca.orderer.bloodledger.local --enrollment.profile tls --mspdir '${orderer_org}/users/Admin@orderer.bloodledger.local/tls-enrollment' --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null
   fabric-ca-client enroll --url \"https://orderer0:\${ORDERER0_SECRET}@ca-orderer:7054\" --caname ca.orderer.bloodledger.local --mspdir '${orderer_org}/orderers/orderer0.orderer.bloodledger.local/msp' --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null
   fabric-ca-client enroll --url \"https://orderer0:\${ORDERER0_SECRET}@ca-orderer:7054\" --caname ca.orderer.bloodledger.local --enrollment.profile tls --csr.hosts orderer0.orderer.bloodledger.local --csr.hosts orderer0 --csr.hosts localhost --mspdir '${orderer_org}/orderers/orderer0.orderer.bloodledger.local/tls-enrollment' --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null
 "

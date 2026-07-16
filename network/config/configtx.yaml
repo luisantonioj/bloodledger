@@ -1,0 +1,121 @@
+---
+Organizations:
+  - &Mediatrix
+    Name: MediatrixMSP
+    ID: MediatrixMSP
+    MSPDir: /generated/organizations/peerOrganizations/mediatrix.bloodledger.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('MediatrixMSP.admin', 'MediatrixMSP.peer', 'MediatrixMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('MediatrixMSP.admin', 'MediatrixMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('MediatrixMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('MediatrixMSP.peer')"
+
+  - &Orderer
+    Name: OrdererMSP
+    ID: OrdererMSP
+    MSPDir: /generated/organizations/ordererOrganizations/orderer.bloodledger.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin', 'OrdererMSP.orderer')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin', 'OrdererMSP.orderer')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+Application: &ApplicationDefaults
+  Organizations: []
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+  Addresses:
+    - orderer0.orderer.bloodledger.local:7050
+  EtcdRaft:
+    Consenters:
+      - Host: orderer0.orderer.bloodledger.local
+        Port: 7050
+        ClientTLSCert: /generated/organizations/ordererOrganizations/orderer.bloodledger.local/orderers/orderer0.orderer.bloodledger.local/tls/server.crt
+        ServerTLSCert: /generated/organizations/ordererOrganizations/orderer.bloodledger.local/orderers/orderer0.orderer.bloodledger.local/tls/server.crt
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+  Organizations: []
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+  Capabilities:
+    <<: *OrdererCapabilities
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  BloodLedgerDevChannel:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *Orderer
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *Mediatrix
