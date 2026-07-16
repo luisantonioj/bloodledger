@@ -282,7 +282,7 @@ To be completed during Sprint 1:
 
 | Validator | Environment and effective versions | Result | Blocker/deviation and safe evidence summary | Reviewed |
 |---|---|---|---|---|
-| Jopia | Pending | Pending | Pending | Pending |
+| Jopia | Windows 11 `22631.6199`; WSL `2.7.10.0`/Ubuntu `24.04.4`; Docker Desktop `4.82.0`, Engine `29.6.1`, Compose `5.3.0`; Node `24.17.0`/npm `11.13.0`; Fabric `2.5.16`, Fabric CA `1.5.15`; PostgreSQL `17.10` | Proven on supported host, 2026-07-16 | Revision `c8443bcdbf542d6021635bc793dd44df5a38238c`; WSL filesystem path; default loopback ports; bootstrap/status, PostgreSQL roles and migration, channel/lifecycle, committed event/query probe, normal restart, Level 1 preservation/recreation, Level 2 empty-state recreation, and Gitleaks passed. Git `2.43.0` is the recorded compatible deviation. Docker Desktop initially was not open; opening it resolved the prerequisite without a project change. | Pending |
 | Buno | Pending | Pending | Pending | Pending |
 | Lat | Pending | Pending | Pending | Pending |
 

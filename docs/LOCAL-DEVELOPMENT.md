@@ -1,7 +1,7 @@
 # BloodLedger Local Development Guide
 
-**Status:** S1-08 operational interface and Jopia-host integrated validation
-completed on 2026-07-16; S1-09 cross-machine validation remains pending
+**Status:** S1-08 operational interface and Jopia-host S1-09 supported-machine
+validation completed on 2026-07-16; Buno and Lat validation remains pending
 
 This guide defines the intended local workflow and evidence format. Command
 examples are added only after Sprint 1 implementation validates them.
@@ -34,10 +34,10 @@ effective output rather than assuming the installed version matches the target.
 | Docker Compose | `5.3.0` | Not recorded | Not recorded |
 | Git | `2.43.0` | Not recorded | Not recorded |
 | Node.js/npm | Node.js `24.17.0`; npm `11.13.0`; nvm `0.40.5` | Not recorded | Not recorded |
-| Migration packages | `node-pg-migrate` `8.0.4`; `pg` `8.22.0`; root lockfile and clean install verified 2026-07-15 | Not recorded | Not recorded |
-| Gitleaks | `8.30.1`; official container and repository scans verified 2026-07-15; digest `sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f` | Not recorded | Not recorded |
-| Fabric/Fabric CA | Fabric `2.5.16`; Fabric CA `1.5.15` | Not recorded | Not recorded |
-| PostgreSQL | Server/client `17.10` (Debian `17.10-1.pgdg13+1`); Compose health, migration, persistence, and recreate checks verified 2026-07-15 | Not recorded | Not recorded |
+| Migration packages | `node-pg-migrate` `8.0.4`; `pg` `8.22.0`; root lockfile and clean install reverified 2026-07-16 | Not recorded | Not recorded |
+| Gitleaks | `8.30.1`; official container and repository scans reverified 2026-07-16; digest `sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f` | Not recorded | Not recorded |
+| Fabric/Fabric CA | Fabric `2.5.16`; Fabric CA `1.5.15`; health, restart, Level 1, and Level 2 recreation verified 2026-07-16 | Not recorded | Not recorded |
+| PostgreSQL | Server/client `17.10` (Debian `17.10-1.pgdg13+1`); health, migration, restart persistence, Level 1 preservation, and Level 2 recreation verified 2026-07-16 | Not recorded | Not recorded |
 
 A difference is not silently normalized. Jopia records the decision or deviation;
 Buno and Lat review the resulting supported baseline.
@@ -207,6 +207,7 @@ Add an entry only after the problem is observed:
 | 2026-07-16 | Jopia Windows 11/Ubuntu 24.04 host | Repeating consolidated bootstrap failed because the fixed synthetic probe emitted no new event | The component probe validator intentionally expects an event for a new probe, while the operational bootstrap reused an already committed probe ID | Bootstrap now performs the exact read-only definition/query check first, reuses a matching probe, and submits only when the stable not-found result proves absence | `bloodledger-health` `0.1.0`, sequence `1` |
 | 2026-07-16 | Jopia Windows 11/Ubuntu 24.04 host | Consolidated status refreshed public CA metadata below an administrator MSP path | `fabric-ca-client getcainfo` used the CA server image's default client home | Status now runs each CA check with a temporary client home/MSP and deletes it afterward; a complete generated-tree digest remained unchanged | Fabric CA `1.5.15` |
 | 2026-07-16 | Jopia Windows 11/Ubuntu 24.04 host | Level 2 preview refused the correctly labeled `postgres-data` volume | Bash dynamic scoping initialized the expected PostgreSQL volume name from the preceding Fabric loop variable | Volume validation now initializes its key and expected name in separate local statements; automated named-volume regression and live Level 2 preview/reset/recreate passed | Bash in Ubuntu `24.04.4 LTS`, Compose `5.3.0` |
+| 2026-07-16 | Jopia Windows 11/Ubuntu 24.04 host | Initial S1-09 preflight could not reach Docker from WSL | Docker Desktop had not been opened, so WSL integration and the Docker Engine were unavailable | Jopia opened Docker Desktop; `doctor`, the README workflow, service health, restart, both reset levels, recreation, and the pinned secret scan then passed without a version or configuration change | Docker Desktop `4.82.0`, Engine `29.6.1`, Compose `5.3.0` |
 
 Do not populate troubleshooting with speculative errors copied from external
 guides. A fix belongs here only after it is reproduced and verified against the
