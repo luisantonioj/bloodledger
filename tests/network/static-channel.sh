@@ -20,6 +20,7 @@ for required in \
     exit 1
   }
 done
+grep -Fq 'prepare_channel_query_context' network/scripts/query-channel.sh
 for forbidden in Org1MSP Org2MSP example.com mychannel cryptogen HealthContract bloodledger-health; do
   if grep -Fq "${forbidden}" network/config/configtx.yaml \
     network/scripts/create-channel.sh network/scripts/query-channel.sh; then

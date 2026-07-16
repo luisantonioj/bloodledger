@@ -13,6 +13,9 @@ health_package_label="bloodledger-health_0.1.0"
 health_version="0.1.0"
 health_sequence="1"
 health_policy="OR('MediatrixMSP.peer')"
+# Canonical common.ApplicationPolicy encoding for the approved one-of-one
+# MediatrixMSP PEER signature policy.
+health_validation_parameter="Ch4SCBIGCAESAggAGhISEAoMTWVkaWF0cml4TVNQEAM="
 
 assert_health_contract_environment() {
   assert_approved_channel_environment
@@ -23,6 +26,7 @@ assert_health_contract_environment() {
 }
 
 assert_health_prerequisites() {
+  local context_mode="${1:-mutable}"
   assert_health_contract_environment
   for service in ca-mediatrix ca-orderer peer0-mediatrix orderer0; do
     local container_id
@@ -41,7 +45,11 @@ assert_health_prerequisites() {
     echo "mediatrix-admin TLS material is missing" >&2
     exit 1
   }
-  prepare_channel_context
+  if [[ "${context_mode}" == readonly ]]; then
+    prepare_channel_query_context
+  else
+    prepare_channel_context
+  fi
   peer_has_channel || { echo "peer0-mediatrix is not joined to bloodledger-dev" >&2; exit 1; }
   local orderer_channel_output peer_channel_output orderer_height peer_height
   orderer_channel_output="$(osnadmin list --channelID "${channel_name}")"

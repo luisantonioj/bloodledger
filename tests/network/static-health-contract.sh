@@ -17,6 +17,7 @@ rg -q 'health_package_label="bloodledger-health_0.1.0"' network/scripts/health-c
 rg -q 'health_version="0.1.0"' network/scripts/health-contract-lib.sh
 rg -q 'health_sequence="1"' network/scripts/health-contract-lib.sh
 rg -q "health_policy=\"OR\('MediatrixMSP.peer'\)\"" network/scripts/health-contract-lib.sh
+rg -q 'health_validation_parameter="Ch4SCBIGCAESAggAGhISEAoMTWVkaWF0cml4TVNQEAM="' network/scripts/health-contract-lib.sh
 git check-ignore --quiet --no-index network/health-contract/build/example.tgz
 [[ -z "$(git ls-files network/generated network/health-contract/build)" ]]
 echo "Static S1-07 health-contract boundary, interface, lifecycle, dependency, and exclusion checks passed"

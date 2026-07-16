@@ -3,7 +3,7 @@ set -euo pipefail
 # shellcheck source=network/scripts/channel-lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/channel-lib.sh"
 
-prepare_channel_context
+prepare_channel_query_context
 for path in \
   "${generated_root}${peer_admin#/generated}/msp" \
   "${generated_root}${orderer_admin#/generated}/tls"; do

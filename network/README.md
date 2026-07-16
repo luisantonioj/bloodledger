@@ -374,6 +374,14 @@ npm run deploy:fabric-health-contract
 npm run probe:fabric-health-contract -- s1-07-probe-001
 ```
 
+The S1-08 consolidated status command uses this read-only component query for
+the fixed bootstrap probe. It verifies the committed version and sequence
+before evaluating `ReadProbe`; it does not submit `RecordProbe`:
+
+```bash
+network/scripts/query-health-contract.sh s1-08-bootstrap
+```
+
 The package command creates only ignored output below
 `network/health-contract/build/`, normalizes generated archive metadata, and
 reuses an identical package ID. The deploy command validates services,

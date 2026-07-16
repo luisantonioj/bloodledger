@@ -122,3 +122,12 @@ prepare_channel_context() {
   chmod 700 "${channel_artifacts}"
   resolve_compose_network
 }
+
+prepare_channel_query_context() {
+  assert_approved_channel_environment
+  [[ -d "${channel_artifacts}" ]] || {
+    echo "Channel artifacts are missing; bootstrap is required" >&2
+    exit 1
+  }
+  resolve_compose_network
+}

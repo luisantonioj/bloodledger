@@ -9,9 +9,12 @@ redistribution recommendations, and a web dashboard.
 ## Current status
 
 The Sprint 0 baseline and Sprint 1 planning decisions are approved. Sprint 1
-implementation started on 2026-07-15 with the repository foundation. No
-PostgreSQL or Fabric services, migrations, chaincode, or application behavior
-have been implemented yet.
+infrastructure implementation is in progress: the repository foundation,
+PostgreSQL migration baseline, one-organization Fabric development network,
+development channel, disposable health contract, and S1-08 operational command
+interface are implemented. Cross-machine S1-09 validation and the Sprint Review
+remain pending. This is a research prototype, not a production or clinically
+validated system.
 
 The documents have been drafted from the revised manuscript, updated research
 proposal, summary of revisions, and updated Gantt workbook. Sprint 0 becomes
@@ -112,26 +115,24 @@ The team has approved:
 The actual implementation start is recorded in the sprint header. Remaining
 execution and validation dates are recorded separately in the Sprint Review.
 
-## Repository-foundation validation
+## Local development quick start
 
-With the approved Node.js and npm versions active, install the exact locked
-packages and run the repository checks:
+Use Bash inside WSL2 Ubuntu 24.04 from a working copy in the WSL Linux
+filesystem. Copy `.env.example` to untracked `.env`, fill the five local
+password values, install the exact lockfile, and run:
 
 ```bash
 npm ci --ignore-scripts
-npm run check:foundation
-npm run scan:secrets
+scripts/bloodledger-dev.sh doctor
+scripts/bloodledger-dev.sh bootstrap
+scripts/bloodledger-dev.sh status
+scripts/bloodledger-dev.sh stop
 ```
 
-The secret scan requires Docker access and uses the official Gitleaks container
-pinned in the repository. These commands validate only the S1-02/S1-03
-repository foundation; they do not start or validate PostgreSQL or Fabric.
-Service setup commands remain later Sprint 1 deliverables and must not be copied
-from a sample network.
-
-The intended workflow, identifiers, database decisions, and safety boundaries
-are documented in `docs/LOCAL-DEVELOPMENT.md`, `network/README.md`, and
-`database/README.md`.
+Normal start and stop preserve state. Reset confirmation tokens, dry-run
+procedures, service-specific logs, and troubleshooting are documented in
+`docs/LOCAL-DEVELOPMENT.md`. Fabric identifiers and database rules remain
+authoritative in `network/README.md` and `database/README.md`.
 
 ## Security and research-data notice
 

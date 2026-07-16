@@ -1,7 +1,8 @@
 # BloodLedger Local Development Guide
 
-**Status:** Sprint 1 operational-document baseline; S1-04/S1-05 database
-commands verified on Jopia's host, integrated S1-08/S1-09 workflow pending
+**Status:** S1-08 operational interface implemented; Jopia-host integrated
+validation remains partial until a complete untracked `.env` is supplied, and
+S1-09 cross-machine validation remains pending
 
 This guide defines the intended local workflow and evidence format. Command
 examples are added only after Sprint 1 implementation validates them.
@@ -42,25 +43,46 @@ effective output rather than assuming the installed version matches the target.
 A difference is not silently normalized. Jopia records the decision or deviation;
 Buno and Lat review the resulting supported baseline.
 
-## 3. Planned operational interface
+## 3. Operational interface
 
-Sprint 1 implementation will provide a small, stable interface for:
+Run the repository-level interface through canonical Bash. It resolves the
+repository root independently of the caller's current directory.
 
-- prerequisite/version inspection;
-- initial bootstrap;
-- starting project services;
-- showing service/network/database health;
-- viewing project service logs;
-- stopping services without data loss;
-- resetting Fabric development state; and
-- performing a confirmed full development reset.
+```bash
+scripts/bloodledger-dev.sh doctor
+scripts/bloodledger-dev.sh bootstrap
+scripts/bloodledger-dev.sh start
+scripts/bloodledger-dev.sh status
+scripts/bloodledger-dev.sh logs [ca-mediatrix|ca-orderer|peer0-mediatrix|orderer0|postgres]
+scripts/bloodledger-dev.sh stop
+scripts/bloodledger-dev.sh reset-fabric --dry-run
+scripts/bloodledger-dev.sh reset-all --dry-run
+```
 
-Exact command names are not documented as working until S1-08/S1-09 verifies
-them. The root README will contain only the shortest tested quick start.
+- `doctor` reports the effective host and repository-managed versions,
+  validates approved non-secret values and pinned images/dependencies, and
+  refuses non-project host-port collisions. It installs or changes nothing.
+- `bootstrap` validates `.env`, starts and migrates PostgreSQL, reuses the
+  identity, node, channel, package, lifecycle, and probe component automation,
+  and finishes with consolidated health. Matching state is reused; component
+  conflict checks refuse mismatched state. It creates no domain tables or data.
+- `start` requires the bootstrap marker, channel artifact, and health package,
+  starts existing state, and succeeds only after consolidated health. It does
+  not migrate, enroll, join, deploy, invoke, or reset implicitly.
+- `status` is read-only. It checks container health, authenticated PostgreSQL
+  access, migration status, CA readiness, peer/orderer operations health,
+  channel participation and membership, the committed health-contract
+  definition, and `ReadProbe` for the fixed synthetic `s1-08-bootstrap` probe.
+- `logs` follows only the five approved Compose services and rejects any other
+  service name.
+- `stop` performs project-scoped Compose shutdown without volume or generated
+  file deletion.
 
-The database-only commands proven for S1-04/S1-05 are documented in
-`database/README.md`. They do not establish the general repository operational
-interface or the root quick start.
+All commands use Compose project `bloodledger`, return nonzero on a failed
+required layer, and do not print passwords, keys, certificates, wallets, or
+credential-bearing connection strings. Copy `.env.example` to the untracked
+`.env` and fill all five local password values before mutation. Presence is
+checked without printing values.
 
 The secret scan uses the official Gitleaks container pinned to `8.30.1`; never
 use its `latest` tag. S1-02 records the resolved container digest on each host.
@@ -104,6 +126,18 @@ Requirements:
 - preserve `.env` and PostgreSQL volume `postgres-data`; and
 - require an explicit reset flag or confirmation token.
 
+```bash
+scripts/bloodledger-dev.sh reset-fabric --dry-run
+scripts/bloodledger-dev.sh reset-fabric --confirm RESET_BLOODLEDGER_FABRIC
+```
+
+Level 1 validates the four Fabric Compose containers, the four Fabric volume
+keys, the labeled `bloodledger_default` network, and, when present, the exact
+health-contract runtime derived from the recorded package ID. The shared
+network is preserved because PostgreSQL may remain attached. Only the resolved
+contents of `network/generated/` and `network/health-contract/build/` are
+deleted after repository-boundary, traversal, and symlink checks.
+
 ### Level 2 — Full development reset
 
 Purpose: return all BloodLedger development infrastructure to an empty state.
@@ -112,6 +146,16 @@ In addition to Level 1 targets, this may remove the BloodLedger PostgreSQL
 volume and migration history. It requires a stronger explicit confirmation,
 such as a literal project-specific token, after displaying the affected
 resources.
+
+```bash
+scripts/bloodledger-dev.sh reset-all --dry-run
+scripts/bloodledger-dev.sh reset-all --confirm RESET_BLOODLEDGER_DEVELOPMENT
+```
+
+Level 2 includes Level 1, the project PostgreSQL container and `postgres-data`
+volume, and the project network removed by normal Compose shutdown. It
+preserves `.env`, source, documentation, tests, and unrelated Docker resources.
+After either reset, run `bootstrap` to recreate the approved Sprint 1 baseline.
 
 ### Forbidden reset behavior
 

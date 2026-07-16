@@ -31,6 +31,8 @@
     "package:fabric-health-contract": "bash network/scripts/package-health-contract.sh",
     "deploy:fabric-health-contract": "bash network/scripts/deploy-health-contract.sh",
     "probe:fabric-health-contract": "npm run probe --workspace @bloodledger/health-contract",
+    "check:operations": "bash tests/operations/static-operations.sh",
+    "test:operations": "bash tests/operations/command-behavior.sh",
     "test:database": "bash tests/database/integration.sh",
     "migrate:up": "npm run migrate:up --workspace @bloodledger/database",
     "migrate:status": "npm run migrate:status --workspace @bloodledger/database",
