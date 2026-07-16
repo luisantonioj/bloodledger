@@ -168,7 +168,7 @@ doctor() {
   printf 'Linux kernel: %s\n' "$(uname -r)"
   if command_exists wsl.exe; then
     local wsl_version_line
-    wsl_version_line="$(wsl.exe --version 2>/dev/null | tr -d '\r' | sed -n '1p')"
+    wsl_version_line="$({ wsl.exe --version 2>/dev/null || true; } | tr -d '\000\r' | sed -n '1p')"
     if [[ -n "${wsl_version_line}" ]]; then
       printf 'WSL host tooling: %s\n' "${wsl_version_line}"
     else
@@ -233,6 +233,16 @@ service_health() {
   printf '%s: healthy\n' "${service}"
 }
 
+ca_readiness() {
+  local service="$1" tls_cert="$2"
+  compose_command exec --no-TTY "${service}" sh -ceu '
+    temporary_home="$(mktemp -d)"
+    trap '\''find "${temporary_home}" -mindepth 1 -depth -delete; rmdir "${temporary_home}"'\'' EXIT
+    fabric-ca-client getcainfo --home "${temporary_home}" --mspdir "${temporary_home}/msp" \
+      --url https://localhost:7054 --tls.certfiles "$1" >/dev/null 2>&1
+  ' sh "${tls_cert}"
+}
+
 status() {
   require_operational_context
   printf 'Compose project: %s\n' "${project_name}"
@@ -251,10 +261,10 @@ status() {
   npm run migrate:status >/dev/null || fail "Bootstrap migration is missing or pending"
   printf 'Bootstrap migration: current\n'
 
-  compose_command exec --no-TTY ca-mediatrix fabric-ca-client getcainfo --url https://localhost:7054 \
-    --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null || fail "Mediatrix CA readiness check failed"
-  compose_command exec --no-TTY ca-orderer fabric-ca-client getcainfo --url https://localhost:7054 \
-    --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null || fail "Orderer CA readiness check failed"
+  ca_readiness ca-mediatrix /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null ||
+    fail "Mediatrix CA readiness check failed"
+  ca_readiness ca-orderer /work/fabric-ca/orderer/tls-cert.pem >/dev/null ||
+    fail "Orderer CA readiness check failed"
   printf 'Fabric CA readiness: healthy\n'
   network/scripts/validate-nodes.sh >/dev/null || fail "Peer/orderer internal health validation failed"
   printf 'Peer/orderer operations health: healthy\n'
@@ -281,7 +291,15 @@ bootstrap() {
   network/scripts/query-channel.sh
   network/scripts/package-health-contract.sh
   network/scripts/deploy-health-contract.sh
-  npm run probe:fabric-health-contract -- "${health_probe_id}"
+  set +e
+  network/scripts/query-health-contract.sh "${health_probe_id}" >/dev/null 2>&1
+  local probe_status=$?
+  set -e
+  case "${probe_status}" in
+    0) printf 'Existing synthetic bootstrap health probe validated; no transaction submitted\n' ;;
+    3) npm run probe:fabric-health-contract -- "${health_probe_id}" ;;
+    *) fail "Health-contract state conflicts with the approved bootstrap probe" ;;
+  esac
   status
 }
 
@@ -344,7 +362,9 @@ project_volume_for_key() {
 }
 
 validate_volume() {
-  local key="$1" expected_name="${project_name}_${key}" actual_name
+  local key="$1"
+  local expected_name="${project_name}_${key}"
+  local actual_name
   actual_name="$(project_volume_for_key "${key}")"
   [[ -z "${actual_name}" || "${actual_name}" == "${expected_name}" ]] ||
     fail "Could not prove exclusive ownership of Compose volume key ${key}"

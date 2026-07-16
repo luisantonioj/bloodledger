@@ -22,6 +22,8 @@ for required in \
   grep -Fq "${required}" "${operations}"
 done
 grep -Fq 'Reset stopped on partial failure' "${operations}"
+grep -Fq 'temporary_home="$(mktemp -d)"' "${operations}"
+grep -Fq -- '--mspdir "${temporary_home}/msp"' "${operations}"
 grep -Fq 'org.hyperledger.fabric.chaincode.type' "${operations}"
 grep -Fq 'bloodledger-health_0\.1\.0:([a-f0-9]{64})' "${operations}"
 
@@ -37,6 +39,8 @@ if rg -n 'MEDIATRIX_CA_ADMIN_PASSWORD.*echo|ORDERER_CA_ADMIN_PASSWORD.*echo|POST
 fi
 grep -Fq 'peer chaincode query' "${health_query}"
 grep -Fq 'assert_health_prerequisites readonly' "${health_query}"
+grep -Fq 'exit 3' "${health_query}"
+grep -Fq 'Existing synthetic bootstrap health probe validated' "${operations}"
 ! grep -Eq 'peer chaincode invoke|submit|RecordProbe' "${health_query}"
 git check-ignore --quiet --no-index network/health-contract/build/operational-test.tgz
 [[ -z "$(git ls-files network/generated network/health-contract/build)" ]]

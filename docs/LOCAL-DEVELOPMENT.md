@@ -1,8 +1,7 @@
 # BloodLedger Local Development Guide
 
-**Status:** S1-08 operational interface implemented; Jopia-host integrated
-validation remains partial until a complete untracked `.env` is supplied, and
-S1-09 cross-machine validation remains pending
+**Status:** S1-08 operational interface and Jopia-host integrated validation
+completed on 2026-07-16; S1-09 cross-machine validation remains pending
 
 This guide defines the intended local workflow and evidence format. Command
 examples are added only after Sprint 1 implementation validates them.
@@ -65,7 +64,9 @@ scripts/bloodledger-dev.sh reset-all --dry-run
 - `bootstrap` validates `.env`, starts and migrates PostgreSQL, reuses the
   identity, node, channel, package, lifecycle, and probe component automation,
   and finishes with consolidated health. Matching state is reused; component
-  conflict checks refuse mismatched state. It creates no domain tables or data.
+  conflict checks refuse mismatched state. The fixed synthetic probe is
+  submitted only when a read-only query proves it is absent. It creates no
+  domain tables or feature data.
 - `start` requires the bootstrap marker, channel artifact, and health package,
   starts existing state, and succeeds only after consolidated health. It does
   not migrate, enroll, join, deploy, invoke, or reset implicitly.
@@ -203,6 +204,9 @@ Add an entry only after the problem is observed:
 | Date | Host | Symptom | Root cause | Verified resolution | Affected versions |
 |---|---|---|---|---|---|
 | 2026-07-15 | Jopia Windows 11/Ubuntu 24.04 host | Docker Desktop exited and `docker` was unavailable in the integrated WSL distribution | The Docker inference manager could not remove the empty `dockerInference` runtime endpoint and cancelled backend startup | Removed the empty runtime endpoint, restarted Windows, and verified `docker version`, `docker compose version`, and `docker run --rm hello-world` | Docker Desktop `4.82.0` |
+| 2026-07-16 | Jopia Windows 11/Ubuntu 24.04 host | Repeating consolidated bootstrap failed because the fixed synthetic probe emitted no new event | The component probe validator intentionally expects an event for a new probe, while the operational bootstrap reused an already committed probe ID | Bootstrap now performs the exact read-only definition/query check first, reuses a matching probe, and submits only when the stable not-found result proves absence | `bloodledger-health` `0.1.0`, sequence `1` |
+| 2026-07-16 | Jopia Windows 11/Ubuntu 24.04 host | Consolidated status refreshed public CA metadata below an administrator MSP path | `fabric-ca-client getcainfo` used the CA server image's default client home | Status now runs each CA check with a temporary client home/MSP and deletes it afterward; a complete generated-tree digest remained unchanged | Fabric CA `1.5.15` |
+| 2026-07-16 | Jopia Windows 11/Ubuntu 24.04 host | Level 2 preview refused the correctly labeled `postgres-data` volume | Bash dynamic scoping initialized the expected PostgreSQL volume name from the preceding Fabric loop variable | Volume validation now initializes its key and expected name in separate local statements; automated named-volume regression and live Level 2 preview/reset/recreate passed | Bash in Ubuntu `24.04.4 LTS`, Compose `5.3.0` |
 
 Do not populate troubleshooting with speculative errors copied from external
 guides. A fix belongs here only after it is reproduced and verified against the

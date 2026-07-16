@@ -25,8 +25,19 @@ jq -e --arg version "${health_version}" --argjson sequence "${health_sequence}" 
     exit 1
   }
 
+set +e
 result="$(health_tools_run peer chaincode query --channelID "${channel_name}" \
-  --name "${health_chaincode_name}" --ctor "{\"Args\":[\"ReadProbe\",\"${probe_id}\"]}")"
+  --name "${health_chaincode_name}" --ctor "{\"Args\":[\"ReadProbe\",\"${probe_id}\"]}" 2>&1)"
+query_code=$?
+set -e
+if ((query_code != 0)); then
+  if grep -Fq HEALTH_PROBE_NOT_FOUND <<<"${result}"; then
+    echo "Approved health probe is absent" >&2
+    exit 3
+  fi
+  echo "ReadProbe query failed without exposing Fabric connection details" >&2
+  exit 1
+fi
 [[ "${result}" == "{\"probeId\":\"${probe_id}\",\"status\":\"OK\"}" ]] || {
   echo "ReadProbe returned an unexpected result" >&2
   exit 1

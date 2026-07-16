@@ -44,8 +44,20 @@ if [[ "${1:-}" == network && "${2:-}" == inspect ]]; then exit 1; fi
 if [[ "${1:-}" == container && "${2:-}" == rm ]]; then exit 0; fi
 if [[ "${1:-}" == volume ]]; then
   case "${2:-}" in
-    ls) exit 0 ;;
-    inspect) echo bloodledger; exit 0 ;;
+    ls)
+      if [[ "${FAKE_VOLUMES:-}" == 1 && "$*" =~ com.docker.compose.volume=([^[:space:]]+) ]]; then
+        echo "bloodledger_${BASH_REMATCH[1]}"
+      fi
+      exit 0
+      ;;
+    inspect)
+      if [[ "$*" == *com.docker.compose.volume* ]]; then
+        echo "${*: -1}" | sed 's/^bloodledger_//'
+      else
+        echo bloodledger
+      fi
+      exit 0
+      ;;
     rm) exit 0 ;;
   esac
 fi
@@ -175,7 +187,7 @@ run_command reset-fabric --confirm RESET_BLOODLEDGER_FABRIC >/dev/null
 mkdir -p "${test_root}/network/generated" "${test_root}/network/health-contract/build"
 expect_failure 'Level 2 reset requires' reset-all
 expect_failure 'Level 2 reset requires' reset-all --confirm RESET_BLOODLEDGER
-run_command reset-all --dry-run | grep -Fq 'PostgreSQL volume'
+FAKE_VOLUMES=1 run_command reset-all --dry-run | grep -Fq 'PostgreSQL volume: bloodledger_postgres-data'
 
 rm -rf "${test_root}/network/generated"
 outside="${temporary_root}/outside"
