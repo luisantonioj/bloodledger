@@ -452,11 +452,12 @@ time, correlation ID, and safe event name without secrets or prohibited data.
 | ADR-026 | Accepted | Place the disposable Sprint 1 `HealthContract` below `network/health-contract/`, outside the Sprint 2 domain `chaincode/` boundary | Keeps infrastructure validation code separate from inventory and transfer chaincode and resolves the Sprint activation ambiguity |
 | ADR-027 | Accepted | Pin `node-pg-migrate` 8.0.4, `pg` 8.22.0, and Gitleaks 8.30.1 for Sprint 1 | Makes migration and secret-scan evidence reproducible; the npm packages use the one root lockfile and Gitleaks uses its official versioned container image |
 | ADR-028 | Accepted | Use the Fabric operations `/healthz` endpoint on internal peer port 9443 and internal orderer port 8443, with no host publication | Supplies deterministic Compose health checks without expanding host bindings; operations TLS may be disabled only on the isolated development Compose network |
+| ADR-029 | Accepted | Start the Fabric 2.5 orderer without a system channel by using `BootstrapMethod: none` and the channel participation model; use single-consenter Raft (`etcdraft`) when S1-07 creates the application channel | Lets S1-06 prove a healthy channel-less orderer without inventing a genesis block or entering S1-07; the mutually authenticated admin endpoint remains internal and unexposed |
 
 ## 16. Sprint 1 architecture gates
 
 Sprint 1 is approved to begin with ADR-001 through ADR-018 and ADR-020 through
-ADR-028. ADR-019 remains proposed for Sprint 4. Before the infrastructure files
+ADR-029. ADR-019 remains proposed for Sprint 4. Before the infrastructure files
 are considered complete, the team must verify:
 
 - the approved target versions on every supported host;

@@ -25,7 +25,7 @@ version-pinned commands.
 Sprint 1 is approved to begin. The following decisions are recorded:
 
 - the Sprint 0 repository baseline is accepted for implementation planning;
-- ADR-001 through ADR-018 and ADR-020 through ADR-028 are accepted;
+- ADR-001 through ADR-018 and ADR-020 through ADR-029 are accepted;
 - the team agrees that PRC and DOH are read-only application users in the
   initial topology;
 - prohibited data and the one-organization prototype limitation are understood;
@@ -213,7 +213,7 @@ accountable for every Sprint 1 task; Buno and Lat review the work and evidence.
 | Host and tool versions | `docs/ARCHITECTURE.md` Section 3.1 | S1-02 clean-host and compatibility checks |
 | Scripts | Bash in WSL2 | S1-08 on every host |
 | Package management and migration tools | ADR-015, ADR-022, and ADR-027 | S1-02/S1-05 lockfile and migration evidence |
-| Fabric topology and state database | ADR-001, ADR-002, ADR-008, and `network/README.md` | S1-06/S1-07 |
+| Fabric topology, orderer bootstrap, consensus, and state database | ADR-001, ADR-002, ADR-008, ADR-029, and `network/README.md` | S1-06/S1-07 |
 | Identity model | ADR-016, ADR-021, and `network/README.md` | S1-06 and secret scan |
 | Health transaction and node health | ADR-018, ADR-023, ADR-026, ADR-028, and `network/README.md` | S1-06/S1-08 |
 | PostgreSQL bootstrap | ADR-017, ADR-022, and `database/README.md` | S1-04/S1-05 |

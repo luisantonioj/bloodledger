@@ -23,10 +23,6 @@ grep -q 'host_ip: 127.0.0.1' <<<"${effective}"
 grep -q 'published: "7054"' <<<"${effective}"
 grep -q 'published: "8054"' <<<"${effective}"
 for service in ca-mediatrix ca-orderer; do grep -q "^  ${service}:" <<<"${effective}"; done
-if grep -Eq '^  (peer0-mediatrix|orderer0):' <<<"${effective}"; then
-  echo "Peer/orderer node provisioning is outside this batch" >&2
-  exit 1
-fi
 
 for config in network/config/fabric-ca/mediatrix.yaml network/config/fabric-ca/orderer.yaml; do
   grep -q '^version: 1.5.15$' "${config}"

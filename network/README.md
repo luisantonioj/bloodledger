@@ -1,12 +1,13 @@
 # BloodLedger Development Network
 
-**Status:** Approved Sprint 1 baseline; CA/identity portion implemented on the
-Jopia Codex environment, with supported-host verification still required
+**Status:** Approved Sprint 1 baseline; CA/identity and peer/orderer node
+portions implemented on the Jopia Codex environment, with supported-host
+verification still required
 
 This document is the authoritative source for Sprint 1 Fabric network names,
-development identities, ports, generated-material boundaries, and the disposable
-health contract. It describes the intended configuration; it does not claim that
-the network currently runs.
+development identities, ports, generated-material boundaries, orderer bootstrap,
+and the disposable health contract. Runtime claims require the validation
+evidence described below.
 
 ## 1. Topology boundary
 
@@ -72,6 +73,21 @@ version endpoints on the isolated local-development Compose network; it is not
 a production TLS precedent. The CA services are checked with
 `fabric-ca-client getcainfo` through their existing CA endpoints and do not
 require additional ports. PostgreSQL uses its native readiness check.
+
+The Fabric 2.5 ordering node starts with `BootstrapMethod: none` and channel
+participation enabled, as accepted in ADR-029. Its mutually authenticated admin
+endpoint is internal to the Compose network and is not published. S1-06 creates
+no system-channel or application-channel block and joins no channel. S1-07 will
+create `bloodledger-dev` with a single-consenter `etcdraft` configuration and
+will use the internal admin endpoint to join it. The ordering organization is a
+technical boundary, not a second operational hospital member.
+
+The S1-06 peer leaves the default Docker chaincode-builder endpoint
+unconfigured because this node-only batch does not install or run chaincode.
+This prevents an unused Docker daemon dependency from making the node health
+signal fail and avoids mounting the Docker socket into the peer. S1-07 must
+configure and validate its authorized chaincode runtime before deploying the
+disposable health contract; S1-06 health is not evidence of chaincode readiness.
 
 ## 4. Environment-variable names
 
@@ -258,3 +274,39 @@ The live validation reports only Fabric CA/client versions and certificate
 subject/issuer metadata. It does not print registration secrets, keys, complete
 certificates, or connection material. Generated output remains entirely below
 `network/generated/` and is excluded from Git.
+
+## 11. Implemented peer and orderer validation
+
+These commands cover only the S1-06 peer/orderer node foundation. They are
+component checks, not the general start, stop, status, log, or reset interface
+reserved for S1-08. They do not create or join a channel and do not package,
+install, approve, commit, invoke, or query chaincode.
+
+With the approved generated identities present and both CA administrator
+password variables supplied through the process environment or untracked
+`.env`, validate already-running nodes with:
+
+```bash
+network/scripts/validate-nodes.sh
+```
+
+The validator checks the integrated Compose model, CA readiness, container
+health, internal `/healthz` and `/version` resources, pinned images, MSP IDs,
+TLS, LevelDB, bootstrap and participation settings, and host port publication.
+It reports only approved non-secret configuration values.
+
+The component integration check starts only the two existing CAs and the two
+Fabric nodes, validates them, restarts only the peer and orderer, validates
+again, and proves that the CA containers, identity completion marker,
+PostgreSQL container state, and `postgres-data` volume are unchanged:
+
+```bash
+tests/network/node-integration.sh
+```
+
+The check creates the project-scoped `peer0-mediatrix-config`,
+`peer0-mediatrix-data`, `orderer0-config`, and `orderer0-data` volumes when
+absent and preserves them across restart. Explicit config volumes cover the
+upstream images' declared `/etc/hyperledger/fabric` volume, while each data
+volume covers `/var/hyperledger`; validation rejects anonymous node volumes.
+The check does not implement or exercise a reset.

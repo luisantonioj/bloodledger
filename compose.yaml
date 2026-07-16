@@ -47,6 +47,121 @@ services:
       retries: 20
       start_period: 5s
 
+  peer0-mediatrix:
+    image: hyperledger/fabric-peer:2.5.16
+    hostname: peer0.mediatrix.bloodledger.local
+    restart: unless-stopped
+    environment:
+      FABRIC_LOGGING_SPEC: INFO
+      CORE_PEER_ID: peer0.mediatrix.bloodledger.local
+      CORE_PEER_ADDRESS: peer0.mediatrix.bloodledger.local:7051
+      CORE_PEER_LISTENADDRESS: 0.0.0.0:7051
+      CORE_PEER_CHAINCODEADDRESS: peer0.mediatrix.bloodledger.local:7052
+      CORE_PEER_CHAINCODELISTENADDRESS: 0.0.0.0:7052
+      CORE_PEER_GOSSIP_BOOTSTRAP: peer0.mediatrix.bloodledger.local:7051
+      CORE_PEER_GOSSIP_EXTERNALENDPOINT: peer0.mediatrix.bloodledger.local:7051
+      CORE_PEER_LOCALMSPID: MediatrixMSP
+      CORE_PEER_MSPCONFIGPATH: /opt/bloodledger/fabric/msp
+      CORE_PEER_TLS_ENABLED: "true"
+      CORE_PEER_TLS_CERT_FILE: /opt/bloodledger/fabric/tls/server.crt
+      CORE_PEER_TLS_KEY_FILE: /opt/bloodledger/fabric/tls/server.key
+      CORE_PEER_TLS_ROOTCERT_FILE: /opt/bloodledger/fabric/tls/ca.crt
+      CORE_LEDGER_STATE_STATEDATABASE: goleveldb
+      CORE_OPERATIONS_LISTENADDRESS: 0.0.0.0:9443
+      CORE_OPERATIONS_TLS_ENABLED: "false"
+      CORE_METRICS_PROVIDER: disabled
+      CORE_PEER_PROFILE_ENABLED: "false"
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        mkdir -p /tmp/bloodledger-fabric-config;
+        sed 's#^    endpoint: unix:///var/run/docker.sock$#    endpoint:#'
+        /etc/hyperledger/fabric/core.yaml
+        > /tmp/bloodledger-fabric-config/core.yaml;
+        grep -qx '    endpoint:' /tmp/bloodledger-fabric-config/core.yaml;
+        export FABRIC_CFG_PATH=/tmp/bloodledger-fabric-config;
+        exec peer node start
+    ports:
+      - "127.0.0.1:7051:7051"
+    volumes:
+      - ./network/generated/organizations/peerOrganizations/mediatrix.bloodledger.local/peers/peer0.mediatrix.bloodledger.local/msp:/opt/bloodledger/fabric/msp:ro
+      - ./network/generated/organizations/peerOrganizations/mediatrix.bloodledger.local/peers/peer0.mediatrix.bloodledger.local/tls:/opt/bloodledger/fabric/tls:ro
+      - peer0-mediatrix-config:/etc/hyperledger/fabric
+      - peer0-mediatrix-data:/var/hyperledger
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -ec
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9443;
+          printf 'GET /healthz HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3;
+          grep -q '^HTTP/1.[01] 200' <&3
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      default:
+        aliases:
+          - peer0.mediatrix.bloodledger.local
+
+  orderer0:
+    image: hyperledger/fabric-orderer:2.5.16
+    hostname: orderer0.orderer.bloodledger.local
+    restart: unless-stopped
+    environment:
+      FABRIC_LOGGING_SPEC: INFO
+      ORDERER_GENERAL_LISTENADDRESS: 0.0.0.0
+      ORDERER_GENERAL_LISTENPORT: 7050
+      ORDERER_GENERAL_LOCALMSPID: OrdererMSP
+      ORDERER_GENERAL_LOCALMSPDIR: /opt/bloodledger/orderer/msp
+      ORDERER_GENERAL_TLS_ENABLED: "true"
+      ORDERER_GENERAL_TLS_PRIVATEKEY: /opt/bloodledger/orderer/tls/server.key
+      ORDERER_GENERAL_TLS_CERTIFICATE: /opt/bloodledger/orderer/tls/server.crt
+      ORDERER_GENERAL_TLS_ROOTCAS: '[/opt/bloodledger/orderer/tls/ca.crt]'
+      ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE: /opt/bloodledger/orderer/tls/server.crt
+      ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY: /opt/bloodledger/orderer/tls/server.key
+      ORDERER_GENERAL_CLUSTER_ROOTCAS: '[/opt/bloodledger/orderer/tls/ca.crt]'
+      ORDERER_GENERAL_BOOTSTRAPMETHOD: none
+      ORDERER_CHANNELPARTICIPATION_ENABLED: "true"
+      ORDERER_ADMIN_LISTENADDRESS: 0.0.0.0:9443
+      ORDERER_ADMIN_TLS_ENABLED: "true"
+      ORDERER_ADMIN_TLS_CERTIFICATE: /opt/bloodledger/orderer/tls/server.crt
+      ORDERER_ADMIN_TLS_PRIVATEKEY: /opt/bloodledger/orderer/tls/server.key
+      ORDERER_ADMIN_TLS_ROOTCAS: '[/opt/bloodledger/orderer/tls/ca.crt]'
+      ORDERER_ADMIN_TLS_CLIENTROOTCAS: '[/opt/bloodledger/orderer/tls/ca.crt]'
+      ORDERER_OPERATIONS_LISTENADDRESS: 0.0.0.0:8443
+      ORDERER_OPERATIONS_TLS_ENABLED: "false"
+      ORDERER_METRICS_PROVIDER: disabled
+      ORDERER_GENERAL_PROFILE_ENABLED: "false"
+    command: orderer
+    ports:
+      - "127.0.0.1:7050:7050"
+    volumes:
+      - ./network/generated/organizations/ordererOrganizations/orderer.bloodledger.local/orderers/orderer0.orderer.bloodledger.local/msp:/opt/bloodledger/orderer/msp:ro
+      - ./network/generated/organizations/ordererOrganizations/orderer.bloodledger.local/orderers/orderer0.orderer.bloodledger.local/tls:/opt/bloodledger/orderer/tls:ro
+      - orderer0-config:/etc/hyperledger/fabric
+      - orderer0-data:/var/hyperledger
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -ec
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/8443;
+          printf 'GET /healthz HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3;
+          grep -q '^HTTP/1.[01] 200' <&3
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      default:
+        aliases:
+          - orderer0.orderer.bloodledger.local
+
   postgres:
     image: postgres:17.10
     restart: unless-stopped
@@ -71,4 +186,8 @@ services:
       start_period: 10s
 
 volumes:
+  orderer0-config:
+  orderer0-data:
+  peer0-mediatrix-config:
+  peer0-mediatrix-data:
   postgres-data:

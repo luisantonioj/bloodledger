@@ -10,8 +10,4 @@ network/scripts/validate-identities.sh
 services="$(docker compose --project-name bloodledger ps --services --status running)"
 grep -qx ca-mediatrix <<<"${services}"
 grep -qx ca-orderer <<<"${services}"
-if grep -Eq '^(peer0-mediatrix|orderer0)$' <<<"${services}"; then
-  echo "A peer or orderer node was started outside this identity batch" >&2
-  exit 1
-fi
 echo "Fabric identity integration and safe repeat execution passed"

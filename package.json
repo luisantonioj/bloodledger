@@ -21,6 +21,8 @@
     "check:database": "node tests/database/static-baseline.mjs",
     "check:fabric-identities": "bash tests/network/static-identities.sh",
     "test:fabric-identities": "bash tests/network/identity-integration.sh",
+    "check:fabric-nodes": "node tests/network/static-nodes.mjs",
+    "test:fabric-nodes": "bash tests/network/node-integration.sh",
     "test:database": "bash tests/database/integration.sh",
     "migrate:up": "npm run migrate:up --workspace @bloodledger/database",
     "migrate:status": "npm run migrate:status --workspace @bloodledger/database",
