@@ -1,10 +1,8 @@
 # BloodLedger Development Network
 
 **Status:** Approved Sprint 1 baseline; CA/identity, peer/orderer, channel, and
-health-contract source/package/install portions implemented on the Jopia Codex
-environment. Health-contract approval and later integration validation are
-blocked by the channel-policy issue recorded in Section 12; supported-host
-verification is still required.
+health-contract lifecycle/integration implemented and validated on the Jopia
+Codex environment. Supported-host verification remains pending under S1-09.
 
 This document is the authoritative source for Sprint 1 Fabric network names,
 development identities, ports, generated-material boundaries, orderer bootstrap,
