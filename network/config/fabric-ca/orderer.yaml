@@ -27,7 +27,7 @@ ldap:
   enabled: false
 
 affiliations:
-  orderer: []
+  bloodledger: []
 
 signing:
   default:

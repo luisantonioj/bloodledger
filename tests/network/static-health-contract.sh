@@ -12,6 +12,7 @@ rg -q 'health:\$\{probeId\}' network/health-contract/src/health-contract.ts
 rg -q '"fabric-contract-api": "2.5.8"' network/health-contract/package.json
 rg -q '"fabric-shim": "2.5.8"' network/health-contract/package.json
 rg -q '"@hyperledger/fabric-gateway": "1.11.0"' network/health-contract/package.json
+rg -q '"emitDecoratorMetadata": true' network/health-contract/tsconfig.json
 rg -q 'health_package_label="bloodledger-health_0.1.0"' network/scripts/health-contract-lib.sh
 rg -q 'health_version="0.1.0"' network/scripts/health-contract-lib.sh
 rg -q 'health_sequence="1"' network/scripts/health-contract-lib.sh

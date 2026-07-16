@@ -13,6 +13,7 @@ for required in \
   BloodLedgerDevChannel MediatrixMSP OrdererMSP \
   orderer0.orderer.bloodledger.local 'V2_5: true' 'V2_0: true' \
   'OrdererType: etcdraft' 'hyperledger/fabric-tools:2.5.16' \
+  "Rule: \"OR('OrdererMSP.orderer')\"" \
   bloodledger-dev 'osnadmin join' 'peer channel join' 'peer channel getinfo'; do
   grep -Fq "${required}" "${files[@]}" || {
     echo "Missing approved channel value or operation: ${required}" >&2

@@ -28,6 +28,13 @@ for config in network/config/fabric-ca/mediatrix.yaml network/config/fabric-ca/o
   grep -q '^version: 1.5.15$' "${config}"
   grep -q '^  enabled: true$' "${config}"
 done
+grep -q '^  bloodledger: \[\]$' network/config/fabric-ca/orderer.yaml
+grep -q -- '--id.type admin --id.affiliation bloodledger' network/scripts/bootstrap-identities.sh
+grep -q -- '--id.type orderer --id.affiliation bloodledger' network/scripts/bootstrap-identities.sh
+if grep -q -- '--id.affiliation orderer' network/scripts/bootstrap-identities.sh; then
+  echo "Orderer role name must not also be used as an affiliation" >&2
+  exit 1
+fi
 for script in network/scripts/*.sh tests/network/*.sh; do bash -n "${script}"; done
 git check-ignore --quiet --no-index network/generated/fabric-ca/mediatrix/ca-key.pem
 if git ls-files | grep -Eq '(^|/)(fabric-ca-server\.db|[^/]*_sk|[^/]*\.pem|identity-secrets\.env)$'; then

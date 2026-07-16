@@ -99,6 +99,9 @@ inspect_channel_block() {
     ($payload.data.config.channel_group.groups.Orderer.values.ConsensusType.value.metadata.consenters | length == 1) and
     ($payload.data.config.channel_group.groups.Orderer.values.ConsensusType.value.metadata.consenters[0].host == "orderer0.orderer.bloodledger.local") and
     ($payload.data.config.channel_group.groups.Orderer.values.ConsensusType.value.metadata.consenters[0].port == 7050) and
+    ($payload.data.config.channel_group.groups.Orderer.groups.OrdererMSP.policies.Writers.policy.value.identities | length == 1) and
+    ($payload.data.config.channel_group.groups.Orderer.groups.OrdererMSP.policies.Writers.policy.value.identities[0].principal.msp_identifier == "OrdererMSP") and
+    ($payload.data.config.channel_group.groups.Orderer.groups.OrdererMSP.policies.Writers.policy.value.identities[0].principal.role == "ORDERER") and
     ((tostring | test("Org1MSP|Org2MSP|example\\.com|mychannel|PRCMSP|DOHMSP")) | not)
   ' "/generated/channel-artifacts/$(basename "${inspect_path}")" >/dev/null
   rm -f "${inspect_path}"

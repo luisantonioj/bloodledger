@@ -79,21 +79,20 @@ calculate_health_package_id() {
 
 verify_committed_health_policy() {
   local committed_json="$1" policy_base64 role_base64
+  # Canonical msp.MSPRole encoding for MediatrixMSP with role PEER.
+  local expected_peer_role_base64="CgxNZWRpYXRyaXhNU1AQAw=="
   policy_base64="$(jq -r '.validation_parameter // empty' <<<"${committed_json}")"
   [[ -n "${policy_base64}" ]] || { echo "Committed definition has no endorsement policy" >&2; exit 1; }
   printf '%s' "${policy_base64}" | base64 --decode >"${health_build_root}/committed-policy.pb"
   health_tools_run configtxlator proto_decode --input /health-contract/build/committed-policy.pb \
-    --type common.SignaturePolicyEnvelope --output /health-contract/build/committed-policy.json
-  jq -e '.identities | length == 1' "${health_build_root}/committed-policy.json" >/dev/null
-  jq -e '.rule.n_out_of.n == 1 and (.rule.n_out_of.rules | length == 1) and .rule.n_out_of.rules[0].signed_by == 0' \
+    --type common.ApplicationPolicy --output /health-contract/build/committed-policy.json
+  jq -e '(.signature_policy.identities | length) == 1 and .signature_policy.identities[0].principal_classification == "ROLE"' \
     "${health_build_root}/committed-policy.json" >/dev/null
-  role_base64="$(jq -r '.identities[0].principal' "${health_build_root}/committed-policy.json")"
-  printf '%s' "${role_base64}" | base64 --decode >"${health_build_root}/committed-role.pb"
-  health_tools_run configtxlator proto_decode --input /health-contract/build/committed-role.pb \
-    --type msp.MSPRole --output /health-contract/build/committed-role.json
-  jq -e '.msp_identifier == "MediatrixMSP" and .role == "PEER"' \
-    "${health_build_root}/committed-role.json" >/dev/null || {
-      echo "Committed endorsement policy is not MediatrixMSP peer-only" >&2
-      exit 1
-    }
+  jq -e '.signature_policy.rule.n_out_of.n == 1 and (.signature_policy.rule.n_out_of.rules | length == 1) and .signature_policy.rule.n_out_of.rules[0].signed_by == 0' \
+    "${health_build_root}/committed-policy.json" >/dev/null
+  role_base64="$(jq -r '.signature_policy.identities[0].principal' "${health_build_root}/committed-policy.json")"
+  [[ "${role_base64}" == "${expected_peer_role_base64}" ]] || {
+    echo "Committed endorsement policy is not MediatrixMSP peer-only" >&2
+    exit 1
+  }
 }

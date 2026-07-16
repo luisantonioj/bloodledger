@@ -20,7 +20,7 @@ const peerName = "peer0.mediatrix.bloodledger.local";
 const repositoryRoot = resolve(process.cwd(), "../..");
 const organizationRoot = join(repositoryRoot, "network/generated/organizations/peerOrganizations/mediatrix.bloodledger.local");
 const adminMsp = join(organizationRoot, "users/Admin@mediatrix.bloodledger.local/msp");
-const peerMsp = join(organizationRoot, "peers/peer0.mediatrix.bloodledger.local/msp");
+const apiGatewayMsp = join(organizationRoot, "users/ApiGateway@mediatrix.bloodledger.local/msp");
 const tlsRootPath = join(organizationRoot, "peers/peer0.mediatrix.bloodledger.local/tls/ca.crt");
 
 const probeId = process.argv[2];
@@ -70,6 +70,29 @@ async function nextWithTimeout(
   ]);
 }
 
+function gatewayErrorText(error: unknown): string {
+  if (typeof error !== "object" || error === null) return String(error);
+  const candidate = error as { message?: unknown; details?: unknown; cause?: unknown };
+  const parts = [String(candidate.message ?? error)];
+  if (Array.isArray(candidate.details)) {
+    for (const detail of candidate.details) {
+      if (typeof detail === "object" && detail !== null && "message" in detail) {
+        parts.push(String((detail as { message: unknown }).message));
+      } else {
+        parts.push(String(detail));
+      }
+    }
+  } else if (candidate.details !== undefined) {
+    parts.push(String(candidate.details));
+  }
+  if (candidate.cause !== undefined && candidate.cause !== error) {
+    parts.push(gatewayErrorText(candidate.cause));
+  }
+  return parts.join(" ");
+}
+
+const matchesGatewayError = (pattern: RegExp) => (error: unknown): boolean => pattern.test(gatewayErrorText(error));
+
 async function main(): Promise<void> {
   const admin = await gatewayFor(adminMsp);
   try {
@@ -114,21 +137,21 @@ async function main(): Promise<void> {
 
   await assert.rejects(
     contract.evaluateTransaction("ReadProbe", `${probeId}-missing`),
-    /HEALTH_PROBE_NOT_FOUND/,
+    matchesGatewayError(/HEALTH_PROBE_NOT_FOUND/),
     "Missing ReadProbe did not return the stable not-found error",
   );
-  await assert.rejects(contract.submitTransaction("RecordProbe"), /arguments|parameter|Expected/i);
-  await assert.rejects(contract.submitTransaction("RecordProbe", probeId, "unexpected"), /arguments|parameter|Expected/i);
-  await assert.rejects(contract.evaluateTransaction("ReadProbe"), /arguments|parameter|Expected/i);
-  await assert.rejects(contract.evaluateTransaction("ReadProbe", probeId, "unexpected"), /arguments|parameter|Expected/i);
+  await assert.rejects(contract.submitTransaction("RecordProbe"), matchesGatewayError(/arguments|parameter|Expected/i));
+  await assert.rejects(contract.submitTransaction("RecordProbe", probeId, "unexpected"), matchesGatewayError(/arguments|parameter|Expected/i));
+  await assert.rejects(contract.evaluateTransaction("ReadProbe"), matchesGatewayError(/arguments|parameter|Expected/i));
+  await assert.rejects(contract.evaluateTransaction("ReadProbe", probeId, "unexpected"), matchesGatewayError(/arguments|parameter|Expected/i));
 
-  const unauthorized = await gatewayFor(peerMsp);
+  const unauthorized = await gatewayFor(apiGatewayMsp);
   try {
     const unauthorizedContract = unauthorized.gateway.getNetwork(channelName).getContract(chaincodeName, contractName);
     await assert.rejects(
       unauthorizedContract.submitTransaction("RecordProbe", `${probeId}-forbidden`),
-      /HEALTH_PROBE_FORBIDDEN/,
-      "Unauthorized peer identity was not rejected",
+      matchesGatewayError(/HEALTH_PROBE_FORBIDDEN/),
+      "Unauthorized API client identity was not rejected",
     );
   } finally {
     unauthorized.gateway.close();

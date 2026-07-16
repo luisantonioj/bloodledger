@@ -28,7 +28,7 @@ Organizations:
         Rule: "OR('OrdererMSP.admin', 'OrdererMSP.orderer')"
       Writers:
         Type: Signature
-        Rule: "OR('OrdererMSP.admin', 'OrdererMSP.orderer')"
+        Rule: "OR('OrdererMSP.orderer')"
       Admins:
         Type: Signature
         Rule: "OR('OrdererMSP.admin')"

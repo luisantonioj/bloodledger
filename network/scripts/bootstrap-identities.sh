@@ -107,8 +107,8 @@ ca_exec ca-orderer sh -ceu '
   export FABRIC_CA_CLIENT_HOME=/work/fabric-ca/clients/orderer-registrar
   fabric-ca-client enroll --url "https://${ORDERER_CA_ADMIN_USER}:${ORDERER_CA_ADMIN_PASSWORD_ENCODED}@ca-orderer:7054" --caname ca.orderer.bloodledger.local --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null
   . /work/secrets/identity-secrets.env
-  fabric-ca-client register --caname ca.orderer.bloodledger.local --id.name orderer-admin --id.secret "$ORDERER_ADMIN_SECRET" --id.type admin --id.affiliation orderer --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null 2>&1
-  fabric-ca-client register --caname ca.orderer.bloodledger.local --id.name orderer0 --id.secret "$ORDERER0_SECRET" --id.type orderer --id.affiliation orderer --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null 2>&1
+  fabric-ca-client register --caname ca.orderer.bloodledger.local --id.name orderer-admin --id.secret "$ORDERER_ADMIN_SECRET" --id.type admin --id.affiliation bloodledger --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null 2>&1
+  fabric-ca-client register --caname ca.orderer.bloodledger.local --id.name orderer0 --id.secret "$ORDERER0_SECRET" --id.type orderer --id.affiliation bloodledger --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem >/dev/null 2>&1
 '
 
 ca_exec ca-mediatrix sh -ceu "

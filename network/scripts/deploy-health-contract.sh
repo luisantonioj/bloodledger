@@ -10,12 +10,19 @@ assert_health_prerequisites
 package_id="$(<"${health_package_id_file}")"
 
 installed_json="$(health_tools_run peer lifecycle chaincode queryinstalled --output json)"
-matching_installed="$(jq -r --arg label "${health_package_label}" '.installed_chaincodes[]? | select(.label == $label) | .package_id' <<<"${installed_json}")"
-if [[ -n "${matching_installed}" && "${matching_installed}" != "${package_id}" ]]; then
-  echo "Installed package label conflicts with the calculated package ID" >&2
-  exit 1
+mapfile -t matching_installed < <(jq -r --arg label "${health_package_label}" \
+  '.installed_chaincodes[]? | select(.label == $label) | .package_id' <<<"${installed_json}")
+exact_package_installed=false
+printf '%s\n' "${matching_installed[@]}" | grep -Fxq "${package_id}" && exact_package_installed=true
+if [[ "${exact_package_installed}" == false && "${#matching_installed[@]}" -gt 0 ]]; then
+  existing_for_label="$(health_tools_run peer lifecycle chaincode querycommitted \
+    --channelID "${channel_name}" --name "${health_chaincode_name}" --output json 2>/dev/null || true)"
+  if [[ -n "${existing_for_label}" ]]; then
+    echo "Installed package label conflicts with the calculated package ID for an existing definition" >&2
+    exit 1
+  fi
 fi
-if [[ -z "${matching_installed}" ]]; then
+if [[ "${exact_package_installed}" == false ]]; then
   health_tools_run peer lifecycle chaincode install "/health-contract/build/$(basename "${health_package_archive}")"
 fi
 health_tools_run peer lifecycle chaincode queryinstalled --output json | jq -e \
@@ -31,6 +38,13 @@ if [[ -n "${existing_definition}" ]]; then
       exit 1
     }
   verify_committed_health_policy "${existing_definition}"
+  approved_json="$(health_tools_run peer lifecycle chaincode queryapproved --channelID "${channel_name}" \
+    --name "${health_chaincode_name}" --sequence "${health_sequence}" --output json)"
+  jq -e --arg package_id "${package_id}" '.source.Type.LocalPackage.package_id == $package_id' \
+    <<<"${approved_json}" >/dev/null || {
+      echo "Approved health contract package ID conflicts with the reproducible package" >&2
+      exit 1
+    }
   echo "Identical health contract definition is already committed; lifecycle reuse validated"
   exit 0
 fi

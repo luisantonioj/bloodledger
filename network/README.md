@@ -134,6 +134,8 @@ defined before Sprint 2. Sprint 1 does not enroll individual application users.
 
 - Node OUs are enabled for the `client`, `peer`, `admin`, and `orderer` roles so
   MSP role checks match the registered identity types.
+- Orderer organization identities use the non-role `bloodledger` affiliation;
+  an affiliation must not duplicate a Node OU role such as `orderer`.
 - Enrollment certificates and TLS certificates are requested separately.
 - CA bootstrap administrators are used only for registration/enrollment work.
 - Node identities cannot register other identities.
@@ -355,7 +357,7 @@ The live check runs channel creation twice and verifies stable artifacts and
 membership. It preserves CA containers, the identity completion marker,
 PostgreSQL container state, and `postgres-data`.
 
-## 13. Implemented health-contract commands and current blocker
+## 13. Implemented health-contract commands and validation
 
 The disposable TypeScript `HealthContract`, its contract tests, deterministic
 package staging, lifecycle automation, and Gateway probe validator live only
@@ -382,12 +384,20 @@ install, approve, readiness, commit, and committed-definition queries. It
 stops on package or definition conflicts and never changes version `0.1.0` or
 sequence `1` silently.
 
-On 2026-07-16 the package built reproducibly and installed with label
-`bloodledger-health_0.1.0`. The first approval transaction created orderer
-block 1, but `peer0-mediatrix` rejected that block because Fabric reported that
-zero `Writers` sub-policies were satisfied. The effective orderer height is 2
-and peer height is 1. No organization approval or committed definition is
-visible to the peer. Approval, commit, invoke, commit-status, chaincode-event,
-duplicate, and query integration remain blocked until the separately
-authorized channel portion is corrected; this health-contract batch does not
-reset or repair the channel.
+On 2026-07-16 the original approval block exposed an invalid orderer enrollment:
+the `orderer` identity type and identically named `orderer` affiliation produced
+two role OUs, so the peer rejected the block signer before the channel Writers
+policy could succeed. The orderer organization now uses the non-role
+`bloodledger` affiliation, generated channel blocks assert the least-privilege
+`OrdererMSP.orderer` Writers policy, and live identity validation requires one
+role OU per orderer identity.
+
+After the authorized channel-only recreation, package
+`bloodledger-health_0.1.0:6561b8439ec026f5ea093ab2aeefd0c2dd6b9b114bbb98e76c81359825866724`
+installed and version `0.1.0`, sequence `1` committed with both lifecycle
+transactions reported `VALID`. Repeated deployment verified the exact approved
+package ID, committed definition, and Mediatrix peer-only endorsement policy.
+The Gateway probe then verified `VALID` commit status, exact
+`HealthProbeRecorded` event correlation and payload, query equality, duplicate
+idempotency with no duplicate event, stable not-found and argument failures,
+and chaincode-level rejection of the `api-gateway` client identity.

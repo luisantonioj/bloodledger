@@ -82,6 +82,9 @@ ca_exec ca-orderer sh -ceu '
     set -- $expected
     output="$(fabric-ca-client identity list --id "$1" --caname ca.orderer.bloodledger.local --tls.certfiles /work/fabric-ca/orderer/tls-cert.pem 2>&1)"
     printf "%s\n" "$output" | grep -Eiq "^Name: $1, Type: $2,"
+    if [ "$1" != orderer-ca-admin ]; then
+      printf "%s\n" "$output" | grep -Eiq "Affiliation: bloodledger(,|$)"
+    fi
     if [ "$1" = orderer-ca-admin ]; then
       printf "%s" "$output" | grep -q "hf.Registrar.Roles"
     elif printf "%s" "$output" | grep -q "hf.Registrar.Roles"; then
@@ -98,6 +101,12 @@ if [[ "${api_attributes}" != "${expected_api_attributes}" ]]; then
   echo "api-gateway certificate has missing or unapproved Fabric attributes" >&2
   exit 1
 fi
+orderer_admin_subject="$(openssl x509 -in "${orderer_org}/users/Admin@orderer.bloodledger.local/msp/signcerts/cert.pem" -noout -subject -nameopt RFC2253)"
+orderer_node_subject="$(openssl x509 -in "${orderer_org}/orderers/orderer0.orderer.bloodledger.local/msp/signcerts/cert.pem" -noout -subject -nameopt RFC2253)"
+[[ "$(grep -o 'OU=admin' <<<"${orderer_admin_subject}" | wc -l)" -eq 1 ]]
+[[ "$(grep -o 'OU=orderer' <<<"${orderer_node_subject}" | wc -l)" -eq 1 ]]
+grep -q 'OU=bloodledger' <<<"${orderer_admin_subject}"
+grep -q 'OU=bloodledger' <<<"${orderer_node_subject}"
 for certificate in \
   "${peer_org}/users/Admin@mediatrix.bloodledger.local/msp/signcerts/cert.pem" \
   "${peer_org}/users/ApiGateway@mediatrix.bloodledger.local/msp/signcerts/cert.pem" \
