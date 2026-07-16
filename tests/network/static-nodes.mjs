@@ -37,8 +37,13 @@ assert(peer.environment.CORE_LEDGER_STATE_STATEDATABASE === "goleveldb", "peer m
 assert(peer.environment.CORE_PEER_TLS_ENABLED === "true", "peer network TLS must be enabled");
 assert(peer.environment.CORE_OPERATIONS_LISTENADDRESS === "0.0.0.0:9443", "peer operations endpoint mismatch");
 assert(peer.environment.CORE_OPERATIONS_TLS_ENABLED === "false", "peer operations TLS exception mismatch");
-assert(peer.command?.join(" ").includes("endpoint: unix:///var/run/docker.sock"), "peer must remove the unused Docker builder endpoint");
-assert(peer.command?.join(" ").includes("exec peer node start"), "peer command must start the node after scoped configuration");
+assert(peer.command?.join(" ") === "peer node start", "peer command must start the node");
+assert(peer.environment.CORE_VM_ENDPOINT === "unix:///var/run/docker.sock", "peer Docker builder endpoint mismatch");
+assert(peer.environment.CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE === "bloodledger_default", "chaincode network must be project-scoped");
+assert(peer.environment.CORE_CHAINCODE_NODE_RUNTIME === "hyperledger/fabric-nodeenv@sha256:17e2d447ca0de5b4e3f6950a1c9b24ecfdeecdd90e111e11d771970d35159bf1", "Node chaincode runtime image must be digest-pinned");
+assert(peer.environment.CORE_CHAINCODE_PULL === "false", "chaincode builder must not pull a floating image");
+const dockerSocket = mount(peer, "/var/run/docker.sock");
+assert(dockerSocket?.type === "bind" && dockerSocket.source === "/var/run/docker.sock", "peer Docker builder socket mismatch");
 assert(orderer.environment.ORDERER_GENERAL_LOCALMSPID === "OrdererMSP", "orderer MSP ID mismatch");
 assert(orderer.environment.ORDERER_GENERAL_BOOTSTRAPMETHOD === "none", "orderer bootstrap method mismatch");
 assert(orderer.environment.ORDERER_CHANNELPARTICIPATION_ENABLED === "true", "channel participation must be enabled");

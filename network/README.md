@@ -1,8 +1,10 @@
 # BloodLedger Development Network
 
-**Status:** Approved Sprint 1 baseline; CA/identity and peer/orderer node
-portions implemented on the Jopia Codex environment, with supported-host
-verification still required
+**Status:** Approved Sprint 1 baseline; CA/identity, peer/orderer, channel, and
+health-contract source/package/install portions implemented on the Jopia Codex
+environment. Health-contract approval and later integration validation are
+blocked by the channel-policy issue recorded in Section 12; supported-host
+verification is still required.
 
 This document is the authoritative source for Sprint 1 Fabric network names,
 development identities, ports, generated-material boundaries, orderer bootstrap,
@@ -351,6 +353,41 @@ npm run test:fabric-channel
 
 The live check runs channel creation twice and verifies stable artifacts and
 membership. It preserves CA containers, the identity completion marker,
-PostgreSQL container state, and `postgres-data`. The health-contract lifecycle
-and transaction path remain explicitly deferred to the separately authorized
-S1-07 batch.
+PostgreSQL container state, and `postgres-data`.
+
+## 13. Implemented health-contract commands and current blocker
+
+The disposable TypeScript `HealthContract`, its contract tests, deterministic
+package staging, lifecycle automation, and Gateway probe validator live only
+below the approved `network/health-contract/` and `network/scripts/`
+boundaries. The exact direct dependency pins are `fabric-contract-api` `2.5.8`,
+`fabric-shim` `2.5.8`, `@hyperledger/fabric-gateway` `1.11.0`, `typescript`
+`5.9.3`, and `@types/node` `24.13.3` in the single root lockfile.
+
+Component checks and lifecycle commands are:
+
+```bash
+npm run check:fabric-health-contract
+npm run test:fabric-health-contract
+npm run package:fabric-health-contract
+npm run deploy:fabric-health-contract
+npm run probe:fabric-health-contract -- s1-07-probe-001
+```
+
+The package command creates only ignored output below
+`network/health-contract/build/`, normalizes generated archive metadata, and
+reuses an identical package ID. The deploy command validates services,
+identity material, channel membership, and equal orderer/peer heights before
+install, approve, readiness, commit, and committed-definition queries. It
+stops on package or definition conflicts and never changes version `0.1.0` or
+sequence `1` silently.
+
+On 2026-07-16 the package built reproducibly and installed with label
+`bloodledger-health_0.1.0`. The first approval transaction created orderer
+block 1, but `peer0-mediatrix` rejected that block because Fabric reported that
+zero `Writers` sub-policies were satisfied. The effective orderer height is 2
+and peer height is 1. No organization approval or committed definition is
+visible to the peer. Approval, commit, invoke, commit-status, chaincode-event,
+duplicate, and query integration remain blocked until the separately
+authorized channel portion is corrected; this health-contract batch does not
+reset or repair the channel.

@@ -9,7 +9,8 @@
   },
   "packageManager": "npm@11.13.0",
   "workspaces": [
-    "database"
+    "database",
+    "network/health-contract"
   ],
   "scripts": {
     "check:format": "node tests/repository/json-format.mjs",
@@ -25,6 +26,11 @@
     "test:fabric-nodes": "bash tests/network/node-integration.sh",
     "check:fabric-channel": "bash tests/network/static-channel.sh",
     "test:fabric-channel": "bash tests/network/channel-integration.sh",
+    "check:fabric-health-contract": "npm run check --workspace @bloodledger/health-contract && bash tests/network/static-health-contract.sh",
+    "test:fabric-health-contract": "npm run test --workspace @bloodledger/health-contract",
+    "package:fabric-health-contract": "bash network/scripts/package-health-contract.sh",
+    "deploy:fabric-health-contract": "bash network/scripts/deploy-health-contract.sh",
+    "probe:fabric-health-contract": "npm run probe --workspace @bloodledger/health-contract",
     "test:database": "bash tests/database/integration.sh",
     "migrate:up": "npm run migrate:up --workspace @bloodledger/database",
     "migrate:status": "npm run migrate:status --workspace @bloodledger/database",

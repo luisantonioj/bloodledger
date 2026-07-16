@@ -1,6 +1,12 @@
 import { readFile } from "node:fs/promises";
 
-const files = ["package.json", "package-lock.json", "database/package.json"];
+const files = [
+  "package.json",
+  "package-lock.json",
+  "database/package.json",
+  "network/health-contract/package.json",
+  "network/health-contract/tsconfig.json",
+];
 
 for (const file of files) {
   const source = await readFile(new URL(`../../${file}`, import.meta.url), "utf8");
