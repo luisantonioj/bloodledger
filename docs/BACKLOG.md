@@ -106,7 +106,7 @@ Lat's host summaries are optional portability evidence.
 
 ### BL-INV-01 — Register unique blood unit
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 2  
+**Priority:** Must | **Status:** Ready; selected | **Target:** Sprint 2
 **Requirements:** FR-01, BR-INV-01, NFR-01, NFR-02
 
 Acceptance: authorized registration creates one allowlisted asset and rejects a
@@ -114,7 +114,7 @@ duplicate or prohibited field.
 
 ### BL-INV-02 — Enforce unit lifecycle
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 2  
+**Priority:** Must | **Status:** Ready; selected | **Target:** Sprint 2
 **Requirements:** FR-08, BR-INV-02–06, NFR-08
 
 Acceptance: allowed transitions succeed deterministically; invalid, duplicate,
@@ -122,8 +122,8 @@ or expired-unit operations fail without partial change.
 
 ### BL-INV-03 — Evaluate expiry safely
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 2  
-**Dependencies:** RQ-03  
+**Priority:** Must | **Status:** Ready; selected under PA-S2-02 | **Target:** Sprint 2
+**Dependencies:** PA-S2-02; RQ-03 remains open for replacement policy
 **Requirements:** FR-08, FR-09
 
 Acceptance: a scheduled application trigger submits a deterministic threshold

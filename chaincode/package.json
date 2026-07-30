@@ -1,0 +1,29 @@
+{
+  "name": "@bloodledger/inventory-contract",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sprint 2 deterministic BloodLedger inventory contract",
+  "main": "dist/src/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check:format": "node scripts/check-format.mjs",
+    "lint": "node scripts/lint.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check": "npm run check:format && npm run lint && npm run typecheck",
+    "test": "npm run build && node --test --test-isolation=none build/compiled/test/*.test.js",
+    "validate:network": "npm run build && node build/compiled/scripts/validate-network.js",
+    "start": "fabric-chaincode-node start"
+  },
+  "dependencies": {
+    "@hyperledger/fabric-gateway": "1.11.0",
+    "fabric-contract-api": "2.5.8",
+    "fabric-shim": "2.5.8"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "5.9.3"
+  }
+}

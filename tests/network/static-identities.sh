@@ -31,11 +31,14 @@ done
 grep -q '^  bloodledger: \[\]$' network/config/fabric-ca/orderer.yaml
 grep -q -- '--id.type admin --id.affiliation bloodledger' network/scripts/bootstrap-identities.sh
 grep -q -- '--id.type orderer --id.affiliation bloodledger' network/scripts/bootstrap-identities.sh
+grep -q -- 'bloodledger.role=API_GATEWAY:ecert' network/scripts/bootstrap-identities.sh
+grep -q -- 'bloodledger.institution_id=INST_MEDIATRIX:ecert' network/scripts/bootstrap-identities.sh
 if grep -q -- '--id.affiliation orderer' network/scripts/bootstrap-identities.sh; then
   echo "Orderer role name must not also be used as an affiliation" >&2
   exit 1
 fi
 for script in network/scripts/*.sh tests/network/*.sh; do bash -n "${script}"; done
+grep -q 'REPLACE_API_GATEWAY_ENROLLMENT' network/scripts/reenroll-api-gateway.sh
 git check-ignore --quiet --no-index network/generated/fabric-ca/mediatrix/ca-key.pem
 if git ls-files | grep -Eq '(^|/)(fabric-ca-server\.db|[^/]*_sk|[^/]*\.pem|identity-secrets\.env)$'; then
   echo "Tracked generated Fabric material detected" >&2

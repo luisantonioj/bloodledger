@@ -7,10 +7,12 @@ These instructions apply to the entire repository.
 BloodLedger has an approved Sprint 0 baseline and Sprint 1 implementation guide.
 Sprint 1 infrastructure implementation and Jopia-host validation completed on
 2026-07-16, and Jopia accepted the accountable-owner Sprint Review on
-2026-07-30. Additional Buno or Lat host evidence is optional. Sprint 2 planning
-started on 2026-07-30, but its domain implementation is not authorized; do not
-add Sprint 2 code or configuration unless the user explicitly authorizes that
-implementation work after its entry gates are met.
+2026-07-30. Additional Buno or Lat host evidence is optional. Sprint 2
+implementation was explicitly authorized on 2026-07-30 using the versioned
+`SYNTHETIC_INVENTORY_V1` prototype assumptions while institutional
+data-gathering approval is pending. These assumptions are not Mediatrix or
+clinical policy and must be superseded, not silently edited, when approved
+evidence arrives.
 
 The project is a research prototype. Never describe it as production-ready,
 clinically validated, regulator-approved, or a deployed multi-organization

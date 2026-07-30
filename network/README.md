@@ -130,9 +130,26 @@ belong in `.env.example`, Git, logs, or command output captured as evidence.
 | Orderer CA | `orderer-admin` | `admin` | Ordering organization/channel administration | No |
 | Orderer CA | `orderer0` | `orderer` | Orderer enrollment and TLS identity | No |
 
-The `api-gateway` identity is planned with application attributes identifying it
-as a Mediatrix service identity. Exact attribute names and chaincode checks are
-defined before Sprint 2. Sprint 1 does not enroll individual application users.
+The `api-gateway` enrollment certificate carries
+`bloodledger.role=API_GATEWAY` and
+`bloodledger.institution_id=INST_MEDIATRIX`. The Sprint 2 inventory contract
+validates these together with `MediatrixMSP`, `hf.EnrollmentID=api-gateway`, and
+`hf.Type=client`. Existing Sprint 1 identity material must use the documented
+identity-only scoped recreation before Sprint 2 network validation. Individual
+application users are not enrolled in Fabric; opaque authenticated-user
+attribution is supplied by the later application boundary.
+
+For a preserved Sprint 1 CA/channel whose existing `api-gateway` certificate
+predates those attributes, replace only that generated enrollment:
+
+```bash
+BLOODLEDGER_API_GATEWAY_REENROLL=REPLACE_API_GATEWAY_ENROLLMENT \
+  network/scripts/reenroll-api-gateway.sh
+```
+
+The command preserves CA roots and database, peer/orderer identities, channel,
+ledgers, and unrelated resources. It requires explicit intent because it
+replaces the generated API service enrollment.
 
 ### 5.2 Certificate rules
 

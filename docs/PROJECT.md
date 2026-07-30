@@ -215,6 +215,14 @@ The exact permissions are defined in `docs/REQUIREMENTS.md`.
   multi-organization governance.
 - All dates and times are stored in UTC and rendered in Asia/Manila time unless
   a later accepted architecture decision changes this convention.
+- While institutional data-gathering approval is pending, later-sprint domain
+  values may be implemented only as explicitly approved, versioned prototype
+  assumptions using synthetic evidence. These values prove software behavior;
+  they are not Mary Mediatrix policy, clinical guidance, or validation evidence.
+- A prototype assumption has an owner, effective date, affected requirements,
+  limitations, replacement trigger, and immutable version. New stakeholder
+  evidence creates a superseding version rather than silently changing existing
+  ledger events, datasets, models, or test results.
 
 ## 11. Success criteria
 

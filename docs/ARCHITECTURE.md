@@ -342,6 +342,13 @@ activation alone or query the onboarding database. Updating that mapping is an
 explicit governed deployment/configuration action, not a side effect of
 application approval.
 
+Sprint 2 replaceable inventory values live in one immutable machine-readable
+policy artifact packaged with the chaincode. Assets and events store its policy
+version. A changed allowlist or threshold creates a new policy and chaincode
+definition version/sequence; it does not edit the old policy or reinterpret
+existing expiry timestamps. Structural authorization, privacy, determinism,
+idempotency, concurrency, and audit rules are not configurable assumptions.
+
 ## 9. Synchronization design
 
 1. The application assigns an idempotency key and correlation ID at capture.
@@ -487,6 +494,7 @@ time, correlation ID, and safe event name without secrets or prohibited data.
 | ADR-028 | Accepted | Use the Fabric operations `/healthz` endpoint on internal peer port 9443 and internal orderer port 8443, with no host publication | Supplies deterministic Compose health checks without expanding host bindings; operations TLS may be disabled only on the isolated development Compose network |
 | ADR-029 | Accepted | Start the Fabric 2.5 orderer without a system channel by using `BootstrapMethod: none` and the channel participation model; use single-consenter Raft (`etcdraft`) when S1-07 creates the application channel | Lets S1-06 prove a healthy channel-less orderer without inventing a genesis block or entering S1-07; the mutually authenticated admin endpoint remains internal and unexposed |
 | ADR-030 | Accepted | Keep institutional applications, approval, activation, users, sessions, and verification evidence off-chain; application activation is separate from deferred Fabric membership | Enables controlled application participation without weakening the single-Mediatrix-MSP prototype or coupling ordinary administration to CA, peer, channel, or endorsement changes |
+| ADR-031 | Accepted | Isolate pending institutional domain decisions in immutable, versioned prototype-assumption artifacts; preserve the version on ledger events, datasets, and models and supersede prospectively | Allows implementation with synthetic evidence while data-gathering approval is pending without presenting assumptions as Mediatrix or clinical policy |
 
 ## 16. Sprint 1 architecture gates
 

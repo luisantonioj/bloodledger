@@ -12,6 +12,9 @@
 - **Must** is required for the research prototype.
 - **Proposed** requires stakeholder or technical confirmation before the linked
   implementation begins.
+- **Prototype assumption** is an owner-approved, versioned, synthetic decision
+  used while institutional evidence is pending. It is replaceable and cannot be
+  represented as clinical or Mary Mediatrix policy.
 - Acceptance statements are testable targets, not evidence that a test passed.
 
 ## 2. Roles and permissions
@@ -284,6 +287,10 @@ Acceptance:
   is never edited or deleted.
 - **BR-INV-06:** A read-model value must expose whether it is pending,
   committed, failed, or conflicted.
+- **BR-INV-07:** Replaceable domain values use an immutable policy version.
+  Existing assets and events retain the policy version under which they were
+  accepted; a later policy applies prospectively unless an authorized,
+  separately audited correction is implemented.
 
 ### 4.2 Requests and transfers
 
@@ -518,7 +525,21 @@ withdrawal creates a new `SUBMITTED` application linked to the prior record.
 | NFR-09–10, NFR-12 | Setup, health, reset, and clean-machine validation | Sprint 1 |
 | FR-15–16, BR-ONB-01–16, NFR-13 | Onboarding API, lifecycle, authorization, audit, and UI tests | Sprints 4–5/testing |
 
-## 8. Open requirement decisions
+## 8. Prototype assumption register
+
+| ID | Status | Version | Owner/date | Decision and limitation | Replacement trigger |
+|---|---|---|---|---|---|
+| PA-S2-01 | Accepted prototype assumption | `SYNTHETIC_INVENTORY_V1` | Jopia / 2026-07-30 | Sprint 2 supports only `A_POSITIVE` and `O_POSITIVE`, with `RED_BLOOD_CELLS` and `PLATELETS`. This is a minimal synthetic allowlist, not a claim about Mediatrix inventory. | Approved Mediatrix label fixtures and supported inventory catalogue |
+| PA-S2-02 | Accepted prototype assumption | `SYNTHETIC_INVENTORY_V1` | Jopia / 2026-07-30 | Synthetic maximum collection-to-expiry intervals are 72 hours for `RED_BLOOD_CELLS` and 36 hours for `PLATELETS`; synthetic near-expiry leads are 12 and 6 hours respectively. These deliberately non-clinical values prove deterministic policy handling only. | Approved component shelf-life and near-expiry policy |
+| PA-S2-03 | Accepted prototype assumption | `SYNTHETIC_INVENTORY_V1` | Jopia / 2026-07-30 | The initial committed state is `AVAILABLE`; Sprint 2 permits only `AVAILABLE -> EXPIRED`. Transfer and exception transitions remain deferred. | Approved Sprint 3 transfer/custody transition table |
+| PA-S2-04 | Accepted prototype assumption | `SYNTHETIC_INVENTORY_V1` | Jopia / 2026-07-30 | `MediatrixMSP` and the `api-gateway` service identity submit for `INST_MEDIATRIX`; certificate attributes and opaque application actor attribution are both validated. | Approved application identity integration or future governed organization onboarding |
+| PA-ML-01 | Accepted planning assumption | Assigned ML sprint version | ML owner / activating sprint | Synthetic training data may be generated with a recorded schema, generator version, seed, time range, lineage, and `SYNTHETIC_DATA` classification. Metrics are `SIMULATION_ONLY`, use time-ordered validation, and do not predict Mediatrix performance. | Approved anonymized Mediatrix dataset and data-governance decision |
+
+Prototype-assumption versions are immutable. A replacement adds a new version,
+marks the earlier one superseded for new operations, preserves historical
+interpretation, and records compatibility, migration, dataset, and model impact.
+
+## 9. Open requirement decisions
 
 These do not all block Sprint 1, but each must be accepted before its target
 sprint:
@@ -526,8 +547,8 @@ sprint:
 | ID | Question | Needed before |
 |---|---|---|
 | RQ-01 | Which institutions have approved application participation? Active secondary hospitals may see approved city-wide aggregates plus only their own requests, transfers, receipt records, profile, and users; what institution-specific exceptions are approved? | Sprint 5 |
-| RQ-02 | Which blood types/components and ISBT 128 data structures are supported in the prototype? | Sprint 2/4 |
-| RQ-03 | What are clinically approved component shelf-life and near-expiry thresholds? | Sprint 2 |
+| RQ-02 | Which Mediatrix blood types/components and ISBT 128 data structures replace the minimal `PA-S2-01` synthetic allowlist? | Sprint 4 or before replacing `SYNTHETIC_INVENTORY_V1` |
+| RQ-03 | What clinically approved component shelf-life and near-expiry thresholds replace `PA-S2-02`? | Before any clinical or operational interpretation |
 | RQ-04 | Who may reallocate an approved reservation for a more urgent request? | Sprint 3 |
 | RQ-05 | What are the final RPS scale, weights, wait cap, and tie-break rule? | Sprint 3 |
 | RQ-06 | What are the final BROA criteria, normalization, weights, and eligibility constraints? | Sprint 3 |

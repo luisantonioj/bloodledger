@@ -96,8 +96,14 @@ ca_exec ca-orderer sh -ceu '
 api_cert="${peer_org}/users/ApiGateway@mediatrix.bloodledger.local/msp/signcerts/cert.pem"
 api_attributes="$(openssl x509 -in "${api_cert}" -noout -text | \
   sed -n 's/^[[:space:]]*\({"attrs":.*}\)[[:space:]]*$/\1/p')"
-expected_api_attributes='{"attrs":{"hf.Affiliation":"mediatrix","hf.EnrollmentID":"api-gateway","hf.Type":"client"}}'
-if [[ "${api_attributes}" != "${expected_api_attributes}" ]]; then
+if ! jq -e '
+  .attrs["hf.Affiliation"] == "mediatrix" and
+  .attrs["hf.EnrollmentID"] == "api-gateway" and
+  .attrs["hf.Type"] == "client" and
+  .attrs["bloodledger.role"] == "API_GATEWAY" and
+  .attrs["bloodledger.institution_id"] == "INST_MEDIATRIX" and
+  (.attrs | length) == 5
+' <<<"${api_attributes}" >/dev/null; then
   echo "api-gateway certificate has missing or unapproved Fabric attributes" >&2
   exit 1
 fi

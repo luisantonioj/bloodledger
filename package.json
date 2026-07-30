@@ -9,6 +9,7 @@
   },
   "packageManager": "npm@11.13.0",
   "workspaces": [
+    "chaincode",
     "database",
     "network/health-contract"
   ],
@@ -20,6 +21,10 @@
     "check:workspace": "npm ls --workspaces --include-workspace-root --depth=0",
     "check:foundation": "npm run check:format && npm run check:workspace && npm run check:versions && npm run check:ignore && npm run check:env",
     "check:database": "node tests/database/static-baseline.mjs",
+    "check:inventory-contract": "npm run check --workspace @bloodledger/inventory-contract && bash tests/chaincode/static-inventory-contract.sh",
+    "test:inventory-contract": "npm run test --workspace @bloodledger/inventory-contract",
+    "package:inventory-contract": "bash network/scripts/package-inventory-contract.sh",
+    "deploy:inventory-contract": "bash network/scripts/deploy-inventory-contract.sh",
     "check:fabric-identities": "bash tests/network/static-identities.sh",
     "test:fabric-identities": "bash tests/network/identity-integration.sh",
     "check:fabric-nodes": "node tests/network/static-nodes.mjs",

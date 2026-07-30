@@ -14,14 +14,19 @@ repository foundation, PostgreSQL migration baseline, one-organization Fabric
 development network, development channel, disposable health contract, and
 S1-08 operational command interface are implemented, Jopia's canonical-host
 evidence is recorded, and Jopia accepted the Sprint Review on 2026-07-30.
-Additional Buno or Lat host evidence is optional. Sprint 2 planning has started,
-but domain implementation is not yet authorized. This is a research prototype,
-not a production or clinically validated system.
+Additional Buno or Lat host evidence is optional. Sprint 2 implementation is
+authorized under versioned synthetic prototype assumptions. This is a research
+prototype, not a production or clinically validated system.
 
 The roadmap now includes invitation-based institutional application and
 administrator activation for later API/web sprints. Application approval is
 separate from Fabric membership and does not change the one-organization
 prototype topology.
+
+Sprint 2 is authorized under the versioned `SYNTHETIC_INVENTORY_V1` prototype
+assumptions while Mediatrix data-gathering approval is pending. The values are
+non-clinical software-test inputs and must be superseded rather than silently
+edited when approved institutional evidence arrives.
 
 The documents have been drafted from the revised manuscript, updated research
 proposal, summary of revisions, and updated Gantt workbook. Sprint 0 becomes
@@ -98,7 +103,7 @@ bloodledger/
 ├── apps/web/               # Sprint 5
 ├── services/api/           # Sprint 4/5
 ├── services/forecasting/   # Sprint 3
-├── chaincode/              # Sprint 2+
+├── chaincode/              # Sprint 2 inventory contract
 ├── database/               # Sprint 1+
 ├── network/                # Sprint 1+
 ├── scripts/                # Sprint 1+

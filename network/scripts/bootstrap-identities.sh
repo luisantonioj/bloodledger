@@ -100,7 +100,7 @@ ca_exec ca-mediatrix sh -ceu '
   . /work/secrets/identity-secrets.env
   fabric-ca-client register --caname ca.mediatrix.bloodledger.local --id.name mediatrix-admin --id.secret "$MEDIATRIX_ADMIN_SECRET" --id.type admin --id.affiliation mediatrix --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null 2>&1
   fabric-ca-client register --caname ca.mediatrix.bloodledger.local --id.name peer0 --id.secret "$PEER0_SECRET" --id.type peer --id.affiliation mediatrix --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null 2>&1
-  fabric-ca-client register --caname ca.mediatrix.bloodledger.local --id.name api-gateway --id.secret "$API_GATEWAY_SECRET" --id.type client --id.affiliation mediatrix --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null 2>&1
+  fabric-ca-client register --caname ca.mediatrix.bloodledger.local --id.name api-gateway --id.secret "$API_GATEWAY_SECRET" --id.type client --id.affiliation mediatrix --id.attrs "bloodledger.role=API_GATEWAY:ecert,bloodledger.institution_id=INST_MEDIATRIX:ecert" --tls.certfiles /work/fabric-ca/mediatrix/tls-cert.pem >/dev/null 2>&1
 '
 
 ca_exec ca-orderer sh -ceu '

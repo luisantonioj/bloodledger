@@ -1,0 +1,19 @@
+{
+  "classification": "PROTOTYPE_ASSUMPTION_NON_CLINICAL",
+  "institutionId": "INST_MEDIATRIX",
+  "policyVersion": "SYNTHETIC_INVENTORY_V1",
+  "bloodTypes": [
+    "A_POSITIVE",
+    "O_POSITIVE"
+  ],
+  "components": {
+    "PLATELETS": {
+      "maximumCollectionToExpirySeconds": 129600,
+      "nearExpiryLeadSeconds": 21600
+    },
+    "RED_BLOOD_CELLS": {
+      "maximumCollectionToExpirySeconds": 259200,
+      "nearExpiryLeadSeconds": 43200
+    }
+  }
+}

@@ -1,8 +1,10 @@
 # Sprint 2 — Deterministic Inventory Ledger
 
-**Status:** Proposed planning baseline; implementation not authorized
+**Status:** Approved; implementation authorized 2026-07-30
 
 **Planning started:** 2026-07-30
+**Implementation authorization:** Jopia, 2026-07-30
+**Policy baseline:** `SYNTHETIC_INVENTORY_V1` under PA-S2-01–04
 
 ## 1. Sprint goal
 
@@ -18,17 +20,19 @@ Sprint 2 implementation begins only after:
 - Sprint 1 S1-09 evidence and S1-10 accountable-owner review are accepted;
 - BL-INV-01 and BL-INV-02 satisfy the backlog definition of `Ready` and are
   selected into this sprint;
-- `RQ-02` identifies the prototype's supported blood types, components, and the
-  minimum normalized fields delivered by the later scan boundary;
+- `PA-S2-01` identifies the synthetic supported blood types/components and the
+  minimum normalized fields delivered by the later scan boundary while `RQ-02`
+  remains open for Mediatrix replacement values;
 - the initial on-chain state, complete allowed inventory transition table,
   transaction authorization attributes, immutable event fields, and stable
   error-code vocabulary are approved; and
 - the on-chain allowlist and privacy classification are reviewed against
   FR-01, BR-SEC-01, and BR-SEC-02.
 
-`BL-INV-03` remains gated by `RQ-03`. If clinically approved component
-shelf-life and near-expiry thresholds are not available, expiry behavior is not
-implemented or guessed; the incomplete item returns to the backlog.
+`BL-INV-03` uses the explicitly accepted synthetic `PA-S2-02` thresholds.
+`RQ-03` remains open: the implementation and its evidence must be labeled
+non-clinical and the synthetic version must be superseded rather than edited
+when approved Mediatrix values arrive.
 
 ## 3. Included work
 
@@ -55,18 +59,17 @@ implemented or guessed; the incomplete item returns to the backlog.
 - An internal chaincode scheduler, local-clock decisions, database/network
   calls, random values, unstable iteration, or autonomous clinical decisions.
 - Patient, donor, diagnosis, treatment, employee, or other PHI/PII fields.
-- Expiry thresholds or component behavior not approved through `RQ-02` and
-  `RQ-03`.
+- Clinical or Mediatrix expiry claims, and unversioned component behavior.
 
-## 5. Proposed tasks
+## 5. Selected tasks
 
 ### S2-01 — Approve Sprint 2 contract decisions
 
 **Backlog:** BL-INV-01, BL-INV-02, BL-INV-03
 
-Record the owners, dates, demonstration plan, resolved `RQ-02`/`RQ-03` outcomes,
+Record the owners, dates, demonstration plan, PA-S2-01–04 assumption decisions,
 allowlist, authorization rules, initial state, transition table, events, and
-stable errors. Mark BL-INV-03 deferred if RQ-03 remains unresolved.
+stable errors. Keep `RQ-02`/`RQ-03` open as replacement triggers.
 
 ### S2-02 — Establish domain chaincode package
 
@@ -97,9 +100,10 @@ events unchanged.
 **Backlog:** BL-INV-03  
 **Requirements:** FR-08, FR-09, BR-INV-04, NFR-08
 
-Only after RQ-03 is resolved, accept an application-supplied evaluation time and
-approved threshold/configuration version, validate them deterministically, and
-make eligible expired units unavailable. The scheduler remains off-chain.
+Accept an application-supplied evaluation time and
+`SYNTHETIC_INVENTORY_V1`, validate them deterministically, and make eligible
+expired units unavailable. The scheduler remains off-chain and the results are
+not clinical validation.
 
 ### S2-06 — Deploy and validate
 
@@ -134,15 +138,49 @@ clinical validation or production readiness.
 
 ## 7. Ownership and open decisions
 
-Jopia remains the proposed accountable owner until the team approves the Sprint
-2 ownership matrix. Each assigned owner validates their task; Buno and Lat may
+Jopia is the accountable owner and validator for Sprint 2 unless the team records
+a reassignment. Each assigned owner validates their task; Buno and Lat may
 review or participate without blocking acceptance. The accountable owner
 accepts the consolidated Sprint Review, and self-validation is disclosed when
-the same person holds both roles. This proposal does not resolve clinical or
-domain choices. Required owner decisions are:
+the same person holds both roles. The accepted prototype assumptions unblock
+implementation without resolving Mediatrix or clinical policy. Replacement
+decisions remain:
 
-- `RQ-02`: supported blood types, components, and normalized scan fields;
-- `RQ-03`: component shelf-life and near-expiry thresholds;
-- initial committed inventory state and the exact Sprint 2 transition subset;
-- chaincode caller attributes and institution-authorization mapping; and
-- the versioned on-chain field, event, and error contracts.
+- `RQ-02`: Mediatrix-supported blood types, components, and scan structures;
+- `RQ-03`: clinically approved component shelf-life and near-expiry thresholds;
+- approved application identity integration; and
+- any expansion beyond `AVAILABLE -> EXPIRED`.
+
+## 8. Implementation evidence
+
+Implementation began on 2026-07-30 under the authorization and assumptions
+recorded above. This evidence does not complete the Sprint Review:
+
+- `@bloodledger/inventory-contract` builds, type-checks, and passes 12 linked
+  deterministic unit tests covering the selected allowlist, boundaries,
+  prohibited fields, authorization, duplicate/idempotent behavior, stale state,
+  policy mismatch, current/near-expiry/expiry evaluation, invalid transitions,
+  deterministic replay, and prohibited runtime behavior.
+- The reproducible package ID is
+  `bloodledger-inventory_0.1.0:3cd9f3044e3d26f3433cc24a968417a0cd95a2dbbde7e29bf9d7ebef6a7f4be8`.
+- Definition `bloodledger-inventory` version `0.1.0`, sequence `1`, was approved
+  and committed on `bloodledger-dev` with the single
+  `MediatrixMSP.peer` endorsement policy. Lifecycle transactions
+  `2d4a07f43126233873b2a47e3b8cb29fec7e582f0d7fe357dd5fbc4a75575f44`
+  and `a13ca484a9fa6d39e60943897aa22ba64c5a5c8c43b40b4738171749bc783616`
+  committed `VALID`.
+- The scoped `api-gateway` reenrollment preserved the CA roots/database,
+  channel, peer/orderer identities, and ledgers and added only the approved
+  role/institution certificate attributes. Identity validation then passed.
+- End-to-end validation registered, read, and expired
+  `UNIT_S2VALIDATION01` through `api-gateway`; both mutations committed and the
+  resulting asset reached `EXPIRED` version `2`.
+- Foundation, database, Fabric identity/node/channel/health-contract,
+  operations, inventory static/type/unit, existing health-contract unit, and
+  operational behavior checks passed. Gitleaks `8.30.1` found no leaks in
+  history, index, or candidate content.
+
+Before S2-07 acceptance, rerun the applicable network restart and project-scoped
+reset/recreation scenarios, demonstrate the selected acceptance criteria, and
+record the accountable-owner Sprint Review. The implementation remains a
+synthetic research prototype and is not clinical validation.
