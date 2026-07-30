@@ -1,9 +1,10 @@
 # Sprint 2 — Deterministic Inventory Ledger
 
-**Status:** Technical validation complete; accountable-owner review pending
+**Status:** Complete; accountable-owner review accepted 2026-07-30
 
 **Planning started:** 2026-07-30
 **Implementation authorization:** Jopia, 2026-07-30
+**Sprint Review accepted:** Jopia, 2026-07-30
 **Policy baseline:** `SYNTHETIC_INVENTORY_V1` under PA-S2-01–04
 
 ## 1. Sprint goal
@@ -154,7 +155,7 @@ decisions remain:
 ## 8. Implementation evidence
 
 Implementation began on 2026-07-30 under the authorization and assumptions
-recorded above. This evidence does not complete the Sprint Review:
+recorded above. This evidence formed the accountable-owner Sprint Review:
 
 - `@bloodledger/inventory-contract` builds, type-checks, and passes 12 linked
   deterministic unit tests covering the selected allowlist, boundaries,
@@ -198,9 +199,10 @@ validation.
 - Effective host ports: loopback CA `7054`/`8054`, peer `7051`, orderer `7050`,
   and PostgreSQL `5432`.
 - Assigned-owner validation: technical evidence reproduced through the
-  repository automation; accountable-owner confirmation is pending.
-- Accountable-owner acceptance: **PENDING — Jopia must explicitly accept or
-  return incomplete items to the backlog.**
+  repository automation on Jopia's supported host. Jopia held both the assigned
+  validator and accountable-owner roles; this self-validation is disclosed
+  under the accepted validation-governance policy.
+- Accountable-owner acceptance: **Accepted by Jopia, 2026-07-30.**
 
 ### Acceptance evidence
 
@@ -212,7 +214,7 @@ validation.
 | S2-04 | Proven | Linked tests cover committed reads, missing state, stale state, invalid and repeated transitions, exact current-state/version checks, deterministic output, and no state/event change on failure. The only implemented transition is `AVAILABLE -> EXPIRED`. |
 | S2-05 | Proven | Linked tests cover current, near-expiry, and exact-expiry boundaries using application-supplied time and `SYNTHETIC_INVENTORY_V1`; the chaincode contains no scheduler or local clock. |
 | S2-06 | Proven | The package ID remained `bloodledger-inventory_0.1.0:3cd9f3044e3d26f3433cc24a968417a0cd95a2dbbde7e29bf9d7ebef6a7f4be8` across recreation. Normal restart, Level 1 Fabric-only reset, and Level 2 full development reset each ended in a healthy network and fresh valid inventory registration/read/expiry. Foundation, PostgreSQL recreation/persistence, identity, node, channel, health-contract, operations, inventory, and Gitleaks checks passed. |
-| S2-07 | Pending | The technical demonstration and incomplete-item audit are ready, but the accountable owner has not yet explicitly accepted the consolidated Sprint Review. |
+| S2-07 | Proven | Jopia accepted the consolidated technical evidence, incomplete-item disposition, limitations, and retrospective on 2026-07-30. |
 
 ### Supported-host scenario results
 
@@ -225,9 +227,8 @@ validation.
 
 ### Incomplete-item disposition and retrospective
 
-- No technical Sprint 2 acceptance criterion is known to be incomplete.
-- S2-07 remains pending solely for Jopia's explicit accountable-owner
-  acceptance; technical evidence alone does not grant that approval.
+- No Sprint 2 acceptance criterion is incomplete. Jopia accepted the
+  consolidated Sprint Review on 2026-07-30.
 - RQ-02 and RQ-03 remain open by design and continue to prevent Mediatrix or
   clinical interpretation of `SYNTHETIC_INVENTORY_V1`.
 - The fresh Fabric baseline issues an `api-gateway` certificate without the

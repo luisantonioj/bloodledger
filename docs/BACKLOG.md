@@ -1,6 +1,6 @@
 # BloodLedger Product Backlog
 
-**Status:** Sprint 1 complete; Sprint 2 technical validation complete and review pending
+**Status:** Sprint 1 and Sprint 2 complete
 **Baseline date:** 2026-07-30
 **Prioritization:** MoSCoW, then dependency order
 
@@ -106,38 +106,38 @@ Lat's host summaries are optional portability evidence.
 
 ### BL-INV-01 — Register unique blood unit
 
-**Priority:** Must | **Status:** In Progress | **Target:** Sprint 2
+**Priority:** Must | **Status:** Done | **Target:** Sprint 2
 **Requirements:** FR-01, BR-INV-01, NFR-01, NFR-02
 
 Acceptance: authorized registration creates one allowlisted asset and rejects a
 duplicate or prohibited field.
 
-**Evidence:** Implementation and supported-host validation are proven in
-`docs/SPRINT-02.md`; `Done` awaits accountable-owner Sprint Review acceptance.
+**Evidence:** Implementation, supported-host validation, and Jopia's
+accountable-owner acceptance are recorded in `docs/SPRINT-02.md`.
 
 ### BL-INV-02 — Enforce unit lifecycle
 
-**Priority:** Must | **Status:** In Progress | **Target:** Sprint 2
+**Priority:** Must | **Status:** Done | **Target:** Sprint 2
 **Requirements:** FR-08, BR-INV-02–06, NFR-08
 
 Acceptance: allowed transitions succeed deterministically; invalid, duplicate,
 or expired-unit operations fail without partial change.
 
-**Evidence:** Implementation and supported-host validation are proven in
-`docs/SPRINT-02.md`; `Done` awaits accountable-owner Sprint Review acceptance.
+**Evidence:** Implementation, supported-host validation, and Jopia's
+accountable-owner acceptance are recorded in `docs/SPRINT-02.md`.
 
 ### BL-INV-03 — Evaluate expiry safely
 
-**Priority:** Must | **Status:** In Progress | **Target:** Sprint 2
+**Priority:** Must | **Status:** Done | **Target:** Sprint 2
 **Dependencies:** PA-S2-02; RQ-03 remains open for replacement policy
 **Requirements:** FR-08, FR-09
 
 Acceptance: a scheduled application trigger submits a deterministic threshold
 evaluation and expired units become unavailable.
 
-**Evidence:** Deterministic application-triggered evaluation is proven under
-PA-S2-02 in `docs/SPRINT-02.md`; `Done` awaits accountable-owner Sprint Review
-acceptance.
+**Evidence:** Deterministic application-triggered evaluation under PA-S2-02,
+supported-host validation, and Jopia's accountable-owner acceptance are
+recorded in `docs/SPRINT-02.md`.
 
 ## 5. EPIC-03 — Transfers and optimization
 
