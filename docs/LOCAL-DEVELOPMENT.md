@@ -1,7 +1,7 @@
 # BloodLedger Local Development Guide
 
 **Status:** S1-08 operational interface and Jopia-host S1-09 supported-machine
-validation completed on 2026-07-16; Buno and Lat validation remains pending
+validation completed on 2026-07-16; Buno and Lat evidence remains pending
 
 This guide defines the intended local workflow and evidence format. Command
 examples are added only after Sprint 1 implementation validates them.
@@ -196,6 +196,36 @@ For every team machine, record:
 
 Do not paste credentials, tokens, enrollment secrets, private keys, complete
 certificates, or connection strings into evidence.
+
+Use this concise handoff format. Replace every placeholder; use `PASS`, `FAIL`,
+or `NOT RUN` for results and explain every non-pass value without including raw
+secret-bearing output.
+
+```text
+Validator:
+Validation date:
+Tested Git revision:
+Windows / WSL / Ubuntu:
+Working-copy location: WSL Linux filesystem = YES/NO
+Docker Desktop / Engine / Compose:
+Git / Node.js / npm:
+Fabric / Fabric CA / PostgreSQL:
+Effective host ports:
+doctor:
+bootstrap and final status:
+PostgreSQL role, query, and migration:
+channel membership and query:
+health-contract invoke and query:
+normal stop/start persistence:
+Fabric reset/recreate:
+full development reset/recreate:
+Gitleaks version / resolved digest / result:
+Deviations, failures, and verified resolutions:
+Evidence reviewed by:
+```
+
+Retained screenshots may be used by the reviewers to verify this summary, but
+screenshots and raw logs are not committed by default.
 
 ## 6. Troubleshooting record
 

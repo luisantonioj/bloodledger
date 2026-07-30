@@ -9,12 +9,13 @@ redistribution recommendations, and a web dashboard.
 ## Current status
 
 The Sprint 0 baseline and Sprint 1 planning decisions are approved. Sprint 1
-infrastructure implementation is in progress: the repository foundation,
-PostgreSQL migration baseline, one-organization Fabric development network,
-development channel, disposable health contract, and S1-08 operational command
-interface are implemented. Cross-machine S1-09 validation and the Sprint Review
-remain pending. This is a research prototype, not a production or clinically
-validated system.
+infrastructure implementation and Jopia-host validation are complete: the
+repository foundation, PostgreSQL migration baseline, one-organization Fabric
+development network, development channel, disposable health contract, and
+S1-08 operational command interface are implemented. Buno and Lat's concise
+S1-09 host evidence and the final Sprint Review remain pending. Sprint 2
+planning has started, but domain implementation is not yet authorized. This is
+a research prototype, not a production or clinically validated system.
 
 The documents have been drafted from the revised manuscript, updated research
 proposal, summary of revisions, and updated Gantt workbook. Sprint 0 becomes
@@ -62,6 +63,7 @@ deviations separately.
 | [Architecture](docs/ARCHITECTURE.md) | Components, data ownership, Fabric topology, synchronization, security, and decisions |
 | [Product backlog](docs/BACKLOG.md) | Prioritized outcomes and sprint roadmap |
 | [Sprint 1 plan](docs/SPRINT-01.md) | Infrastructure sprint entry gate, tasks, decisions, validation, and exit criteria |
+| [Sprint 2 planning](docs/SPRINT-02.md) | Proposed inventory-ledger sprint scope, decision gates, tasks, and test obligations |
 | [Local development](docs/LOCAL-DEVELOPMENT.md) | Planned WSL2 workflow, version evidence, reset safety, and troubleshooting |
 | [Fabric network](network/README.md) | Network identifiers, ports, CA identities, generated material, and health contract |
 | [Development database](database/README.md) | PostgreSQL roles, environment names, migration baseline, and persistence |

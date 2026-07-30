@@ -1,7 +1,7 @@
 # BloodLedger Product Backlog
 
-**Status:** Sprint 1 approved prioritized baseline
-**Baseline date:** 2026-07-13  
+**Status:** Sprint 1 closeout and Sprint 2 planning baseline
+**Baseline date:** 2026-07-30
 **Prioritization:** MoSCoW, then dependency order
 
 ## 1. Backlog rules
@@ -32,7 +32,8 @@
 ### BL-INF-01 — Reproducible local environment
 
 **Priority:** Must  
-**Status:** Selected  
+**Status:** Done
+
 **Target:** Sprint 1  
 **Requirements:** NFR-09, NFR-10, NFR-12
 
@@ -42,10 +43,14 @@ Acceptance:
 - Required services can be started, inspected, stopped, and reset.
 - Exact supported versions are pinned.
 
+**Evidence:** Jopia-host S1-02/S1-03/S1-08/S1-09 results and the 2026-07-30
+independent audit in `docs/SPRINT-01.md`.
+
 ### BL-INF-02 — BloodLedger Fabric development network
 
 **Priority:** Must  
-**Status:** Selected  
+**Status:** Done
+
 **Target:** Sprint 1  
 **Dependencies:** BL-INF-01  
 **Requirements:** NFR-02, NFR-08
@@ -57,10 +62,14 @@ Acceptance:
 - A minimal health transaction can be invoked and queried.
 - Generated secrets and private keys are untracked.
 
+**Evidence:** Jopia-host S1-06/S1-07/S1-09 results and the 2026-07-30
+independent audit in `docs/SPRINT-01.md`.
+
 ### BL-INF-03 — PostgreSQL infrastructure baseline
 
 **Priority:** Must  
-**Status:** Selected  
+**Status:** Done
+
 **Target:** Sprint 1  
 **Requirements:** NFR-05, NFR-07, NFR-12
 
@@ -72,10 +81,14 @@ Acceptance:
   approved.
 - DBeaver is optional tooling, not a runtime dependency.
 
+**Evidence:** Jopia-host S1-04/S1-05/S1-09 results and the 2026-07-30
+independent audit in `docs/SPRINT-01.md`.
+
 ### BL-INF-04 — Infrastructure verification
 
 **Priority:** Must  
-**Status:** Selected  
+**Status:** In Progress
+
 **Target:** Sprint 1  
 **Dependencies:** BL-INF-01–03
 
@@ -83,6 +96,9 @@ Acceptance:
 
 - Automated health and reset checks pass on each team member's supported host.
 - Failures and fixes are documented.
+
+**Remaining:** Record Buno and Lat's safe supported-host summaries and complete
+S1-10 review. A Codex account is not part of the acceptance criteria.
 
 ## 4. EPIC-02 — Inventory ledger
 

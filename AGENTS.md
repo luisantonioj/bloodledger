@@ -5,10 +5,11 @@ These instructions apply to the entire repository.
 ## 1. Current phase
 
 BloodLedger has an approved Sprint 0 baseline and Sprint 1 implementation guide.
-Sprint 1 implementation started on 2026-07-15 with the authorized S1-02/S1-03
-repository-foundation batch. Remaining infrastructure tasks are not thereby
-authorized or complete; do not add their code or configuration unless the user
-explicitly authorizes that implementation work.
+Sprint 1 infrastructure implementation and Jopia-host validation completed on
+2026-07-16. Buno and Lat's S1-09 evidence and the S1-10 final review remain
+pending. Sprint 2 planning started on 2026-07-30, but its domain implementation
+is not authorized; do not add Sprint 2 code or configuration unless the user
+explicitly authorizes that implementation work after its entry gates are met.
 
 The project is a research prototype. Never describe it as production-ready,
 clinically validated, regulator-approved, or a deployed multi-organization

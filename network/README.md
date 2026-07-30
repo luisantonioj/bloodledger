@@ -1,8 +1,8 @@
 # BloodLedger Development Network
 
 **Status:** Approved Sprint 1 baseline; CA/identity, peer/orderer, channel, and
-health-contract lifecycle/integration implemented and validated on the Jopia
-Codex environment. Supported-host verification remains pending under S1-09.
+health-contract lifecycle/integration implemented and validated on Jopia's
+supported WSL2 host. Buno and Lat host evidence remains pending under S1-09.
 
 This document is the authoritative source for Sprint 1 Fabric network names,
 development identities, ports, generated-material boundaries, orderer bootstrap,
@@ -58,9 +58,9 @@ logical service names, or ledger identifiers without an ADR update.
 | PostgreSQL | `postgres` | 5432 | `127.0.0.1:5432` |
 
 Compose service discovery uses service names and container ports. Host bindings
-exist only for local development tools and validation. Before implementation,
-S1-02 must detect collisions; an override must be recorded in local untracked
-configuration and validation evidence.
+exist only for local development tools and validation. The `doctor` command
+detects collisions; an override must be recorded in local untracked configuration
+and validation evidence.
 
 Do not set fixed `container_name` values unless implementation proves they are
 necessary. The Compose project name should scope generated container, network,
