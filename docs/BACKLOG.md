@@ -1,6 +1,6 @@
 # BloodLedger Product Backlog
 
-**Status:** Sprint 1 complete and Sprint 2 planning baseline
+**Status:** Sprint 1 complete; Sprint 2 technical validation complete and review pending
 **Baseline date:** 2026-07-30
 **Prioritization:** MoSCoW, then dependency order
 
@@ -106,28 +106,38 @@ Lat's host summaries are optional portability evidence.
 
 ### BL-INV-01 — Register unique blood unit
 
-**Priority:** Must | **Status:** Ready; selected | **Target:** Sprint 2
+**Priority:** Must | **Status:** In Progress | **Target:** Sprint 2
 **Requirements:** FR-01, BR-INV-01, NFR-01, NFR-02
 
 Acceptance: authorized registration creates one allowlisted asset and rejects a
 duplicate or prohibited field.
 
+**Evidence:** Implementation and supported-host validation are proven in
+`docs/SPRINT-02.md`; `Done` awaits accountable-owner Sprint Review acceptance.
+
 ### BL-INV-02 — Enforce unit lifecycle
 
-**Priority:** Must | **Status:** Ready; selected | **Target:** Sprint 2
+**Priority:** Must | **Status:** In Progress | **Target:** Sprint 2
 **Requirements:** FR-08, BR-INV-02–06, NFR-08
 
 Acceptance: allowed transitions succeed deterministically; invalid, duplicate,
 or expired-unit operations fail without partial change.
 
+**Evidence:** Implementation and supported-host validation are proven in
+`docs/SPRINT-02.md`; `Done` awaits accountable-owner Sprint Review acceptance.
+
 ### BL-INV-03 — Evaluate expiry safely
 
-**Priority:** Must | **Status:** Ready; selected under PA-S2-02 | **Target:** Sprint 2
+**Priority:** Must | **Status:** In Progress | **Target:** Sprint 2
 **Dependencies:** PA-S2-02; RQ-03 remains open for replacement policy
 **Requirements:** FR-08, FR-09
 
 Acceptance: a scheduled application trigger submits a deterministic threshold
 evaluation and expired units become unavailable.
+
+**Evidence:** Deterministic application-triggered evaluation is proven under
+PA-S2-02 in `docs/SPRINT-02.md`; `Done` awaits accountable-owner Sprint Review
+acceptance.
 
 ## 5. EPIC-03 — Transfers and optimization
 

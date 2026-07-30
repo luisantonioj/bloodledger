@@ -1,6 +1,6 @@
 # Sprint 2 — Deterministic Inventory Ledger
 
-**Status:** Approved; implementation authorized 2026-07-30
+**Status:** Technical validation complete; accountable-owner review pending
 
 **Planning started:** 2026-07-30
 **Implementation authorization:** Jopia, 2026-07-30
@@ -180,7 +180,62 @@ recorded above. This evidence does not complete the Sprint Review:
   operational behavior checks passed. Gitleaks `8.30.1` found no leaks in
   history, index, or candidate content.
 
-Before S2-07 acceptance, rerun the applicable network restart and project-scoped
-reset/recreation scenarios, demonstrate the selected acceptance criteria, and
-record the accountable-owner Sprint Review. The implementation remains a
-synthetic research prototype and is not clinical validation.
+The 2026-07-30 supported-host validation completed the previously pending
+network restart and both project-scoped reset/recreation scenarios. The
+implementation remains a synthetic research prototype and is not clinical
+validation.
+
+## 9. Sprint Review record
+
+- Evidence date: 2026-07-30.
+- Tested revision:
+  `f4e818e1fa865dd901a02f0cf20eab06980f4793`.
+- Validation environment: Jopia's canonical Windows 11/WSL2 Ubuntu `24.04.4`
+  host with the working copy in the WSL Linux filesystem.
+- Effective versions: Docker Desktop `4.82.0`, Engine `29.6.1`, Compose
+  `5.3.0`; Git `2.43.0`; Node.js `24.17.0`; npm `11.13.0`; Fabric `2.5.16`;
+  Fabric CA `1.5.15`; PostgreSQL `17.10`; Gitleaks `8.30.1`.
+- Effective host ports: loopback CA `7054`/`8054`, peer `7051`, orderer `7050`,
+  and PostgreSQL `5432`.
+- Assigned-owner validation: technical evidence reproduced through the
+  repository automation; accountable-owner confirmation is pending.
+- Accountable-owner acceptance: **PENDING — Jopia must explicitly accept or
+  return incomplete items to the backlog.**
+
+### Acceptance evidence
+
+| Task | Classification | Evidence |
+|---|---|---|
+| S2-01 | Proven | PA-S2-01–04, the allowlist, authorization attributes, initial state, transition, event fields, stable errors, owners, dates, and demonstration obligations are versioned in the requirements, policy, contract, and this sprint. RQ-02/RQ-03 remain open replacement triggers. |
+| S2-02 | Proven | The root TypeScript chaincode workspace passes format, lint, type, static-boundary, build, unit, and reproducible-package checks without changing the Sprint 1 health contract. |
+| S2-03 | Proven | Linked tests cover allowed registration, all supported type/component pairs, prohibited and unknown fields, exact timestamp/identifier boundaries, duplicate/idempotent behavior, and MSP/enrollment/type/role/institution authorization. |
+| S2-04 | Proven | Linked tests cover committed reads, missing state, stale state, invalid and repeated transitions, exact current-state/version checks, deterministic output, and no state/event change on failure. The only implemented transition is `AVAILABLE -> EXPIRED`. |
+| S2-05 | Proven | Linked tests cover current, near-expiry, and exact-expiry boundaries using application-supplied time and `SYNTHETIC_INVENTORY_V1`; the chaincode contains no scheduler or local clock. |
+| S2-06 | Proven | The package ID remained `bloodledger-inventory_0.1.0:3cd9f3044e3d26f3433cc24a968417a0cd95a2dbbde7e29bf9d7ebef6a7f4be8` across recreation. Normal restart, Level 1 Fabric-only reset, and Level 2 full development reset each ended in a healthy network and fresh valid inventory registration/read/expiry. Foundation, PostgreSQL recreation/persistence, identity, node, channel, health-contract, operations, inventory, and Gitleaks checks passed. |
+| S2-07 | Pending | The technical demonstration and incomplete-item audit are ready, but the accountable owner has not yet explicitly accepted the consolidated Sprint Review. |
+
+### Supported-host scenario results
+
+| Scenario | Result | Safe evidence summary |
+|---|---|---|
+| Normal restart persistence | PASS | Peer/orderer restart and channel persistence passed; the existing inventory definition remained committed and `UNIT_S2RESTART0730` registered, read, and expired with valid commits. |
+| Level 1 Fabric reset/recreate | PASS | The preview named only approved Fabric resources; PostgreSQL retained one applied migration; bootstrap recreated Fabric; the exact inventory package was redeployed; `UNIT_S2LEVEL1_0730` registered, read, and expired with valid commits. |
+| Level 2 development reset/recreate | PASS | The preview named only BloodLedger Compose resources and volumes; empty PostgreSQL state correctly reported the bootstrap migration pending, migration/reapply/restart checks passed with zero domain tables, and bootstrap recreated the network; `UNIT_S2LEVEL2_0730` registered, read, and expired with valid commits. |
+| Secret/generated-material controls | PASS | Ignore-path checks covered 15 sensitive/generated paths. Gitleaks `8.30.1` at digest `sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f` found no leaks in 21-commit history, index, or tracked/candidate content. |
+
+### Incomplete-item disposition and retrospective
+
+- No technical Sprint 2 acceptance criterion is known to be incomplete.
+- S2-07 remains pending solely for Jopia's explicit accountable-owner
+  acceptance; technical evidence alone does not grant that approval.
+- RQ-02 and RQ-03 remain open by design and continue to prevent Mediatrix or
+  clinical interpretation of `SYNTHETIC_INVENTORY_V1`.
+- The fresh Fabric baseline issues an `api-gateway` certificate without the
+  Sprint 2 attributes until the documented scoped reenrollment runs. Both reset
+  validations therefore reenrolled that single generated identity before
+  inventory deployment. A future sprint may integrate this explicit step into
+  its authorized operational workflow, but Sprint 2 does not silently expand
+  the Sprint 1 bootstrap contract.
+- Keeping unique synthetic validation suffixes and recording concise evidence
+  immediately made restart and destructive-reset results distinguishable
+  without committing runtime data or secret-bearing logs.
