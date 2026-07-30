@@ -18,6 +18,11 @@ Additional Buno or Lat host evidence is optional. Sprint 2 planning has started,
 but domain implementation is not yet authorized. This is a research prototype,
 not a production or clinically validated system.
 
+The roadmap now includes invitation-based institutional application and
+administrator activation for later API/web sprints. Application approval is
+separate from Fabric membership and does not change the one-organization
+prototype topology.
+
 The documents have been drafted from the revised manuscript, updated research
 proposal, summary of revisions, and updated Gantt workbook. Sprint 0 becomes
 formally complete with the decisions recorded in `docs/ARCHITECTURE.md` and the

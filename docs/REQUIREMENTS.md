@@ -1,7 +1,7 @@
 # BloodLedger Software Requirements
 
-**Status:** Sprint 1 approved planning baseline
-**Baseline date:** 2026-07-13  
+**Status:** Approved requirements baseline; onboarding implementation deferred
+**Baseline date:** 2026-07-30
 **Requirement owners:** Buno, Jopia, and Lat
 
 ## 1. Conventions
@@ -20,8 +20,9 @@
 
 The manuscript names four access tiers but also requires secondary hospitals to
 submit requests and confirm transfers. This baseline therefore separates a
-`Secondary Hospital User` from the inventory-holding hospital roles. The refined
-five-role model is accepted in ADR-013.
+`Secondary Hospital User` from the inventory-holding hospital roles. ADR-013
+accepted that refinement. ADR-030 adds a non-clinical institution account role
+so activation does not grant transfer or custody authority.
 
 | ID | Role | Description |
 |---|---|---|
@@ -30,25 +31,29 @@ five-role model is accepted in ADR-013.
 | ROLE-03 | Secondary Hospital User | Submits requests and manages receipt-side actions for a recipient institution |
 | ROLE-04 | DOH/PRC Regulatory Viewer | Reads approved city-wide summaries, alerts, history, and reports |
 | ROLE-05 | System Administrator | Manages application users, institutions, configuration, and system operations |
+| ROLE-06 | Institution Account Administrator | Manages one activated institution's profile and users without clinical, custody, transfer, or Fabric authority |
 
 ### 2.2 Permission baseline
 
-| Capability | Technologist | Hospital Admin | Secondary User | Regulator | System Admin |
-|---|:---:|:---:|:---:|:---:|:---:|
-| View own institution inventory detail | Yes | Yes | Limited | Read-only | Yes |
-| View city-wide aggregate availability | Yes | Yes | Yes | Yes | Yes |
-| Register or receive a unit into local custody | Yes | Yes | Receipt only | No | No by default |
-| Submit a blood request | No by default | Yes | Yes | No | No by default |
-| Approve/reject outgoing transfer | No | Yes | No | No | Emergency support only |
-| Confirm dispatch | Yes | Yes | No | No | No by default |
-| Confirm receipt/exception | Local receipt only | Yes | Yes | No | No by default |
-| View audit history | Local | Local/full permitted | Own transfers | Read-only city-wide | Full |
-| Export regulatory reports | No | Local | No | Yes | Yes |
-| Manage users and institutions | No | No | No | No | Yes |
+| Capability | Technologist | Hospital Admin | Secondary User | Regulator | System Admin | Institution Account Admin |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| View own institution inventory detail | Yes | Yes | Limited | Read-only | No by default | No by default |
+| View city-wide aggregate availability | Yes | Yes | Yes | Yes | No by default | As approved |
+| Register or receive a unit into local custody | Yes | Yes | Receipt only | No | No | No |
+| Submit a blood request | No by default | Yes | Yes | No | No | No |
+| Approve/reject outgoing transfer | No | Yes | No | No | No | No |
+| Confirm dispatch | Yes | Yes | No | No | No | No |
+| Confirm receipt/exception | Local receipt only | Yes | Yes | No | No | No |
+| View audit history | Local | Local/full permitted | Own transfers | Read-only city-wide | Security/administration only | User/profile administration only |
+| Export regulatory reports | No | Local | No | Yes | No by default | No |
+| Review and decide institutional applications | No | No | No | No | Yes | No |
+| Manage users and institutions | No | No | No | No | Yes | Own institution users/profile only |
 
 Least privilege applies. The System Administrator role does not automatically
 perform clinical or custody actions. Chaincode-sensitive operations must also
 validate the submitting organization and attributes, not only the web session.
+A pending applicant identity is not an operational role and can access only its
+own application status.
 
 ## 3. Functional requirements
 
@@ -217,6 +222,52 @@ Acceptance:
 - A safe fallback prevents redistribution based solely on a failed or stale
   forecast.
 
+### FR-15 — Apply for institutional participation
+
+An authorized institutional representative shall be able to submit a
+privacy-minimized institutional application using a valid single-use
+invitation. Supported categories are `SECONDARY_HOSPITAL` and `BLOOD_BANK`.
+
+Acceptance:
+
+- Submission creates one opaque application ID in `SUBMITTED` state and no
+  operational tenant access.
+- Required fields are limited to institution legal/display name, category,
+  facility locality, official generic contact channel, accreditation/license
+  reference, application reason, and attestations.
+- Applicant verification uses the invitation plus administrator confirmation;
+  no external email or SMS service is assumed.
+- Submission establishes an invitation-bound pending applicant identity whose
+  credential verifier is stored only in the identity layer and whose access is
+  limited to that application.
+- Duplicate and idempotent submissions return safe responses that do not reveal
+  unrelated institutions or accounts.
+- Applications, users, credentials, sessions, and verification evidence remain
+  off-chain.
+
+### FR-16 — Review and activate institutional participation
+
+An authorized System Administrator who is not affiliated with the applicant
+shall review, approve, reject, activate, suspend, and reactivate institutional
+participation through separate audited actions.
+
+Acceptance:
+
+- Approval and activation are distinct; approval alone grants no protected
+  operational access.
+- Activation creates or enables the initial `ROLE-06` user and only explicitly
+  approved institution-scoped permissions.
+- Rejected applicants may resubmit a new version linked to the retained prior
+  application; submitted or under-review applications may be withdrawn.
+- Rejected, unactivated, and suspended institutions cannot view protected
+  operational information, submit requests, or perform ledger mutations.
+- Suspension revokes active sessions and blocks new operational mutations.
+- Application approval or activation never enrolls a Fabric identity, creates
+  an MSP/CA/peer, joins a channel, deploys chaincode, or changes endorsement.
+- Every decision uses authentication, authorization, validation, idempotency,
+  correlation, version/concurrency checks, a safe reason where applicable, and
+  audit evidence.
+
 ## 4. Business rules
 
 ### 4.1 Inventory
@@ -285,6 +336,74 @@ Acceptance:
 - **BR-SEC-05:** Audit logs are access-controlled; immutability does not imply
   unrestricted visibility.
 
+### 4.5 Institutional onboarding
+
+- **BR-ONB-01:** Institutional application is invitation-only in the prototype;
+  a single-use invitation authorizes submission but not approval or access.
+- **BR-ONB-02:** Application IDs and institution IDs are stable opaque values;
+  display names never serve as authorization scope.
+- **BR-ONB-03:** Duplicate detection uses normalized institution name, category,
+  locality, and institutional reference without disclosing a matching record.
+- **BR-ONB-04:** Verification documents are not stored initially. The system
+  records evidence type, result, reviewer, UTC review time, and a safe reference.
+- **BR-ONB-05:** An applicant, affiliated administrator, or institution account
+  administrator cannot approve or activate its own application.
+- **BR-ONB-06:** Approval and activation are separate version-checked mutations.
+  Repeated matching decisions are idempotent; conflicting or stale decisions
+  fail safely.
+- **BR-ONB-07:** Activation initially grants only `ROLE-06`. Clinical, custody,
+  transfer, regulatory, and system roles require separate authorized assignment.
+- **BR-ONB-08:** Only `ACTIVE` institutions and active users with an explicitly
+  permitted role may access protected operational behavior.
+- **BR-ONB-09:** Suspension revokes sessions, blocks new requests and mutations,
+  and cannot silently change inventory custody or transfer state.
+- **BR-ONB-10:** Normal suspension is refused while the institution has a
+  dispatched or in-transit transfer. Emergency handling remains gated by
+  `RQ-15`.
+- **BR-ONB-11:** Notifications are stored in-application only. No external
+  email, SMS, or delivery guarantee is implied.
+- **BR-ONB-12:** Application approval and activation never change Fabric
+  membership, MSPs, CAs, certificates, peers, channels, chaincode lifecycle, or
+  endorsement policy.
+- **BR-ONB-13:** Before separate Fabric membership, an activated blood bank may
+  manage its profile and users and view approved application-level information.
+  It cannot register inventory, hold ledger custody, endorse, or mutate Fabric;
+  request permission requires a separately assigned permitted role.
+- **BR-ONB-14:** An active secondary hospital may acknowledge receipt and be
+  recorded as the custody destination, but cannot expose received stock as
+  available or redistribute it until `RQ-09` and `RQ-10` are resolved.
+- **BR-ONB-15:** Each onboarding mutation records the actor user ID, actor
+  institution ID when applicable, subject application and institution IDs,
+  prior and resulting status, stable reason code and safe explanation where
+  required, UTC event time, correlation ID, idempotency key, and resulting
+  version.
+- **BR-ONB-16:** Administrator confirmation uses the institution's official
+  generic contact channel through an approved out-of-band manual process. The
+  application stores the confirmation result and safe reference, not message
+  contents or a claim of external delivery.
+
+Rejection reason codes are `INCOMPLETE_EVIDENCE`, `VERIFICATION_FAILED`,
+`INELIGIBLE_CATEGORY`, `DUPLICATE_APPLICATION`, `OUT_OF_SCOPE`, and `OTHER`.
+Suspension reason codes are `SECURITY_HOLD`, `GOVERNANCE_HOLD`,
+`INSTITUTION_REQUEST`, `ELIGIBILITY_LAPSED`, and `OTHER`. `OTHER` requires a
+privacy-safe explanation.
+
+The stable onboarding error vocabulary is:
+
+| Code | Meaning |
+|---|---|
+| `ONB_INVITATION_INVALID` | Invitation is missing, invalid, expired, or already consumed |
+| `ONB_APPLICATION_INVALID` | Submitted fields or attestations are invalid |
+| `ONB_APPLICATION_CONFLICT` | A safe duplicate or idempotency conflict exists |
+| `ONB_TRANSITION_INVALID` | Requested status transition is not allowed |
+| `ONB_NOT_AUTHORIZED` | Actor lacks the required role or institution scope |
+| `ONB_SELF_APPROVAL_FORBIDDEN` | Actor is the applicant or affiliated with the applicant |
+| `ONB_VERSION_CONFLICT` | Expected application or institution version is stale |
+| `ONB_INSTITUTION_NOT_ACTIVE` | Institution is not activated for the requested operation |
+| `ONB_ACTIVE_TRANSFER_BLOCKS_SUSPENSION` | Normal suspension is unsafe while a transfer is active |
+| `ONB_REASON_REQUIRED` | A required rejection, withdrawal, suspension, or reactivation reason is absent |
+| `ONB_NOT_FOUND` | Requested record is absent or invisible in the actor's scope |
+
 ## 5. State models
 
 ### 5.1 Blood unit
@@ -326,6 +445,45 @@ CAPTURED -> VALIDATED -> QUEUED -> SUBMITTING -> COMMITTED -> PROJECTED
                                    +-> CONFLICT
 ```
 
+### 5.4 Institutional application and participation
+
+```text
+Application:
+SUBMITTED -> UNDER_REVIEW -> APPROVED
+    |             |
+    +-> WITHDRAWN +-> REJECTED
+                  +-> WITHDRAWN
+
+Institution after application approval:
+PENDING_ACTIVATION -> ACTIVE -> SUSPENDED
+                        ^           |
+                        +-----------+
+```
+
+`REJECTED` and `WITHDRAWN` are terminal for that application record. A permitted
+resubmission creates a new version linked to the retained prior application.
+`APPROVED` is an application decision; `PENDING_ACTIVATION`, `ACTIVE`, and
+`SUSPENDED` are institution participation states. Only `ACTIVE` permits
+explicitly assigned operational roles.
+
+Allowed transitions are:
+
+| Entity | From | To | Required guard/evidence |
+|---|---|---|---|
+| Invitation | `ISSUED` | `CONSUMED` | One valid idempotent application submission |
+| Invitation | `ISSUED` | `REVOKED` or `EXPIRED` | Authorized revocation or validated expiry |
+| Application | `SUBMITTED` | `UNDER_REVIEW` | Unaffiliated System Administrator claims review |
+| Application | `SUBMITTED` | `WITHDRAWN` | Applicant reason and expected version |
+| Application | `UNDER_REVIEW` | `APPROVED` | Verification passed, decision reason, expected version |
+| Application | `UNDER_REVIEW` | `REJECTED` | Stable rejection reason and expected version |
+| Application | `UNDER_REVIEW` | `WITHDRAWN` | Applicant reason and expected version |
+| Institution | `PENDING_ACTIVATION` | `ACTIVE` | Approved application, initial `ROLE-06` identity, explicit permissions |
+| Institution | `ACTIVE` | `SUSPENDED` | Stable reason, expected version, and transfer guards in BR-ONB-09–10/RQ-12/RQ-15 |
+| Institution | `SUSPENDED` | `ACTIVE` | Eligibility reverified, reactivation reason, expected version |
+
+No other direct transition is allowed. Resubmission after rejection or
+withdrawal creates a new `SUBMITTED` application linked to the prior record.
+
 ## 6. Non-functional requirements
 
 | ID | Requirement | Verifiable target |
@@ -342,6 +500,7 @@ CAPTURED -> VALIDATED -> QUEUED -> SUBMITTING -> COMMITTED -> PROJECTED
 | NFR-10 | Observability | Services expose health status and correlation-aware logs without secrets or prohibited data |
 | NFR-11 | Accessibility | Status is not conveyed by color alone; core workflows are keyboard usable and have readable labels |
 | NFR-12 | Recoverability | Development environment can be safely stopped, reset, recreated, and verified from documentation |
+| NFR-13 | Enumeration-resistant onboarding | Duplicate, status, authentication, and authorization errors do not reveal unrelated institutions or accounts |
 
 ## 7. Requirement-to-evidence traceability
 
@@ -357,6 +516,7 @@ CAPTURED -> VALIDATED -> QUEUED -> SUBMITTING -> COMMITTED -> PROJECTED
 | FR-14 | Backtest metrics, baselines, data-quality report | Sprint 3/testing |
 | NFR-02, NFR-08 | Fabric integration and deterministic replay tests | Sprints 2–3 |
 | NFR-09–10, NFR-12 | Setup, health, reset, and clean-machine validation | Sprint 1 |
+| FR-15–16, BR-ONB-01–16, NFR-13 | Onboarding API, lifecycle, authorization, audit, and UI tests | Sprints 4–5/testing |
 
 ## 8. Open requirement decisions
 
@@ -365,7 +525,7 @@ sprint:
 
 | ID | Question | Needed before |
 |---|---|---|
-| RQ-01 | Which secondary institutions have approved participation and what detail may each see? | Sprint 5 |
+| RQ-01 | Which institutions have approved application participation? Active secondary hospitals may see approved city-wide aggregates plus only their own requests, transfers, receipt records, profile, and users; what institution-specific exceptions are approved? | Sprint 5 |
 | RQ-02 | Which blood types/components and ISBT 128 data structures are supported in the prototype? | Sprint 2/4 |
 | RQ-03 | What are clinically approved component shelf-life and near-expiry thresholds? | Sprint 2 |
 | RQ-04 | Who may reallocate an approved reservation for a more urgent request? | Sprint 3 |
@@ -376,6 +536,10 @@ sprint:
 | RQ-09 | Does receipt require two human signatures or institutional service identities plus authenticated user attribution? | Sprint 3 |
 | RQ-10 | What local verification changes a received unit to available inventory? | Sprint 3 |
 | RQ-11 | Will OCR supplement or replace barcode/QR capture, and what confidence, confirmation, label-fixture, privacy, and fallback rules make it acceptable? | Before Sprint 4 |
+| RQ-12 | Should pending requests and approved-but-undispatched transfers be cancelled, frozen, or explicitly reassigned when an institution is suspended? | Sprint 3 |
+| RQ-13 | What applicant verification, abuse prevention, and recovery controls are required before public self-service application can supplement invitation-only onboarding? | Before enabling public application |
+| RQ-14 | What retention period and access policy apply to onboarding verification evidence and rejected applications? | Sprint 4 |
+| RQ-15 | Who may authorize emergency suspension while a transfer is dispatched or in transit, and how is safe receipt/custody resolution assigned? | Sprint 3 |
 
 Unanswered questions must not be guessed by a coding agent. The relevant task is
 blocked or implemented behind an explicitly approved prototype assumption.

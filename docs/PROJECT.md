@@ -1,7 +1,7 @@
 # BloodLedger Project Context
 
-**Status:** Sprint 1 approved planning baseline
-**Baseline date:** 2026-07-13  
+**Status:** Approved product-scope baseline
+**Baseline date:** 2026-07-30
 **Owners:** Buno, Jopia, and Lat
 
 ## 1. Purpose of this document
@@ -70,6 +70,9 @@ approval and seed-data validation.
 
 They are future candidates for independent Fabric organizations and peers. They
 are not represented as active consortium peers in the initial prototype.
+They may later use the ordinary institutional application workflow to become
+application participants, but application approval does not grant Fabric
+membership.
 
 ### 4.4 Regulatory observers
 
@@ -88,6 +91,7 @@ application. They do not submit ledger mutations in the initial prototype.
 | Secondary Hospital User | View permitted availability, submit requests, track and acknowledge transfers |
 | DOH/PRC Regulatory Viewer | Read city-wide summaries, alerts, transfer history, and reports |
 | System Administrator | Manage application users, configuration, and system operations |
+| Institution Account Administrator | Manage an activated institution's profile and users without clinical, custody, or transfer authority |
 
 The exact permissions are defined in `docs/REQUIREMENTS.md`.
 
@@ -108,6 +112,8 @@ The exact permissions are defined in `docs/REQUIREMENTS.md`.
 - Daily per-blood-type/component demand forecasting.
 - Immutable inventory and custody audit events.
 - Read-only regulatory dashboards and report export.
+- Invitation-based institutional application, administrator review, activation,
+  suspension, and application-status tracking in the later API/web sprints.
 
 ## 7. Primary user flows
 
@@ -145,6 +151,19 @@ The exact permissions are defined in `docs/REQUIREMENTS.md`.
 3. On reconnection, events are submitted in a deterministic order.
 4. Duplicate, stale, or conflicting events are rejected or flagged for review.
 
+### 7.5 Apply as an institution
+
+1. An authorized institutional representative uses a single-use invitation to
+   submit a privacy-minimized application.
+2. A system administrator who is not affiliated with the applicant verifies and
+   reviews the application.
+3. Approval records eligibility for application participation but does not
+   create operational access.
+4. A separate activation action creates the initial non-clinical institution
+   account administrator and enables only approved application permissions.
+5. Fabric organization membership, certificates, peers, channel membership, and
+   endorsement remain a separate deferred governance and infrastructure path.
+
 ## 8. In scope
 
 - A prototype deployed primarily at Mary Mediatrix Medical Center.
@@ -156,6 +175,8 @@ The exact permissions are defined in `docs/REQUIREMENTS.md`.
 - On-premise, Docker-based application and infrastructure services.
 - One operational Fabric peer organization designed for later expansion.
 - Dashboard participation by modeled secondary institutions.
+- Future onboarding of approved secondary hospitals and blood banks as
+  application participants through invitation, review, and activation.
 - Read-only DOH and PRC oversight.
 - Dispatch- and receipt-time location evidence.
 - Historical DOH stock snapshots for forecasting, subject to access approval.
@@ -173,6 +194,8 @@ The exact permissions are defined in `docs/REQUIREMENTS.md`.
   smart refrigeration, or automated transport dispatch.
 - A native mobile application.
 - Provincial, national, or production-grade consortium rollout.
+- Automatic Fabric organization, CA, peer, channel, or endorsement provisioning
+  from an institutional application.
 - Full regulatory accreditation or replacement of official systems of record.
 - Autonomous approval of redistribution recommendations.
 
@@ -216,6 +239,9 @@ The exact permissions are defined in `docs/REQUIREMENTS.md`.
 | Predicted Distributable Surplus | Current stock less forecast usage, safety allowance, and minimum reserve; final formula requires clinical validation |
 | Primary institution | An inventory-holding institution that may operate a Fabric organization/peer |
 | Secondary institution | A recipient participant using the application without an initial Fabric peer |
+| Institutional application | An off-chain request for application participation; approval does not provide operational access or Fabric membership |
+| Application participant | An activated institution with explicitly assigned application permissions; it need not operate a Fabric peer |
+| Fabric member organization | An institution separately admitted through deferred governance and infrastructure work to operate an independent Fabric organization |
 | Regulatory viewer | A read-only DOH or PRC application user |
 | Ledger event | An immutable, append-only record of an accepted domain transaction |
 | World state | Fabric's current materialized asset state, derived from ledger transactions |

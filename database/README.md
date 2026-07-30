@@ -75,6 +75,12 @@ notifications, sync queues, hospital data, or other feature schema. Those begin
 only after the linked requirements, data classification, keys, constraints, and
 column-level design are approved.
 
+This also excludes `institutions`, institutional invitations/applications,
+onboarding decisions, and applicant identities. ADR-030 places those records in
+PostgreSQL/identity storage, but their migrations remain deferred to
+`BL-API-02` and an activating API sprint after `RQ-14` and the column-level
+design are approved.
+
 No institutional or personal data is needed to validate Sprint 1 migrations.
 
 ## 5. Migration rules

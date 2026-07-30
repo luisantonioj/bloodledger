@@ -15,6 +15,12 @@ The development network has one operational hospital organization: Mary
 Mediatrix Medical Center. PRC, DOH, and secondary hospitals remain application
 users and do not operate peers.
 
+Institutional application approval or activation is an off-chain application
+decision under ADR-030. It does not register or enroll a Fabric identity,
+create an MSP/CA/peer, join a channel, deploy chaincode, or change endorsement.
+Independent organization membership remains deferred under `BL-EXP-01` and
+`BL-EXP-02`.
+
 The ordering organization is a technical network-operations boundary required
 to issue and manage the orderer identity. It is not a second hospital consortium
 member and does not represent PRC or DOH.

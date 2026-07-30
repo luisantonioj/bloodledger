@@ -181,6 +181,9 @@ reason to retain a Windows-filesystem working copy.
 ### 5.1 Web application
 
 - Renders access-controlled inventory, request, alert, transfer, and audit views.
+- Renders invitation-based institutional application, applicant status,
+  administrator review, activation, suspension, and institution/user management
+  views only in the activating web sprint.
 - Captures scans and permitted device location evidence through the browser/API.
 - Clearly distinguishes local/pending, committed, stale, offline, failed, and
   conflicted state.
@@ -189,6 +192,11 @@ reason to retain a Windows-filesystem working copy.
 ### 5.2 Node.js application/API
 
 - Authenticates sessions and enforces role plus institution authorization.
+- Owns off-chain institutional invitation, application, review, activation,
+  suspension, applicant-status, and institution-account administration
+  workflows.
+- Keeps pending applicants outside operational tenant access and prevents
+  applicant or affiliated-administrator self-approval.
 - Validates request payloads using field allowlists.
 - Owns orchestration, idempotency, correlation IDs, and transaction status.
 - Writes durable local events before attempting ledger submission where needed.
@@ -203,7 +211,8 @@ PostgreSQL is both the application database/read model and the durable offline
 event queue. These are distinct logical responsibilities represented by
 separate tables and transaction rules.
 
-It stores users, institutions, configuration, dashboard projections, requests,
+It stores users, institutions, institutional invitations/applications and
+review evidence, configuration, dashboard projections, requests,
 notifications, forecast outputs, and synchronization metadata. It is not the
 authoritative immutable history for accepted inventory and custody mutations.
 
@@ -231,6 +240,7 @@ authoritative immutable history for accepted inventory and custody mutations.
 | Data | Authoritative source | PostgreSQL role | On chain? |
 |---|---|---|:---:|
 | User accounts, password hashes, sessions | PostgreSQL/identity layer | Primary | No |
+| Institutional invitations, applications, decisions, and verification references | PostgreSQL/identity layer | Primary | No |
 | Institution profiles and facility coordinates | PostgreSQL configuration | Primary | Identifier/reference only if required |
 | Pending offline events | PostgreSQL queue | Primary until resolved | No, until accepted |
 | Blood-unit registration and custody events | Fabric ledger | Read projection and correlation | Yes |
@@ -256,6 +266,8 @@ baseline logical model is therefore:
 | Table/domain | Purpose |
 |---|---|
 | `institutions` | Participating and modeled facilities, category, status, facility coordinates |
+| `institution_applications` | Versioned invitation-based submissions, review decisions, reasons, and prior-application link |
+| `institution_invitations` | Single-use invitation digest, allowed category/scope, status, and expiry |
 | `users` | Application identity, role, institution, status, password hash/identity mapping |
 | `blood_units` | Query projection of unit metadata, custody, lifecycle, ledger version |
 | `transfer_requests` | Request details, urgency, ranking inputs, workflow state |
@@ -278,6 +290,12 @@ validate the migration mechanism.
 Required cross-cutting fields include stable IDs, institution scope, created and
 updated timestamps, correlation and idempotency IDs, version/concurrency value,
 and status. All stored timestamps use UTC.
+
+Onboarding records use opaque public application/institution IDs. Invitation
+secrets are stored only as digests. Verification documents are not stored in
+the initial design; only a type, outcome, reviewer, UTC time, and safe reference
+are retained. Column-level retention and indexing remain gated by `RQ-14` and
+the activating API sprint.
 
 ## 8. Fabric network baseline
 
@@ -304,6 +322,9 @@ Future primary blood-bank institutions may receive independent organizations,
 CAs, peers, operational ownership, and multi-organization endorsement policies.
 Their onboarding requires governance, certificate lifecycle, backup, monitoring,
 channel, privacy, and endorsement decisions not implemented in Sprint 1.
+Ordinary application approval or activation is not this Fabric onboarding
+process and cannot invoke Fabric CA, channel, peer, chaincode lifecycle, or
+endorsement administration.
 
 ### 8.3 Contract boundaries
 
@@ -315,6 +336,11 @@ Begin with one deployable chaincode package containing coherent contract modules
 An expiry scheduler, ML model, BROA computation, RPS computation, and external
 location lookup do not run inside chaincode. Chaincode validates submitted state,
 authorization, configuration version/digest, and permitted transitions.
+Chaincode-sensitive operations independently validate the approved
+institution/caller authorization mapping; they never trust application
+activation alone or query the onboarding database. Updating that mapping is an
+explicit governed deployment/configuration action, not a side effect of
+application approval.
 
 ## 9. Synchronization design
 
@@ -342,6 +368,12 @@ The application never reports a local pending event as ledger-confirmed.
   connection material.
 - Produce a machine-readable OpenAPI document before the API implementation
   sprint; it is not required for Sprint 1 infrastructure.
+- Keep institutional application endpoints separate from operational endpoints.
+  Applicant credentials may access only their own application status until
+  activation.
+- Treat approval, activation, rejection, withdrawal, suspension, reactivation,
+  and role assignment as separate idempotent, version-checked mutations with
+  stable safe errors.
 
 ## 11. Security and privacy
 
@@ -449,11 +481,12 @@ time, correlation ID, and safe event name without secrets or prohibited data.
 | ADR-022 | Accepted | Use `node-pg-migrate`, a separate migration owner/runtime role, and an `app` schema bootstrap without domain tables or seeds | Proves repeatable migrations while deferring feature schema decisions |
 | ADR-023 | Accepted | The disposable `HealthContract` records and reads deterministic probe IDs only | Proves chaincode lifecycle and ledger commitment without clocks or BloodLedger feature data |
 | ADR-024 | Accepted | Use separate stop, network reset, and full development reset levels scoped to the BloodLedger Compose project and repository-owned generated paths | Prevents reset operations from deleting unrelated Docker or filesystem resources |
-| ADR-025 | Accepted | Use Docker Desktop 4.82.0 with bundled Engine 29.6.1 and Compose 5.3.0 as the Sprint 1 effective baseline | Supersedes the 4.81.0 planning target after Jopia-host WSL integration, Fabric image, and disposable container verification; remaining hosts still require S1-02 evidence |
+| ADR-025 | Accepted | Use Docker Desktop 4.82.0 with bundled Engine 29.6.1 and Compose 5.3.0 as the Sprint 1 effective baseline | Supersedes the 4.81.0 planning target after Jopia-host WSL integration, Fabric image, and disposable container verification; additional-host results are optional portability evidence |
 | ADR-026 | Accepted | Place the disposable Sprint 1 `HealthContract` below `network/health-contract/`, outside the Sprint 2 domain `chaincode/` boundary | Keeps infrastructure validation code separate from inventory and transfer chaincode and resolves the Sprint activation ambiguity |
 | ADR-027 | Accepted | Pin `node-pg-migrate` 8.0.4, `pg` 8.22.0, and Gitleaks 8.30.1 for Sprint 1 | Makes migration and secret-scan evidence reproducible; the npm packages use the one root lockfile and Gitleaks uses its official versioned container image |
 | ADR-028 | Accepted | Use the Fabric operations `/healthz` endpoint on internal peer port 9443 and internal orderer port 8443, with no host publication | Supplies deterministic Compose health checks without expanding host bindings; operations TLS may be disabled only on the isolated development Compose network |
 | ADR-029 | Accepted | Start the Fabric 2.5 orderer without a system channel by using `BootstrapMethod: none` and the channel participation model; use single-consenter Raft (`etcdraft`) when S1-07 creates the application channel | Lets S1-06 prove a healthy channel-less orderer without inventing a genesis block or entering S1-07; the mutually authenticated admin endpoint remains internal and unexposed |
+| ADR-030 | Accepted | Keep institutional applications, approval, activation, users, sessions, and verification evidence off-chain; application activation is separate from deferred Fabric membership | Enables controlled application participation without weakening the single-Mediatrix-MSP prototype or coupling ordinary administration to CA, peer, channel, or endorsement changes |
 
 ## 16. Sprint 1 architecture gates
 

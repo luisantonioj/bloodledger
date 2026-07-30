@@ -234,6 +234,21 @@ visible pending/conflict states.
 Acceptance: versioned OpenAPI contract covers authentication, inventory,
 requests, transfers, alerts, transaction status, and consistent errors.
 
+### BL-API-02 — Institutional onboarding domain and API
+
+**Priority:** Must | **Status:** Proposed | **Target:** Sprint 4 or activating API sprint
+
+**Requirements:** FR-15, FR-16, FR-12, BR-ONB-01–16, BR-SEC-01–05, NFR-01, NFR-13
+
+**Dependencies:** approved column-level design, versioned OpenAPI contract,
+`RQ-14`, and the activating sprint's selection
+
+Acceptance: persistence and versioned endpoints cover invitation submission,
+safe duplicate detection, review, approval/rejection, withdrawal,
+resubmission, separate activation, initial `ROLE-06` handling, suspension,
+reactivation, audit, idempotency, concurrency, and stable errors without
+granting Fabric membership.
+
 ## 8. EPIC-06 — Dashboard and access
 
 ### BL-WEB-01 — Authentication and institutional RBAC
@@ -268,6 +283,31 @@ custody evidence without exposure of prohibited data.
 Acceptance: DOH/PRC users can view/export approved aggregate information but
 cannot mutate operational state.
 
+### BL-WEB-05 — Institutional application and status UI
+
+**Priority:** Must | **Status:** Proposed | **Target:** Sprint 5 or activating web sprint
+
+**Requirements:** FR-15, FR-16, NFR-11, NFR-13
+
+**Dependencies:** BL-API-02 and activating sprint selection
+
+Acceptance: an invited applicant submits the minimum safe fields, verifies the
+submission, and views only its own safe status, reasons, and in-application
+notifications without receiving operational access before activation.
+
+### BL-WEB-06 — Administrator institution and user management UI
+
+**Priority:** Must | **Status:** Proposed | **Target:** Sprint 5 or activating web sprint
+
+**Requirements:** FR-16, FR-12, BR-ONB-05–16, NFR-11, NFR-13
+
+**Dependencies:** BL-API-02 and activating sprint selection
+
+Acceptance: an authorized System Administrator reviews applications and
+performs separate approve/reject, activate, suspend/reactivate, and initial-user
+actions with reasons, version-conflict handling, and a clear warning that
+application approval does not grant Fabric membership.
+
 ## 9. EPIC-07 — Validation and evidence
 
 ### BL-TST-01 — Requirements-traceable system tests
@@ -276,6 +316,21 @@ cannot mutate operational state.
 
 Acceptance: each requirement has passing/failing evidence, environment/version,
 fixture provenance, defect record, and rerun result where applicable.
+
+### BL-TST-02 — Onboarding authorization, audit, and boundary tests
+
+**Priority:** Must | **Status:** Proposed | **Target:** Sprints 4–5/testing
+
+**Requirements:** FR-15, FR-16, FR-12, BR-ONB-01–16, BR-SEC-01–05, NFR-01, NFR-13
+
+**Dependencies:** BL-API-02, BL-WEB-05, BL-WEB-06, and applicable open RQs
+
+Acceptance: automated tests cover application validation, duplicate/idempotent
+submission, unauthorized and self-approval attempts, every allowed lifecycle
+decision, stale/repeated decisions, pre-activation/rejected/suspended access,
+cross-role and cross-institution denial, safe errors, audit evidence, secondary
+application participation without a peer, unchanged Fabric membership and
+endorsement, single-organization regression, and prohibited-data/secret scans.
 
 ### BL-UAT-01 — User acceptance testing
 
