@@ -8,14 +8,15 @@ redistribution recommendations, and a web dashboard.
 
 ## Current status
 
-The Sprint 0 baseline and Sprint 1 planning decisions are approved. Sprint 1
-infrastructure implementation and Jopia-host validation are complete: the
+The Sprint 0 baseline and Sprint 1 planning decisions are approved. Sprint 1 is
+complete under the assigned-owner validation policy: the
 repository foundation, PostgreSQL migration baseline, one-organization Fabric
 development network, development channel, disposable health contract, and
-S1-08 operational command interface are implemented. Buno and Lat's concise
-S1-09 host evidence and the final Sprint Review remain pending. Sprint 2
-planning has started, but domain implementation is not yet authorized. This is
-a research prototype, not a production or clinically validated system.
+S1-08 operational command interface are implemented, Jopia's canonical-host
+evidence is recorded, and Jopia accepted the Sprint Review on 2026-07-30.
+Additional Buno or Lat host evidence is optional. Sprint 2 planning has started,
+but domain implementation is not yet authorized. This is a research prototype,
+not a production or clinically validated system.
 
 The documents have been drafted from the revised manuscript, updated research
 proposal, summary of revisions, and updated Gantt workbook. Sprint 0 becomes
@@ -112,10 +113,10 @@ The team has approved:
 3. ADR-001 through ADR-018 and ADR-020 through ADR-028;
 4. the version targets and WSL2/Bash workflow;
 5. the migration/bootstrap-only PostgreSQL scope;
-6. Sprint 1 owners, validation obligations, and exit criteria.
+6. Sprint 1 assigned-owner validation and accountable-owner exit criteria.
 
-The actual implementation start is recorded in the sprint header. Remaining
-execution and validation dates are recorded separately in the Sprint Review.
+The actual implementation and validation dates are recorded in the sprint
+header and Sprint Review.
 
 ## Local development quick start
 

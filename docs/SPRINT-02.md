@@ -15,7 +15,7 @@ API, scanning, forecasting, recommendation, or user-interface behavior.
 
 Sprint 2 implementation begins only after:
 
-- Sprint 1 S1-09 evidence and S1-10 review are accepted;
+- Sprint 1 S1-09 evidence and S1-10 accountable-owner review are accepted;
 - BL-INV-01 and BL-INV-02 satisfy the backlog definition of `Ready` and are
   selected into this sprint;
 - `RQ-02` identifies the prototype's supported blood types, components, and the
@@ -127,14 +127,19 @@ clinical validation or production readiness.
   database access, ML/algorithm execution, or unstable ordering.
 - Re-run the applicable Sprint 1 foundation, secret, package, network health,
   restart, and project-scoped reset checks.
+- Each assigned task owner validates applicable evidence on the supported
+  environment.
 - Exit only when selected backlog acceptance criteria have reproducible evidence
-  on the supported environment and the team records the Sprint Review.
+  and the sprint accountable owner accepts the Sprint Review.
 
 ## 7. Ownership and open decisions
 
 Jopia remains the proposed accountable owner until the team approves the Sprint
-2 ownership matrix; Buno and Lat are proposed reviewers. This proposal does not
-resolve clinical or domain choices. Required owner decisions are:
+2 ownership matrix. Each assigned owner validates their task; Buno and Lat may
+review or participate without blocking acceptance. The accountable owner
+accepts the consolidated Sprint Review, and self-validation is disclosed when
+the same person holds both roles. This proposal does not resolve clinical or
+domain choices. Required owner decisions are:
 
 - `RQ-02`: supported blood types, components, and normalized scan fields;
 - `RQ-03`: component shelf-life and near-expiry thresholds;

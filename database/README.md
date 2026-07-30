@@ -1,7 +1,7 @@
 # BloodLedger Development Database
 
-**Status:** S1-04/S1-05 implemented and verified on Jopia's development host;
-Buno and Lat supported-host validation remains open
+**Status:** S1-04/S1-05 implemented and verified by the assigned owner on
+Jopia's canonical supported development host
 
 This document is the authoritative source for Sprint 1 PostgreSQL identifiers,
 roles, migration scope, persistence, and reset behavior. Sprint 1 proves the
@@ -154,5 +154,6 @@ Jopia-host validation on 2026-07-15 proved PostgreSQL server and client `17.10`,
 healthy startup, authenticated runtime-role connectivity, separated roles,
 `bloodledger_migrator` ownership of `app`, runtime usage without DDL, one
 `public.pgmigrations` row, idempotent reapply, zero tables in `app`, normal
-restart persistence, and exact-volume empty-state recreation. Buno and Lat have
-not yet repeated these checks on their supported hosts.
+restart persistence, and exact-volume empty-state recreation. Additional-host
+repetition is optional portability evidence under the 2026-07-30 validation
+policy.

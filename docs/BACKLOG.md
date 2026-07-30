@@ -1,6 +1,6 @@
 # BloodLedger Product Backlog
 
-**Status:** Sprint 1 closeout and Sprint 2 planning baseline
+**Status:** Sprint 1 complete and Sprint 2 planning baseline
 **Baseline date:** 2026-07-30
 **Prioritization:** MoSCoW, then dependency order
 
@@ -87,18 +87,20 @@ independent audit in `docs/SPRINT-01.md`.
 ### BL-INF-04 — Infrastructure verification
 
 **Priority:** Must  
-**Status:** In Progress
+**Status:** Done
 
 **Target:** Sprint 1  
 **Dependencies:** BL-INF-01–03
 
 Acceptance:
 
-- Automated health and reset checks pass on each team member's supported host.
+- Automated health and reset checks pass on the assigned owner's canonical
+  supported host.
 - Failures and fixes are documented.
 
-**Remaining:** Record Buno and Lat's safe supported-host summaries and complete
-S1-10 review. A Codex account is not part of the acceptance criteria.
+**Evidence:** Jopia-host S1-09 results, the 2026-07-30 independent audit, and
+Jopia's accountable-owner S1-10 acceptance in `docs/SPRINT-01.md`. Buno and
+Lat's host summaries are optional portability evidence.
 
 ## 4. EPIC-02 — Inventory ledger
 

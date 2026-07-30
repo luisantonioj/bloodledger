@@ -1,8 +1,8 @@
 # BloodLedger Development Network
 
-**Status:** Approved Sprint 1 baseline; CA/identity, peer/orderer, channel, and
-health-contract lifecycle/integration implemented and validated on Jopia's
-supported WSL2 host. Buno and Lat host evidence remains pending under S1-09.
+**Status:** Validated Sprint 1 baseline; CA/identity, peer/orderer, channel, and
+health-contract lifecycle/integration implemented and validated by the assigned
+owner on Jopia's supported WSL2 host
 
 This document is the authoritative source for Sprint 1 Fabric network names,
 development identities, ports, generated-material boundaries, orderer bootstrap,

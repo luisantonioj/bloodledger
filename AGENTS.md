@@ -6,10 +6,11 @@ These instructions apply to the entire repository.
 
 BloodLedger has an approved Sprint 0 baseline and Sprint 1 implementation guide.
 Sprint 1 infrastructure implementation and Jopia-host validation completed on
-2026-07-16. Buno and Lat's S1-09 evidence and the S1-10 final review remain
-pending. Sprint 2 planning started on 2026-07-30, but its domain implementation
-is not authorized; do not add Sprint 2 code or configuration unless the user
-explicitly authorizes that implementation work after its entry gates are met.
+2026-07-16, and Jopia accepted the accountable-owner Sprint Review on
+2026-07-30. Additional Buno or Lat host evidence is optional. Sprint 2 planning
+started on 2026-07-30, but its domain implementation is not authorized; do not
+add Sprint 2 code or configuration unless the user explicitly authorizes that
+implementation work after its entry gates are met.
 
 The project is a research prototype. Never describe it as production-ready,
 clinically validated, regulator-approved, or a deployed multi-organization
@@ -87,6 +88,12 @@ When implementation is authorized:
    to the change.
 8. Verify every acceptance criterion with evidence.
 9. Update documentation only when behavior or an accepted decision changed.
+
+The assigned owner validates each task and records its evidence. The sprint
+accountable owner accepts the consolidated Sprint Review. Teammate review and
+additional-machine validation are optional unless a selected task explicitly
+requires them. This workflow does not relax clinical, privacy, security,
+research, or unresolved `RQ-*` approval gates.
 
 If a required business or clinical rule is unanswered, do not invent it. Record
 or reference an `RQ-*` and stop the affected behavior until a decision exists.

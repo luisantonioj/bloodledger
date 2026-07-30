@@ -1,7 +1,7 @@
 # BloodLedger Local Development Guide
 
-**Status:** S1-08 operational interface and Jopia-host S1-09 supported-machine
-validation completed on 2026-07-16; Buno and Lat evidence remains pending
+**Status:** S1-08 operational interface and assigned-owner S1-09 validation
+completed by Jopia on 2026-07-16; Sprint Review accepted 2026-07-30
 
 This guide defines the intended local workflow and evidence format. Command
 examples are added only after Sprint 1 implementation validates them.
@@ -39,8 +39,9 @@ effective output rather than assuming the installed version matches the target.
 | Fabric/Fabric CA | Fabric `2.5.16`; Fabric CA `1.5.15`; health, restart, Level 1, and Level 2 recreation verified 2026-07-16 | Not recorded | Not recorded |
 | PostgreSQL | Server/client `17.10` (Debian `17.10-1.pgdg13+1`); health, migration, restart persistence, Level 1 preservation, and Level 2 recreation verified 2026-07-16 | Not recorded | Not recorded |
 
-A difference is not silently normalized. Jopia records the decision or deviation;
-Buno and Lat review the resulting supported baseline.
+A difference is not silently normalized. The assigned owner records the
+decision or deviation. Optional reviewers may add non-gating portability
+evidence.
 
 ## 3. Operational interface
 
@@ -86,7 +87,8 @@ credential-bearing connection strings. Copy `.env.example` to the untracked
 checked without printing values.
 
 The secret scan uses the official Gitleaks container pinned to `8.30.1`; never
-use its `latest` tag. S1-02 records the resolved container digest on each host.
+use its `latest` tag. S1-02 records the resolved container digest on the
+assigned owner's canonical host.
 The tested repository command must scan committed history plus tracked and
 staged repository content, redact detected values, and fail closed when the
 scanner cannot run. Local `.env` and generated Fabric identities necessarily
@@ -171,15 +173,15 @@ After either reset, run `bootstrap` to recreate the approved Sprint 1 baseline.
 
 ## 5. Validation evidence template
 
-Each proponent's concise result is recorded in the current sprint's Review
+The assigned owner's concise result is recorded in the current sprint's Review
 record using the fields below. Raw terminal dumps, Docker inspection payloads,
 certificates, screenshots containing local secrets, and scanner reports
 containing detected values are not committed. A failing check is summarized
 with its safe error and resolution or blocker.
 
-For every team machine, record:
+For each assigned validation task, record:
 
-- reviewer/name;
+- assigned owner/name;
 - host and WSL/Ubuntu versions;
 - working-copy location;
 - Docker Desktop, Engine, and Compose versions;
@@ -192,7 +194,11 @@ For every team machine, record:
 - secret/private-key scan result;
 - pinned Gitleaks version and resolved container digest;
 - deviations, errors, and resolution; and
-- date reviewed by Buno and Lat.
+- accountable-owner acceptance date.
+
+Additional-machine results and teammate review may be recorded as optional,
+non-gating portability evidence unless the selected task explicitly requires
+them.
 
 Do not paste credentials, tokens, enrollment secrets, private keys, complete
 certificates, or connection strings into evidence.
@@ -202,7 +208,7 @@ or `NOT RUN` for results and explain every non-pass value without including raw
 secret-bearing output.
 
 ```text
-Validator:
+Assigned owner/validator:
 Validation date:
 Tested Git revision:
 Windows / WSL / Ubuntu:
@@ -221,11 +227,12 @@ Fabric reset/recreate:
 full development reset/recreate:
 Gitleaks version / resolved digest / result:
 Deviations, failures, and verified resolutions:
-Evidence reviewed by:
+Optional reviewer:
+Accepted by accountable owner:
 ```
 
-Retained screenshots may be used by the reviewers to verify this summary, but
-screenshots and raw logs are not committed by default.
+Retained screenshots may be used by the assigned owner or optional reviewers to
+verify this summary, but screenshots and raw logs are not committed by default.
 
 ## 6. Troubleshooting record
 

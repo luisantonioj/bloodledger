@@ -1,7 +1,6 @@
 # Sprint 1 — Infrastructure Provisioning
 
-**Status:** Implementation complete on Jopia host; cross-machine validation and
-Sprint Review in progress
+**Status:** Complete; accountable-owner review accepted 2026-07-30
 
 **Planning dates:** June 29–July 9, 2026
 
@@ -11,15 +10,16 @@ Sprint Review in progress
 **Actual implementation start:** 2026-07-15
 **Infrastructure implementation completed:** 2026-07-16
 **Independent repository audit:** 2026-07-30
+**Sprint Review accepted:** 2026-07-30
 
 The Gantt dates are the approved planning guide. The actual implementation
-start is recorded above; remaining execution and validation dates depend on the
-team and are recorded separately in the Sprint Review.
+start is recorded above; execution and validation dates are recorded separately
+in the Sprint Review.
 
 ## 1. Sprint goal
 
-Establish a reproducible local BloodLedger development environment in which
-every team member can start, inspect, validate, stop, and reset PostgreSQL and a
+Establish a reproducible local BloodLedger development environment in which an
+assigned owner can start, inspect, validate, stop, and reset PostgreSQL and a
 single-organization Hyperledger Fabric development network using documented,
 version-pinned commands.
 
@@ -58,7 +58,7 @@ Sprint 1.
 - Establish the migration mechanism and a minimal bootstrap migration; do not
   create the complete application schema or feature business behavior.
 - Add start, stop, health, log, and reset procedures.
-- Validate the process on every supported team machine.
+- Validate the process on the assigned owner's canonical supported machine.
 - Record review evidence, problems, decisions, and retrospective actions.
 
 ## 4. Excluded work
@@ -81,7 +81,8 @@ Sprint 1.
 Acceptance:
 
 - Planning dates and actual execution dates are recorded separately.
-- Jopia is the accountable owner and Buno and Lat are reviewers.
+- Jopia is the accountable owner; Buno and Lat may participate or review
+  without blocking task acceptance.
 - Blockers and external approvals are visible.
 
 ### S1-02 — Select and pin the environment matrix
@@ -175,10 +176,13 @@ Acceptance:
 
 Acceptance:
 
-- Each proponent validates on a supported machine or records a blocker.
+- The assigned owner validates on the canonical supported machine or records a
+  blocker.
 - Evidence includes version output, service health, channel query, PostgreSQL
   query, restart, and reset/recreate results.
 - Setup instructions are corrected from the validation evidence.
+- Additional-machine validation is optional unless a selected task explicitly
+  makes portability an acceptance criterion.
 
 ### S1-10 — Review and retrospective
 
@@ -186,16 +190,17 @@ Acceptance:
 
 Acceptance:
 
-- The team demonstrates the sprint exit criteria.
+- The accountable owner reviews the sprint exit evidence.
 - Incomplete items return to the backlog with cause and owner.
 - Decisions and troubleshooting lessons update authoritative documentation.
 
 ## 6. Ownership matrix
 
 The ownership mapping refines the Gantt's broader assignments. Jopia is
-accountable for every Sprint 1 task; Buno and Lat review the work and evidence.
+accountable for and validates every Sprint 1 task. Buno and Lat are optional
+reviewers/participants whose availability does not block acceptance.
 
-| Task | Accountable | Reviewer/participants |
+| Task | Accountable/validator | Optional reviewer/participants |
 |---|---|---|
 | S1-01 Sprint plan | Jopia | Buno and Lat |
 | S1-02 Environment matrix | Jopia | Buno and Lat |
@@ -205,7 +210,7 @@ accountable for every Sprint 1 task; Buno and Lat review the work and evidence.
 | S1-06 Fabric network and CA | Jopia | Buno and Lat |
 | S1-07 Channel/health contract | Jopia | Buno and Lat |
 | S1-08 Operational commands | Jopia | Buno and Lat |
-| S1-09 Cross-machine validation | Jopia | Buno and Lat |
+| S1-09 Canonical-host validation | Jopia | Buno and Lat |
 | S1-10 Review/retrospective | Jopia | Buno and Lat |
 
 ## 7. Approved decisions and validation obligations
@@ -214,7 +219,7 @@ accountable for every Sprint 1 task; Buno and Lat review the work and evidence.
 |---|---|---|
 | Sprint dates | June 29–July 9, 2026 planning guide | Record actual execution dates in review |
 | Host and tool versions | `docs/ARCHITECTURE.md` Section 3.1 | S1-02 clean-host and compatibility checks |
-| Scripts | Bash in WSL2 | S1-08 on every host |
+| Scripts | Bash in WSL2 | S1-08 on the assigned owner's canonical host |
 | Package management and migration tools | ADR-015, ADR-022, and ADR-027 | S1-02/S1-05 lockfile and migration evidence |
 | Fabric topology, orderer bootstrap, consensus, and state database | ADR-001, ADR-002, ADR-008, ADR-029, and `network/README.md` | S1-06/S1-07 |
 | Identity model | ADR-016, ADR-021, and `network/README.md` | S1-06 and secret scan |
@@ -225,12 +230,13 @@ accountable for every Sprint 1 task; Buno and Lat review the work and evidence.
 | Reset safety | ADR-024 and `docs/LOCAL-DEVELOPMENT.md` | S1-08/S1-09 |
 | DBeaver | Optional | Connection check only, if used |
 | Spec Kit/custom skills | Deferred | Reconsider only after repeated need |
+| Task and sprint acceptance | Assigned owner validates task evidence; accountable owner accepts the Sprint Review | Accepted 2026-07-30; supersedes mandatory teammate and every-host validation |
 
 ## 8. Validation checklist
 
 - [x] Documentation baseline reviewed.
 - [x] Exact versions pinned and reproducible on Jopia's supported host.
-- [ ] Clean setup succeeds on each supported host.
+- [x] Clean setup succeeds on the assigned owner's canonical supported host.
 - [x] PostgreSQL health and query succeed on Jopia's supported host.
 - [x] Fabric orderer, peer, and CA/identity path are healthy on Jopia's
   supported host.
@@ -242,11 +248,11 @@ accountable for every Sprint 1 task; Buno and Lat review the work and evidence.
   tracked at audited revision `dcfff71b57cda1daaf01a1a1c490217485c3cfea`.
 - [x] README quick start matches Jopia-host tested commands.
 - [x] Known failures and fixes observed on Jopia's host are documented.
-- [ ] Sprint review evidence and retrospective are recorded.
+- [x] Sprint review evidence and retrospective are recorded.
 
 ## 9. Sprint exit criteria
 
-Sprint 1 is complete only when a team member can start from the documented
+Sprint 1 is complete only when the assigned owner can start from the documented
 prerequisites and independently:
 
 1. clone the repository;
@@ -274,23 +280,39 @@ exist.
 
 ## 11. Review record
 
-- Review date: Pending final team review; independent repository audit completed
-  2026-07-30.
+- Review date: 2026-07-30; independent repository audit completed the same day.
 - Actual implementation dates: 2026-07-15 through 2026-07-16.
 - Demonstrated by: Jopia on the supported host recorded below.
-- Reviewed by: Pending Buno and Lat evidence review and final team acceptance.
-- Passed exit criteria: Proven on Jopia's supported host; not yet proven on every
-  proponent host as required by S1-09.
-- Incomplete items: concise safe validation summaries for Buno and Lat, any
-  evidence-driven corrections, and the S1-10 review/retrospective acceptance.
+- Reviewed and accepted by: Jopia, the accountable Sprint 1 owner.
+- Passed exit criteria: Proven on Jopia's canonical supported host.
+- Incomplete items: None for Sprint 1. Additional Buno or Lat host summaries
+  may be recorded later as optional portability evidence.
+
+### Validation-governance decision — 2026-07-30
+
+To remove a schedule dependency without weakening evidence requirements, the
+team replaced mandatory teammate and every-team-machine validation with this
+policy:
+
+- the assigned owner validates the task and records applicable evidence;
+- the sprint accountable owner accepts the consolidated Sprint Review;
+- self-validation is disclosed when those roles are held by the same person;
+- teammate review and additional-machine validation are optional unless a
+  selected task explicitly requires them; and
+- clinical, privacy, security, research, and unresolved `RQ-*` approval gates
+  are unchanged.
+
+Jopia approved this policy and accepted Sprint 1 on 2026-07-30. It supersedes
+the earlier Sprint 1 reviewer and cross-machine obligations without claiming
+that missing Buno or Lat evidence was produced.
 
 ### Host validation results
 
 | Validator | Environment and effective versions | Result | Blocker/deviation and safe evidence summary | Reviewed |
 |---|---|---|---|---|
-| Jopia | Windows 11 `22631.6199`; WSL `2.7.10.0`/Ubuntu `24.04.4`; Docker Desktop `4.82.0`, Engine `29.6.1`, Compose `5.3.0`; Node `24.17.0`/npm `11.13.0`; Fabric `2.5.16`, Fabric CA `1.5.15`; PostgreSQL `17.10` | Proven on supported host, 2026-07-16 | Revision `c8443bcdbf542d6021635bc793dd44df5a38238c`; WSL filesystem path; default loopback ports; bootstrap/status, PostgreSQL roles and migration, channel/lifecycle, committed event/query probe, normal restart, Level 1 preservation/recreation, Level 2 empty-state recreation, and Gitleaks passed. Git `2.43.0` is the recorded compatible deviation. Docker Desktop initially was not open; opening it resolved the prerequisite without a project change. | Pending |
-| Buno | Initial supported-laptop setup reported complete; exact environment and versions not recorded | Partially proven | Repository audit did not find a safe host summary. Record the tested revision, versions, working-copy path, command results, restart/reset outcomes, secret-scan digest, and any deviation. A Codex account is not required. | Pending |
-| Lat | Initial supported-laptop setup reported complete; exact environment and versions not recorded | Partially proven | Repository audit did not find a safe host summary. Record the tested revision, versions, working-copy path, command results, restart/reset outcomes, secret-scan digest, and any deviation. A Codex account is not required. | Pending |
+| Jopia | Windows 11 `22631.6199`; WSL `2.7.10.0`/Ubuntu `24.04.4`; Docker Desktop `4.82.0`, Engine `29.6.1`, Compose `5.3.0`; Node `24.17.0`/npm `11.13.0`; Fabric `2.5.16`, Fabric CA `1.5.15`; PostgreSQL `17.10` | Proven on supported host, 2026-07-16 | Revision `c8443bcdbf542d6021635bc793dd44df5a38238c`; WSL filesystem path; default loopback ports; bootstrap/status, PostgreSQL roles and migration, channel/lifecycle, committed event/query probe, normal restart, Level 1 preservation/recreation, Level 2 empty-state recreation, and Gitleaks passed. Git `2.43.0` is the recorded compatible deviation. Docker Desktop initially was not open; opening it resolved the prerequisite without a project change. | Accepted by accountable owner, 2026-07-30 |
+| Buno | Initial supported-laptop setup reported complete; exact environment and versions not recorded | Optional evidence not recorded | Repository audit did not find a safe host summary. A summary may still be added as non-gating portability evidence. A Codex account is not required. | Not required under the 2026-07-30 policy |
+| Lat | Initial supported-laptop setup reported complete; exact environment and versions not recorded | Optional evidence not recorded | Repository audit did not find a safe host summary. A summary may still be added as non-gating portability evidence. A Codex account is not required. | Not required under the 2026-07-30 policy |
 
 ### Independent audit results — 2026-07-30
 
@@ -301,24 +323,24 @@ bootstrap services, or perform a destructive reset.
 | Task | Classification | Evidence |
 |---|---|---|
 | S1-01 | Proven | Approved scope, dates, ownership, blockers, and demonstration obligations are recorded in this document. |
-| S1-02 | Partially proven | `npm run check:foundation` and `scripts/bloodledger-dev.sh doctor` passed with pinned versions on Jopia's host. Buno and Lat version summaries remain absent. |
+| S1-02 | Proven | `npm run check:foundation` and `scripts/bloodledger-dev.sh doctor` passed with pinned versions on Jopia's canonical supported host. |
 | S1-03 | Proven | Foundation ignore/template checks passed; `npm run scan:secrets` scanned 17 commits plus index and candidate content with Gitleaks `8.30.1` at the ADR-027 digest and found no leaks; tracked-path inspection found no generated identity or private-key path. |
 | S1-04 | Proven | Commit `6549264`, the static database check, and the 2026-07-16 Jopia-host PostgreSQL health, role, query, persistence, and recreation evidence. |
 | S1-05 | Proven | Commit `6549264`, `npm run check:database`, and recorded apply/status/reapply/recreate evidence prove one bootstrap migration and zero domain tables. |
 | S1-06 | Proven | Commits `64a3406`, `8a3fd42`, and `0ca3fa6`; Fabric identity/node static checks passed; Jopia-host health and recreation evidence is recorded above. |
 | S1-07 | Proven | Commits `8fcbfda`, `fd7ff18`, and `6f73956`; channel and health-contract checks passed; all eight deterministic, authorization, duplicate, boundary, and exclusion tests passed. |
 | S1-08 | Proven | Commits `bc62acc` and `c8443bc`; static and command-behavior tests passed; both reset previews enumerated only approved project resources without changing them. |
-| S1-09 | Partially proven | Jopia's supported-host validation is proven. Buno and Lat reported initial runs, but their required safe summaries are not recorded. |
-| S1-10 | Not proven | Final demonstrator/reviewer acceptance, incomplete-item disposition, and retrospective remain open. |
+| S1-09 | Proven | Jopia's canonical supported-host validation is recorded; additional-machine summaries are optional under the 2026-07-30 policy. |
+| S1-10 | Proven | Jopia accepted the consolidated evidence and recorded the incomplete-item disposition and retrospective on 2026-07-30. |
 
 ### Exit-criterion audit
 
 All seven exit actions are proven by Jopia's 2026-07-16 supported-host evidence:
 configuration from the safe template, bootstrap, consolidated health and query,
 restart preservation, project-scoped resets and recreation, and secret scanning.
-The repository history establishes the cloneable revision. Sprint completion
-nevertheless remains open because S1-09 separately requires evidence from each
-proponent and S1-10 requires final review.
+The repository history establishes the cloneable revision. Under the
+2026-07-30 assigned-owner validation policy, this evidence satisfies S1-09 and
+Jopia's accountable-owner acceptance satisfies S1-10.
 
 The 2026-07-30 live read-only audit ran `doctor` successfully. Consolidated
 `status` correctly failed because the current local `peer0-mediatrix` container
@@ -335,8 +357,10 @@ bootstrap or reset was performed to alter it.
   temporary CA client state, reset-volume validation, and treating Codex access
   as if it were required for human host validation.
 - What we will change next sprint: define the evidence summary before execution,
-  collect each owner's safe results immediately, and keep implementation,
-  independent audit, and human acceptance as distinct gates.
+  collect each assigned owner's safe results immediately, and keep
+  implementation, independent audit, and accountable-owner acceptance as
+  distinct gates.
 - New risks or decisions: Buno and Lat do not need Codex accounts to validate.
-  Their retained screenshots may support concise summaries but are not committed
-  by default; missing checklist evidence is rerun only on the affected host.
+  Their retained screenshots may support optional concise summaries but are not
+  committed by default; missing required checklist evidence is rerun only by
+  the assigned owner or on a host explicitly required by a selected task.

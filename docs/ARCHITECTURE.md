@@ -1,7 +1,7 @@
 # BloodLedger System Architecture
 
-**Status:** Sprint 1 approved planning baseline
-**Baseline date:** 2026-07-15
+**Status:** Sprint 1 validated baseline
+**Baseline date:** 2026-07-30
 **Scope:** Research prototype, not a production deployment design
 
 ## 1. Architecture goals
@@ -61,9 +61,9 @@ next boundary.
 
 The manuscript's minimums were reviewed on 2026-07-13. These are approved
 targets. ADR-025 accepts the Docker bundle verified on Jopia's host on
-2026-07-15. Sprint 1 task `S1-02` must still record actual command output on
-the remaining supported hosts before the complete matrix is considered
-cross-machine verified.
+2026-07-15. Sprint 1 task `S1-02` records actual command output on the assigned
+owner's canonical supported host. Other-machine results are optional portability
+evidence unless a selected task explicitly requires them.
 
 | Software | Approved target | Manuscript value | Decision |
 |---|---:|---:|---|
@@ -89,8 +89,8 @@ cross-machine verified.
 
 Docker Desktop bundles Engine and Compose components. The accepted Jopia-host
 combination is Docker Desktop `4.82.0`, Engine `29.6.1`, and Compose `5.3.0`.
-Other supported hosts must record their installed bundle output and must not mix
-independently installed Compose binaries.
+Any additionally validated host must record its installed bundle output and
+must not mix independently installed Compose binaries.
 Later-sprint libraries remain planning targets until their sprint validates the
 complete dependency graph.
 
@@ -153,18 +153,19 @@ It remains a separately named infrastructure probe and is never extended into
 
 ### 4.1 Directory ownership and activation
 
-Jopia is accountable for repository-boundary changes during Sprint 1. Buno and
-Lat review those changes and their evidence. Later sprint accountability must be
-confirmed by the relevant sprint plan before a deferred directory is activated.
+Jopia is accountable for and validates repository-boundary changes during
+Sprint 1. Buno and Lat may review those changes and their evidence, but their
+review is not an acceptance gate. Later sprint accountability must be confirmed
+by the relevant sprint plan before a deferred directory is activated.
 
-| Directory/component | Activation | Sprint 1 accountable/review |
+| Directory/component | Activation | Sprint 1 accountable/validator |
 |---|---|---|
-| `docs/` | Sprint 0 onward | Jopia / Buno and Lat for Sprint 1 changes |
-| `database/` | Sprint 1 migration baseline; domain migrations later | Jopia / Buno and Lat |
-| `network/` | Sprint 1 | Jopia / Buno and Lat |
-| `network/health-contract/` | Sprint 1 only as a disposable infrastructure contract | Jopia / Buno and Lat |
-| `scripts/` | Sprint 1 | Jopia / Buno and Lat |
-| `tests/` | Sprint 1 onward, growing with each activated component | Same owner/reviewers as the component under test |
+| `docs/` | Sprint 0 onward | Jopia |
+| `database/` | Sprint 1 migration baseline; domain migrations later | Jopia |
+| `network/` | Sprint 1 | Jopia |
+| `network/health-contract/` | Sprint 1 only as a disposable infrastructure contract | Jopia |
+| `scripts/` | Sprint 1 | Jopia |
+| `tests/` | Sprint 1 onward, growing with each activated component | Same assigned owner as the component under test |
 | `chaincode/` | Sprint 2 | Deferred to the Sprint 2 ownership plan |
 | `services/forecasting/` | Sprint 3 | Deferred to the Sprint 3 ownership plan |
 | `services/api/` | Sprint 4/5 | Deferred to the activating sprint's ownership plan |
@@ -460,13 +461,13 @@ Sprint 1 is approved to begin with ADR-001 through ADR-018 and ADR-020 through
 ADR-029. ADR-019 remains proposed for Sprint 4. Before the infrastructure files
 are considered complete, the team must verify:
 
-- the approved target versions on every supported host;
-- the pinned migration packages and official Gitleaks container on every
-  supported host;
+- the approved target versions on the assigned owner's canonical supported
+  host;
+- the pinned migration packages and official Gitleaks container on that host;
 - Docker Desktop/Engine/Compose and Fabric 2.5.16 interoperability;
 - the Fabric CA identity lifecycle and Git exclusions;
 - the identifiers, ports, and environment-variable names in `network/README.md`
-  and `database/README.md` on each host;
+  and `database/README.md` on the canonical supported host;
 - bootstrap migration apply/status/recreate behavior; and
 - health, reset, and clean-machine validation commands.
 
