@@ -1,6 +1,7 @@
 # Sprint 3 — Simulation-Only Demand Forecasting
 
-**Status:** In progress; implementation authorized 2026-08-12  
+**Status:** In progress; technical gates passed 2026-08-13, Sprint Review pending
+
 **Accountable owner:** Jopia  
 **Assigned owner/validator:** Jopia (self-validation disclosed)  
 **Branch:** `codex/sprint-03-ml-experiment`  
@@ -121,8 +122,9 @@ deviation, not evidence that 3.13.14 was tested.
 
 ## 7. Implementation-time evidence
 
-The following evidence was reproduced on 2026-08-13. It does not complete the
-Sprint Review or resolve the pending live-database gate:
+The following evidence was reproduced on 2026-08-13. The technical exit gates
+passed, but this evidence does not replace accountable-owner Sprint Review
+acceptance:
 
 - Python `3.13.11`, pandas `3.0.5`, scikit-learn `1.9.0`, psycopg `3.3.4`,
   pytest `9.1.1`, Ruff `0.15.22`, and mypy `2.3.0` were installed from the
@@ -139,22 +141,35 @@ Sprint Review or resolve the pending live-database gate:
   was `1.321955`, compared with `1.693243` for seasonal naive and `1.399469`
   for weighted average. Every per-series promotion guard passed. These are
   `SIMULATION_ONLY` metrics and do not estimate Mediatrix performance.
-- Two independent training executions produced byte-identical model artifacts
-  with SHA-256
-  `01d79272bc43643effb11918fbf651773c003b6e701ae8e9ec708ec1bcb2230a`.
+- Two independent post-fix training executions in the pinned container produced
+  byte-identical model artifacts with SHA-256
+  `4a7cb3071f0ff6a8bb1d48d67168388dd7b41f9bfc9cbc39d16c6ee7784fcdbf`.
+  Their recorded environment-lock SHA-256 was
+  `67899a9f908fef2fd2177ca05032c8c6fad8456a97d3c051dc30154b52972a88`.
 - The non-persisting CLI sequence generated four 2026-01-01 forecasts, all with
   `DISABLED_UNAPPROVED_POLICY`. Production npm audit reported zero
   vulnerabilities.
-- The official Gitleaks `8.30.1` Linux archive matched its published checksum.
-  Native history and candidate-content scans found no leaks across 23 commits
-  and the current uncommitted implementation.
+- The pinned Gitleaks `8.30.1` image resolved to digest
+  `sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f`.
+  Mirrored all-ref history, index, and candidate-content scans found no leaks.
 
-Live PostgreSQL evidence remains pending. The isolated worktree has no copied
-`.env`, all three database secrets are unset, no PostgreSQL listener is active,
-and Docker Desktop WSL integration is unavailable in this session. The
-reproducible `npm run test:forecasting:database` command is implemented to
-apply both migrations, exercise least-privileged insertion/replay/conflict
-behavior, and prove one run plus exactly four safe forecast rows once Jopia
-provides the untracked local secrets and restores Docker integration. Until
-that passes and Jopia accepts the Sprint Review, this sprint remains **In
-progress**.
+- On Jopia's Windows 11/WSL2 host, `npm run test:forecasting:database` used the
+  pinned forecasting container, confirmed the PostgreSQL migration state,
+  regenerated and validated the 1,460-row dataset, selected the global random
+  forest, and atomically persisted one run with exactly four forecasts through
+  `bloodledger_app`. An identical replay returned the existing run, a changed
+  payload with the same run key returned `FORECAST_RUN_CONFLICT`, and all rows
+  remained `SIMULATION_ONLY` with
+  `DISABLED_UNAPPROVED_POLICY` recommendation eligibility.
+
+The reproducible end-to-end acceptance command is:
+
+```bash
+npm run test:forecasting:database
+```
+
+It finished with `Live PostgreSQL forecasting integration inserted one run and
+exactly four safe rows`. Sprint 3 remains **In progress** only until Jopia
+records accountable-owner Sprint Review acceptance. This technical evidence
+does not resolve `BL-ML-01`, `BL-ML-03`, or `RQ-07` and does not demonstrate
+real-world, clinical, or operational accuracy.
