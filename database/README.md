@@ -163,3 +163,25 @@ healthy startup, authenticated runtime-role connectivity, separated roles,
 restart persistence, and exact-volume empty-state recreation. Additional-host
 repetition is optional portability evidence under the 2026-07-30 validation
 policy.
+
+## 9. Sprint 3 simulation forecast schema
+
+Migration `20260812000000000_create-simulation-forecast-tables.js` activates
+only the FR-14 experiment boundary approved in `docs/SPRINT-03.md`:
+
+- `app.forecast_runs` stores immutable lineage, model-selection evidence,
+  stable idempotency/payload hashes, generation time, status, and safe failure
+  code.
+- `app.demand_forecasts` stores the four next-day blood-type/component values,
+  non-negative empirical interval, freshness evidence, `SIMULATION_ONLY`
+  classification, and `DISABLED_UNAPPROVED_POLICY` eligibility.
+
+The `bloodledger_app` role receives only `SELECT` and `INSERT` on these two
+tables. It receives no `UPDATE`, `DELETE`, DDL, sequence, or unrelated-table
+privilege. The forecasting command writes one completed run and four forecasts
+in a single transaction. The unique run key makes an identical payload a no-op
+and a changed payload fail as `FORECAST_RUN_CONFLICT`.
+
+These tables do not authorize predicted surplus, BROA/RPS, transfer, custody,
+clinical, or Fabric behavior. A separately approved migration must supersede
+the synthetic classifications and constraints before operational data is used.

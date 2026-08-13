@@ -167,7 +167,7 @@ by the relevant sprint plan before a deferred directory is activated.
 | `scripts/` | Sprint 1 | Jopia |
 | `tests/` | Sprint 1 onward, growing with each activated component | Same assigned owner as the component under test |
 | `chaincode/` | Sprint 2 | Deferred to the Sprint 2 ownership plan |
-| `services/forecasting/` | Sprint 3 | Deferred to the Sprint 3 ownership plan |
+| `services/forecasting/` | Sprint 3 simulation slice | Jopia (owner and validator; self-validation disclosed) |
 | `services/api/` | Sprint 4/5 | Deferred to the activating sprint's ownership plan |
 | `apps/web/` | Sprint 5 | Deferred to the Sprint 5 ownership plan |
 

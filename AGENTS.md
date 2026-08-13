@@ -14,6 +14,12 @@ data-gathering approval is pending. These assumptions are not Mediatrix or
 clinical policy and must be superseded, not silently edited, when approved
 evidence arrives.
 
+Sprint 3 implementation was authorized on 2026-08-12 as an isolated,
+Jopia-owned ML experiment using `SYNTHETIC_FORECAST_V1`. It is limited to a
+simulation-only forecasting vertical slice for the Sprint 2 blood-type and
+component subset. `BL-ML-01` and `RQ-07` remain unresolved for operational use;
+the experiment must not enable recommendations or imply Mediatrix performance.
+
 The project is a research prototype. Never describe it as production-ready,
 clinically validated, regulator-approved, or a deployed multi-organization
 consortium unless evidence and scope documents are formally updated.

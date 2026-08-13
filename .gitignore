@@ -14,6 +14,17 @@ coverage/
 logs/
 *.log
 
+# Sprint 3 forecasting outputs (reproducible, local-only artifacts)
+services/forecasting/artifacts/
+services/forecasting/data/generated/
+services/forecasting/.venv/
+services/forecasting/.mypy_cache/
+services/forecasting/.pytest_cache/
+services/forecasting/.ruff_cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
 # Fabric-generated identities, wallets, keys, and channel material
 network/generated/
 network/**/wallet/

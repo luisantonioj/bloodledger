@@ -2,10 +2,11 @@ import { readFile, readdir } from "node:fs/promises";
 
 const root = new URL("../../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
-const [compose, bootstrap, migration, databasePackage] = await Promise.all([
+const [compose, bootstrap, migration, forecastMigration, databasePackage] = await Promise.all([
   read("compose.yaml"),
   read("database/bootstrap/001-create-development-roles.sh"),
   read("database/migrations/20260715000000000_bootstrap-app-schema.js"),
+  read("database/migrations/20260812000000000_create-simulation-forecast-tables.js"),
   read("database/package.json").then(JSON.parse)
 ]);
 
@@ -20,6 +21,14 @@ const assertions = [
   [migration.includes('pgm.createSchema("app"'), "app schema migration"],
   [migration.includes("GRANT USAGE ON SCHEMA app TO bloodledger_app"), "runtime usage grant"],
   [migration.includes("exports.down = false"), "forward-only migration"],
+  [forecastMigration.includes("CREATE TABLE app.forecast_runs"), "forecast run table"],
+  [forecastMigration.includes("CREATE TABLE app.demand_forecasts"), "demand forecast table"],
+  [forecastMigration.includes("target_name = 'requested_units'"), "requested demand target"],
+  [forecastMigration.includes("classification = 'SIMULATION_ONLY'"), "simulation classification"],
+  [forecastMigration.includes("DISABLED_UNAPPROVED_POLICY"), "disabled recommendation policy"],
+  [forecastMigration.includes("GRANT SELECT, INSERT ON app.forecast_runs"), "run runtime grants"],
+  [forecastMigration.includes("GRANT SELECT, INSERT ON app.demand_forecasts"), "forecast runtime grants"],
+  [forecastMigration.includes("exports.down = false"), "forecast forward-only migration"],
   [databasePackage.scripts["migrate:up"] === "node scripts/migrate.mjs", "apply command"],
   [databasePackage.scripts["migrate:status"] === "node scripts/migration-status.mjs", "status command"]
 ];
@@ -30,8 +39,8 @@ for (const [passed, label] of assertions) {
 
 const migrationFiles = (await readdir(new URL("database/migrations", root)))
   .filter((name) => /\.(?:js|cjs|mjs|sql)$/.test(name));
-if (migrationFiles.length !== 1) {
-  throw new Error(`Expected one bootstrap migration, received ${migrationFiles.length}`);
+if (migrationFiles.length !== 2) {
+  throw new Error(`Expected bootstrap and forecast migrations, received ${migrationFiles.length}`);
 }
 
 const prohibited = /blood_units|transfers|users|institutions|forecasts|notifications|audit_logs|sync(?:hronization)?_queues/i;

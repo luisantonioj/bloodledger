@@ -14,16 +14,20 @@ repository foundation, PostgreSQL migration baseline, one-organization Fabric
 development network, development channel, disposable health contract, and
 S1-08 operational command interface are implemented, Jopia's canonical-host
 evidence is recorded, and Jopia accepted the Sprint Review on 2026-07-30.
-Additional Buno or Lat host evidence is optional. Sprint 2 implementation is
-authorized under versioned synthetic prototype assumptions. This is a research
-prototype, not a production or clinically validated system.
+Additional Buno or Lat host evidence is optional. Sprint 2 is complete and was
+accepted by Jopia on 2026-07-30 under versioned synthetic prototype
+assumptions. Sprint 3 is now an isolated Jopia-owned ML experiment using
+`SYNTHETIC_FORECAST_V1`: it forecasts requested demand for the Sprint 2 subset
+and persists only `SIMULATION_ONLY` outputs with operational recommendation
+eligibility disabled. This is a research prototype, not a production or
+clinically validated system.
 
 The roadmap now includes invitation-based institutional application and
 administrator activation for later API/web sprints. Application approval is
 separate from Fabric membership and does not change the one-organization
 prototype topology.
 
-Sprint 2 is authorized under the versioned `SYNTHETIC_INVENTORY_V1` prototype
+Sprint 2 was completed under the versioned `SYNTHETIC_INVENTORY_V1` prototype
 assumptions while Mediatrix data-gathering approval is pending. The values are
 non-clinical software-test inputs and must be superseded rather than silently
 edited when approved institutional evidence arrives.
@@ -55,7 +59,7 @@ entry gate in `docs/SPRINT-01.md`.
 - Hyperledger Fabric LTS with Fabric CA
 - Node.js with npm workspaces and one root lockfile
 - PostgreSQL
-- Python for the later Sprint 3 forecasting service
+- Python 3.13 for the active Sprint 3 forecasting experiment
 - React for the later Sprint 5 web application
 
 DBeaver is optional database-inspection tooling. It is not needed by the
@@ -74,10 +78,11 @@ deviations separately.
 | [Architecture](docs/ARCHITECTURE.md) | Components, data ownership, Fabric topology, synchronization, security, and decisions |
 | [Product backlog](docs/BACKLOG.md) | Prioritized outcomes and sprint roadmap |
 | [Sprint 1 plan](docs/SPRINT-01.md) | Infrastructure sprint entry gate, tasks, decisions, validation, and exit criteria |
-| [Sprint 2 planning](docs/SPRINT-02.md) | Proposed inventory-ledger sprint scope, decision gates, tasks, and test obligations |
+| [Sprint 2 record](docs/SPRINT-02.md) | Accepted deterministic inventory-ledger scope, evidence, and review |
+| [Sprint 3 experiment](docs/SPRINT-03.md) | Simulation-only forecast scope, gates, tasks, and exit obligations |
 | [Local development](docs/LOCAL-DEVELOPMENT.md) | Planned WSL2 workflow, version evidence, reset safety, and troubleshooting |
 | [Fabric network](network/README.md) | Network identifiers, ports, CA identities, generated material, and health contract |
-| [Development database](database/README.md) | PostgreSQL roles, environment names, migration baseline, and persistence |
+| [Development database](database/README.md) | PostgreSQL roles, migrations, simulation forecast schema, and persistence |
 | [Agent instructions](AGENTS.md) | Task-based reading map and repository rules for AI-assisted work |
 
 ## Source-of-truth rule

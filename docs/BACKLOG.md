@@ -204,6 +204,21 @@ time-ordered validation and reported metrics.
 Acceptance: forecast, horizon, reserve, safety allowance, stale state, and model
 version are stored and displayed; failure uses a safe fallback.
 
+### BL-ML-04 — Synthetic forecast simulation enablement
+
+**Priority:** Must | **Status:** Selected | **Target:** Sprint 3
+**Dependencies:** PA-ML-01
+**Requirements:** FR-14
+
+Acceptance: a versioned generator creates the approved four synthetic series;
+validation rejects invalid or prohibited data; simple baselines and one
+candidate model use time-ordered evaluation; one reproducible run persists four
+`SIMULATION_ONLY` forecasts without enabling operational recommendations.
+
+This item does not complete or unblock `BL-ML-01`–`BL-ML-03` for operational
+use. Approved historical data, an accuracy decision under `RQ-07`, and approved
+safety/reserve policy remain replacement gates.
+
 ## 7. EPIC-05 — Scan, middleware, and synchronization
 
 ### BL-SCN-01 — ISBT 128 scan parsing

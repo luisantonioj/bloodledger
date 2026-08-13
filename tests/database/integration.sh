@@ -48,7 +48,7 @@ npm run migrate:status
 before_reapply="$("${compose[@]}" exec --no-TTY postgres psql --username postgres --dbname bloodledger_dev --tuples-only --no-align --command 'SELECT count(*) FROM public.pgmigrations')"
 npm run migrate:up
 after_reapply="$("${compose[@]}" exec --no-TTY postgres psql --username postgres --dbname bloodledger_dev --tuples-only --no-align --command 'SELECT count(*) FROM public.pgmigrations')"
-[[ "${before_reapply}" == "${after_reapply}" && "${after_reapply}" == "1" ]]
+[[ "${before_reapply}" == "${after_reapply}" && "${after_reapply}" == "2" ]]
 
 "${compose[@]}" exec --no-TTY postgres psql --username postgres --dbname bloodledger_dev \
   --set=ON_ERROR_STOP=1 --tuples-only --no-align <<'SQL' | grep --fixed-strings 'roles-and-schema-ok' >/dev/null
@@ -61,6 +61,15 @@ WHERE EXISTS (SELECT FROM pg_roles WHERE rolname = 'bloodledger_migrator' AND ro
   AND NOT has_database_privilege('bloodledger_app', 'bloodledger_dev', 'CREATE');
 SQL
 
+"${compose[@]}" exec --no-TTY postgres psql --username postgres --dbname bloodledger_dev \
+  --set=ON_ERROR_STOP=1 --tuples-only --no-align <<'SQL' | grep --fixed-strings 'forecast-privileges-ok' >/dev/null
+SELECT 'forecast-privileges-ok'
+WHERE has_table_privilege('bloodledger_app', 'app.forecast_runs', 'SELECT,INSERT')
+  AND has_table_privilege('bloodledger_app', 'app.demand_forecasts', 'SELECT,INSERT')
+  AND NOT has_table_privilege('bloodledger_app', 'app.forecast_runs', 'UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+  AND NOT has_table_privilege('bloodledger_app', 'app.demand_forecasts', 'UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER');
+SQL
+
 if PGPASSWORD="${POSTGRES_APP_PASSWORD}" "${compose[@]}" exec --no-TTY \
   --env PGPASSWORD postgres psql --host 127.0.0.1 --username bloodledger_app \
   --dbname bloodledger_dev --no-psqlrc --command 'CREATE TABLE app.runtime_role_must_not_create_tables (id integer)' \
@@ -70,13 +79,13 @@ if PGPASSWORD="${POSTGRES_APP_PASSWORD}" "${compose[@]}" exec --no-TTY \
 fi
 
 domain_table_count="$("${compose[@]}" exec --no-TTY postgres psql --username postgres --dbname bloodledger_dev --tuples-only --no-align --command "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'app'")"
-[[ "${domain_table_count}" == "0" ]]
+[[ "${domain_table_count}" == "2" ]]
 
 "${compose[@]}" down
 "${compose[@]}" up --detach --wait postgres
 persisted_count="$("${compose[@]}" exec --no-TTY postgres psql --username postgres --dbname bloodledger_dev --tuples-only --no-align --command 'SELECT count(*) FROM public.pgmigrations')"
-[[ "${persisted_count}" == "1" ]]
-echo "Normal stop/restart preserved app schema and one migration-history row"
+[[ "${persisted_count}" == "2" ]]
+echo "Normal stop/restart preserved app schema and two migration-history rows"
 
 if [[ "${1:-}" == "--recreate" ]]; then
   if [[ "${BLOODLEDGER_VALIDATION_RESET:-}" != "REMOVE_BLOODLEDGER_POSTGRES_DATA" ]]; then
@@ -96,8 +105,8 @@ if [[ "${1:-}" == "--recreate" ]]; then
   npm run migrate:status
   recreated_count="$("${compose[@]}" exec --no-TTY postgres psql --username postgres --dbname bloodledger_dev --tuples-only --no-align --command 'SELECT count(*) FROM public.pgmigrations')"
   recreated_tables="$("${compose[@]}" exec --no-TTY postgres psql --username postgres --dbname bloodledger_dev --tuples-only --no-align --command "SELECT count(*) FROM information_schema.tables WHERE table_schema = 'app'")"
-  [[ "${recreated_count}" == "1" && "${recreated_tables}" == "0" ]]
-  echo "Empty-state recreation restored one migration-history row and zero app tables"
+  [[ "${recreated_count}" == "2" && "${recreated_tables}" == "2" ]]
+  echo "Empty-state recreation restored two migrations and two forecast tables"
 fi
 
 echo "PostgreSQL integration checks passed"
