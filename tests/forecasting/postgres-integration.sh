@@ -27,20 +27,28 @@ fi
 "${compose[@]}" up --detach --wait postgres
 npm run migrate:up
 
-forecasting="services/forecasting/.venv/bin/bloodledger-forecasting"
-data="services/forecasting/data/generated/synthetic-forecast-v1.csv"
-model="services/forecasting/artifacts/model-v1.pkl"
-manifest="services/forecasting/artifacts/model-v1.manifest.json"
-bundle="services/forecasting/artifacts/forecast-2026-01-01.json"
+mkdir -p services/forecasting/data/generated services/forecasting/artifacts
+export LOCAL_UID="${LOCAL_UID:-$(id -u)}"
+export LOCAL_GID="${LOCAL_GID:-$(id -g)}"
 
-"${forecasting}" generate-synthetic --output "${data}"
-"${forecasting}" validate-data --data "${data}"
-"${forecasting}" train \
+"${compose[@]}" --profile forecasting build forecasting
+forecasting=(
+  "${compose[@]}" --profile forecasting run --rm --no-deps forecasting
+)
+data="data/generated/synthetic-forecast-v1.csv"
+model="artifacts/model-v1.pkl"
+manifest="artifacts/model-v1.manifest.json"
+bundle="artifacts/forecast-2026-01-01.json"
+host_bundle="services/forecasting/${bundle}"
+
+"${forecasting[@]}" generate-synthetic --output "${data}"
+"${forecasting[@]}" validate-data --data "${data}"
+"${forecasting[@]}" train \
   --data "${data}" \
   --artifact "${model}" \
   --manifest "${manifest}" \
   --generated-at 2026-01-01T00:00:00Z
-first_result="$("${forecasting}" forecast \
+first_result="$("${forecasting[@]}" forecast \
   --data "${data}" \
   --artifact "${model}" \
   --manifest "${manifest}" \
@@ -49,9 +57,11 @@ first_result="$("${forecasting}" forecast \
   --persist)"
 grep -Eq '"persistence": "(INSERTED|EXISTING)"' <<<"${first_result}"
 
-run_id="$(services/forecasting/.venv/bin/python -c \
-  'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["run"]["run_id"])' \
-  "${bundle}")"
+run_id="$(sed -n 's/^[[:space:]]*"run_id": "\([^"]*\)",*$/\1/p' "${host_bundle}")"
+if [[ -z "${run_id}" ]]; then
+  echo "Forecast bundle did not contain a run_id" >&2
+  exit 1
+fi
 
 PGPASSWORD="${POSTGRES_APP_PASSWORD}" "${compose[@]}" exec --no-TTY \
   --env PGPASSWORD postgres psql --host 127.0.0.1 --username bloodledger_app \
@@ -69,7 +79,7 @@ LEFT JOIN app.demand_forecasts AS forecasts ON forecasts.run_id = runs.run_id
 WHERE runs.run_id = :'run_id';
 SQL
 
-second_result="$("${forecasting}" forecast \
+second_result="$("${forecasting[@]}" forecast \
   --data "${data}" \
   --artifact "${model}" \
   --manifest "${manifest}" \
@@ -78,7 +88,9 @@ second_result="$("${forecasting}" forecast \
   --persist)"
 grep --fixed-strings '"persistence": "EXISTING"' <<<"${second_result}" >/dev/null
 
-services/forecasting/.venv/bin/python \
-  services/forecasting/tests/postgres_conflict_probe.py "${bundle}"
+"${compose[@]}" --profile forecasting run --rm --no-deps \
+  --entrypoint python \
+  --volume "${repository_root}/services/forecasting/tests:/workspace/tests:ro" \
+  forecasting tests/postgres_conflict_probe.py "${bundle}"
 
 echo "Live PostgreSQL forecasting integration inserted one run and exactly four safe rows"

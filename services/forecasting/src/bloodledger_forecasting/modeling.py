@@ -252,6 +252,22 @@ def hash_source_tree(source_root: Path) -> str:
     return digest.hexdigest()
 
 
+def _requirements_lock_path(source_root: Path) -> Path:
+    """Locate the pinned environment contract in editable and container installs."""
+
+    candidates = (
+        source_root.parents[1] / "requirements.lock",
+        Path.cwd() / "requirements.lock",
+        Path.cwd() / "services" / "forecasting" / "requirements.lock",
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise ForecastingError(
+        "ENVIRONMENT_LOCK_NOT_FOUND", "The pinned forecasting environment lock is missing"
+    )
+
+
 def train_model(
     data: pd.DataFrame,
     *,
@@ -307,7 +323,7 @@ def train_model(
         "residual_quantiles": residual_quantiles,
         "dataset_sha256": sha256_file(dataset_path),
         "code_sha256": hash_source_tree(source_root),
-        "environment_sha256": sha256_file(source_root.parents[1] / "requirements.lock"),
+        "environment_sha256": sha256_file(_requirements_lock_path(source_root)),
         "config_sha256": hashlib.sha256(config_bytes).hexdigest(),
         "training_start": validated["business_date"].min().date().isoformat(),
         "training_end": validated["business_date"].max().date().isoformat(),
