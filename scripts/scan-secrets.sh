@@ -10,7 +10,13 @@ trap 'rm -rf -- "$temporary_root"' EXIT
 
 index_snapshot="$temporary_root/index"
 candidate_snapshot="$temporary_root/candidate"
+history_snapshot="$temporary_root/history.git"
 mkdir -p "$index_snapshot" "$candidate_snapshot"
+
+# A linked worktree's .git file can reference a path outside the mounted
+# repository. Mirror all refs into the scan directory so history scanning is
+# complete and independent of the caller's worktree layout.
+git clone --quiet --mirror "$repository_root" "$history_snapshot"
 
 git -C "$repository_root" checkout-index --all --prefix="$index_snapshot/"
 git -C "$repository_root" ls-files --cached --others --exclude-standard -z \
@@ -27,7 +33,7 @@ fi
 echo "Gitleaks image: $GITLEAKS_IMAGE"
 echo "Resolved digest: $resolved_digest"
 
-docker run --rm --volume "$repository_root:/repo:ro" "$GITLEAKS_IMAGE" \
+docker run --rm --volume "$history_snapshot:/repo:ro" "$GITLEAKS_IMAGE" \
   git --log-opts=--all --redact --no-banner /repo
 docker run --rm --volume "$index_snapshot:/scan:ro" "$GITLEAKS_IMAGE" \
   dir --redact --no-banner /scan
