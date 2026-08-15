@@ -16,12 +16,12 @@ S1-08 operational command interface are implemented, Jopia's canonical-host
 evidence is recorded, and Jopia accepted the Sprint Review on 2026-07-30.
 Additional Buno or Lat host evidence is optional. Sprint 2 is complete and was
 accepted by Jopia on 2026-07-30 under versioned synthetic prototype
-assumptions. Sprint 3 continues on an isolated Jopia-owned branch: its
-`SYNTHETIC_FORECAST_V1` ML slice has passed technical gates, and transfer,
-dispatch/receipt location evidence, FEFO/RPS, and BROA are being implemented
-under separate immutable synthetic policies. Forecasts and algorithm results
-remain `SIMULATION_ONLY` with operational recommendation eligibility disabled.
-This is a research prototype, not a production or clinically validated system.
+assumptions. Jopia accepted Sprint 3 on 2026-08-16 after reviewing its final
+evidence on the isolated experiment branch. The forecasting, transfer,
+dispatch/receipt location evidence, FEFO/RPS, and BROA vertical slice remains
+governed by immutable synthetic policies. Forecasts and algorithm results remain
+`SIMULATION_ONLY` with operational recommendation eligibility disabled. This is
+a research prototype, not a production or clinically validated system.
 
 The roadmap now includes invitation-based institutional application and
 administrator activation for later API/web sprints. Application approval is

@@ -1,7 +1,7 @@
 # BloodLedger Software Requirements
 
-**Status:** Approved baseline with Sprint 3 synthetic continuation assumptions
-**Baseline date:** 2026-08-14
+**Status:** Approved baseline with accepted Sprint 3 synthetic implementation assumptions
+**Baseline date:** 2026-08-16
 **Requirement owners:** Buno, Jopia, and Lat
 
 ## 1. Conventions
