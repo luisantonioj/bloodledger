@@ -9,28 +9,35 @@ network/scripts/package-inventory-contract.sh
 assert_health_prerequisites
 package_id="$(<"${inventory_package_id_file}")"
 
-installed_json="$(inventory_tools_run peer lifecycle chaincode queryinstalled --output json)"
-if ! jq -e --arg package_id "${package_id}" \
-  '.installed_chaincodes | any(.package_id == $package_id)' <<<"${installed_json}" >/dev/null; then
-  inventory_tools_run peer lifecycle chaincode install \
-    "/chaincode/build/$(basename "${inventory_package_archive}")"
-fi
-
 committed_json="$(inventory_tools_run peer lifecycle chaincode querycommitted \
   --channelID "${channel_name}" --output json)"
 existing_definition="$(jq -c --arg name "${inventory_chaincode_name}" \
   '.chaincode_definitions[]? | select(.name == $name)' <<<"${committed_json}")"
 if [[ -n "${existing_definition}" ]]; then
-  jq -e --arg version "${inventory_version}" --argjson sequence "${inventory_sequence}" \
+  if jq -e --arg version "${inventory_version}" --argjson sequence "${inventory_sequence}" \
     --arg policy "${inventory_validation_parameter}" \
     '.version == $version and .sequence == $sequence and
      .validation_parameter == $policy' \
+    <<<"${existing_definition}" >/dev/null; then
+    echo "Identical inventory-transfer contract definition is already committed"
+    exit 0
+  fi
+  jq -e --arg policy "${inventory_validation_parameter}" \
+    '.version == "0.1.0" and .sequence == 1 and .validation_parameter == $policy' \
     <<<"${existing_definition}" >/dev/null || {
-      echo "Committed inventory definition conflicts with approved version or sequence" >&2
+      echo "Committed definition is not the accepted Sprint 2 upgrade baseline" >&2
       exit 1
     }
-  echo "Identical inventory contract definition is already committed"
-  exit 0
+else
+  echo "Sprint 2 chaincode 0.1.0 sequence 1 must be committed before the Sprint 3 upgrade" >&2
+  exit 1
+fi
+
+installed_json="$(inventory_tools_run peer lifecycle chaincode queryinstalled --output json)"
+if ! jq -e --arg package_id "${package_id}" \
+  '.installed_chaincodes | any(.package_id == $package_id)' <<<"${installed_json}" >/dev/null; then
+  inventory_tools_run peer lifecycle chaincode install \
+    "/chaincode/build/$(basename "${inventory_package_archive}")"
 fi
 
 inventory_tools_run peer lifecycle chaincode approveformyorg \
@@ -63,4 +70,4 @@ inventory_tools_run peer lifecycle chaincode querycommitted \
     '.version == $version and .sequence == $sequence and
      .validation_parameter == $policy and .approvals.MediatrixMSP == true' \
     >/dev/null
-echo "Inventory contract committed with the approved single-Mediatrix policy"
+echo "Inventory-transfer contract upgraded to 0.2.0 sequence 2 with the single-Mediatrix policy"

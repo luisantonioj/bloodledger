@@ -1,0 +1,45 @@
+{
+  "classification": "PROTOTYPE_ASSUMPTION_NON_CLINICAL",
+  "policyVersion": "SYNTHETIC_TRANSFER_V1",
+  "sourceInstitutionId": "INST_MEDIATRIX",
+  "maximumRequestQuantity": 10,
+  "reservationReallocationEnabled": false,
+  "receivedUnitsBecomeAvailable": false,
+  "recipientInstitutionIds": [
+    "INST_DIVINE_LOVE",
+    "INST_LIPA_CITY_DISTRICT",
+    "INST_METRO_LIPA",
+    "INST_OSPITAL_NG_LIPA",
+    "INST_SAN_ANTONIO"
+  ],
+  "actors": {
+    "USR_MEDIATRIX_ADMIN": {
+      "institutionId": "INST_MEDIATRIX",
+      "role": "HOSPITAL_ADMIN"
+    },
+    "USR_MEDIATRIX_TECH": {
+      "institutionId": "INST_MEDIATRIX",
+      "role": "MEDICAL_TECHNOLOGIST"
+    },
+    "USR_DIVINE_LOVE": {
+      "institutionId": "INST_DIVINE_LOVE",
+      "role": "SECONDARY_HOSPITAL_USER"
+    },
+    "USR_LIPA_CITY_DISTRICT": {
+      "institutionId": "INST_LIPA_CITY_DISTRICT",
+      "role": "SECONDARY_HOSPITAL_USER"
+    },
+    "USR_METRO_LIPA": {
+      "institutionId": "INST_METRO_LIPA",
+      "role": "SECONDARY_HOSPITAL_USER"
+    },
+    "USR_OSPITAL_NG_LIPA": {
+      "institutionId": "INST_OSPITAL_NG_LIPA",
+      "role": "SECONDARY_HOSPITAL_USER"
+    },
+    "USR_SAN_ANTONIO": {
+      "institutionId": "INST_SAN_ANTONIO",
+      "role": "SECONDARY_HOSPITAL_USER"
+    }
+  }
+}

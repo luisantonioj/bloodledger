@@ -135,8 +135,9 @@ scripts/bloodledger-dev.sh reset-fabric --confirm RESET_BLOODLEDGER_FABRIC
 ```
 
 Level 1 validates the four Fabric Compose containers, the four Fabric volume
-keys, the labeled `bloodledger_default` network, and, when present, the exact
-health-contract runtime derived from the recorded package ID. The shared
+keys, the labeled `bloodledger_default` network, and, when present, only exact
+approved health/inventory runtime names with the pinned Fabric type/version and
+sole project-network attachment. Unknown runtime names fail closed. The shared
 network is preserved because PostgreSQL may remain attached. Only the resolved
 contents of `network/generated/` and `network/health-contract/build/` are
 deleted after repository-boundary, traversal, and symlink checks.

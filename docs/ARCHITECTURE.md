@@ -1,7 +1,7 @@
 # BloodLedger System Architecture
 
-**Status:** Sprint 1 validated baseline
-**Baseline date:** 2026-07-30
+**Status:** Validated infrastructure baseline with authorized Sprint 3 synthetic continuation
+**Baseline date:** 2026-08-14
 **Scope:** Research prototype, not a production deployment design
 
 ## 1. Architecture goals
@@ -25,14 +25,15 @@ React web application
         |
         v
 Node.js application/API boundary
-   |           |             |
-   v           v             v
-PostgreSQL   Fabric       Python forecasting /
-read model   Gateway      recommendation worker
-and queue       |             |
-               v             |
-        Hyperledger Fabric <--+
-        (no direct ML/API calls from chaincode)
+   |              |                 |
+   v              v                 v
+PostgreSQL   Fabric Gateway   Python forecasting and
+read model        |           TypeScript coordination workers
+and queue         v                 |
+          Hyperledger Fabric       v
+          (deterministic)      PostgreSQL / model artifacts
+
+Workers never call Fabric; chaincode never calls workers or PostgreSQL.
 ```
 
 Trust boundaries exist between the browser and API, API and database, API and
@@ -276,6 +277,7 @@ baseline logical model is therefore:
 | `ledger_transactions` | Fabric transaction ID, correlation ID, commit status, block/time reference |
 | `notifications` | Alerts and user acknowledgement state |
 | `demand_forecasts` | Versioned forecasts, inputs window, prediction, metrics, stale status |
+| `location_evidence` | Synthetic dispatch/receipt exact-point evidence with enforced expiry; digest only on chain |
 | `algorithm_runs` | BROA/RPS input snapshot, normalized scores, weights, result, version |
 | `audit_logs` | Application/security audit events that do not duplicate the ledger |
 
@@ -332,6 +334,12 @@ Begin with one deployable chaincode package containing coherent contract modules
 
 - `InventoryContract` for registration and unit lifecycle; and
 - `TransferContract` for requests selected for ledger recording and custody.
+
+Sprint 3 upgrades the same package to definition version `0.2.0`, sequence `2`.
+`TransferContract` atomically validates FEFO reservation and custody state.
+Location capture, RPS, BROA, and forecasting remain outside endorsement. The
+contract receives only approved result/input digests and minimal dispatch or
+receipt evidence, never exact coordinates or model execution.
 
 An expiry scheduler, ML model, BROA computation, RPS computation, and external
 location lookup do not run inside chaincode. Chaincode validates submitted state,
@@ -403,6 +411,12 @@ Location evidence is operationally sensitive. Store only dispatch/receipt points
 accuracy/source, time, facility match result, and fallback flag. Do not collect a
 continuous route. Exact precision and retention require approval before Sprint 3.
 
+`PA-S3-02` temporarily supplies a synthetic-only backend boundary: exact
+invented dispatch/receipt points live in PostgreSQL for 30 days, while Fabric
+records the evidence ID, digest, phase, capture time, source, facility-match
+result, and fallback flag. Browser permission and capture UI remain deferred to
+the API/web sprint. No route or continuous location series is collected.
+
 ### 11.3 Research data separation
 
 Interview recordings, transcripts, consent forms, and UAT raw responses are
@@ -434,6 +448,13 @@ BROA and RPS configurations are versioned data. The manuscript's narrative
 weights (`0.40/0.25/0.20/0.15`) conflict with pseudocode
 (`0.50/0.30/0.20`) and neither set is accepted here. Stakeholders must approve
 the final criteria, directions, normalization, weights, and test scenarios.
+
+The Sprint 3 coordination worker applies `SYNTHETIC_OPTIMIZATION_V1` off-chain.
+Its RPS/BROA runs are persisted with input/configuration hashes and explainable
+contributions. A forecast may enter BROA only through an explicit
+`scenario_mode=true` artifact and can produce only a
+`DISABLED_UNAPPROVED_POLICY` simulation result. No algorithm command invokes
+Fabric or approves a transfer.
 
 ## 13. Failure behavior and observability
 

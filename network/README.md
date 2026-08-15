@@ -45,6 +45,9 @@ member and does not represent PRC or DOH.
 | Health chaincode name | `bloodledger-health` |
 | Health chaincode label | `bloodledger-health_0.1.0` |
 | Health contract name | `HealthContract` |
+| Domain chaincode definition | `bloodledger-inventory` |
+| Sprint 3 package label | `bloodledger-inventory-transfer_0.2.0` |
+| Domain contracts | `InventoryContract`, `TransferContract` |
 
 Names are lowercase except Fabric MSP IDs and code-level contract names. Local
 overrides may change host ports but must not change MSP IDs, channel name,
@@ -430,3 +433,35 @@ The Gateway probe then verified `VALID` commit status, exact
 `HealthProbeRecorded` event correlation and payload, query equality, duplicate
 idempotency with no duplicate event, stable not-found and argument failures,
 and chaincode-level rejection of the `api-gateway` client identity.
+
+## 14. Sprint 3 domain-chaincode upgrade
+
+Sprint 3 keeps the existing `bloodledger-inventory` definition name and
+single-Mediatrix endorsement policy, but packages `InventoryContract` and
+`TransferContract` together as `bloodledger-inventory-transfer_0.2.0`. The
+lifecycle target is version `0.2.0`, sequence `2`, upgrading only the accepted
+version `0.1.0`, sequence `1` definition. The deployment script refuses a
+missing, unexpected, or differently governed predecessor and never resets a
+channel to force an upgrade.
+
+`TransferContract` implements the synthetic request, manual approval/rejection,
+atomic FEFO reservation, dispatch, transit, delay/resume, receipt,
+cancel, and compromise states defined in `docs/SPRINT-03.md`. Exact coordinates,
+forecasting, RPS, and BROA remain off-chain. Chaincode accepts only a minimal
+location evidence digest and never treats an algorithm digest as approval.
+
+Component verification is:
+
+```bash
+npm run check:inventory-contract
+npm run test:inventory-contract
+npm run package:inventory-contract
+npm run deploy:inventory-contract
+npm run validate:network --workspace @bloodledger/inventory-contract -- S3VALIDATION01
+```
+
+The package/deploy/network commands require healthy project-scoped Fabric
+services, the accepted Sprint 2 definition, a unique synthetic suffix, and
+untracked CA secrets. Unit/static success alone is not local-ledger evidence;
+Sprint 3 records the actual package ID and `VALID` transaction results only
+after the live commands pass.

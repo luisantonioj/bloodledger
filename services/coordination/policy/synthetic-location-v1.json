@@ -1,0 +1,61 @@
+{
+  "classification": "SYNTHETIC_DATA",
+  "policyVersion": "SYNTHETIC_LOCATION_V1",
+  "maximumAccuracyMetres": 1000,
+  "facilityMatchRadiusMetres": 500,
+  "retentionDays": 30,
+  "allowedFallbackReasons": [
+    "DEVICE_UNAVAILABLE",
+    "PERMISSION_DENIED",
+    "SIGNAL_UNAVAILABLE"
+  ],
+  "facilities": [
+    {
+      "institutionId": "INST_MEDIATRIX",
+      "displayName": "Mary Mediatrix Medical Center",
+      "latitude": 0,
+      "longitude": 0,
+      "distanceFromSourceKm": 0
+    },
+    {
+      "institutionId": "INST_METRO_LIPA",
+      "displayName": "Metro Lipa Medical Center",
+      "latitude": 0,
+      "longitude": 0.018,
+      "distanceFromSourceKm": 2
+    },
+    {
+      "institutionId": "INST_LIPA_CITY_DISTRICT",
+      "displayName": "Lipa City District Hospital",
+      "latitude": 0,
+      "longitude": 0.036,
+      "distanceFromSourceKm": 4
+    },
+    {
+      "institutionId": "INST_SAN_ANTONIO",
+      "displayName": "San Antonio Medical Center",
+      "latitude": 0,
+      "longitude": 0.054,
+      "distanceFromSourceKm": 6
+    },
+    {
+      "institutionId": "INST_DIVINE_LOVE",
+      "displayName": "Divine Love Medical Center",
+      "latitude": 0,
+      "longitude": 0.072,
+      "distanceFromSourceKm": 8
+    },
+    {
+      "institutionId": "INST_OSPITAL_NG_LIPA",
+      "displayName": "Ospital ng Lipa",
+      "latitude": 0,
+      "longitude": 0.09,
+      "distanceFromSourceKm": 10
+    }
+  ],
+  "limitations": [
+    "All coordinates and distances are invented software-test fixtures.",
+    "They must not be interpreted as actual hospital locations or routes.",
+    "Only dispatch and receipt evidence is allowed; continuous tracking is prohibited."
+  ]
+}

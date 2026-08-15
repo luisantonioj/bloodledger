@@ -1,7 +1,7 @@
 # BloodLedger Product Backlog
 
-**Status:** Sprint 1 and Sprint 2 complete
-**Baseline date:** 2026-07-30
+**Status:** Sprint 1 and Sprint 2 complete; consolidated Sprint 3 in progress
+**Baseline date:** 2026-08-14
 **Prioritization:** MoSCoW, then dependency order
 
 ## 1. Backlog rules
@@ -143,7 +143,8 @@ recorded in `docs/SPRINT-02.md`.
 
 ### BL-TRF-01 — Request and approval workflow
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 3  
+**Priority:** Must | **Status:** In Progress | **Target:** Sprint 3
+**Dependencies:** PA-S3-01
 **Requirements:** FR-05, BR-TRF-01–03
 
 Acceptance: eligible requests can be submitted, approved/rejected, and reserved
@@ -151,8 +152,8 @@ without duplicate or partial allocation.
 
 ### BL-TRF-02 — Dispatch, receipt, and exception lifecycle
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 3  
-**Dependencies:** BL-INV-02, RQ-09, RQ-10  
+**Priority:** Must | **Status:** In Progress | **Target:** Sprint 3
+**Dependencies:** BL-INV-02, PA-S3-01, PA-S3-02; RQ-08–10 remain replacement gates
 **Requirements:** FR-10, FR-11, BR-TRF-04–10
 
 Acceptance: dispatch and receipt close the custody loop; delayed, rejected,
@@ -160,8 +161,8 @@ cancelled, and compromised cases preserve a complete audit trail.
 
 ### BL-ALG-01 — FEFO and RPS
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 3  
-**Dependencies:** RQ-02, RQ-05  
+**Priority:** Must | **Status:** In Progress | **Target:** Sprint 3
+**Dependencies:** PA-S2-01, PA-S3-03; RQ-02/RQ-05 remain replacement gates
 **Requirements:** FR-02, FR-06, BR-ALG-04
 
 Acceptance: FEFO is a hard constraint and RPS ranking is reproducible,
@@ -169,8 +170,8 @@ versioned, explainable, and covered by contention/tie tests.
 
 ### BL-ALG-02 — BROA recommendation
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 3  
-**Dependencies:** BL-ALG-01, BL-ML-01, RQ-06  
+**Priority:** Must | **Status:** In Progress | **Target:** Sprint 3
+**Dependencies:** BL-ALG-01, BL-ML-04, PA-S3-03; BL-ML-01/RQ-06 remain operational gates
 **Requirements:** FR-07, BR-ALG-01–06
 
 Acceptance: eligible destinations are ranked using approved criteria; the
@@ -206,7 +207,7 @@ version are stored and displayed; failure uses a safe fallback.
 
 ### BL-ML-04 — Synthetic forecast simulation enablement
 
-**Priority:** Must | **Status:** Selected | **Target:** Sprint 3
+**Priority:** Must | **Status:** In Progress | **Target:** Sprint 3
 **Dependencies:** PA-ML-01
 **Requirements:** FR-14
 
@@ -218,6 +219,9 @@ candidate model use time-ordered evaluation; one reproducible run persists four
 This item does not complete or unblock `BL-ML-01`–`BL-ML-03` for operational
 use. Approved historical data, an accuracy decision under `RQ-07`, and approved
 safety/reserve policy remain replacement gates.
+
+**Evidence status:** All technical gates passed on 2026-08-13; consolidated
+Sprint 3 accountable-owner acceptance remains pending.
 
 ## 7. EPIC-05 — Scan, middleware, and synchronization
 

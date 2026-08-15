@@ -14,11 +14,13 @@ data-gathering approval is pending. These assumptions are not Mediatrix or
 clinical policy and must be superseded, not silently edited, when approved
 evidence arrives.
 
-Sprint 3 implementation was authorized on 2026-08-12 as an isolated,
-Jopia-owned ML experiment using `SYNTHETIC_FORECAST_V1`. It is limited to a
-simulation-only forecasting vertical slice for the Sprint 2 blood-type and
-component subset. `BL-ML-01` and `RQ-07` remain unresolved for operational use;
-the experiment must not enable recommendations or imply Mediatrix performance.
+Sprint 3 implementation began on 2026-08-12 as an isolated Jopia-owned ML
+experiment. Its forecasting technical gates passed on 2026-08-13. On
+2026-08-14 Jopia authorized continuation on the same branch for transfer,
+location, FEFO/RPS, and BROA using `SYNTHETIC_TRANSFER_V1`,
+`SYNTHETIC_LOCATION_V1`, and `SYNTHETIC_OPTIMIZATION_V1`. All outputs and named
+institution fixtures remain simulation-only; unresolved `RQ-*` decisions still
+block operational interpretation and autonomous recommendations.
 
 The project is a research prototype. Never describe it as production-ready,
 clinically validated, regulator-approved, or a deployed multi-organization

@@ -1,0 +1,31 @@
+{
+  "evaluationTime": "2026-08-14T00:00:00.000Z",
+  "trigger": "FORECAST_SURPLUS",
+  "scenarioMode": true,
+  "forecastStatus": "AVAILABLE",
+  "units": [
+    {
+      "unitId": "UNIT_INTEGRATION_001",
+      "expiresAt": "2026-08-15T00:00:00.000Z",
+      "eligible": true
+    }
+  ],
+  "candidates": [
+    {
+      "institutionId": "INST_METRO_LIPA",
+      "urgency": 3,
+      "stockShortage": 5,
+      "mlSurplus": 2,
+      "distanceKm": 2,
+      "eligible": true
+    },
+    {
+      "institutionId": "INST_DIVINE_LOVE",
+      "urgency": 1,
+      "stockShortage": 1,
+      "mlSurplus": 1,
+      "distanceKm": 8,
+      "eligible": true
+    }
+  ]
+}

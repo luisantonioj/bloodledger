@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from bloodledger_forecasting.cli import main
 from bloodledger_forecasting.errors import ForecastingError
 from bloodledger_forecasting.scenario import evaluate_surplus_scenario
 
@@ -45,3 +46,31 @@ def test_scenario_rejects_negative_input() -> None:
             scenario_mode=True,
         )
     assert captured.value.code == "SCENARIO_INPUT_INVALID"
+
+
+def test_scenario_cli_writes_a_disabled_simulation_artifact(tmp_path) -> None:
+    output = tmp_path / "surplus-scenario.json"
+    assert (
+        main(
+            [
+                "evaluate-surplus-scenario",
+                "--current-stock",
+                "20",
+                "--point-forecast",
+                "5",
+                "--safety-stock",
+                "2",
+                "--reserve",
+                "10",
+                "--scenario-mode",
+                "--output",
+                str(output),
+            ]
+        )
+        == 0
+    )
+    artifact = output.read_text(encoding="utf-8")
+    assert '"schema_version": "BLOODLEDGER_SURPLUS_SCENARIO_V1"' in artifact
+    assert '"predicted_surplus": 3.0' in artifact
+    assert '"persisted": false' in artifact
+    assert '"recommendation_eligibility": "DISABLED_UNAPPROVED_POLICY"' in artifact

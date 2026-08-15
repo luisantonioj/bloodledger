@@ -1,20 +1,20 @@
-# Sprint 3 — Simulation-Only Demand Forecasting
+# Sprint 3 — Transfer, Location, Optimization, and Forecasting
 
-**Status:** In progress; technical gates passed 2026-08-13, Sprint Review pending
+**Status:** In progress; forecasting slice validated 2026-08-13, expanded continuation authorized 2026-08-14
 
 **Accountable owner:** Jopia  
 **Assigned owner/validator:** Jopia (self-validation disclosed)  
 **Branch:** `codex/sprint-03-ml-experiment`  
 **Baseline:** `sprint-02-accepted-2026-07-30`  
-**Policy baseline:** `SYNTHETIC_FORECAST_V1` under PA-ML-01
+**Policy baseline:** `SYNTHETIC_FORECAST_V1`, `SYNTHETIC_TRANSFER_V1`,
+`SYNTHETIC_LOCATION_V1`, and `SYNTHETIC_OPTIMIZATION_V1`
 
 ## 1. Sprint goal
 
-Implement one reproducible, off-chain ML vertical slice that generates and
-validates synthetic requested-demand history, compares simple baselines with
-one candidate model using time-ordered validation, forecasts one next-day value
-for each approved blood-type/component pair, and stores exactly four
-simulation-only forecasts in PostgreSQL.
+Complete the Gantt Sprint 3 boundary: preserve the reproducible ML slice, add a
+deterministic transfer/custody contract with FEFO reservation, persist minimal
+dispatch/receipt location evidence, and provide explainable off-chain RPS/BROA
+simulation commands before local Fabric validation and consolidated review.
 
 This sprint is an experiment. It does not demonstrate Mediatrix accuracy,
 clinical safety, regulatory acceptance, or production readiness.
@@ -27,6 +27,12 @@ clinical safety, regulatory acceptance, or production readiness.
 - `BL-ML-01` remains blocked because no approved institutional dataset exists.
 - `RQ-07` remains open, so no model metric can justify operational use.
 - `BL-ML-03` remains gated by approved safety and reserve policy.
+- `PA-S3-01` authorizes conservative synthetic transfer mechanics while
+  `RQ-04`, `RQ-09`, `RQ-10`, `RQ-12`, and `RQ-15` remain replacement gates.
+- `PA-S3-02` authorizes invented location fixtures and a 30-day exact-point
+  retention test; `RQ-08` remains unresolved for real use.
+- `PA-S3-03` authorizes simulation-only RPS/BROA configurations while
+  `RQ-05`–`RQ-07` remain operational gates.
 
 The temporary workbook, exploratory notebook, and revised manuscript are
 research inputs only. They are not copied into the runtime, used as canonical
@@ -82,15 +88,48 @@ and secret checks. Record reproducible evidence without committing datasets,
 models, credentials, or secret-bearing logs. Jopia separately records Sprint
 Review acceptance after inspecting this evidence.
 
+### S3-07 — Implement transfer request and approval
+
+Add `TransferContract` to the existing package. Submit idempotent synthetic
+requests, approve or reject them, reserve the full quantity atomically, enforce
+FEFO, and reject partial, stale, unauthorized, or conflicting operations.
+
+### S3-08 — Complete custody and location evidence
+
+Implement dispatch, transit, delay/resume, receipt, cancellation, and
+compromise transitions. Exact invented coordinates remain off-chain for 30
+days; chaincode records only a stable evidence ID and digest summary.
+
+### S3-09 — Implement off-chain RPS and BROA
+
+Add a TypeScript coordination worker that validates location evidence, ranks
+requests with normalized 70/30 RPS, and produces explainable 40/25/20/15 BROA
+simulation results. Forecast integration requires `scenario_mode=true`; no
+command approves or submits a transfer.
+
+### S3-10 — Upgrade and validate on local Fabric
+
+Package the combined chaincode as version `0.2.0`, sequence `2`, reproduce its
+package ID, and validate success, exception, retry, conflict, and deterministic
+replay scenarios on the single-Mediatrix development network.
+
+### S3-11 — Consolidated review and retrospective
+
+Map evidence to Gantt tasks 65–71, disclose Jopia's owner/self-validator role,
+and record accountable-owner acceptance before the PR becomes ready or Sprint
+4 begins.
+
 ## 4. Excluded work
 
 - Approved or anonymized institutional data ingestion.
 - Operational accuracy thresholds or claims under unresolved `RQ-07`.
-- Automated BROA/RPS ranking, reserve policy, transfer approval, or custody
-  mutation.
+- Operational BROA/RPS ranking, autonomous transfer approval, or any use of
+  synthetic recommendations as institutional policy.
 - Fabric inference, chaincode changes, scheduler/background worker, HTTP API,
   web UI, Kaggle execution, SARIMA, or LSTM.
 - Editing or committing the external revised manuscript.
+- Browser geolocation permission/UI, continuous tracking, real coordinates,
+  email/SMS, and Sprint 4 API/offline/scan behavior.
 
 ## 5. Exit obligations
 
@@ -103,10 +142,17 @@ Review acceptance after inspecting this evidence.
   eligibility.
 - Missing, failed, stale, duplicate, conflicting, and unauthorized behavior is
   safe and tested.
-- A clean-database validation applies both migrations and atomically inserts
+- A clean-database validation applies all three migrations and atomically inserts
   exactly four forecast rows through `bloodledger_app`.
 - All linked checks pass and the remaining real-data, policy, and operational
   limitations are explicit.
+- Transfer reservation is atomic and FEFO-constrained; every lifecycle change
+  is authorized, version-checked, idempotent, and deterministic.
+- Exact synthetic dispatch/receipt points are kept off-chain, digest-linked to
+  Fabric evidence, and purged at the 30-day boundary.
+- RPS/BROA results retain normalization, contributions, hashes, and disabled
+  recommendation eligibility.
+- Chaincode version `0.2.0`, sequence `2`, passes local Fabric validation.
 
 Passing these obligations is technical evidence only. Sprint completion and
 acceptance require a separately recorded accountable-owner review.
@@ -122,9 +168,9 @@ deviation, not evidence that 3.13.14 was tested.
 
 ## 7. Implementation-time evidence
 
-The following evidence was reproduced on 2026-08-13. The technical exit gates
-passed, but this evidence does not replace accountable-owner Sprint Review
-acceptance:
+The following forecasting-slice evidence was reproduced on 2026-08-13. It does
+not prove the expanded transfer/location/optimization scope and does not replace
+accountable-owner Sprint Review acceptance:
 
 - Python `3.13.11`, pandas `3.0.5`, scikit-learn `1.9.0`, psycopg `3.3.4`,
   pytest `9.1.1`, Ruff `0.15.22`, and mypy `2.3.0` were installed from the
@@ -141,9 +187,9 @@ acceptance:
   was `1.321955`, compared with `1.693243` for seasonal naive and `1.399469`
   for weighted average. Every per-series promotion guard passed. These are
   `SIMULATION_ONLY` metrics and do not estimate Mediatrix performance.
-- Two independent post-fix training executions in the pinned container produced
-  byte-identical model artifacts with SHA-256
-  `4a7cb3071f0ff6a8bb1d48d67168388dd7b41f9bfc9cbc39d16c6ee7784fcdbf`.
+- Two independent final-revision training executions in the pinned container
+  produced byte-identical model artifacts with SHA-256
+  `b3ba11f67d06a188207626b882f68b59558fab4abde8bc9c48103249c1867ef9`.
   Their recorded environment-lock SHA-256 was
   `67899a9f908fef2fd2177ca05032c8c6fad8456a97d3c051dc30154b52972a88`.
 - The non-persisting CLI sequence generated four 2026-01-01 forecasts, all with
@@ -168,8 +214,68 @@ The reproducible end-to-end acceptance command is:
 npm run test:forecasting:database
 ```
 
-It finished with `Live PostgreSQL forecasting integration inserted one run and
-exactly four safe rows`. Sprint 3 remains **In progress** only until Jopia
-records accountable-owner Sprint Review acceptance. This technical evidence
-does not resolve `BL-ML-01`, `BL-ML-03`, or `RQ-07` and does not demonstrate
-real-world, clinical, or operational accuracy.
+On the final revision it finished twice with `Clean isolated PostgreSQL
+forecasting integration applied all migrations and inserted one run with
+exactly four safe rows`. It does not resolve `BL-ML-01`, `BL-ML-03`, or `RQ-07`
+and does not demonstrate real-world, clinical, or operational accuracy.
+
+## 8. Expanded continuation evidence and remaining gates
+
+As of 2026-08-14, the repository contains the expanded implementation, but the
+sprint is not yet complete or accepted:
+
+| Gantt task | Repository result | Current gate |
+|---|---|---|
+| 65 — Sprint Planning | Scope, policies, requirements, architecture, backlog, exclusions, ownership, and exit obligations are versioned here. | Consolidated review remains pending. |
+| 66 — Transfer Chaincode Development | `TransferContract` and inventory-expiry interaction pass 22 direct tests and the guarded Fabric upgrade from accepted `0.1.0`/sequence `1` to `0.2.0`/sequence `2`. | Technical gate passed; consolidated review remains pending. |
+| 67 — Geo-Tagging Implementation | Backend dispatch/receipt evidence validation, off-chain exact synthetic points, digest-only chaincode summary, fallback flags, 30-day purge, and isolated PostgreSQL insert/replay/conflict evidence pass. Browser GPS permission/UI and continuous tracking remain excluded. | Technical gate passed; consolidated review remains pending. |
+| 68 — ML Demand Forecasting Microservice | The pinned Python/Compose slice, 32 tests, deterministic dataset/artifact hashes, clean database workflow, four-row insert, replay, conflict, and disabled surplus artifact pass. | Technical gate passed; real-data and operational-policy gates remain unresolved. |
+| 69 — BROA Algorithm Implementation | Deterministic FEFO, normalized RPS, scenario-only BROA, 9 tests, isolated persistence, result digests, and disabled recommendation eligibility pass. | Technical gate passed; operational policy remains unresolved. |
+| 70 — Smart Contract Tests | Static/type checks, all 22 direct tests, reproducible package/deploy, and repeated local Gateway success/replay/conflict/stale-state validation pass. | Technical gate passed; consolidated review remains pending. |
+| 71 — Sprint Review & Retrospective | Evidence structure and self-validation disclosure are present. | Jopia must inspect the final green evidence and explicitly accept; this file does not self-accept. |
+
+The final 2026-08-14 coordination run used a refuse-to-overwrite isolated
+database, applied all three migrations, and proved location
+insert/replay/conflict, two disabled algorithm results with digests, and the
+30-day purge. The final repository regression also passed foundation, database
+role/migration/restart, 32 forecasting, 9 coordination, 22 inventory/transfer,
+8 health-contract, operations-safety, and redacted Gitleaks checks.
+
+Fabric diagnosis proved that the preserved orderer volume trusted an older CA
+key than the generated node certificate while the peer retained a stale Docker
+Desktop socket bind. After an explicit Level 1 preview and authorization, the
+project-scoped Fabric runtimes, containers, volumes, identities, and disposable
+build output were rebuilt; `.env`, PostgreSQL data, migrations, source, docs,
+and tests were preserved. The fresh channel and health probe passed, the
+immutable Sprint 2 tag was committed as inventory `0.1.0`/sequence `1`, and the
+guarded Sprint 3 upgrade committed `0.2.0`/sequence `2` with package ID
+`bloodledger-inventory-transfer_0.2.0:94ff70146d3ec98cf27d4186e493be3a93fa387eb4362a0a945bced03ec15746`.
+Gateway suffix `S3FINAL02` then passed expiry, FEFO transfer receipt, exact
+replay, conflicting replay, stale-state rejection, and a complete repeated run.
+
+Required final evidence commands are:
+
+```bash
+npm run check:foundation
+npm run check:database
+npm run check:forecasting
+npm run test:forecasting
+npm run check:coordination
+npm run test:coordination
+npm run check:inventory-contract
+npm run test:inventory-contract
+npm run test:forecasting:database
+npm run test:coordination:database
+npm run package:inventory-contract
+npm run deploy:inventory-contract
+npm run validate:network --workspace @bloodledger/inventory-contract -- S3FINAL02
+npm run scan:secrets
+```
+
+All commands above pass on the final revision. Sprint Review acceptance remains
+a separate accountable-owner action and has not been inferred from technical
+evidence.
+
+Sprint 4 must not start until the pending live gates pass, the evidence is
+updated with actual results/package ID, and Jopia records explicit Sprint Review
+acceptance. This is a process/readiness gate, not a clinical validation claim.

@@ -192,13 +192,21 @@ def _scenario(args: argparse.Namespace) -> dict[str, Any]:
         reserve=args.reserve,
         scenario_mode=args.scenario_mode,
     )
-    return {
+    result = {
+        "schema_version": "BLOODLEDGER_SURPLUS_SCENARIO_V1",
         "classification": EVALUATION_CLASSIFICATION,
         "scenario_mode": True,
+        "current_stock": args.current_stock,
+        "point_forecast": args.point_forecast,
+        "safety_stock": args.safety_stock,
+        "reserve": args.reserve,
         "predicted_surplus": surplus,
         "persisted": False,
         "recommendation_eligibility": "DISABLED_UNAPPROVED_POLICY",
     }
+    if args.output:
+        _write_json(Path(args.output), result)
+    return result
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -240,6 +248,7 @@ def build_parser() -> argparse.ArgumentParser:
     scenario.add_argument("--safety-stock", type=float, required=True)
     scenario.add_argument("--reserve", type=float, required=True)
     scenario.add_argument("--scenario-mode", action="store_true")
+    scenario.add_argument("--output")
     scenario.set_defaults(handler=_scenario)
     return parser
 

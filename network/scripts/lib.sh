@@ -10,11 +10,19 @@ if [[ -f "${repository_root}/.env" ]]; then
 fi
 
 require_local_ca_configuration() {
+  local process_mediatrix_password="${MEDIATRIX_CA_ADMIN_PASSWORD:-}"
+  local process_orderer_password="${ORDERER_CA_ADMIN_PASSWORD:-}"
   if [[ -f "${repository_root}/.env" ]]; then
     set -a
     # shellcheck disable=SC1091
     source "${repository_root}/.env"
     set +a
+  fi
+  if [[ -n "${process_mediatrix_password}" ]]; then
+    MEDIATRIX_CA_ADMIN_PASSWORD="${process_mediatrix_password}"
+  fi
+  if [[ -n "${process_orderer_password}" ]]; then
+    ORDERER_CA_ADMIN_PASSWORD="${process_orderer_password}"
   fi
   for variable_name in MEDIATRIX_CA_ADMIN_PASSWORD ORDERER_CA_ADMIN_PASSWORD; do
     if [[ -z "${!variable_name:-}" ]]; then

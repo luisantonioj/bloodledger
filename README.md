@@ -16,11 +16,12 @@ S1-08 operational command interface are implemented, Jopia's canonical-host
 evidence is recorded, and Jopia accepted the Sprint Review on 2026-07-30.
 Additional Buno or Lat host evidence is optional. Sprint 2 is complete and was
 accepted by Jopia on 2026-07-30 under versioned synthetic prototype
-assumptions. Sprint 3 is now an isolated Jopia-owned ML experiment using
-`SYNTHETIC_FORECAST_V1`: it forecasts requested demand for the Sprint 2 subset
-and persists only `SIMULATION_ONLY` outputs with operational recommendation
-eligibility disabled. This is a research prototype, not a production or
-clinically validated system.
+assumptions. Sprint 3 continues on an isolated Jopia-owned branch: its
+`SYNTHETIC_FORECAST_V1` ML slice has passed technical gates, and transfer,
+dispatch/receipt location evidence, FEFO/RPS, and BROA are being implemented
+under separate immutable synthetic policies. Forecasts and algorithm results
+remain `SIMULATION_ONLY` with operational recommendation eligibility disabled.
+This is a research prototype, not a production or clinically validated system.
 
 The roadmap now includes invitation-based institutional application and
 administrator activation for later API/web sprints. Application approval is
@@ -79,10 +80,10 @@ deviations separately.
 | [Product backlog](docs/BACKLOG.md) | Prioritized outcomes and sprint roadmap |
 | [Sprint 1 plan](docs/SPRINT-01.md) | Infrastructure sprint entry gate, tasks, decisions, validation, and exit criteria |
 | [Sprint 2 record](docs/SPRINT-02.md) | Accepted deterministic inventory-ledger scope, evidence, and review |
-| [Sprint 3 experiment](docs/SPRINT-03.md) | Simulation-only forecast scope, gates, tasks, and exit obligations |
+| [Sprint 3 continuation](docs/SPRINT-03.md) | Transfer, location, optimization, forecasting, gates, and exit obligations |
 | [Local development](docs/LOCAL-DEVELOPMENT.md) | Planned WSL2 workflow, version evidence, reset safety, and troubleshooting |
 | [Fabric network](network/README.md) | Network identifiers, ports, CA identities, generated material, and health contract |
-| [Development database](database/README.md) | PostgreSQL roles, migrations, simulation forecast schema, and persistence |
+| [Development database](database/README.md) | PostgreSQL roles, migrations, forecast/location/algorithm simulation schema, and persistence |
 | [Agent instructions](AGENTS.md) | Task-based reading map and repository rules for AI-assisted work |
 
 ## Source-of-truth rule
@@ -108,7 +109,8 @@ bloodledger/
 ├── apps/web/               # Sprint 5
 ├── services/api/           # Sprint 4/5
 ├── services/forecasting/   # Sprint 3
-├── chaincode/              # Sprint 2 inventory contract
+├── services/coordination/  # Sprint 3 location/RPS/BROA worker
+├── chaincode/              # Sprint 2 inventory + Sprint 3 transfer contracts
 ├── database/               # Sprint 1+
 ├── network/                # Sprint 1+
 ├── scripts/                # Sprint 1+

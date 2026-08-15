@@ -21,6 +21,11 @@ The one-shot container uses the verified multi-architecture digest for
 `python:3.13.11-slim`; dependency installation also requires every lockfile
 hash.
 
+From the repository root, `npm run check:forecasting` and
+`npm run test:forecasting` use the local virtual environment when it is
+executable and otherwise run the same pinned tools in the one-shot Compose
+image.
+
 The reproducible vertical slice is:
 
 ```bash
@@ -46,7 +51,10 @@ forecasts atomically, and never prints credentials.
 
 `evaluate-surplus-scenario` requires the explicit `--scenario-mode` flag.
 Safety and reserve values are caller-supplied synthetic inputs; the result is
-not stored as an approved recommendation.
+not stored as an approved recommendation. Add `--output artifacts/scenario.json`
+to write a `BLOODLEDGER_SURPLUS_SCENARIO_V1` artifact for scenario-only BROA
+input; it remains `SIMULATION_ONLY`, unpersisted, and
+`DISABLED_UNAPPROVED_POLICY`.
 
 The same CLI is available as an explicit one-shot Compose profile after the
 untracked database secrets and writable data/artifact directories exist:
