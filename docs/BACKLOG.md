@@ -1,7 +1,7 @@
 # BloodLedger Product Backlog
 
-**Status:** Sprint 1 and Sprint 2 complete
-**Baseline date:** 2026-07-30
+**Status:** Sprints 1–3 accepted; Sprint 4 planning is the next gate
+**Baseline date:** 2026-08-16
 **Prioritization:** MoSCoW, then dependency order
 
 ## 1. Backlog rules
@@ -143,38 +143,52 @@ recorded in `docs/SPRINT-02.md`.
 
 ### BL-TRF-01 — Request and approval workflow
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 3  
+**Priority:** Must | **Status:** Done | **Target:** Sprint 3
+**Dependencies:** PA-S3-01
 **Requirements:** FR-05, BR-TRF-01–03
 
 Acceptance: eligible requests can be submitted, approved/rejected, and reserved
 without duplicate or partial allocation.
 
+**Evidence:** Simulation-only implementation and Jopia's accountable-owner
+acceptance are recorded in `docs/SPRINT-03.md`.
+
 ### BL-TRF-02 — Dispatch, receipt, and exception lifecycle
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 3  
-**Dependencies:** BL-INV-02, RQ-09, RQ-10  
+**Priority:** Must | **Status:** Done | **Target:** Sprint 3
+**Dependencies:** BL-INV-02, PA-S3-01, PA-S3-02; RQ-08–10 remain replacement gates
 **Requirements:** FR-10, FR-11, BR-TRF-04–10
 
 Acceptance: dispatch and receipt close the custody loop; delayed, rejected,
 cancelled, and compromised cases preserve a complete audit trail.
 
+**Evidence:** Simulation-only implementation and Jopia's accountable-owner
+acceptance are recorded in `docs/SPRINT-03.md`.
+
 ### BL-ALG-01 — FEFO and RPS
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 3  
-**Dependencies:** RQ-02, RQ-05  
+**Priority:** Must | **Status:** Done | **Target:** Sprint 3
+**Dependencies:** PA-S2-01, PA-S3-03; RQ-02/RQ-05 remain replacement gates
 **Requirements:** FR-02, FR-06, BR-ALG-04
 
 Acceptance: FEFO is a hard constraint and RPS ranking is reproducible,
 versioned, explainable, and covered by contention/tie tests.
 
+**Evidence:** Simulation-only implementation and Jopia's accountable-owner
+acceptance are recorded in `docs/SPRINT-03.md`.
+
 ### BL-ALG-02 — BROA recommendation
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 3  
-**Dependencies:** BL-ALG-01, BL-ML-01, RQ-06  
+**Priority:** Must | **Status:** Done | **Target:** Sprint 3
+**Dependencies:** BL-ALG-01, BL-ML-04, PA-S3-03; BL-ML-01/RQ-06 remain operational gates
 **Requirements:** FR-07, BR-ALG-01–06
 
 Acceptance: eligible destinations are ranked using approved criteria; the
 result is explainable and cannot transfer a unit without approval.
+
+**Evidence:** Simulation-only implementation and Jopia's accountable-owner
+acceptance are recorded in `docs/SPRINT-03.md`. Operational use remains gated
+by the listed dependencies.
 
 ## 6. EPIC-04 — Forecasting
 
@@ -203,6 +217,24 @@ time-ordered validation and reported metrics.
 
 Acceptance: forecast, horizon, reserve, safety allowance, stale state, and model
 version are stored and displayed; failure uses a safe fallback.
+
+### BL-ML-04 — Synthetic forecast simulation enablement
+
+**Priority:** Must | **Status:** Done | **Target:** Sprint 3
+**Dependencies:** PA-ML-01
+**Requirements:** FR-14
+
+Acceptance: a versioned generator creates the approved four synthetic series;
+validation rejects invalid or prohibited data; simple baselines and one
+candidate model use time-ordered evaluation; one reproducible run persists four
+`SIMULATION_ONLY` forecasts without enabling operational recommendations.
+
+This item does not complete or unblock `BL-ML-01`–`BL-ML-03` for operational
+use. Approved historical data, an accuracy decision under `RQ-07`, and approved
+safety/reserve policy remain replacement gates.
+
+**Evidence:** All technical gates passed and Jopia recorded accountable-owner
+acceptance on 2026-08-16 in `docs/SPRINT-03.md`.
 
 ## 7. EPIC-05 — Scan, middleware, and synchronization
 

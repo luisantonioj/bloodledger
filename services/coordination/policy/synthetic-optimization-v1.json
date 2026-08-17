@@ -1,0 +1,36 @@
+{
+  "classification": "SIMULATION_ONLY",
+  "policyVersion": "SYNTHETIC_OPTIMIZATION_V1",
+  "recommendationEligibility": "DISABLED_UNAPPROVED_POLICY",
+  "rps": {
+    "urgencyWeights": {
+      "ROUTINE": 0,
+      "URGENT": 0.5,
+      "CRITICAL": 1
+    },
+    "urgencyWeight": 0.7,
+    "waitWeight": 0.3,
+    "waitCapHours": 24,
+    "tieBreak": [
+      "oldest_request_time",
+      "stable_request_id"
+    ]
+  },
+  "broa": {
+    "normalization": "MIN_MAX",
+    "equalValueContribution": 1,
+    "weights": {
+      "urgency": 0.4,
+      "stockShortage": 0.25,
+      "mlSurplus": 0.2,
+      "distancePenalty": 0.15
+    },
+    "requiresScenarioModeForForecast": true,
+    "automaticApprovalEnabled": false
+  },
+  "limitations": [
+    "The selected 40/25/20/15 BROA profile conflicts with manuscript pseudocode and is synthetic only.",
+    "RPS and BROA are decision-support simulations and never approve transfers.",
+    "Operational weights, thresholds, and eligibility require stakeholder approval."
+  ]
+}

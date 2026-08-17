@@ -163,3 +163,62 @@ healthy startup, authenticated runtime-role connectivity, separated roles,
 restart persistence, and exact-volume empty-state recreation. Additional-host
 repetition is optional portability evidence under the 2026-07-30 validation
 policy.
+
+## 9. Sprint 3 simulation forecast schema
+
+Migration `20260812000000000_create-simulation-forecast-tables.js` activates
+only the FR-14 experiment boundary approved in `docs/SPRINT-03.md`:
+
+- `app.forecast_runs` stores immutable lineage, model-selection evidence,
+  stable idempotency/payload hashes, generation time, status, and safe failure
+  code.
+- `app.demand_forecasts` stores the four next-day blood-type/component values,
+  non-negative empirical interval, freshness evidence, `SIMULATION_ONLY`
+  classification, and `DISABLED_UNAPPROVED_POLICY` eligibility.
+
+The `bloodledger_app` role receives only `SELECT` and `INSERT` on these two
+tables. It receives no `UPDATE`, `DELETE`, DDL, sequence, or unrelated-table
+privilege. The forecasting command writes one completed run and four forecasts
+in a single transaction. The unique run key makes an identical payload a no-op
+and a changed payload fail as `FORECAST_RUN_CONFLICT`.
+
+These tables do not authorize predicted surplus, BROA/RPS, transfer, custody,
+clinical, or Fabric behavior. A separately approved migration must supersede
+the synthetic classifications and constraints before operational data is used.
+
+## 10. Sprint 3 synthetic coordination schema
+
+Migration `20260814000000000_create-synthetic-coordination-tables.js` adds two
+strictly synthetic/off-chain tables:
+
+- `app.location_evidence` stores exact invented dispatch/receipt points,
+  accuracy/source, facility-match and fallback results, the evidence digest,
+  and an enforced deletion time exactly 30 days after capture;
+- `app.algorithm_runs` stores immutable RPS/BROA input, configuration, and
+  recommendation hashes plus explainable JSON evidence, always classified
+  `SIMULATION_ONLY` with `DISABLED_UNAPPROVED_POLICY` eligibility.
+
+`bloodledger_app` receives `SELECT` and `INSERT` only. It has no direct update
+or delete permission. Exact synthetic coordinate deletion is exposed only
+through the fixed, migration-owned
+`app.purge_expired_synthetic_location_evidence(timestamptz)` function. The
+function has a fixed search path and deletes only expired
+`SYNTHETIC_DATA` rows. Sprint 3 adds no scheduler; callers invoke the purge
+explicitly and must record operational scheduling/monitoring in a later sprint.
+
+The coordination tables do not establish real facility coordinates, routing,
+retention policy, operational RPS/BROA weights, or approval authority. They do
+not create request/transfer projections and never invoke Fabric.
+
+Focused checks are:
+
+```bash
+npm run check:database
+npm run test:coordination:database
+```
+
+The coordination integration uses only the runtime role and proves identical
+replay, conflicting replay, disabled algorithm results, and the exact 30-day
+purge boundary. The forecasting database integration creates and removes only
+its own fixed isolated test database, applies all three migrations from empty,
+and refuses to overwrite a pre-existing database with that name.

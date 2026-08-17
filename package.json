@@ -11,7 +11,8 @@
   "workspaces": [
     "chaincode",
     "database",
-    "network/health-contract"
+    "network/health-contract",
+    "services/coordination"
   ],
   "scripts": {
     "check:format": "node tests/repository/json-format.mjs",
@@ -23,6 +24,12 @@
     "check:database": "node tests/database/static-baseline.mjs",
     "check:inventory-contract": "npm run check --workspace @bloodledger/inventory-contract && bash tests/chaincode/static-inventory-contract.sh",
     "test:inventory-contract": "npm run test --workspace @bloodledger/inventory-contract",
+    "check:forecasting": "bash tests/forecasting/static-boundary.sh && bash services/forecasting/scripts/run-quality.sh check",
+    "test:forecasting": "bash services/forecasting/scripts/run-quality.sh test",
+    "test:forecasting:database": "bash tests/forecasting/postgres-integration.sh",
+    "check:coordination": "npm run typecheck --workspace @bloodledger/coordination && bash tests/coordination/static-boundary.sh",
+    "test:coordination": "npm run test --workspace @bloodledger/coordination",
+    "test:coordination:database": "bash tests/coordination/postgres-integration.sh",
     "package:inventory-contract": "bash network/scripts/package-inventory-contract.sh",
     "deploy:inventory-contract": "bash network/scripts/deploy-inventory-contract.sh",
     "check:fabric-identities": "bash tests/network/static-identities.sh",

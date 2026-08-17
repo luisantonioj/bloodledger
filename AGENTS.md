@@ -14,6 +14,17 @@ data-gathering approval is pending. These assumptions are not Mediatrix or
 clinical policy and must be superseded, not silently edited, when approved
 evidence arrives.
 
+Sprint 3 implementation began on 2026-08-12 as an isolated Jopia-owned ML
+experiment. Its forecasting technical gates passed on 2026-08-13. On
+2026-08-14 Jopia authorized continuation on the same branch for transfer,
+location, FEFO/RPS, and BROA using `SYNTHETIC_TRANSFER_V1`,
+`SYNTHETIC_LOCATION_V1`, and `SYNTHETIC_OPTIMIZATION_V1`. Jopia reviewed the
+final evidence and accepted the simulation-only Sprint 3 scope on 2026-08-16.
+All outputs and named institution fixtures remain simulation-only; unresolved
+`RQ-*` decisions still block operational interpretation and autonomous
+recommendations. Sprint 4 requires its own authorized specification before
+implementation.
+
 The project is a research prototype. Never describe it as production-ready,
 clinically validated, regulator-approved, or a deployed multi-organization
 consortium unless evidence and scope documents are formally updated.

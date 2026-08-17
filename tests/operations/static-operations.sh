@@ -25,7 +25,7 @@ grep -Fq 'Reset stopped on partial failure' "${operations}"
 grep -Fq 'temporary_home="$(mktemp -d)"' "${operations}"
 grep -Fq -- '--mspdir "${temporary_home}/msp"' "${operations}"
 grep -Fq 'org.hyperledger.fabric.chaincode.type' "${operations}"
-grep -Fq 'bloodledger-health_0\.1\.0:([a-f0-9]{64})' "${operations}"
+grep -Fq 'bloodledger-health_0\.1\.0|bloodledger-inventory_0\.[12]\.0' "${operations}"
 
 if rg -n 'docker (system|volume|network|builder) prune|compose[^\n]*down[^\n]*--volumes|rm -rf|eval ' \
   "${operations}" "${health_query}"; then

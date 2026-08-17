@@ -5,7 +5,9 @@ const files = [
   "scripts/validate-network.ts",
   "src/index.ts",
   "src/inventory-contract.ts",
+  "src/transfer-contract.ts",
   "test/inventory-contract.test.ts",
+  "test/transfer-contract.test.ts",
 ];
 for (const file of files) {
   const source = await readFile(new URL(`../${file}`, import.meta.url), "utf8");

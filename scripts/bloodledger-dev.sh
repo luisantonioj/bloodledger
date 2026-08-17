@@ -57,12 +57,24 @@ require_commands() {
 
 load_environment() {
   [[ -f "${repository_root}/.env" ]] || fail "Untracked .env is missing; copy .env.example and fill the required local secrets"
+  local variable_name
+  local -A process_secret_values=()
+  for variable_name in "${required_secrets[@]}"; do
+    process_secret_values["${variable_name}"]="${!variable_name:-}"
+  done
   set -a
   # shellcheck disable=SC1091
   source "${repository_root}/.env"
   set +a
 
-  local missing=0 variable_name
+  for variable_name in "${required_secrets[@]}"; do
+    if [[ -n "${process_secret_values[${variable_name}]}" ]]; then
+      printf -v "${variable_name}" '%s' "${process_secret_values[${variable_name}]}"
+      export "${variable_name}"
+    fi
+  done
+
+  local missing=0
   for variable_name in "${required_secrets[@]}"; do
     if [[ -z "${!variable_name:-}" ]]; then
       printf 'ERROR: A required local secret value is empty (%s)\n' "${variable_name}" >&2
@@ -400,33 +412,29 @@ resolve_project_network() {
   printf '%s' "${network_name}"
 }
 
-resolve_health_runtime_container() {
+resolve_chaincode_runtime_containers() {
   local network_name="$1"
   [[ -n "${network_name}" ]] || { printf '%s' ""; return 0; }
-  local package_id_file="${health_build_root}/package-id.txt"
   local -a candidates=()
   mapfile -t candidates < <(docker ps --all --filter "network=${network_name}" \
-    --filter 'name=dev-peer0.mediatrix.bloodledger.local-bloodledger-health_0.1.0-' \
+    --filter 'name=dev-peer0.mediatrix.bloodledger.local-bloodledger-' \
     --format '{{.ID}}')
   ((${#candidates[@]} > 0)) || { printf '%s' ""; return 0; }
-  [[ -f "${package_id_file}" ]] || fail "A health-contract runtime exists but its approved package ID file is missing"
-  local package_id package_hash expected_name id actual_name actual_networks
-  package_id="$(<"${package_id_file}")"
-  [[ "${package_id}" =~ ^bloodledger-health_0\.1\.0:([a-f0-9]{64})$ ]] || fail "The recorded health-contract package ID is invalid"
-  package_hash="${BASH_REMATCH[1]}"
-  expected_name="dev-peer0.mediatrix.bloodledger.local-bloodledger-health_0.1.0-${package_hash}"
-  [[ "${#candidates[@]}" -eq 1 ]] || fail "Health-contract runtime ownership is ambiguous; expected at most one approved container"
-  id="${candidates[0]}"
-  actual_name="$(docker inspect --format '{{.Name}}' "${id}")"
-  actual_name="${actual_name#/}"
-  [[ "${actual_name}" == "${expected_name}" ]] || fail "Health-contract runtime name does not match the approved package ID"
-  [[ "$(docker inspect --format '{{index .Config.Labels "org.hyperledger.fabric.chaincode.type"}}' "${id}")" == NODE ]] ||
-    fail "Health-contract runtime has an unexpected chaincode type"
-  [[ "$(docker inspect --format '{{index .Config.Labels "org.hyperledger.fabric.version"}}' "${id}")" == v2.5.16 ]] ||
-    fail "Health-contract runtime has an unexpected Fabric version"
-  actual_networks="$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{println}}{{end}}' "${id}" | sed '/^$/d')"
-  [[ "${actual_networks}" == "${network_name}" ]] || fail "Health-contract runtime is attached outside the approved project network"
-  printf '%s' "${id}"
+  local id actual_name actual_networks
+  for id in "${candidates[@]}"; do
+    actual_name="$(docker inspect --format '{{.Name}}' "${id}")"
+    actual_name="${actual_name#/}"
+    [[ "${actual_name}" =~ ^dev-peer0\.mediatrix\.bloodledger\.local-(bloodledger-health_0\.1\.0|bloodledger-inventory_0\.[12]\.0)-[a-f0-9]{64}$ ]] ||
+      fail "Chaincode runtime name is outside the approved health/inventory versions"
+    [[ "$(docker inspect --format '{{index .Config.Labels "org.hyperledger.fabric.chaincode.type"}}' "${id}")" == NODE ]] ||
+      fail "Chaincode runtime has an unexpected chaincode type"
+    [[ "$(docker inspect --format '{{index .Config.Labels "org.hyperledger.fabric.version"}}' "${id}")" == v2.5.16 ]] ||
+      fail "Chaincode runtime has an unexpected Fabric version"
+    actual_networks="$(docker inspect --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{println}}{{end}}' "${id}" | sed '/^$/d')"
+    [[ "${actual_networks}" == "${network_name}" ]] ||
+      fail "Chaincode runtime is attached outside the approved project network"
+    printf '%s\n' "${id}"
+  done
 }
 
 remove_directory_contents() {
@@ -480,12 +488,16 @@ reset_environment() {
 
   local service key name
   for service in "${fabric_services[@]}"; do validate_service_ownership "${service}"; done
-  local project_network health_runtime health_runtime_name=""
+  local project_network runtime_output id actual_name
+  local -a chaincode_runtimes=() chaincode_runtime_names=()
   project_network="$(resolve_project_network)"
-  health_runtime="$(resolve_health_runtime_container "${project_network}")"
-  if [[ -n "${health_runtime}" ]]; then
-    health_runtime_name="$(docker inspect --format '{{.Name}}' "${health_runtime}")"
-    health_runtime_name="${health_runtime_name#/}"
+  runtime_output="$(resolve_chaincode_runtime_containers "${project_network}")"
+  if [[ -n "${runtime_output}" ]]; then
+    mapfile -t chaincode_runtimes <<<"${runtime_output}"
+    for id in "${chaincode_runtimes[@]}"; do
+      actual_name="$(docker inspect --format '{{.Name}}' "${id}")"
+      chaincode_runtime_names+=("${actual_name#/}")
+    done
   fi
   local -a fabric_volumes=()
   for key in "${fabric_volume_keys[@]}"; do
@@ -500,7 +512,7 @@ reset_environment() {
 
   printf 'Reset preview: Compose project %s\n' "${project_name}"
   printf '  Compose containers: %s\n' "${fabric_services[*]}"
-  printf '  Health-contract runtime container: %s\n' "${health_runtime_name:-none present}"
+  printf '  Approved chaincode runtime containers: %s\n' "${chaincode_runtime_names[*]:-none present}"
   printf '  Shared network: %s\n' "${project_network:-none present} (preserved for Level 1; removed by Level 2 shutdown)"
   printf '  Fabric volumes: %s\n' "${fabric_volumes[*]:-none present}"
   printf '  Generated path: %s\n' "${generated_root}"
@@ -520,10 +532,11 @@ reset_environment() {
   fi
 
   reset_changes=()
-  if [[ -n "${health_runtime}" ]]; then
-    run_reset_step "health-contract runtime ${health_runtime_name}" \
-      docker container rm --force "${health_runtime}"
-  fi
+  for id in "${chaincode_runtimes[@]}"; do
+    actual_name="$(docker inspect --format '{{.Name}}' "${id}")"
+    run_reset_step "approved chaincode runtime ${actual_name#/}" \
+      docker container rm --force "${id}"
+  done
   if [[ "${level}" == fabric ]]; then
     run_reset_step "Fabric Compose containers" compose_command rm --stop --force "${fabric_services[@]}"
   else

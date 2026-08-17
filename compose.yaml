@@ -180,6 +180,23 @@ services:
       retries: 12
       start_period: 10s
 
+  forecasting:
+    profiles:
+      - forecasting
+    build:
+      context: ./services/forecasting
+      dockerfile: Dockerfile
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: bloodledger_dev
+      POSTGRES_APP_USER: bloodledger_app
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD in the untracked .env file}
+    volumes:
+      - ./services/forecasting/data:/workspace/data
+      - ./services/forecasting/artifacts:/workspace/artifacts
+
 volumes:
   orderer0-config:
   orderer0-data:

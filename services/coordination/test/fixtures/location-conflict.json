@@ -1,0 +1,11 @@
+{
+  "evidenceId": "LOC_INTEGRATION_001",
+  "institutionId": "INST_MEDIATRIX",
+  "phase": "DISPATCH",
+  "latitude": 0.0002,
+  "longitude": 0.0001,
+  "accuracyMetres": 20,
+  "source": "DEVICE",
+  "fallbackReason": null,
+  "capturedAt": "2026-07-01T00:00:00.000Z"
+}

@@ -1,7 +1,7 @@
 # BloodLedger Software Requirements
 
-**Status:** Approved requirements baseline; onboarding implementation deferred
-**Baseline date:** 2026-07-30
+**Status:** Approved baseline with accepted Sprint 3 synthetic implementation assumptions
+**Baseline date:** 2026-08-16
 **Requirement owners:** Buno, Jopia, and Lat
 
 ## 1. Conventions
@@ -443,6 +443,20 @@ PENDING -> APPROVED -> DISPATCHED -> IN_TRANSIT -> RECEIVED
 Allowed transitions must be represented as a single authoritative table before
 Sprint 3 implementation.
 
+Under `PA-S3-01`, the simulation-only transition table is:
+
+| From | Allowed next state |
+|---|---|
+| `PENDING` | `APPROVED`, `REJECTED`, `CANCELLED` |
+| `APPROVED` | `DISPATCHED`, `CANCELLED` |
+| `DISPATCHED` | `IN_TRANSIT`, `COMPROMISED` |
+| `IN_TRANSIT` | `DELAYED`, `RECEIVED`, `COMPROMISED` |
+| `DELAYED` | `IN_TRANSIT`, `RECEIVED`, `COMPROMISED` |
+| `RECEIVED` | `COMPROMISED` |
+
+`REJECTED`, `CANCELLED`, and `COMPROMISED` are terminal. Received synthetic
+units remain unavailable because `RQ-10` is unresolved.
+
 ### 5.3 Offline event
 
 ```text
@@ -533,7 +547,10 @@ withdrawal creates a new `SUBMITTED` application linked to the prior record.
 | PA-S2-02 | Accepted prototype assumption | `SYNTHETIC_INVENTORY_V1` | Jopia / 2026-07-30 | Synthetic maximum collection-to-expiry intervals are 72 hours for `RED_BLOOD_CELLS` and 36 hours for `PLATELETS`; synthetic near-expiry leads are 12 and 6 hours respectively. These deliberately non-clinical values prove deterministic policy handling only. | Approved component shelf-life and near-expiry policy |
 | PA-S2-03 | Accepted prototype assumption | `SYNTHETIC_INVENTORY_V1` | Jopia / 2026-07-30 | The initial committed state is `AVAILABLE`; Sprint 2 permits only `AVAILABLE -> EXPIRED`. Transfer and exception transitions remain deferred. | Approved Sprint 3 transfer/custody transition table |
 | PA-S2-04 | Accepted prototype assumption | `SYNTHETIC_INVENTORY_V1` | Jopia / 2026-07-30 | `MediatrixMSP` and the `api-gateway` service identity submit for `INST_MEDIATRIX`; certificate attributes and opaque application actor attribution are both validated. | Approved application identity integration or future governed organization onboarding |
-| PA-ML-01 | Accepted planning assumption | Assigned ML sprint version | ML owner / activating sprint | Synthetic training data may be generated with a recorded schema, generator version, seed, time range, lineage, and `SYNTHETIC_DATA` classification. Metrics are `SIMULATION_ONLY`, use time-ordered validation, and do not predict Mediatrix performance. | Approved anonymized Mediatrix dataset and data-governance decision |
+| PA-ML-01 | Accepted prototype assumption | `SYNTHETIC_FORECAST_V1` | Jopia / 2026-08-12 | Synthetic training data may be generated for `INST_MEDIATRIX`, `A_POSITIVE`/`O_POSITIVE`, and `RED_BLOOD_CELLS`/`PLATELETS` with a recorded schema, generator version, seed, time range, lineage, and `SYNTHETIC_DATA` classification. Metrics and outputs are `SIMULATION_ONLY`, use time-ordered validation, target requested demand, and do not predict Mediatrix performance. Forecast-only recommendation eligibility remains `DISABLED_UNAPPROVED_POLICY`. | Approved anonymized Mediatrix dataset, data-governance decision, and resolution of `RQ-07` |
+| PA-S3-01 | Accepted prototype assumption | `SYNTHETIC_TRANSFER_V1` | Jopia / 2026-08-14 | Synthetic requests are limited to 10 units; reservation reallocation is disabled; only the versioned transition table is allowed; receipt remains unavailable; gateway-submitted actions use an immutable allowlist of opaque synthetic actors. | Approved transfer authority, receipt identity, local release, suspension, and exception policy under `RQ-04`, `RQ-09`, `RQ-10`, `RQ-12`, and `RQ-15` |
+| PA-S3-02 | Accepted prototype assumption | `SYNTHETIC_LOCATION_V1` | Jopia / 2026-08-14 | Invented coordinates model only dispatch and receipt points. Accuracy must be `(0,1000]` metres, facility match radius is 500 metres, approved fallback reasons are versioned, exact off-chain points expire after 30 days, and chaincode stores only minimal digest evidence. | Approved institutional precision, retention, facility coordinates, and fallback policy under `RQ-08` |
+| PA-S3-03 | Accepted prototype assumption | `SYNTHETIC_OPTIMIZATION_V1` | Jopia / 2026-08-14 | RPS normalizes urgency and capped wait before applying 70/30 weights. BROA uses the manuscript narrative 40/25/20/15 profile only as a disclosed simulation despite conflicting pseudocode. Forecast input requires explicit scenario mode, and every result is disabled for automatic approval. | Approved RPS/BROA criteria, scales, weights, reserve/safety policy, and operational data under `RQ-05`, `RQ-06`, `RQ-07` |
 
 Prototype-assumption versions are immutable. A replacement adds a new version,
 marks the earlier one superseded for new operations, preserves historical
@@ -549,18 +566,18 @@ sprint:
 | RQ-01 | Which institutions have approved application participation? Active secondary hospitals may see approved city-wide aggregates plus only their own requests, transfers, receipt records, profile, and users; what institution-specific exceptions are approved? | Sprint 5 |
 | RQ-02 | Which Mediatrix blood types/components and ISBT 128 data structures replace the minimal `PA-S2-01` synthetic allowlist? | Sprint 4 or before replacing `SYNTHETIC_INVENTORY_V1` |
 | RQ-03 | What clinically approved component shelf-life and near-expiry thresholds replace `PA-S2-02`? | Before any clinical or operational interpretation |
-| RQ-04 | Who may reallocate an approved reservation for a more urgent request? | Sprint 3 |
-| RQ-05 | What are the final RPS scale, weights, wait cap, and tie-break rule? | Sprint 3 |
-| RQ-06 | What are the final BROA criteria, normalization, weights, and eligibility constraints? | Sprint 3 |
-| RQ-07 | What forecast metric and minimum accuracy justify operational use? | Sprint 3/testing |
-| RQ-08 | What precision and retention apply to location evidence? | Sprint 3 |
-| RQ-09 | Does receipt require two human signatures or institutional service identities plus authenticated user attribution? | Sprint 3 |
-| RQ-10 | What local verification changes a received unit to available inventory? | Sprint 3 |
+| RQ-04 | Who may reallocate an approved reservation for a more urgent request? | Before enabling reallocation or operational transfer use |
+| RQ-05 | What are the final RPS scale, weights, wait cap, and tie-break rule? | Before operational RPS use |
+| RQ-06 | What are the final BROA criteria, normalization, weights, and eligibility constraints? | Before operational BROA use |
+| RQ-07 | What forecast metric and minimum accuracy justify operational use? | Before operational forecast use/testing |
+| RQ-08 | What precision and retention apply to location evidence? | Before real location capture |
+| RQ-09 | Does receipt require two human signatures or institutional service identities plus authenticated user attribution? | Before operational receipt |
+| RQ-10 | What local verification changes a received unit to available inventory? | Before received stock can become available |
 | RQ-11 | Will OCR supplement or replace barcode/QR capture, and what confidence, confirmation, label-fixture, privacy, and fallback rules make it acceptable? | Before Sprint 4 |
-| RQ-12 | Should pending requests and approved-but-undispatched transfers be cancelled, frozen, or explicitly reassigned when an institution is suspended? | Sprint 3 |
+| RQ-12 | Should pending requests and approved-but-undispatched transfers be cancelled, frozen, or explicitly reassigned when an institution is suspended? | Before institution suspension affects transfers |
 | RQ-13 | What applicant verification, abuse prevention, and recovery controls are required before public self-service application can supplement invitation-only onboarding? | Before enabling public application |
 | RQ-14 | What retention period and access policy apply to onboarding verification evidence and rejected applications? | Sprint 4 |
-| RQ-15 | Who may authorize emergency suspension while a transfer is dispatched or in transit, and how is safe receipt/custody resolution assigned? | Sprint 3 |
+| RQ-15 | Who may authorize emergency suspension while a transfer is dispatched or in transit, and how is safe receipt/custody resolution assigned? | Before operational in-transit suspension |
 
 Unanswered questions must not be guessed by a coding agent. The relevant task is
 blocked or implemented behind an explicitly approved prototype assumption.

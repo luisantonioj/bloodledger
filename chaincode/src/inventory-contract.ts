@@ -9,6 +9,7 @@ const AUTHORIZED_ROLE = "API_GATEWAY";
 const ROLE_ATTRIBUTE = "bloodledger.role";
 const INSTITUTION_ATTRIBUTE = "bloodledger.institution_id";
 const SCHEMA_VERSION = "INVENTORY_ASSET_V1";
+const TRANSFER_SCHEMA_VERSION = "TRANSFER_ASSET_V1";
 const UNIT_ID_PATTERN = /^UNIT_[A-Z0-9_-]{1,56}$/;
 const ACTOR_ID_PATTERN = /^USR_[A-Z0-9_-]{1,48}$/;
 const CORRELATION_ID_PATTERN = /^CORR_[A-Z0-9_-]{1,59}$/;
@@ -16,7 +17,14 @@ const IDEMPOTENCY_KEY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
 
 type BloodType = "A_POSITIVE" | "O_POSITIVE";
 type Component = "PLATELETS" | "RED_BLOOD_CELLS";
-type InventoryStatus = "AVAILABLE" | "EXPIRED";
+type InventoryStatus =
+  | "AVAILABLE"
+  | "RESERVED"
+  | "DISPATCHED"
+  | "IN_TRANSIT"
+  | "RECEIVED"
+  | "COMPROMISED"
+  | "EXPIRED";
 type ExpiryResult = "CURRENT" | "NEAR_EXPIRY" | "EXPIRED";
 
 interface RegisterBloodUnitInput {
@@ -45,7 +53,7 @@ interface EvaluateExpiryInput {
 }
 
 export interface BloodUnitAsset {
-  schemaVersion: typeof SCHEMA_VERSION;
+  schemaVersion: typeof SCHEMA_VERSION | "INVENTORY_ASSET_V2";
   unitId: string;
   bloodType: BloodType;
   component: Component;
@@ -55,6 +63,8 @@ export interface BloodUnitAsset {
   actorUserId: string;
   status: InventoryStatus;
   policyVersion: string;
+  transferPolicyVersion?: string;
+  reservedForTransferId?: string;
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -200,7 +210,7 @@ export class InventoryContract extends Contract {
     }
 
     const asset = await this.readAsset(ctx, input.unitId);
-    if (asset.institutionId !== input.institutionId) {
+    if (asset.institutionId !== input.institutionId && asset.reservedForTransferId === undefined) {
       this.fail("INV_INSTITUTION_MISMATCH");
     }
     if (asset.policyVersion !== input.policyVersion) {
@@ -209,7 +219,7 @@ export class InventoryContract extends Contract {
     if (asset.version !== input.expectedVersion) {
       this.fail("INV_VERSION_CONFLICT");
     }
-    if (asset.status !== "AVAILABLE") {
+    if (asset.status === "EXPIRED") {
       this.fail("INV_TRANSITION_INVALID");
     }
 
@@ -221,6 +231,7 @@ export class InventoryContract extends Contract {
     let resultingAsset = asset;
     if (evaluationMs >= expiryMs) {
       result = "EXPIRED";
+      await this.applyTransferExpiryEffects(ctx, asset, input);
       resultingAsset = {
         ...asset,
         status: "EXPIRED",
@@ -373,15 +384,97 @@ export class InventoryContract extends Contract {
       this.fail("INV_STATE_INVALID");
     }
     if (
-      asset.schemaVersion !== SCHEMA_VERSION ||
+      ![SCHEMA_VERSION, "INVENTORY_ASSET_V2"].includes(asset.schemaVersion) ||
       asset.unitId !== unitId ||
       !policy.bloodTypes.includes(asset.bloodType) ||
       !Object.hasOwn(policy.components, asset.component) ||
-      !["AVAILABLE", "EXPIRED"].includes(asset.status)
+      ![
+        "AVAILABLE", "RESERVED", "DISPATCHED", "IN_TRANSIT",
+        "RECEIVED", "COMPROMISED", "EXPIRED",
+      ].includes(asset.status)
     ) {
       this.fail("INV_STATE_INVALID");
     }
     return asset;
+  }
+
+  private async applyTransferExpiryEffects(
+    ctx: Context,
+    asset: BloodUnitAsset,
+    input: EvaluateExpiryInput,
+  ): Promise<void> {
+    if (asset.reservedForTransferId === undefined || asset.status === "AVAILABLE") {
+      return;
+    }
+    const transferKey = `transfer:asset:${asset.reservedForTransferId}`;
+    const stored = await ctx.stub.getState(transferKey);
+    if (stored.length === 0) {
+      this.fail("INV_STATE_INVALID");
+    }
+    let transfer: Record<string, unknown>;
+    try {
+      transfer = JSON.parse(Buffer.from(stored).toString("utf8")) as Record<string, unknown>;
+    } catch {
+      this.fail("INV_STATE_INVALID");
+    }
+    if (
+      transfer.schemaVersion !== TRANSFER_SCHEMA_VERSION ||
+      transfer.transferId !== asset.reservedForTransferId ||
+      !Array.isArray(transfer.selectedUnitIds) ||
+      !Number.isSafeInteger(transfer.version)
+    ) {
+      this.fail("INV_STATE_INVALID");
+    }
+
+    if (asset.status === "RESERVED") {
+      if (transfer.status !== "APPROVED") {
+        this.fail("INV_STATE_INVALID");
+      }
+      const siblings: BloodUnitAsset[] = [];
+      for (const unitId of transfer.selectedUnitIds as unknown[]) {
+        if (typeof unitId !== "string") {
+          this.fail("INV_STATE_INVALID");
+        }
+        if (unitId === asset.unitId) continue;
+        const sibling = await this.readAsset(ctx, unitId);
+        if (sibling.status !== "RESERVED" ||
+            sibling.reservedForTransferId !== asset.reservedForTransferId) {
+          this.fail("INV_STATE_INVALID");
+        }
+        siblings.push(sibling);
+      }
+      for (const sibling of siblings) {
+          const released: BloodUnitAsset = {
+            ...sibling,
+            schemaVersion: "INVENTORY_ASSET_V2",
+            status: "AVAILABLE",
+            reservedForTransferId: undefined,
+            actorUserId: input.actorUserId,
+            version: sibling.version + 1,
+            updatedAt: input.evaluationTime,
+            correlationId: input.correlationId,
+            lastTransactionId: ctx.stub.getTxID(),
+          };
+          await ctx.stub.putState(
+            this.assetKey(released.unitId),
+            Buffer.from(this.serialize(released), "utf8"),
+          );
+      }
+      transfer.status = "CANCELLED";
+      transfer.reasonCode = "RESERVED_UNIT_EXPIRED";
+    } else if (transfer.status !== "COMPROMISED") {
+      if (!["DISPATCHED", "IN_TRANSIT", "DELAYED", "RECEIVED"].includes(String(transfer.status))) {
+        this.fail("INV_STATE_INVALID");
+      }
+      transfer.status = "COMPROMISED";
+      transfer.reasonCode = "UNIT_EXPIRED_IN_CUSTODY";
+    }
+    transfer.actorUserId = input.actorUserId;
+    transfer.version = Number(transfer.version) + 1;
+    transfer.updatedAt = input.evaluationTime;
+    transfer.correlationId = input.correlationId;
+    transfer.lastTransactionId = ctx.stub.getTxID();
+    await ctx.stub.putState(transferKey, Buffer.from(this.serialize(transfer), "utf8"));
   }
 
   private async readIdempotentResponse(

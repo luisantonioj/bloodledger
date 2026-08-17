@@ -13,7 +13,7 @@ npm install --package-lock-only --ignore-scripts --workspaces=false \
   --prefix "${inventory_package_root}"
 find "${inventory_package_root}" -exec touch -d '@946684800' {} +
 
-candidate_archive="${inventory_build_root}/.bloodledger-inventory_0.1.0.candidate.tgz"
+candidate_archive="${inventory_build_root}/.bloodledger-inventory-transfer_0.2.0.candidate.tgz"
 rm -f "${candidate_archive}"
 tar --sort=name --mtime='@946684800' --owner=0 --group=0 --numeric-owner \
   --format=gnu --transform='s,^\./,src/,' \

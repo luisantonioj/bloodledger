@@ -6,6 +6,10 @@ const files = [
   "database/package.json",
   "network/health-contract/package.json",
   "network/health-contract/tsconfig.json",
+  "services/coordination/package.json",
+  "services/coordination/policy/synthetic-location-v1.json",
+  "services/coordination/policy/synthetic-optimization-v1.json",
+  "services/coordination/tsconfig.json",
 ];
 
 for (const file of files) {
