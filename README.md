@@ -2,7 +2,7 @@
 
 BloodLedger is a research prototype for real-time blood inventory coordination
 and traceable inter-hospital redistribution in Lipa City. The planned system
-combines barcode/QR scanning, an on-premise PostgreSQL application store, a
+combines mobile OCR with barcode/2D-code fallback, an on-premise PostgreSQL application store, a
 permissioned Hyperledger Fabric ledger, demand forecasting, explainable
 redistribution recommendations, and a web dashboard.
 
@@ -22,6 +22,12 @@ dispatch/receipt location evidence, FEFO/RPS, and BROA vertical slice remains
 governed by immutable synthetic policies. Forecasts and algorithm results remain
 `SIMULATION_ONLY` with operational recommendation eligibility disabled. This is
 a research prototype, not a production or clinically validated system.
+
+Sprint 4 is authorized on `codex/sprint-04-scan-middleware`. It adds an
+installable mobile capture PWA, on-device synthetic-label OCR with mandatory
+confirmation, a durable PostgreSQL scan queue, Node.js middleware/Fabric
+reconciliation, and read-only forecast freshness. Raw label images do not leave
+the device, and real-label/ISBT and operational-use claims remain blocked.
 
 The roadmap now includes invitation-based institutional application and
 administrator activation for later API/web sprints. Application approval is
@@ -47,9 +53,9 @@ entry gate in `docs/SPRINT-01.md`.
 - The system stores operational blood-unit and custody metadata only.
 - Patient records, donor names, PHI, blood disposal, continuous GPS tracking,
   cold-chain sensing, and autonomous transfer approval are out of scope.
-- OCR is under consideration as a later alternative or supplement to barcode/QR
-  label capture. It is not part of Sprint 1 and is not yet an approved
-  replacement for ISBT 128-compatible scanning.
+- Sprint 4 accepts on-device OCR as the primary synthetic-label flow, with
+  Code 128/Data Matrix and synthetic QR fallback. This does not establish full
+  ISBT 128 compatibility or authorize real institutional label capture.
 - The topology is designed for future expansion but is not a deployed
   multi-organization consortium.
 
@@ -60,8 +66,8 @@ entry gate in `docs/SPRINT-01.md`.
 - Hyperledger Fabric LTS with Fabric CA
 - Node.js with npm workspaces and one root lockfile
 - PostgreSQL
-- Python 3.13 for the active Sprint 3 forecasting experiment
-- React for the later Sprint 5 web application
+- Python 3.13 for the Sprint 3 forecasting experiment
+- React for the Sprint 4 capture PWA and later Sprint 5 web application
 
 DBeaver is optional database-inspection tooling. It is not needed by the
 runtime or repository-foundation checks.
@@ -81,6 +87,7 @@ deviations separately.
 | [Sprint 1 plan](docs/SPRINT-01.md) | Infrastructure sprint entry gate, tasks, decisions, validation, and exit criteria |
 | [Sprint 2 record](docs/SPRINT-02.md) | Accepted deterministic inventory-ledger scope, evidence, and review |
 | [Sprint 3 continuation](docs/SPRINT-03.md) | Transfer, location, optimization, forecasting, gates, and exit obligations |
+| [Sprint 4 plan](docs/SPRINT-04.md) | Mobile OCR, durable scan synchronization, API/forecast interfaces, validation, and acceptance gates |
 | [Local development](docs/LOCAL-DEVELOPMENT.md) | Planned WSL2 workflow, version evidence, reset safety, and troubleshooting |
 | [Fabric network](network/README.md) | Network identifiers, ports, CA identities, generated material, and health contract |
 | [Development database](database/README.md) | PostgreSQL roles, migrations, forecast/location/algorithm simulation schema, and persistence |
@@ -106,8 +113,9 @@ bloodledger/
 ├── README.md
 ├── AGENTS.md
 ├── docs/
+├── apps/capture-pwa/       # Sprint 4 mobile capture
 ├── apps/web/               # Sprint 5
-├── services/api/           # Sprint 4/5
+├── services/api/           # Sprint 4 scan/sync/forecast slice; expanded later
 ├── services/forecasting/   # Sprint 3
 ├── services/coordination/  # Sprint 3 location/RPS/BROA worker
 ├── chaincode/              # Sprint 2 inventory + Sprint 3 transfer contracts
@@ -153,6 +161,24 @@ Normal start and stop preserve state. Reset confirmation tokens, dry-run
 procedures, service-specific logs, and troubleshooting are documented in
 `docs/LOCAL-DEVELOPMENT.md`. Fabric identifiers and database rules remain
 authoritative in `network/README.md` and `database/README.md`.
+
+Sprint 4 remains isolated in its own worktree. After the normal bootstrap,
+populate the additional empty `SPRINT4_OPERATOR_CREDENTIAL` and
+`SPRINT4_JWT_SECRET` entries in that worktree's untracked `.env`, then use the
+focused commands:
+
+```bash
+npm run check:capture
+npm run test:capture
+npm run check:api
+npm run test:api
+npm run test:api:database
+docker compose --profile sprint4 up --detach --build api sync-worker
+```
+
+The JWT secret must contain at least 32 characters and the synthetic operator
+credential at least 12. Neither value belongs in Git, logs, screenshots, or
+Sprint evidence. The API is host-loopback-bound by default.
 
 ## Security and research-data notice
 

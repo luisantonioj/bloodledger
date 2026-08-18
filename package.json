@@ -9,9 +9,11 @@
   },
   "packageManager": "npm@11.13.0",
   "workspaces": [
+    "apps/capture-pwa",
     "chaincode",
     "database",
     "network/health-contract",
+    "services/api",
     "services/coordination"
   ],
   "scripts": {
@@ -30,6 +32,12 @@
     "check:coordination": "npm run typecheck --workspace @bloodledger/coordination && bash tests/coordination/static-boundary.sh",
     "test:coordination": "npm run test --workspace @bloodledger/coordination",
     "test:coordination:database": "bash tests/coordination/postgres-integration.sh",
+    "check:capture": "npm run check --workspace @bloodledger/capture-pwa",
+    "test:capture": "npm run test --workspace @bloodledger/capture-pwa",
+    "test:capture:e2e": "npm run test:e2e --workspace @bloodledger/capture-pwa",
+    "check:api": "npm run check --workspace @bloodledger/api && bash tests/api/static-boundary.sh",
+    "test:api": "npm run test --workspace @bloodledger/api",
+    "test:api:database": "bash tests/api/postgres-integration.sh",
     "package:inventory-contract": "bash network/scripts/package-inventory-contract.sh",
     "deploy:inventory-contract": "bash network/scripts/deploy-inventory-contract.sh",
     "check:fabric-identities": "bash tests/network/static-identities.sh",

@@ -22,8 +22,14 @@ location, FEFO/RPS, and BROA using `SYNTHETIC_TRANSFER_V1`,
 final evidence and accepted the simulation-only Sprint 3 scope on 2026-08-16.
 All outputs and named institution fixtures remain simulation-only; unresolved
 `RQ-*` decisions still block operational interpretation and autonomous
-recommendations. Sprint 4 requires its own authorized specification before
-implementation.
+recommendations.
+
+Sprint 4 was authorized on 2026-08-17 from the accepted Sprint 3 merge/tag.
+Jopia owns and validates the mobile OCR, scan synchronization, Node.js API, and
+read-only forecast integration slice under `SYNTHETIC_CAPTURE_V1` and
+`SYNTHETIC_API_AUTH_V1`; self-validation is disclosed. OCR is primary only for
+synthetic fixtures, every capture requires confirmation, raw images never leave
+volatile browser memory, and `RQ-02` still blocks real-label/ISBT claims.
 
 The project is a research prototype. Never describe it as production-ready,
 clinically validated, regulator-approved, or a deployed multi-organization
@@ -161,9 +167,11 @@ or reference an `RQ-*` and stop the affected behavior until a decision exists.
 - Stop preserves data. Fabric reset and full development reset must follow the
   scoped, confirmation-based policy in `docs/LOCAL-DEVELOPMENT.md`; global
   Docker prune and deletion outside project-owned paths are forbidden.
-- Barcode/QR scanning remains the accepted capture baseline. OCR is proposed for
-  later feasibility evaluation; do not implement or assume OCR behavior without
-  resolving `RQ-11` and ADR-019.
+- Sprint 4 uses mobile on-device OCR as the primary synthetic capture path under
+  `SYNTHETIC_CAPTURE_V1`, with Code 128/Data Matrix and synthetic QR fallback.
+  Do not accept low-confidence or unconfirmed OCR, persist raw label images or
+  unrestricted OCR text, or claim real ISBT compatibility while `RQ-02` remains
+  unresolved.
 - Avoid duplicating machine-readable contracts in prose once schemas,
   migrations, or OpenAPI become authoritative.
 

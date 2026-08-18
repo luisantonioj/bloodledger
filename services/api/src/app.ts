@@ -1,0 +1,173 @@
+import { timingSafeEqual } from "node:crypto";
+import { existsSync } from "node:fs";
+import fastifyStatic from "@fastify/static";
+import fastifyJwt from "@fastify/jwt";
+import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify";
+import { ApiFailure } from "./errors.js";
+import { validateCaptureInput } from "./capture-policy.js";
+import type { ApiConfig } from "./config.js";
+import type { ScanRepository } from "./repository.js";
+import type { Principal } from "./types.js";
+
+const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
+const EVENT_PATTERN = /^SCAN_[0-9A-F]{32}$/;
+
+function equalSecret(left: string, right: string): boolean {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function manilaDate(now: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+function validBusinessDate(value: string): boolean {
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function principalFrom(request: FastifyRequest, expectedOperatorId: string): Principal {
+  const principal = request.user as Partial<Principal>;
+  if (
+    principal.actorUserId !== expectedOperatorId ||
+    principal.institutionId !== "INST_MEDIATRIX" ||
+    principal.role !== "INVENTORY_OPERATOR"
+  ) {
+    throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Session is outside the approved synthetic scope.");
+  }
+  return principal as Principal;
+}
+
+export async function buildApp(
+  repository: ScanRepository,
+  config: ApiConfig,
+  clock: () => Date = () => new Date(),
+): Promise<FastifyInstance> {
+  const app = Fastify({ logger: false, bodyLimit: 32 * 1024 });
+  await app.register(fastifyJwt, { secret: config.jwtSecret, sign: { expiresIn: "15m" } });
+
+  app.setErrorHandler((error, request, reply) => {
+    const correlationId = `CORR_API_${request.id.replaceAll("-", "").toUpperCase()}`;
+    if (error instanceof ApiFailure) {
+      void reply.status(error.statusCode).send({ error: { code: error.code, message: error.message, correlationId } });
+      return;
+    }
+    const frameworkError = error as { statusCode?: number; code?: string };
+    if (frameworkError.statusCode === 401 || frameworkError.code?.startsWith("FST_JWT")) {
+      void reply.status(401).send({ error: { code: "AUTH_REQUIRED", message: "A valid session is required.", correlationId } });
+      return;
+    }
+    request.log.error({ err: error, correlationId }, "request failed");
+    void reply.status(500).send({ error: { code: "INTERNAL_ERROR", message: "The request could not be completed.", correlationId } });
+  });
+
+  const authenticate = async (request: FastifyRequest): Promise<void> => {
+    await request.jwtVerify();
+    principalFrom(request, config.operatorId);
+  };
+
+  app.post("/api/v1/simulation/session", async (request, reply) => {
+    const body = request.body as Record<string, unknown> | null;
+    const keys = body && typeof body === "object" ? Object.keys(body).sort() : [];
+    if (
+      keys.length !== 2 || keys[0] !== "credential" || keys[1] !== "operatorId" ||
+      typeof body?.operatorId !== "string" || typeof body.credential !== "string" ||
+      !equalSecret(body.operatorId, config.operatorId) || !equalSecret(body.credential, config.operatorCredential)
+    ) {
+      throw new ApiFailure(401, "AUTH_FAILED", "Synthetic credentials were not accepted.");
+    }
+    const principal: Principal = {
+      actorUserId: config.operatorId,
+      institutionId: "INST_MEDIATRIX",
+      role: "INVENTORY_OPERATOR",
+    };
+    const token = await reply.jwtSign(principal);
+    return { token, tokenType: "Bearer", expiresInSeconds: 900, classification: "SIMULATION_ONLY" };
+  });
+
+  app.post("/api/v1/scan-events", { preHandler: authenticate }, async (request, reply) => {
+    const idempotencyHeader = request.headers["idempotency-key"];
+    if (typeof idempotencyHeader !== "string" || !IDEMPOTENCY_PATTERN.test(idempotencyHeader)) {
+      throw new ApiFailure(400, "INVALID_IDEMPOTENCY_KEY", "A valid Idempotency-Key header is required.");
+    }
+    const principal = principalFrom(request, config.operatorId);
+    const capture = validateCaptureInput(request.body);
+    const receivedAt = clock();
+    if (
+      new Date(capture.capturedAt).getTime() > receivedAt.getTime() + 60_000 ||
+      new Date(capture.confirmedAt).getTime() > receivedAt.getTime() + 60_000
+    ) {
+      throw new ApiFailure(400, "INVALID_CAPTURE_TIME", "Capture timestamp is too far in the future.");
+    }
+    const accepted = await repository.acceptScan(principal, idempotencyHeader, capture, receivedAt);
+    return reply.status(202).send({
+      eventId: accepted.event.eventId,
+      correlationId: accepted.event.correlationId,
+      status: accepted.event.status,
+      receivedAt: accepted.event.receivedAt,
+      replayed: accepted.replayed,
+    });
+  });
+
+  app.get<{ Params: { eventId: string } }>("/api/v1/scan-events/:eventId", { preHandler: authenticate }, async (request) => {
+    if (!EVENT_PATTERN.test(request.params.eventId)) {
+      throw new ApiFailure(400, "INVALID_EVENT_ID", "Scan event ID is invalid.");
+    }
+    const principal = principalFrom(request, config.operatorId);
+    const event = await repository.findScan(request.params.eventId, principal.institutionId);
+    if (!event) throw new ApiFailure(404, "SCAN_EVENT_NOT_FOUND", "Scan event was not found.");
+    return {
+      eventId: event.eventId,
+      correlationId: event.correlationId,
+      status: event.status,
+      attemptCount: event.attemptCount,
+      safeErrorCode: event.safeErrorCode,
+      ledgerTransactionId: event.ledgerTransactionId,
+      receivedAt: event.receivedAt,
+      classification: event.classification,
+    };
+  });
+
+  app.get<{ Querystring: { businessDate?: string } }>("/api/v1/demand-forecasts", { preHandler: authenticate }, async (request) => {
+    const requestedDate = request.query.businessDate;
+    if (typeof requestedDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate) || !validBusinessDate(requestedDate)) {
+      throw new ApiFailure(400, "INVALID_BUSINESS_DATE", "businessDate must be YYYY-MM-DD.");
+    }
+    const principal = principalFrom(request, config.operatorId);
+    const forecasts = await repository.listForecasts(principal.institutionId, requestedDate);
+    const status = forecasts.length === 0 ? "UNAVAILABLE" : forecasts.some((item) => item.stale) ? "STALE" : "CURRENT";
+    return { businessDate: requestedDate, status, forecasts };
+  });
+
+  app.get("/healthz", async (_request, reply) => {
+    const database = await repository.health().catch(() => false);
+    const forecasts = database
+      ? await repository.listForecasts("INST_MEDIATRIX", manilaDate(clock())).catch(() => [])
+      : [];
+    const forecastReadiness = forecasts.length === 0
+      ? "UNAVAILABLE"
+      : forecasts.some((forecast) => forecast.stale) ? "STALE" : "CURRENT";
+    const healthy = database;
+    return reply.status(healthy ? 200 : 503).send({
+      status: healthy ? "READY" : "DEGRADED",
+      api: "READY",
+      database: database ? "READY" : "UNAVAILABLE",
+      workerFabric: config.workerConfigured ? "CONFIGURED" : "DISABLED",
+      forecastReadiness,
+      classification: "SIMULATION_ONLY",
+    });
+  });
+
+  if (config.captureDist && existsSync(config.captureDist)) {
+    await app.register(fastifyStatic, { root: config.captureDist, wildcard: false });
+    app.get("/*", (_request, reply) => reply.sendFile("index.html"));
+  }
+
+  return app;
+}

@@ -51,7 +51,7 @@ SELECT
   (SELECT count(*) FROM public.pgmigrations),
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'app');
 SQL
-  grep --fixed-strings '3|4' >/dev/null
+  grep --fixed-strings '4|7' >/dev/null
 
 mkdir -p services/forecasting/data/generated services/forecasting/artifacts
 export LOCAL_UID="${LOCAL_UID:-$(id -u)}"

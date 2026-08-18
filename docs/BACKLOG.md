@@ -1,7 +1,7 @@
 # BloodLedger Product Backlog
 
-**Status:** Sprints 1–3 accepted; Sprint 4 planning is the next gate
-**Baseline date:** 2026-08-16
+**Status:** Sprints 1–3 accepted; Sprint 4 selected and in progress
+**Baseline date:** 2026-08-17
 **Prioritization:** MoSCoW, then dependency order
 
 ## 1. Backlog rules
@@ -249,9 +249,9 @@ fail safely.
 
 ### BL-SCN-02 — OCR label-capture feasibility
 
-**Priority:** Could | **Status:** Proposed | **Target:** Before/Sprint 4
+**Priority:** Must | **Status:** Selected | **Target:** Sprint 4
 
-**Dependencies:** RQ-02, RQ-11, ADR-019
+**Dependencies:** PA-S4-01, ADR-019; RQ-02 remains a real-label replacement gate
 **Requirements:** FR-01, NFR-01, NFR-04
 
 Acceptance: representative synthetic label fixtures are evaluated for field
@@ -261,7 +261,7 @@ supplement, accepts it as a replacement, or rejects it for this prototype.
 
 ### BL-SYNC-01 — Durable offline queue
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 4  
+**Priority:** Must | **Status:** Selected | **Target:** Sprint 4
 **Dependencies:** BL-INF-03  
 **Requirements:** FR-13, NFR-05
 
@@ -290,6 +290,20 @@ safe duplicate detection, review, approval/rejection, withdrawal,
 resubmission, separate activation, initial `ROLE-06` handling, suspension,
 reactivation, audit, idempotency, concurrency, and stable errors without
 granting Fabric membership.
+
+### BL-API-03 — Synthetic scan synchronization and forecast middleware slice
+
+**Priority:** Must | **Status:** Selected | **Target:** Sprint 4
+
+**Requirements:** FR-01, FR-12–14, BR-SEC-01–05, NFR-01, NFR-05, NFR-09–10
+
+**Dependencies:** BL-SCN-02, BL-SYNC-01, PA-S4-01, PA-S4-02, accepted Sprint 3
+inventory contract and simulation forecast schema
+
+Acceptance: a versioned authenticated API durably accepts an exact confirmed
+synthetic scan, exposes honest status, reconciles it exactly once with Fabric,
+updates an idempotent PostgreSQL projection, and returns current/stale/missing
+Sprint 3 forecasts read-only with recommendation eligibility disabled.
 
 ## 8. EPIC-06 — Dashboard and access
 
