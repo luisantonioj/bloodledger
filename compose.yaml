@@ -197,6 +197,57 @@ services:
       - ./services/forecasting/data:/workspace/data
       - ./services/forecasting/artifacts:/workspace/artifacts
 
+  api:
+    profiles:
+      - sprint4
+    image: bloodledger-sprint4-api:local
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: "3000"
+      CAPTURE_PWA_DIST: /workspace/apps/capture-pwa/dist
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: bloodledger_dev
+      POSTGRES_APP_USER: bloodledger_app
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD in the untracked .env file}
+      SPRINT4_OPERATOR_ID: ${SPRINT4_OPERATOR_ID:-USR_SYNTH_CAPTURE}
+      SPRINT4_OPERATOR_CREDENTIAL: ${SPRINT4_OPERATOR_CREDENTIAL:-}
+      SPRINT4_JWT_SECRET: ${SPRINT4_JWT_SECRET:-}
+      FABRIC_SYNC_ENABLED: "true"
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  sync-worker:
+    profiles:
+      - sprint4
+    image: bloodledger-sprint4-api:local
+    command: ["node", "services/api/build/src/worker-main.js"]
+    environment:
+      BLOODLEDGER_REPOSITORY_ROOT: /workspace
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: bloodledger_dev
+      POSTGRES_APP_USER: bloodledger_app
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD in the untracked .env file}
+      FABRIC_SYNC_ENABLED: "true"
+      FABRIC_PEER_ENDPOINT: peer0-mediatrix:7051
+      FABRIC_PEER_HOST_ALIAS: peer0.mediatrix.bloodledger.local
+      FABRIC_CHANNEL: bloodledger-dev
+      FABRIC_CHAINCODE: bloodledger-inventory
+    volumes:
+      - ./network/generated:/workspace/network/generated:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      peer0-mediatrix:
+        condition: service_healthy
+
 volumes:
   orderer0-config:
   orderer0-data:

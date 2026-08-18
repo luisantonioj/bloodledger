@@ -96,6 +96,43 @@ contain development secrets and remain outside Git; their protection is proved
 by ignore-path tests and tracked-file inspection rather than by committing or
 printing their contents for a directory scan.
 
+### 3.1 Sprint 4 mobile capture profile
+
+Sprint 4 adds an opt-in Compose profile; it does not change the established
+five-service `bootstrap`, `start`, `status`, `logs`, or `stop` behavior. In the
+Sprint 4 worktree, add values only to the untracked `.env` for:
+
+- `SPRINT4_OPERATOR_CREDENTIAL` with at least 12 characters; and
+- `SPRINT4_JWT_SECRET` with at least 32 characters.
+
+After the normal Fabric/PostgreSQL bootstrap and migration, validate and start
+the profile with:
+
+```bash
+npm ci --ignore-scripts
+npm run check:capture
+npm run test:capture
+npm run check:api
+npm run test:api
+npm run test:api:database
+docker compose --profile sprint4 up --detach --build api sync-worker
+curl --fail --silent --show-error http://127.0.0.1:${API_HOST_PORT:-3000}/healthz
+```
+
+The API serves the built PWA and listens only on host loopback by default. For
+the required physical Android Chrome evidence, USB debugging may expose that
+same loopback origin without opening a LAN port:
+
+```bash
+adb reverse tcp:3000 tcp:3000
+```
+
+The operator then opens `http://localhost:3000` on the connected phone. `adb`
+is optional host tooling and is not installed or invoked by repository scripts.
+Record the phone/Chrome versions and pass/fail result, never the credential,
+JWT, image, raw OCR text, Fabric identity, or database contents. If a supported
+phone is unavailable, leave the physical-device acceptance gate pending.
+
 ## 4. Reset-safety policy
 
 ### Level 0 — Stop

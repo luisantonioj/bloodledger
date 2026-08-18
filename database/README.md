@@ -222,3 +222,17 @@ replay, conflicting replay, disabled algorithm results, and the exact 30-day
 purge boundary. The forecasting database integration creates and removes only
 its own fixed isolated test database, applies all three migrations from empty,
 and refuses to overwrite a pre-existing database with that name.
+
+## 11. Sprint 4 synthetic scan synchronization schema
+
+The Sprint 4 forward migration defined in `docs/SPRINT-04.md` adds
+`app.scan_events`, `app.scan_event_attempts`, and `app.inventory_projection`.
+The first table is the durable queue and status record, the second is append-only
+safe retry evidence, and the third is a query projection of committed Fabric
+inventory. Fabric remains authoritative for accepted inventory history.
+
+The runtime role receives table-specific `SELECT`/`INSERT`, only the column-level
+`UPDATE` needed for queue leases/status and projection reconciliation, and no
+DDL or table deletion. Raw images, unrestricted OCR text, credentials, JWTs,
+PHI/PII, and arbitrary payload JSON are prohibited. All rows are synthetic and
+simulation-only until a forward migration and approved policy supersede them.

@@ -1,7 +1,7 @@
 # BloodLedger Software Requirements
 
-**Status:** Approved baseline with accepted Sprint 3 synthetic implementation assumptions
-**Baseline date:** 2026-08-16
+**Status:** Approved baseline with authorized Sprint 4 synthetic capture assumptions
+**Baseline date:** 2026-08-17
 **Requirement owners:** Buno, Jopia, and Lat
 
 ## 1. Conventions
@@ -64,9 +64,11 @@ own application status.
 
 The system shall register a supported blood-unit label, capturing at minimum the
 unit identifier, blood type, component, collection timestamp, and expiry
-timestamp without retyping encoded values. Barcode/QR decoding is the accepted
-baseline. OCR is a proposed alternative or supplement and does not satisfy this
-requirement until `RQ-11` is resolved and its output is independently validated.
+timestamp without retyping encoded values. Barcode/2D-code decoding remains the
+operational baseline pending approved fixtures. Under `PA-S4-01`, mobile
+on-device OCR is the primary synthetic Sprint 4 path, with Code 128/Data Matrix
+and synthetic QR fallback. This does not satisfy real-label or full ISBT 128
+compatibility while `RQ-02` remains unresolved.
 
 Acceptance:
 
@@ -74,8 +76,9 @@ Acceptance:
 - A duplicate identifier creates no second unit.
 - A malformed or unsupported payload creates no inventory asset and reports a
   clear validation error.
-- OCR-derived values, if later approved, are never committed solely because text
-  was detected; required fields and confidence/confirmation rules must pass.
+- OCR-derived values are never committed solely because text was detected;
+  required fields, confidence, exact-policy validation, authentication, and
+  explicit confirmation rules must pass.
 - No donor or patient field is persisted.
 
 ### FR-02 — Enforce FEFO at dispatch
@@ -511,7 +514,7 @@ withdrawal creates a new `SUBMITTED` application linked to the prior record.
 |---|---|---|
 | NFR-01 | Zero PHI collection | Prohibited-field and sample-data review finds no PHI/PII |
 | NFR-02 | Tamper-evident audit trail | Accepted inventory/custody mutations have immutable Fabric transaction references |
-| NFR-03 | Low-barrier hardware | Supported web terminal plus compatible USB/Bluetooth 2D scanner; no specialized sensor required |
+| NFR-03 | Low-barrier hardware | Supported mobile browser/camera PWA with optional compatible 2D scanner fallback; no specialized sensor required |
 | NFR-04 | ISBT 128 compatibility | Approved representative label fixtures parse correctly; unsupported identifiers fail safely |
 | NFR-05 | Offline resilience | Tested outage loses no accepted local event and reconnection creates no duplicate ledger event |
 | NFR-06 | Dashboard latency | Committed scan change is visible within 5 seconds under documented normal test conditions |
@@ -551,6 +554,8 @@ withdrawal creates a new `SUBMITTED` application linked to the prior record.
 | PA-S3-01 | Accepted prototype assumption | `SYNTHETIC_TRANSFER_V1` | Jopia / 2026-08-14 | Synthetic requests are limited to 10 units; reservation reallocation is disabled; only the versioned transition table is allowed; receipt remains unavailable; gateway-submitted actions use an immutable allowlist of opaque synthetic actors. | Approved transfer authority, receipt identity, local release, suspension, and exception policy under `RQ-04`, `RQ-09`, `RQ-10`, `RQ-12`, and `RQ-15` |
 | PA-S3-02 | Accepted prototype assumption | `SYNTHETIC_LOCATION_V1` | Jopia / 2026-08-14 | Invented coordinates model only dispatch and receipt points. Accuracy must be `(0,1000]` metres, facility match radius is 500 metres, approved fallback reasons are versioned, exact off-chain points expire after 30 days, and chaincode stores only minimal digest evidence. | Approved institutional precision, retention, facility coordinates, and fallback policy under `RQ-08` |
 | PA-S3-03 | Accepted prototype assumption | `SYNTHETIC_OPTIMIZATION_V1` | Jopia / 2026-08-14 | RPS normalizes urgency and capped wait before applying 70/30 weights. BROA uses the manuscript narrative 40/25/20/15 profile only as a disclosed simulation despite conflicting pseudocode. Forecast input requires explicit scenario mode, and every result is disabled for automatic approval. | Approved RPS/BROA criteria, scales, weights, reserve/safety policy, and operational data under `RQ-05`, `RQ-06`, `RQ-07` |
+| PA-S4-01 | Accepted prototype assumption | `SYNTHETIC_CAPTURE_V1` | Jopia / 2026-08-17 | Mobile on-device Tesseract.js OCR is primary for synthetic fixtures; Code 128/Data Matrix and synthetic QR are fallback. Five exact allowlisted fields, per-field confidence at least 90, authenticated confirmation, no manual repair, and volatile-only image/raw-text handling are mandatory. Outputs remain `SIMULATION_ONLY`. | Approved Mediatrix label structures/fixtures, capture validation, privacy review, and `RQ-02` resolution |
+| PA-S4-02 | Accepted prototype assumption | `SYNTHETIC_API_AUTH_V1` | Jopia / 2026-08-17 | A single opaque synthetic `ROLE-01` operator at `INST_MEDIATRIX` may obtain a short-lived locally signed JWT using untracked credentials. This exists only to validate API authorization and is not production identity management. | Approved user/session/identity design in the activating authentication sprint |
 
 Prototype-assumption versions are immutable. A replacement adds a new version,
 marks the earlier one superseded for new operations, preserves historical
@@ -573,7 +578,6 @@ sprint:
 | RQ-08 | What precision and retention apply to location evidence? | Before real location capture |
 | RQ-09 | Does receipt require two human signatures or institutional service identities plus authenticated user attribution? | Before operational receipt |
 | RQ-10 | What local verification changes a received unit to available inventory? | Before received stock can become available |
-| RQ-11 | Will OCR supplement or replace barcode/QR capture, and what confidence, confirmation, label-fixture, privacy, and fallback rules make it acceptable? | Before Sprint 4 |
 | RQ-12 | Should pending requests and approved-but-undispatched transfers be cancelled, frozen, or explicitly reassigned when an institution is suspended? | Before institution suspension affects transfers |
 | RQ-13 | What applicant verification, abuse prevention, and recovery controls are required before public self-service application can supplement invitation-only onboarding? | Before enabling public application |
 | RQ-14 | What retention period and access policy apply to onboarding verification evidence and rejected applications? | Sprint 4 |
@@ -581,3 +585,9 @@ sprint:
 
 Unanswered questions must not be guessed by a coding agent. The relevant task is
 blocked or implemented behind an explicitly approved prototype assumption.
+
+### Resolved requirement decisions
+
+| ID | Resolution | Date/owner | Remaining replacement gate |
+|---|---|---|---|
+| RQ-11 | Mobile OCR is primary for the Sprint 4 synthetic PWA, with mandatory per-field confidence of at least 90, exact validation, authenticated confirmation, volatile-only image/raw-text handling, and Code 128/Data Matrix/synthetic QR fallback under `PA-S4-01`. | 2026-08-17 / Jopia | `RQ-02` and approved institutional fixtures/privacy evidence before real-label or ISBT claims |

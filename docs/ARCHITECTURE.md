@@ -1,7 +1,7 @@
 # BloodLedger System Architecture
 
-**Status:** Validated infrastructure baseline with accepted Sprint 3 synthetic implementation
-**Baseline date:** 2026-08-16
+**Status:** Validated baseline with authorized Sprint 4 synthetic capture/API implementation
+**Baseline date:** 2026-08-17
 **Scope:** Research prototype, not a production deployment design
 
 ## 1. Architecture goals
@@ -18,7 +18,7 @@
 ## 2. Context and trust boundaries
 
 ```text
-Users and 2D scanners
+Users, mobile capture PWA, and optional 2D-code fallback
         |
         v
 React web application
@@ -53,7 +53,7 @@ next boundary.
 | Forecasting | Python 3.13 service/worker | Accepted |
 | Containers | Docker Compose for local prototype services | Accepted |
 | Tests | JavaScript/TypeScript test runner compatible with the selected stack; Python test runner for ML | Accepted |
-| Capture device | Keyboard-wedge/browser-compatible 2D scanner; OCR is an alternative under evaluation for Sprint 4 | Scanner accepted; OCR proposed |
+| Capture device | Mobile browser/camera PWA with on-device OCR primary for synthetic fixtures; Code 128/Data Matrix/synthetic QR fallback | Accepted for Sprint 4 simulation under ADR-019/PA-S4-01 |
 | Fabric state database | LevelDB for the initial prototype | Accepted |
 | Package manager | npm workspaces with one committed lockfile | Accepted |
 | Development host | Windows 11 with WSL2 and Ubuntu 24.04 LTS; Bash is canonical | Accepted |
@@ -85,7 +85,12 @@ evidence unless a selected task explicitly requires them.
 | Gitleaks | 8.30.1 | Not specified | Run the official pinned container image for Git history plus tracked/staged content; record the resolved image digest during S1-02 |
 | Python | 3.13.14 | Not specified | Conservative supported line for later ML work |
 | Fabric Gateway client | `@hyperledger/fabric-gateway` 1.11.0 | Fabric SDK Node 2.5.x | Use the Gateway client API, not the legacy SDK label |
-| React | 19.2.7 | 18.x or higher | Approved planning target for Sprint 5 |
+| React | 19.2.8 | 18.x or higher | Sprint 4 capture PWA; exact version locked and build-verified |
+| Fastify / static plugin | 5.10.0 / 10.1.3 | Not specified | Sprint 4 HTTP boundary; static plugin security update supersedes the initially selected 9.1.3 |
+| Tesseract.js | 7.0.0 | Not specified | On-device synthetic OCR under `PA-S4-01`; worker/core/language assets are served locally at runtime |
+| ZXing browser | 0.2.1 | Not specified | Code 128/Data Matrix/synthetic QR fallback decoder |
+| Vite / PWA plugin | 8.1.5 / 1.3.0 | Not specified | Sprint 4 PWA build and offline application shell |
+| Playwright | 1.61.1 | Not specified | Automated browser/offline evidence; does not replace physical Android evidence |
 | Browser | Vendor-supported Chrome or Edge; record exact UAT build | Chrome/Edge 115+ | Browser auto-updates make a fixed early planning build misleading |
 
 Docker Desktop bundles Engine and Compose components. The accepted Jopia-host
@@ -119,6 +124,10 @@ complete dependency graph.
   <https://docs.docker.com/desktop/release-notes/>
 - Python releases: <https://www.python.org/downloads/>
 - React versions: <https://react.dev/versions>
+- Fastify static plugin compatibility and releases:
+  <https://github.com/fastify/fastify-static>
+- Fastify static path-normalization security advisory:
+  <https://github.com/fastify/fastify-static/security/advisories/GHSA-8pvw-jcv7-9cmj>
 - Git releases: <https://git-scm.com/>
 - Ubuntu lifecycle: <https://ubuntu.com/about/release-cycle>
 
@@ -130,6 +139,7 @@ bloodledger/
 ├── AGENTS.md
 ├── docs/
 ├── apps/
+│   ├── capture-pwa/         # activated in Sprint 4
 │   └── web/                 # activated in Sprint 5
 ├── services/
 │   ├── api/                 # activated in Sprint 4/5
@@ -169,7 +179,8 @@ by the relevant sprint plan before a deferred directory is activated.
 | `tests/` | Sprint 1 onward, growing with each activated component | Same assigned owner as the component under test |
 | `chaincode/` | Sprint 2 | Deferred to the Sprint 2 ownership plan |
 | `services/forecasting/` | Sprint 3 simulation slice | Jopia (owner and validator; self-validation disclosed) |
-| `services/api/` | Sprint 4/5 | Deferred to the activating sprint's ownership plan |
+| `services/api/` | Sprint 4 synthetic scan/sync/forecast slice; expanded later | Jopia (owner and validator; self-validation disclosed) |
+| `apps/capture-pwa/` | Sprint 4 synthetic mobile capture | Jopia (owner and validator; self-validation disclosed) |
 | `apps/web/` | Sprint 5 | Deferred to the Sprint 5 ownership plan |
 
 For the canonical WSL2 workflow, the implementation working copy should be
@@ -189,6 +200,11 @@ reason to retain a Windows-filesystem working copy.
 - Clearly distinguishes local/pending, committed, stale, offline, failed, and
   conflicted state.
 - Does not connect directly to PostgreSQL or Fabric.
+
+The Sprint 4 capture PWA is deliberately narrower than the Sprint 5 web
+application. It performs OCR/2D-code decoding on-device, keeps images and raw OCR
+text volatile, persists only confirmed allowlisted synthetic fields for offline
+retry, and displays scan synchronization state.
 
 ### 5.2 Node.js application/API
 
@@ -503,7 +519,7 @@ time, correlation ID, and safe event name without secrets or prohibited data.
 | ADR-016 | Accepted | Use Fabric CA for reproducible development identities | Aligns the prototype with MSP/X.509 identity concepts and future onboarding |
 | ADR-017 | Accepted | Sprint 1 creates only a migration/bootstrap baseline, not the full domain schema | Avoids guessing Sprint 2–5 fields while still proving database reproducibility |
 | ADR-018 | Accepted | Use a disposable infrastructure-only health contract in Sprint 1 | Proves install/invoke/query/commit without implementing inventory behavior |
-| ADR-019 | Proposed | OCR may supplement or replace barcode/QR capture after a Sprint 4 feasibility and safety decision | OCR recognition errors require confidence thresholds, verification UX, and label-fixture testing |
+| ADR-019 | Accepted | Use mobile on-device OCR as the primary Sprint 4 synthetic capture path, with mandatory exact validation/confirmation and Code 128/Data Matrix/synthetic QR fallback | Resolves `RQ-11` only under `PA-S4-01`; raw images/raw text remain volatile and `RQ-02` still blocks real-label or full ISBT claims |
 | ADR-020 | Accepted | Use the Sprint 1 network identifiers, service names, and development ports in `network/README.md` | Gives Compose, Fabric, scripts, and evidence one stable naming vocabulary |
 | ADR-021 | Accepted | Use separate Fabric CA administrators, node identities, channel administrators, and an organizational API service identity | Preserves least privilege and keeps end-user enrollment out of Sprint 1 |
 | ADR-022 | Accepted | Use `node-pg-migrate`, a separate migration owner/runtime role, and an `app` schema bootstrap without domain tables or seeds | Proves repeatable migrations while deferring feature schema decisions |
@@ -516,12 +532,15 @@ time, correlation ID, and safe event name without secrets or prohibited data.
 | ADR-029 | Accepted | Start the Fabric 2.5 orderer without a system channel by using `BootstrapMethod: none` and the channel participation model; use single-consenter Raft (`etcdraft`) when S1-07 creates the application channel | Lets S1-06 prove a healthy channel-less orderer without inventing a genesis block or entering S1-07; the mutually authenticated admin endpoint remains internal and unexposed |
 | ADR-030 | Accepted | Keep institutional applications, approval, activation, users, sessions, and verification evidence off-chain; application activation is separate from deferred Fabric membership | Enables controlled application participation without weakening the single-Mediatrix-MSP prototype or coupling ordinary administration to CA, peer, channel, or endorsement changes |
 | ADR-031 | Accepted | Isolate pending institutional domain decisions in immutable, versioned prototype-assumption artifacts; preserve the version on ledger events, datasets, and models and supersede prospectively | Allows implementation with synthetic evidence while data-gathering approval is pending without presenting assumptions as Mediatrix or clinical policy |
+| ADR-032 | Accepted | Use an installable same-origin React PWA, Fastify API, PostgreSQL durable scan queue, and separate reconciliation worker for Sprint 4 | Keeps capture local, returns after durable intake, preserves honest states, and prevents browser/database/Fabric boundary collapse |
+| ADR-033 | Accepted | Use a short-lived locally signed JWT for one opaque synthetic operator under `SYNTHETIC_API_AUTH_V1` | Exercises authentication/authorization without claiming Sprint 5 identity management or committing credentials |
 
 ## 16. Sprint 1 architecture gates
 
-Sprint 1 is approved to begin with ADR-001 through ADR-018 and ADR-020 through
-ADR-029. ADR-019 remains proposed for Sprint 4. Before the infrastructure files
-are considered complete, the team must verify:
+Sprint 1 was approved with ADR-001 through ADR-018 and ADR-020 through ADR-029.
+ADR-019 is now accepted for the bounded Sprint 4 synthetic capture decision; it
+does not retroactively change Sprint 1 evidence. Before infrastructure files are
+considered complete, the team must verify:
 
 - the approved target versions on the assigned owner's canonical supported
   host;
