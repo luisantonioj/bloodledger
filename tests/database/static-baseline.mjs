@@ -2,7 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 
 const root = new URL("../../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
-const [compose, bootstrap, migration, forecastMigration, coordinationMigration, scanMigration, webAccessMigration, databasePackage] = await Promise.all([
+const [compose, bootstrap, migration, forecastMigration, coordinationMigration, scanMigration, webAccessMigration, transferAlertMigration, databasePackage] = await Promise.all([
   read("compose.yaml"),
   read("database/bootstrap/001-create-development-roles.sh"),
   read("database/migrations/20260715000000000_bootstrap-app-schema.js"),
@@ -10,6 +10,7 @@ const [compose, bootstrap, migration, forecastMigration, coordinationMigration, 
   read("database/migrations/20260814000000000_create-synthetic-coordination-tables.js"),
   read("database/migrations/20260817000000000_create-synthetic-scan-sync-tables.js"),
   read("database/migrations/20260820000000000_create-synthetic-web-access-tables.js"),
+  read("database/migrations/20260820010000000_create-transfer-alert-projections.js"),
   read("database/package.json").then(JSON.parse)
 ]);
 
@@ -55,6 +56,15 @@ const assertions = [
   [webAccessMigration.includes("SYNTHETIC_WEB_ACCESS_V1"), "accepted web access policy"],
   [webAccessMigration.includes("GRANT UPDATE (revoked_at, safe_revocation_reason)"), "least-privilege session revocation"],
   [webAccessMigration.includes("exports.down = false"), "web access forward-only migration"],
+  [transferAlertMigration.includes("CREATE TABLE app.transfer_requests"), "transfer request projection"],
+  [transferAlertMigration.includes("CREATE TABLE app.transfer_events"), "transfer event timeline"],
+  [transferAlertMigration.includes("CREATE TABLE app.stock_thresholds"), "versioned stock thresholds"],
+  [transferAlertMigration.includes("CREATE TABLE app.alerts"), "derived alert table"],
+  [transferAlertMigration.includes("CREATE TABLE app.alert_acknowledgements"), "alert acknowledgements"],
+  [transferAlertMigration.includes("CREATE TABLE app.audit_events"), "redacted audit events"],
+  [transferAlertMigration.includes("REFERENCES app.location_evidence"), "location evidence references"],
+  [transferAlertMigration.includes("GRANT UPDATE (status,reason_code"), "column-level transfer projection update"],
+  [transferAlertMigration.includes("exports.down = false"), "transfer alert forward-only migration"],
   [databasePackage.scripts["migrate:up"] === "node scripts/migrate.mjs", "apply command"],
   [databasePackage.scripts["migrate:status"] === "node scripts/migration-status.mjs", "status command"]
 ];
@@ -65,8 +75,8 @@ for (const [passed, label] of assertions) {
 
 const migrationFiles = (await readdir(new URL("database/migrations", root)))
   .filter((name) => /\.(?:js|cjs|mjs|sql)$/.test(name));
-if (migrationFiles.length !== 5) {
-  throw new Error(`Expected bootstrap, forecast, coordination, scan, and web-access migrations, received ${migrationFiles.length}`);
+if (migrationFiles.length !== 6) {
+  throw new Error(`Expected bootstrap, forecast, coordination, scan, web-access, and transfer-alert migrations, received ${migrationFiles.length}`);
 }
 
 const prohibited = /blood_units|transfers|users|institutions|forecasts|notifications|audit_logs|sync(?:hronization)?_queues/i;

@@ -251,3 +251,20 @@ No credential, hash, salt, token, or identity fixture is seeded by the migration
 The runtime role may read the minimum authentication rows, create sessions, and
 update only revocation columns. It receives no identity DDL, delete, onboarding,
 or user-management privilege.
+
+## 13. Sprint 5 transfer, alert, and audit projections
+
+Migration `20260820010000000_create-transfer-alert-projections.js` adds the
+minimum selected read/projection schema for ledger-backed transfer requests and
+events, FEFO-selected unit references, versioned synthetic stock thresholds,
+derived alerts, per-user acknowledgements, and redacted application audit
+events. It reuses `inventory_projection`, `location_evidence`, institutions,
+users, and algorithm evidence rather than duplicating their authoritative data.
+
+The migration seeds no thresholds, alerts, transfers, people, institutions, or
+credentials. Transfer statuses and the quantity ceiling match
+`SYNTHETIC_TRANSFER_V1`; threshold versions remain inert until an approved
+synthetic configuration is inserted. BROA/RPS recommendation digests remain
+disabled evidence and cannot approve a transfer. Runtime grants allow only the
+selected reads, inserts, projection-column updates, acknowledgement inserts,
+and redacted audit inserts; no runtime delete or DDL privilege is granted.
