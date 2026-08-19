@@ -267,12 +267,19 @@ acceptance required by Task 76.
 - Repository foundation, JSON/lock consistency, workspace resolution, pinned
   versions, ignore behavior, safe environment template, database static
   baseline, API privacy boundaries, and capture production build passed.
-- Capture tests passed: 25 unit/policy tests and three Chromium scenarios. The
+- Capture tests passed: 29 unit/policy tests and three Chromium scenarios. The
   browser run used the version-matched Playwright `1.61.1` image with digest
   `sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48`.
   It proved exact extraction for all 16 clean fixtures, fail-safe degraded and
   prohibited-label behavior, same-origin-only OCR assets, structured-only
   IndexedDB persistence, offline reload, and exactly-once replay.
+- On 2026-08-19, the targeted mobile OCR reliability fix added bounded
+  in-memory preprocessing, reusable OCR-worker caching, visible OCR progress
+  stages, a 90-second `CAPTURE_OCR_TIMEOUT`, and a strict original-image retry
+  when preprocessing fails policy validation. The retry never persists images
+  or raw OCR text and does not change `SYNTHETIC_CAPTURE_V1` rules. Capture
+  type/build checks passed and the pinned Chromium suite passed all three
+  scenarios in 1.6 minutes.
 - API/worker tests passed: 15 tests including authentication and institution
   scope, exact validation, idempotency/conflict, current/stale/unavailable
   forecast states, failed-run exclusion, lease recovery, projection-only retry,
@@ -339,13 +346,18 @@ included in this evidence.
   ignored generated identities. Future live-network validation must use the
   identity set that created the preserved channel or perform only the formally
   authorized scoped Fabric reset; never mix independently generated CA roots.
-- **Deferred:** the physical Android Chrome OCR run was attempted on 2026-08-18
-  using synthetic text shown through a messaging view and plain Notepad. OCR
-  returned `CAPTURE_REQUIRED_FIELD_MISSING` and `CAPTURE_UNIT_ID_INVALID`;
-  fallback decoding correctly reported that no machine-readable code was
-  present. No real labels, credentials, raw OCR text, or images were used. The
-  gate remains open for a printed or transferred synthetic PNG, another
-  supported Android device, or an explicitly authorized mobile-OCR fix.
+- **Deferred:** the physical Android Chrome OCR run before the reliability fix
+  was attempted on 2026-08-19 using synthetic text shown through a messaging
+  view and plain Notepad. OCR took approximately five minutes and returned
+  `CAPTURE_REQUIRED_FIELD_MISSING`; an earlier attempt also returned
+  `CAPTURE_UNIT_ID_INVALID`. Fallback decoding correctly reported that no
+  machine-readable code was present. No real labels, credentials, raw OCR
+  text, or images were used. The gate remains open for a printed or
+  transferred synthetic PNG or another supported Android device after this
+  fix. A post-fix Android retry on 2026-08-19 still returned
+  `CAPTURE_REQUIRED_FIELD_MISSING` on the first attempt and
+  `CAPTURE_FIELD_NOT_ALLOWED` on the second. These are safe policy outcomes,
+  not evidence to relax the allowlist; the physical gate remains deferred.
 - **Pending:** after the Android evidence is recorded, Jopia must explicitly
   accept or reject Sprint 4 in the Sprint Review. Until then Task 76 and Sprint
   4 remain unaccepted, and Sprint 5 implementation must not begin.

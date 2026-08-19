@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ApiError, createSession, fetchScanStatus, submitCapture } from "./api-client";
 import { CAPTURE_POLICY_VERSION, OCR_ENGINE_VERSION } from "./capture-policy";
 import { listLocalEvents, saveLocalEvent } from "./offline-queue";
-import type { RecognitionResult } from "./recognition";
+import type { RecognitionResult, RecognitionStage } from "./recognition";
 import type { ConfirmedCapture, LocalScanEvent } from "./types";
 
 const SYNTHETIC_OPERATOR = "USR_SYNTH_CAPTURE";
@@ -87,7 +87,16 @@ export function App() {
     try {
       const { decodeSyntheticFallback, recognizeSyntheticLabel } = await import("./recognition");
       const result = method === "OCR"
-        ? await recognizeSyntheticLabel(image)
+        ? await recognizeSyntheticLabel(image, {
+          onStage: (stage: RecognitionStage) => {
+            const messages: Record<RecognitionStage, string> = {
+              PREPARING_IMAGE: "Preparing image…",
+              LOADING_OCR_ENGINE: "Loading OCR engine…",
+              READING_LABEL: "Reading label…",
+            };
+            setMessage(messages[stage]);
+          },
+        })
         : await decodeSyntheticFallback(image);
       setRecognition(result);
       setMessage("Review all extracted fields, then confirm.");
