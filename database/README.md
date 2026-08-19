@@ -236,3 +236,18 @@ The runtime role receives table-specific `SELECT`/`INSERT`, only the column-leve
 DDL or table deletion. Raw images, unrestricted OCR text, credentials, JWTs,
 PHI/PII, and arbitrary payload JSON are prohibited. All rows are synthetic and
 simulation-only until a forward migration and approved policy supersede them.
+
+## 12. Sprint 5 synthetic web-access schema
+
+Migration `20260820000000000_create-synthetic-web-access-tables.js` adds the
+minimum identity boundary selected by Sprint 5: synthetic institutions, opaque
+application users, one explicit six-role assignment per user, and revocable
+15-minute sessions. It does not add applications, invitations, onboarding,
+verification documents, or real institutional/person records.
+
+Passwords are represented only by a unique salt and a fixed `SCRYPT_V1`
+verifier; session rows contain a SHA-256 token digest rather than the signed JWT.
+No credential, hash, salt, token, or identity fixture is seeded by the migration.
+The runtime role may read the minimum authentication rows, create sessions, and
+update only revocation columns. It receives no identity DDL, delete, onboarding,
+or user-management privilege.

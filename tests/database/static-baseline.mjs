@@ -2,13 +2,14 @@ import { readFile, readdir } from "node:fs/promises";
 
 const root = new URL("../../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
-const [compose, bootstrap, migration, forecastMigration, coordinationMigration, scanMigration, databasePackage] = await Promise.all([
+const [compose, bootstrap, migration, forecastMigration, coordinationMigration, scanMigration, webAccessMigration, databasePackage] = await Promise.all([
   read("compose.yaml"),
   read("database/bootstrap/001-create-development-roles.sh"),
   read("database/migrations/20260715000000000_bootstrap-app-schema.js"),
   read("database/migrations/20260812000000000_create-simulation-forecast-tables.js"),
   read("database/migrations/20260814000000000_create-synthetic-coordination-tables.js"),
   read("database/migrations/20260817000000000_create-synthetic-scan-sync-tables.js"),
+  read("database/migrations/20260820000000000_create-synthetic-web-access-tables.js"),
   read("database/package.json").then(JSON.parse)
 ]);
 
@@ -45,6 +46,15 @@ const assertions = [
   [scanMigration.includes("DISABLED_UNAPPROVED_POLICY"), "scan recommendation disabled"],
   [scanMigration.includes("GRANT UPDATE ("), "runtime column update grant"],
   [scanMigration.includes("exports.down = false"), "scan forward-only migration"],
+  [webAccessMigration.includes("CREATE TABLE app.institutions"), "synthetic institution table"],
+  [webAccessMigration.includes("CREATE TABLE app.application_users"), "opaque application user table"],
+  [webAccessMigration.includes("CREATE TABLE app.user_role_assignments"), "explicit six-role assignment"],
+  [webAccessMigration.includes("CREATE TABLE app.application_sessions"), "revocable application session table"],
+  [webAccessMigration.includes("password_algorithm = 'SCRYPT_V1'"), "parameterized verifier algorithm"],
+  [webAccessMigration.includes("token_digest char(64)"), "session token digest only"],
+  [webAccessMigration.includes("SYNTHETIC_WEB_ACCESS_V1"), "accepted web access policy"],
+  [webAccessMigration.includes("GRANT UPDATE (revoked_at, safe_revocation_reason)"), "least-privilege session revocation"],
+  [webAccessMigration.includes("exports.down = false"), "web access forward-only migration"],
   [databasePackage.scripts["migrate:up"] === "node scripts/migrate.mjs", "apply command"],
   [databasePackage.scripts["migrate:status"] === "node scripts/migration-status.mjs", "status command"]
 ];
@@ -55,8 +65,8 @@ for (const [passed, label] of assertions) {
 
 const migrationFiles = (await readdir(new URL("database/migrations", root)))
   .filter((name) => /\.(?:js|cjs|mjs|sql)$/.test(name));
-if (migrationFiles.length !== 4) {
-  throw new Error(`Expected bootstrap, forecast, coordination, and scan migrations, received ${migrationFiles.length}`);
+if (migrationFiles.length !== 5) {
+  throw new Error(`Expected bootstrap, forecast, coordination, scan, and web-access migrations, received ${migrationFiles.length}`);
 }
 
 const prohibited = /blood_units|transfers|users|institutions|forecasts|notifications|audit_logs|sync(?:hronization)?_queues/i;
