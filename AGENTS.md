@@ -25,11 +25,17 @@ All outputs and named institution fixtures remain simulation-only; unresolved
 recommendations.
 
 Sprint 4 was authorized on 2026-08-17 from the accepted Sprint 3 merge/tag.
-Jopia owns and validates the mobile OCR, scan synchronization, Node.js API, and
-read-only forecast integration slice under `SYNTHETIC_CAPTURE_V1` and
-`SYNTHETIC_API_AUTH_V1`; self-validation is disclosed. OCR is primary only for
-synthetic fixtures, every capture requires confirmation, raw images never leave
-volatile browser memory, and `RQ-02` still blocks real-label/ISBT claims.
+Jopia accepted its simulation-only scope on 2026-08-20 in tag
+`sprint-04-accepted-2026-08-20`, with physical Android OCR evidence explicitly
+deferred. That deferral remains incomplete evidence and blocks real-device,
+real-label, clinical-accuracy, and production-readiness claims.
+
+Jopia authorized Sprint 5 for 2026-08-20 through 2026-08-26 using
+`SYNTHETIC_WEB_ACCESS_V1` and visual snapshot
+`MOCKUP_VISUAL_2026-08-20`. Implementation belongs on
+`codex/sprint-05-implementation`; the mockup is a visual reference, while
+`docs/DESIGN.md`, official requirements, architecture, and machine-readable
+contracts control the implementation.
 
 The project is a research prototype. Never describe it as production-ready,
 clinically validated, regulator-approved, or a deployed multi-organization
@@ -43,6 +49,7 @@ Use one home for each type of truth:
 |---|---|
 | What is BloodLedger and what is in scope? | `docs/PROJECT.md` |
 | What behavior and rules are required? | `docs/REQUIREMENTS.md` |
+| What visual and interaction language applies? | `docs/DESIGN.md` |
 | How is it structured and why? | `docs/ARCHITECTURE.md` |
 | What is planned overall? | `docs/BACKLOG.md` |
 | What is selected for the current sprint? | `docs/SPRINT-01.md` or its successor |
@@ -69,6 +76,7 @@ Then read only what the task requires:
 |---|---|
 | Scope, terminology, stakeholder question | Relevant `PROJECT.md` section |
 | Feature or business-rule work | Linked `FR-*`, `BR-*`, state model, and NFRs in `REQUIREMENTS.md` |
+| Frontend visual, layout, or component work | `docs/DESIGN.md` plus the selected sprint task and migration register |
 | Infrastructure, data, API, blockchain, ML, security, or repository boundary | Relevant `ARCHITECTURE.md` section and ADRs |
 | Fabric network or CA work | `network/README.md` plus linked ADRs and sprint task |
 | PostgreSQL or migration work | `database/README.md` plus linked ADRs and sprint task |
