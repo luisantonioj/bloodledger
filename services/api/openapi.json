@@ -353,6 +353,62 @@
           }
         }
       }
+    },
+    "/api/v1/alerts": {
+      "get": {
+        "summary": "Read institution alert detail or regulatory alert aggregates",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Permission-scoped synthetic alerts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/transfers": {
+      "get": {
+        "summary": "Read permission-scoped ledger-confirmed transfer projections",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Safe transfer history without exact location evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransfersResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1048,6 +1104,304 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/InventoryUnitView"
+            }
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "AlertView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "alertId",
+          "institutionId",
+          "alertType",
+          "severity",
+          "unitId",
+          "bloodType",
+          "component",
+          "inventoryStatus",
+          "expiresAt",
+          "evaluatedAt",
+          "status",
+          "acknowledged",
+          "policyVersion",
+          "classification"
+        ],
+        "properties": {
+          "alertId": {
+            "type": "string"
+          },
+          "institutionId": {
+            "type": "string"
+          },
+          "alertType": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "INFORMATION",
+              "WARNING",
+              "CRITICAL"
+            ]
+          },
+          "unitId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bloodType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "component": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "inventoryStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiresAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evaluatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "RESOLVED"
+            ]
+          },
+          "acknowledged": {
+            "type": "boolean"
+          },
+          "policyVersion": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "AlertAggregateView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "institutionId",
+          "institutionDisplayName",
+          "alertType",
+          "severity",
+          "status",
+          "count",
+          "lastEvaluatedAt"
+        ],
+        "properties": {
+          "institutionId": {
+            "type": "string"
+          },
+          "institutionDisplayName": {
+            "type": "string"
+          },
+          "alertType": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lastEvaluatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AlertsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope",
+          "alerts",
+          "aggregates",
+          "classification"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "INSTITUTION",
+              "CITY_AGGREGATE"
+            ]
+          },
+          "alerts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlertView"
+            }
+          },
+          "aggregates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlertAggregateView"
+            }
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "sourceInstitutionId",
+          "destinationInstitutionId",
+          "bloodType",
+          "component",
+          "quantity",
+          "urgency",
+          "requestTime",
+          "status",
+          "reasonCode",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "correlationId",
+          "projectedAt",
+          "dispatchEvidenceRecorded",
+          "receiptEvidenceRecorded",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string"
+          },
+          "sourceInstitutionId": {
+            "type": "string"
+          },
+          "destinationInstitutionId": {
+            "type": "string"
+          },
+          "bloodType": {
+            "type": "string"
+          },
+          "component": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "urgency": {
+            "type": "string",
+            "enum": [
+              "ROUTINE",
+              "URGENT",
+              "CRITICAL"
+            ]
+          },
+          "requestTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED",
+              "DISPATCHED",
+              "IN_TRANSIT",
+              "DELAYED",
+              "RECEIVED",
+              "COMPROMISED",
+              "CANCELLED"
+            ]
+          },
+          "reasonCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "ledgerTransactionId": {
+            "type": "string"
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dispatchEvidenceRecorded": {
+            "type": "boolean"
+          },
+          "receiptEvidenceRecorded": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransfersResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope",
+          "transfers",
+          "classification"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "SOURCE_INSTITUTION",
+              "DESTINATION_INSTITUTION",
+              "CITY_AGGREGATE"
+            ]
+          },
+          "transfers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransferView"
             }
           },
           "classification": {

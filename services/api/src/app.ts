@@ -38,6 +38,13 @@ function validBusinessDate(value: string): boolean {
 const ROLE_NAMES = { "ROLE-01": "Medical Technologist", "ROLE-02": "Hospital Administrator", "ROLE-03": "Secondary Hospital User", "ROLE-04": "DOH/PRC Regulatory Viewer", "ROLE-05": "System Administrator", "ROLE-06": "Institution Account Administrator" } as const;
 function webPrincipal(record: CredentialRecord): WebPrincipal {
   if (!isRoleId(record.roleId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Session role is not recognized.");
+  const validScope = (["ROLE-01","ROLE-02"] as const).includes(record.roleId as "ROLE-01"|"ROLE-02")
+    ? record.institutionId === "INST_MEDIATRIX" && record.institutionCategory === "HOSPITAL"
+    : record.roleId === "ROLE-03" ? record.institutionId !== "INST_MEDIATRIX" && record.institutionCategory === "HOSPITAL"
+    : record.roleId === "ROLE-04" ? record.institutionCategory === "REGULATOR"
+    : record.roleId === "ROLE-05" ? record.institutionCategory === "SYSTEM"
+    : record.institutionCategory === "HOSPITAL";
+  if (!validScope) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Session role and institution scope are not permitted.");
   return { userId: record.userId, displayName: record.displayName, institutionId: record.institutionId, institutionDisplayName: record.institutionDisplayName, institutionCategory: record.institutionCategory, roleId: record.roleId, roleDisplayName: ROLE_NAMES[record.roleId], permissions: permissionsFor(record.roleId), classification: "SIMULATION_ONLY" };
 }
 function cookieValue(header: string | undefined, name: string): string | null {
@@ -139,11 +146,12 @@ export async function buildApp(
       const record = await sessions.findCredential(body.username);
       if (!record) { await deriveVerifier(body.password, "0".repeat(32)); throw new ApiFailure(401, "AUTH_FAILED", "Credentials were not accepted."); }
       if (!await verifyPassword(body.password, record)) throw new ApiFailure(401, "AUTH_FAILED", "Credentials were not accepted.");
+      const principal = webPrincipal(record);
       const issuedAt = clock(); const expiresAt = new Date(issuedAt.getTime() + 900_000); const sessionId = randomSessionId(); const binding = randomBinding();
       await sessions.createSession({ sessionId, userId: record.userId, tokenDigest: bindingDigest(binding), issuedAt, expiresAt });
       const claims: SessionClaims = { userId: record.userId, institutionId: record.institutionId, roleId: record.roleId, sessionId, binding, policyVersion: WEB_ACCESS_POLICY_VERSION };
       const token = app.jwt.sign(claims, { expiresIn: 900 });
-      return reply.header("set-cookie", sessionCookie(token, secureCookie)).send({ principal: webPrincipal(record) });
+      return reply.header("set-cookie", sessionCookie(token, secureCookie)).send({ principal });
     });
     app.get("/api/v1/auth/session", async (request) => ({ principal: (await restore(request)).principal }));
     app.delete("/api/v1/auth/session", async (request, reply) => {
@@ -169,6 +177,19 @@ export async function buildApp(
         if (!permits(principal.roleId, "inventory:read")) throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","Inventory access is not permitted.");
         if (principal.roleId === "ROLE-04") return { scope:"CITY_AGGREGATE", aggregates:await applicationReads.listInventoryAggregates(), units:[], classification:"SIMULATION_ONLY" };
         return { scope:"INSTITUTION", aggregates:[], units:await applicationReads.listInventoryUnits(principal.institutionId), classification:"SIMULATION_ONLY" };
+      });
+      app.get("/api/v1/alerts", async (request) => {
+        const { principal } = await restore(request);
+        if (!permits(principal.roleId, "alerts:read")) throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","Alert access is not permitted.");
+        if (principal.roleId === "ROLE-04") return { scope:"CITY_AGGREGATE", alerts:[], aggregates:await applicationReads.listAlertAggregates(), classification:"SIMULATION_ONLY" };
+        return { scope:"INSTITUTION", alerts:await applicationReads.listAlerts(principal.institutionId,principal.userId), aggregates:[], classification:"SIMULATION_ONLY" };
+      });
+      app.get("/api/v1/transfers", async (request) => {
+        const { principal } = await restore(request);
+        if (!permits(principal.roleId, "transfers:read")) throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","Transfer access is not permitted.");
+        if (principal.roleId === "ROLE-04") return { scope:"CITY_AGGREGATE", transfers:await applicationReads.listTransfers(), classification:"SIMULATION_ONLY" };
+        if (principal.roleId === "ROLE-03") return { scope:"DESTINATION_INSTITUTION", transfers:await applicationReads.listTransfers(principal.institutionId,"DESTINATION"), classification:"SIMULATION_ONLY" };
+        return { scope:"SOURCE_INSTITUTION", transfers:await applicationReads.listTransfers(principal.institutionId,"SOURCE"), classification:"SIMULATION_ONLY" };
       });
     }
   }

@@ -18,6 +18,9 @@ rg -q 'password_verifier' services/api/src/database-session.ts
 rg -q '/api/v1/dashboard' services/api/openapi.json services/api/src/app.ts
 rg -q '/api/v1/inventory' services/api/openapi.json services/api/src/app.ts
 rg -Fq 'listInventoryUnits(principal.institutionId)' services/api/src/app.ts
+rg -q '/api/v1/alerts' services/api/openapi.json services/api/src/app.ts
+rg -q '/api/v1/transfers' services/api/openapi.json services/api/src/app.ts
+rg -Fq 'listTransfers(principal.institutionId,"DESTINATION")' services/api/src/app.ts
 
 if rg -n 'request\.log\..*(body|headers)|console\.log\(|logger: true' services/api/src; then
   echo "API source may log a request payload, header, or unsafe console output" >&2
