@@ -1,81 +1,182 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "BloodLedger Sprint 4 Simulation API",
-    "version": "0.1.0",
-    "description": "Simulation-only mobile capture intake, synchronization status, and demand forecast reads. This API cannot approve transfers or clinical decisions."
+    "title": "BloodLedger Sprint 5 Simulation API",
+    "version": "0.2.0",
+    "description": "Simulation-only web access, mobile capture intake, synchronization status, and demand forecast reads. This API cannot approve transfers or clinical decisions."
   },
-  "servers": [{ "url": "https://localhost:3000" }],
+  "servers": [
+    {
+      "url": "https://localhost:3000"
+    }
+  ],
   "paths": {
     "/api/v1/simulation/session": {
       "post": {
         "summary": "Create a short-lived synthetic operator session",
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SessionRequest" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionRequest"
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "Synthetic session", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SessionResponse" } } } },
-          "401": { "$ref": "#/components/responses/Error" }
+          "200": {
+            "description": "Synthetic session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
         }
       }
     },
     "/api/v1/scan-events": {
       "post": {
         "summary": "Durably accept one confirmed structured synthetic capture",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "name": "Idempotency-Key",
-          "in": "header",
-          "required": true,
-          "schema": { "type": "string", "pattern": "^IDEM_[A-Z0-9_-]{1,59}$" }
-        }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ConfirmedCapture" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmedCapture"
+              }
+            }
+          }
         },
         "responses": {
-          "202": { "description": "Durably queued or idempotently replayed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AcceptedScan" } } } },
-          "400": { "$ref": "#/components/responses/Error" },
-          "401": { "$ref": "#/components/responses/Error" },
-          "403": { "$ref": "#/components/responses/Error" },
-          "409": { "$ref": "#/components/responses/Error" }
+          "202": {
+            "description": "Durably queued or idempotently replayed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedScan"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
         }
       }
     },
     "/api/v1/scan-events/{eventId}": {
       "get": {
         "summary": "Read synchronization status within the authenticated institution",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "name": "eventId",
-          "in": "path",
-          "required": true,
-          "schema": { "type": "string", "pattern": "^SCAN_[0-9A-F]{32}$" }
-        }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^SCAN_[0-9A-F]{32}$"
+            }
+          }
+        ],
         "responses": {
-          "200": { "description": "Synchronization status", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ScanStatus" } } } },
-          "400": { "$ref": "#/components/responses/Error" },
-          "401": { "$ref": "#/components/responses/Error" },
-          "403": { "$ref": "#/components/responses/Error" },
-          "404": { "$ref": "#/components/responses/Error" }
+          "200": {
+            "description": "Synchronization status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
         }
       }
     },
     "/api/v1/demand-forecasts": {
       "get": {
         "summary": "Read the exact or latest completed simulation forecast",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "name": "businessDate",
-          "in": "query",
-          "required": true,
-          "schema": { "type": "string", "format": "date" }
-        }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "businessDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
         "responses": {
-          "200": { "description": "CURRENT, STALE, or UNAVAILABLE forecast state", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ForecastResponse" } } } },
-          "400": { "$ref": "#/components/responses/Error" },
-          "401": { "$ref": "#/components/responses/Error" }
+          "200": {
+            "description": "CURRENT, STALE, or UNAVAILABLE forecast state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
         }
       }
     },
@@ -83,137 +184,592 @@
       "get": {
         "summary": "Readiness without secret or payload disclosure",
         "responses": {
-          "200": { "description": "Ready" },
-          "503": { "description": "Degraded" }
+          "200": {
+            "description": "Ready"
+          },
+          "503": {
+            "description": "Degraded"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/session": {
+      "post": {
+        "summary": "Create a revocable synthetic web session",
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Safe principal with a 15-minute HttpOnly SameSite=Strict cookie",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebSessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "get": {
+        "summary": "Restore an active synthetic web session",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Safe active principal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebSessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Revoke the current synthetic web session idempotently",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session revoked or already inactive; cookie cleared",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
         }
       }
     }
   },
   "components": {
     "securitySchemes": {
-      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "bloodledger_session"
+      }
     },
     "responses": {
       "Error": {
         "description": "Safe failure",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
       }
     },
     "schemas": {
       "SessionRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["operatorId", "credential"],
+        "required": [
+          "operatorId",
+          "credential"
+        ],
         "properties": {
-          "operatorId": { "type": "string", "const": "USR_SYNTH_CAPTURE" },
-          "credential": { "type": "string", "minLength": 12 }
+          "operatorId": {
+            "type": "string",
+            "const": "USR_SYNTH_CAPTURE"
+          },
+          "credential": {
+            "type": "string",
+            "minLength": 12
+          }
         }
       },
       "SessionResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["token", "tokenType", "expiresInSeconds", "classification"],
+        "required": [
+          "token",
+          "tokenType",
+          "expiresInSeconds",
+          "classification"
+        ],
         "properties": {
-          "token": { "type": "string" },
-          "tokenType": { "type": "string", "const": "Bearer" },
-          "expiresInSeconds": { "type": "integer", "const": 900 },
-          "classification": { "type": "string", "const": "SIMULATION_ONLY" }
+          "token": {
+            "type": "string"
+          },
+          "tokenType": {
+            "type": "string",
+            "const": "Bearer"
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "const": 900
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
         }
       },
       "Unit": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["unitId", "bloodType", "component", "collectedAt", "expiresAt"],
+        "required": [
+          "unitId",
+          "bloodType",
+          "component",
+          "collectedAt",
+          "expiresAt"
+        ],
         "properties": {
-          "unitId": { "type": "string", "pattern": "^UNIT_[A-Z0-9_-]{1,56}$" },
-          "bloodType": { "type": "string", "enum": ["A_POSITIVE", "O_POSITIVE"] },
-          "component": { "type": "string", "enum": ["RED_BLOOD_CELLS", "PLATELETS"] },
-          "collectedAt": { "type": "string", "format": "date-time" },
-          "expiresAt": { "type": "string", "format": "date-time" }
+          "unitId": {
+            "type": "string",
+            "pattern": "^UNIT_[A-Z0-9_-]{1,56}$"
+          },
+          "bloodType": {
+            "type": "string",
+            "enum": [
+              "A_POSITIVE",
+              "O_POSITIVE"
+            ]
+          },
+          "component": {
+            "type": "string",
+            "enum": [
+              "RED_BLOOD_CELLS",
+              "PLATELETS"
+            ]
+          },
+          "collectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "FieldConfidence": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["unitId", "bloodType", "component", "collectedAt", "expiresAt"],
+        "required": [
+          "unitId",
+          "bloodType",
+          "component",
+          "collectedAt",
+          "expiresAt"
+        ],
         "properties": {
-          "unitId": { "type": "integer", "minimum": 90, "maximum": 100 },
-          "bloodType": { "type": "integer", "minimum": 90, "maximum": 100 },
-          "component": { "type": "integer", "minimum": 90, "maximum": 100 },
-          "collectedAt": { "type": "integer", "minimum": 90, "maximum": 100 },
-          "expiresAt": { "type": "integer", "minimum": 90, "maximum": 100 }
+          "unitId": {
+            "type": "integer",
+            "minimum": 90,
+            "maximum": 100
+          },
+          "bloodType": {
+            "type": "integer",
+            "minimum": 90,
+            "maximum": 100
+          },
+          "component": {
+            "type": "integer",
+            "minimum": 90,
+            "maximum": 100
+          },
+          "collectedAt": {
+            "type": "integer",
+            "minimum": 90,
+            "maximum": 100
+          },
+          "expiresAt": {
+            "type": "integer",
+            "minimum": 90,
+            "maximum": 100
+          }
         }
       },
       "OcrEvidence": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["engine", "engineVersion", "fieldConfidence"],
+        "required": [
+          "engine",
+          "engineVersion",
+          "fieldConfidence"
+        ],
         "properties": {
-          "engine": { "type": "string", "const": "TESSERACT_JS" },
-          "engineVersion": { "type": "string", "const": "7.0.0" },
-          "fieldConfidence": { "$ref": "#/components/schemas/FieldConfidence" }
+          "engine": {
+            "type": "string",
+            "const": "TESSERACT_JS"
+          },
+          "engineVersion": {
+            "type": "string",
+            "const": "7.0.0"
+          },
+          "fieldConfidence": {
+            "$ref": "#/components/schemas/FieldConfidence"
+          }
         }
       },
       "ConfirmedCapture": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["captureMethod", "capturePolicyVersion", "capturedAt", "confirmedAt", "unit", "ocrEvidence"],
+        "required": [
+          "captureMethod",
+          "capturePolicyVersion",
+          "capturedAt",
+          "confirmedAt",
+          "unit",
+          "ocrEvidence"
+        ],
         "properties": {
-          "captureMethod": { "type": "string", "enum": ["OCR", "CODE_128_FALLBACK", "DATA_MATRIX_FALLBACK", "SYNTHETIC_QR_FALLBACK"] },
-          "capturePolicyVersion": { "type": "string", "const": "SYNTHETIC_CAPTURE_V1" },
-          "capturedAt": { "type": "string", "format": "date-time" },
-          "confirmedAt": { "type": "string", "format": "date-time" },
-          "unit": { "$ref": "#/components/schemas/Unit" },
-          "ocrEvidence": { "oneOf": [{ "$ref": "#/components/schemas/OcrEvidence" }, { "type": "null" }] }
+          "captureMethod": {
+            "type": "string",
+            "enum": [
+              "OCR",
+              "CODE_128_FALLBACK",
+              "DATA_MATRIX_FALLBACK",
+              "SYNTHETIC_QR_FALLBACK"
+            ]
+          },
+          "capturePolicyVersion": {
+            "type": "string",
+            "const": "SYNTHETIC_CAPTURE_V1"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/Unit"
+          },
+          "ocrEvidence": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OcrEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
         }
       },
       "AcceptedScan": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["eventId", "correlationId", "status", "receivedAt", "replayed"],
+        "required": [
+          "eventId",
+          "correlationId",
+          "status",
+          "receivedAt",
+          "replayed"
+        ],
         "properties": {
-          "eventId": { "type": "string" },
-          "correlationId": { "type": "string" },
-          "status": { "type": "string", "const": "QUEUED" },
-          "receivedAt": { "type": "string", "format": "date-time" },
-          "replayed": { "type": "boolean" }
+          "eventId": {
+            "type": "string"
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "const": "QUEUED"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
         }
       },
       "ScanStatus": {
         "type": "object",
         "properties": {
-          "eventId": { "type": "string" },
-          "correlationId": { "type": "string" },
-          "status": { "type": "string", "enum": ["QUEUED", "SUBMITTING", "RETRY_WAIT", "LEDGER_COMMITTED_PROJECTION_PENDING", "COMMITTED", "FAILED", "CONFLICT"] },
-          "attemptCount": { "type": "integer", "minimum": 0 },
-          "safeErrorCode": { "type": ["string", "null"] },
-          "ledgerTransactionId": { "type": ["string", "null"] },
-          "receivedAt": { "type": "string", "format": "date-time" },
-          "classification": { "type": "string", "const": "SIMULATION_ONLY" }
+          "eventId": {
+            "type": "string"
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "SUBMITTING",
+              "RETRY_WAIT",
+              "LEDGER_COMMITTED_PROJECTION_PENDING",
+              "COMMITTED",
+              "FAILED",
+              "CONFLICT"
+            ]
+          },
+          "attemptCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "safeErrorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ledgerTransactionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
         },
-        "required": ["eventId", "correlationId", "status", "attemptCount", "safeErrorCode", "ledgerTransactionId", "receivedAt", "classification"]
+        "required": [
+          "eventId",
+          "correlationId",
+          "status",
+          "attemptCount",
+          "safeErrorCode",
+          "ledgerTransactionId",
+          "receivedAt",
+          "classification"
+        ]
       },
       "ForecastResponse": {
         "type": "object",
-        "required": ["businessDate", "status", "forecasts"],
+        "required": [
+          "businessDate",
+          "status",
+          "forecasts"
+        ],
         "properties": {
-          "businessDate": { "type": "string", "format": "date" },
-          "status": { "type": "string", "enum": ["CURRENT", "STALE", "UNAVAILABLE"] },
-          "forecasts": { "type": "array", "maxItems": 4, "items": { "type": "object" } }
+          "businessDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "CURRENT",
+              "STALE",
+              "UNAVAILABLE"
+            ]
+          },
+          "forecasts": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "type": "object"
+            }
+          }
         }
       },
       "ErrorEnvelope": {
         "type": "object",
-        "required": ["error"],
+        "required": [
+          "error"
+        ],
         "properties": {
           "error": {
             "type": "object",
-            "required": ["code", "message", "correlationId"],
+            "required": [
+              "code",
+              "message",
+              "correlationId"
+            ],
             "properties": {
-              "code": { "type": "string" },
-              "message": { "type": "string" },
-              "correlationId": { "type": "string" }
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "correlationId": {
+                "type": "string"
+              }
             }
+          }
+        }
+      },
+      "WebSessionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "pattern": "^synth_[a-z0-9_]{3,57}$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "writeOnly": true
+          }
+        }
+      },
+      "WebPrincipal": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "userId",
+          "displayName",
+          "institutionId",
+          "institutionDisplayName",
+          "institutionCategory",
+          "roleId",
+          "roleDisplayName",
+          "permissions",
+          "classification"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string",
+            "pattern": "^USR_[A-Z0-9_-]{1,48}$"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "institutionId": {
+            "type": "string",
+            "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+          },
+          "institutionDisplayName": {
+            "type": "string"
+          },
+          "institutionCategory": {
+            "type": "string",
+            "enum": [
+              "HOSPITAL",
+              "REGULATOR",
+              "SYSTEM"
+            ]
+          },
+          "roleId": {
+            "type": "string",
+            "enum": [
+              "ROLE-01",
+              "ROLE-02",
+              "ROLE-03",
+              "ROLE-04",
+              "ROLE-05",
+              "ROLE-06"
+            ]
+          },
+          "roleDisplayName": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "dashboard:operational",
+                "dashboard:regulatory",
+                "inventory:read",
+                "inventory:write",
+                "transfers:read",
+                "transfers:write",
+                "alerts:read",
+                "alerts:acknowledge",
+                "consortium:read",
+                "audit:read",
+                "reports:read",
+                "profile:read"
+              ]
+            }
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "WebSessionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "principal"
+        ],
+        "properties": {
+          "principal": {
+            "$ref": "#/components/schemas/WebPrincipal"
           }
         }
       }

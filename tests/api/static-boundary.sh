@@ -12,6 +12,9 @@ rg -q 'LEDGER_COMMITTED_PROJECTION_PENDING' services/api/src database/migrations
 rg -q 'pg_advisory_xact_lock' services/api/src/database.ts
 rg -q 'FOR UPDATE SKIP LOCKED' services/api/src/database.ts
 rg -q 'SYNTHETIC_CAPTURE_V1' services/api/src apps/capture-pwa/src
+rg -q 'SYNTHETIC_WEB_ACCESS_V1' services/api/openapi.json services/api/src database/migrations/20260820000000000_create-synthetic-web-access-tables.js
+rg -q 'HttpOnly; SameSite=Strict' services/api/src/app.ts
+rg -q 'password_verifier' services/api/src/database-session.ts
 
 if rg -n 'request\.log\..*(body|headers)|console\.log\(|logger: true' services/api/src; then
   echo "API source may log a request payload, header, or unsafe console output" >&2
@@ -22,4 +25,4 @@ if rg -n 'submitAsync|submitTransaction' services/api/src/app.ts services/api/sr
   exit 1
 fi
 
-echo "Sprint 4 API and privacy boundary checks passed"
+echo "Sprint 4 capture and Sprint 5 web-access API boundaries passed"

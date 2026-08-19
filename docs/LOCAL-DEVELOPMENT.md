@@ -119,6 +119,29 @@ docker compose --profile sprint4 up --detach --build api sync-worker
 curl --fail --silent --show-error http://127.0.0.1:${API_HOST_PORT:-3000}/healthz
 ```
 
+### 3.2 Sprint 5 web session profile
+
+The Sprint 5 Vite development server uses `http://127.0.0.1:5174`. The tracked
+safe template sets `WEB_ORIGIN` to that exact origin and permits an insecure
+cookie only for this isolated loopback case. Keep `WEB_COOKIE_SECURE=true` for
+any HTTPS or non-loopback origin; the API refuses an insecure non-loopback
+configuration. Application credentials are provisioned separately from
+untracked values and are never added to `.env.example`, fixtures, Git, logs, or
+screenshots.
+
+Run the focused non-database checks with:
+
+```bash
+npm run check:web
+npm run test:web
+npm run check:api
+npm run test:api
+```
+
+Live session validation additionally requires applying all database migrations
+and provisioning opaque synthetic accounts without committing their salts,
+verifiers, or source credentials.
+
 The API serves the built PWA and listens only on host loopback by default. For
 the required physical Android Chrome evidence, USB debugging may expose that
 same loopback origin without opening a LAN port:
