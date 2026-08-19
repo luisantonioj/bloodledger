@@ -9,7 +9,8 @@ import type { ApiConfig } from "./config.js";
 import type { ScanRepository } from "./repository.js";
 import type { Principal } from "./types.js";
 import { bindingDigest, deriveVerifier, randomBinding, randomSessionId, verifyPassword, type CredentialRecord, type SessionClaims, type SessionRepository, type WebPrincipal } from "./session.js";
-import { isRoleId, permissionsFor, WEB_ACCESS_POLICY_VERSION } from "./web-access.js";
+import { isRoleId, permissionsFor, permits, WEB_ACCESS_POLICY_VERSION } from "./web-access.js";
+import type { ApplicationReadRepository } from "./application-read.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
 const EVENT_PATTERN = /^SCAN_[0-9A-F]{32}$/;
@@ -71,6 +72,7 @@ export async function buildApp(
   config: ApiConfig,
   clock: () => Date = () => new Date(),
   sessions?: SessionRepository,
+  applicationReads?: ApplicationReadRepository,
 ): Promise<FastifyInstance> {
   const app = Fastify({ logger: false, bodyLimit: 32 * 1024 });
   await app.register(fastifyJwt, { secret: config.jwtSecret, sign: { expiresIn: "15m" } });
@@ -149,6 +151,26 @@ export async function buildApp(
       try { const active = await restore(request); await sessions.revokeSession(active.claims.sessionId, clock()); } catch (error) { if (!(error instanceof ApiFailure) || error.statusCode !== 401) throw error; }
       return reply.header("set-cookie", clearSessionCookie(secureCookie)).status(204).send();
     });
+    if (applicationReads) {
+      app.get("/api/v1/dashboard", async (request) => {
+        const { principal } = await restore(request);
+        const regulatory = permits(principal.roleId, "dashboard:regulatory");
+        const operational = permits(principal.roleId, "dashboard:operational");
+        if (!regulatory && !operational) return { composition:"ADMINISTRATIVE", scope:"PRINCIPAL", inventory:[], pendingScans:[], lastSuccessfulProjectionAt:null, classification:"SIMULATION_ONLY" };
+        const cityWide = regulatory || principal.roleId === "ROLE-03";
+        const institutionScope = cityWide ? undefined : principal.institutionId;
+        const inventory = await applicationReads.listInventoryAggregates(institutionScope);
+        const pendingScans = await applicationReads.listPendingScans(institutionScope);
+        const timestamps = inventory.map(item => item.lastProjectedAt).sort();
+        return { composition:regulatory?"REGULATORY":"OPERATIONAL", scope:cityWide?"CITY_AGGREGATE":"INSTITUTION", inventory, pendingScans, lastSuccessfulProjectionAt:timestamps.at(-1)??null, classification:"SIMULATION_ONLY" };
+      });
+      app.get("/api/v1/inventory", async (request) => {
+        const { principal } = await restore(request);
+        if (!permits(principal.roleId, "inventory:read")) throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","Inventory access is not permitted.");
+        if (principal.roleId === "ROLE-04") return { scope:"CITY_AGGREGATE", aggregates:await applicationReads.listInventoryAggregates(), units:[], classification:"SIMULATION_ONLY" };
+        return { scope:"INSTITUTION", aggregates:[], units:await applicationReads.listInventoryUnits(principal.institutionId), classification:"SIMULATION_ONLY" };
+      });
+    }
   }
 
   app.post("/api/v1/scan-events", { preHandler: authenticate }, async (request, reply) => {

@@ -300,6 +300,59 @@
           }
         }
       }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "summary": "Read the permission-scoped dashboard projection",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operational, regulatory, or administrative dashboard summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/inventory": {
+      "get": {
+        "summary": "Read institution details or approved city aggregates",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Permission-scoped committed inventory",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -770,6 +823,236 @@
         "properties": {
           "principal": {
             "$ref": "#/components/schemas/WebPrincipal"
+          }
+        }
+      },
+      "InventoryAggregate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "institutionId",
+          "institutionDisplayName",
+          "bloodType",
+          "component",
+          "inventoryStatus",
+          "confirmedCount",
+          "lastProjectedAt"
+        ],
+        "properties": {
+          "institutionId": {
+            "type": "string"
+          },
+          "institutionDisplayName": {
+            "type": "string"
+          },
+          "bloodType": {
+            "type": "string"
+          },
+          "component": {
+            "type": "string"
+          },
+          "inventoryStatus": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "RESERVED",
+              "DISPATCHED",
+              "IN_TRANSIT",
+              "RECEIVED",
+              "COMPROMISED",
+              "EXPIRED"
+            ]
+          },
+          "confirmedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lastProjectedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "InventoryUnitView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unitId",
+          "institutionId",
+          "bloodType",
+          "component",
+          "collectedAt",
+          "expiresAt",
+          "inventoryStatus",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "classification"
+        ],
+        "properties": {
+          "unitId": {
+            "type": "string"
+          },
+          "institutionId": {
+            "type": "string"
+          },
+          "bloodType": {
+            "type": "string"
+          },
+          "component": {
+            "type": "string"
+          },
+          "collectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "inventoryStatus": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "RESERVED",
+              "DISPATCHED",
+              "IN_TRANSIT",
+              "RECEIVED",
+              "COMPROMISED",
+              "EXPIRED"
+            ]
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "ledgerTransactionId": {
+            "type": "string"
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "PendingScanCount": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "count"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "SUBMITTING",
+              "RETRY_WAIT",
+              "LEDGER_COMMITTED_PROJECTION_PENDING",
+              "FAILED",
+              "CONFLICT"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "DashboardResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "composition",
+          "scope",
+          "inventory",
+          "pendingScans",
+          "lastSuccessfulProjectionAt",
+          "classification"
+        ],
+        "properties": {
+          "composition": {
+            "type": "string",
+            "enum": [
+              "OPERATIONAL",
+              "REGULATORY",
+              "ADMINISTRATIVE"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "INSTITUTION",
+              "CITY_AGGREGATE",
+              "PRINCIPAL"
+            ]
+          },
+          "inventory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventoryAggregate"
+            }
+          },
+          "pendingScans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendingScanCount"
+            }
+          },
+          "lastSuccessfulProjectionAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "InventoryResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope",
+          "aggregates",
+          "units",
+          "classification"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "INSTITUTION",
+              "CITY_AGGREGATE"
+            ]
+          },
+          "aggregates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventoryAggregate"
+            }
+          },
+          "units": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventoryUnitView"
+            }
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
           }
         }
       }
