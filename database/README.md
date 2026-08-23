@@ -268,3 +268,12 @@ synthetic configuration is inserted. BROA/RPS recommendation digests remain
 disabled evidence and cannot approve a transfer. Runtime grants allow only the
 selected reads, inserts, projection-column updates, acknowledgement inserts,
 and redacted audit inserts; no runtime delete or DDL privilege is granted.
+
+Migration `20260820020000000_add-alert-acknowledgement-idempotency.js`
+adds durable command evidence for the selected alert-acknowledgement mutation.
+Each idempotency key is bound to a canonical payload digest and the resulting
+per-user acknowledgement. Matching retries return the persisted result;
+different payloads using the same key fail safely. The API locks the scoped open
+alert during acknowledgement and writes a redacted audit event in the same
+transaction. Runtime access remains limited to `SELECT` and `INSERT`; no delete,
+DDL, or broad update privilege is added.

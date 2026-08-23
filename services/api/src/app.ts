@@ -11,9 +11,13 @@ import type { Principal } from "./types.js";
 import { bindingDigest, deriveVerifier, randomBinding, randomSessionId, verifyPassword, type CredentialRecord, type SessionClaims, type SessionRepository, type WebPrincipal } from "./session.js";
 import { isRoleId, permissionsFor, permits, WEB_ACCESS_POLICY_VERSION } from "./web-access.js";
 import type { ApplicationReadRepository } from "./application-read.js";
+import type { ApplicationWriteRepository } from "./application-write.js";
+import { sha256 } from "./hash.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
 const EVENT_PATTERN = /^SCAN_[0-9A-F]{32}$/;
+const ALERT_PATTERN = /^ALRT_[0-9A-F]{40}$/;
+const CORRELATION_PATTERN = /^CORR_[0-9A-F]{32}$/;
 
 function equalSecret(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left);
@@ -80,6 +84,7 @@ export async function buildApp(
   clock: () => Date = () => new Date(),
   sessions?: SessionRepository,
   applicationReads?: ApplicationReadRepository,
+  applicationWrites?: ApplicationWriteRepository,
 ): Promise<FastifyInstance> {
   const app = Fastify({ logger: false, bodyLimit: 32 * 1024 });
   await app.register(fastifyJwt, { secret: config.jwtSecret, sign: { expiresIn: "15m" } });
@@ -190,6 +195,25 @@ export async function buildApp(
         if (principal.roleId === "ROLE-04") return { scope:"CITY_AGGREGATE", transfers:await applicationReads.listTransfers(), classification:"SIMULATION_ONLY" };
         if (principal.roleId === "ROLE-03") return { scope:"DESTINATION_INSTITUTION", transfers:await applicationReads.listTransfers(principal.institutionId,"DESTINATION"), classification:"SIMULATION_ONLY" };
         return { scope:"SOURCE_INSTITUTION", transfers:await applicationReads.listTransfers(principal.institutionId,"SOURCE"), classification:"SIMULATION_ONLY" };
+      });
+    }
+    if (applicationWrites) {
+      app.post<{ Params: { alertId: string } }>("/api/v1/alerts/:alertId/acknowledgements", async (request) => {
+        requireSameOrigin(request, webOrigin);
+        const { principal } = await restore(request);
+        if (!permits(principal.roleId, "alerts:acknowledge")) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Alert acknowledgement is not permitted.");
+        if (!ALERT_PATTERN.test(request.params.alertId)) throw new ApiFailure(400, "INVALID_ALERT_ID", "Alert ID is invalid.");
+        const idempotencyKey = request.headers["idempotency-key"];
+        if (typeof idempotencyKey !== "string" || !IDEMPOTENCY_PATTERN.test(idempotencyKey)) throw new ApiFailure(400, "INVALID_IDEMPOTENCY_KEY", "A valid Idempotency-Key header is required.");
+        const body = request.body as Record<string, unknown> | null;
+        const keys = body && typeof body === "object" ? Object.keys(body) : [];
+        if (keys.length !== 1 || keys[0] !== "correlationId" || typeof body?.correlationId !== "string" || !CORRELATION_PATTERN.test(body.correlationId)) throw new ApiFailure(400, "INVALID_ALERT_ACKNOWLEDGEMENT", "Alert acknowledgement input is invalid.");
+        const acknowledgedAt = clock();
+        const payloadSha256 = sha256({ alertId: request.params.alertId, userId: principal.userId, institutionId: principal.institutionId, correlationId: body.correlationId });
+        const auditEventId = "AUDT_" + sha256({ idempotencyKey, alertId: request.params.alertId, userId: principal.userId, action: "ALERT_ACKNOWLEDGED" }).slice(0, 40).toUpperCase();
+        const result = await applicationWrites.acknowledgeAlert({ alertId: request.params.alertId, userId: principal.userId, institutionId: principal.institutionId, idempotencyKey, payloadSha256, correlationId: body.correlationId, auditEventId, acknowledgedAt });
+        if (!result) throw new ApiFailure(404, "ALERT_NOT_FOUND", "An open alert was not found in the authorized institution scope.");
+        return result;
       });
     }
   }

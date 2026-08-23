@@ -2,7 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 
 const root = new URL("../../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
-const [compose, bootstrap, migration, forecastMigration, coordinationMigration, scanMigration, webAccessMigration, transferAlertMigration, databasePackage] = await Promise.all([
+const [compose, bootstrap, migration, forecastMigration, coordinationMigration, scanMigration, webAccessMigration, transferAlertMigration, alertAckMigration, databasePackage] = await Promise.all([
   read("compose.yaml"),
   read("database/bootstrap/001-create-development-roles.sh"),
   read("database/migrations/20260715000000000_bootstrap-app-schema.js"),
@@ -11,6 +11,7 @@ const [compose, bootstrap, migration, forecastMigration, coordinationMigration, 
   read("database/migrations/20260817000000000_create-synthetic-scan-sync-tables.js"),
   read("database/migrations/20260820000000000_create-synthetic-web-access-tables.js"),
   read("database/migrations/20260820010000000_create-transfer-alert-projections.js"),
+  read("database/migrations/20260820020000000_add-alert-acknowledgement-idempotency.js"),
   read("database/package.json").then(JSON.parse)
 ]);
 
@@ -65,6 +66,10 @@ const assertions = [
   [transferAlertMigration.includes("REFERENCES app.location_evidence"), "location evidence references"],
   [transferAlertMigration.includes("GRANT UPDATE (status,reason_code"), "column-level transfer projection update"],
   [transferAlertMigration.includes("exports.down = false"), "transfer alert forward-only migration"],
+  [alertAckMigration.includes("CREATE TABLE app.alert_acknowledgement_commands"), "alert acknowledgement idempotency evidence"],
+  [alertAckMigration.includes("FOREIGN KEY (alert_id,user_id)"), "acknowledgement command ownership"],
+  [alertAckMigration.includes("GRANT SELECT,INSERT"), "acknowledgement command least privilege"],
+  [alertAckMigration.includes("exports.down = false"), "alert acknowledgement forward-only migration"],
   [databasePackage.scripts["migrate:up"] === "node scripts/migrate.mjs", "apply command"],
   [databasePackage.scripts["migrate:status"] === "node scripts/migration-status.mjs", "status command"]
 ];
@@ -75,8 +80,8 @@ for (const [passed, label] of assertions) {
 
 const migrationFiles = (await readdir(new URL("database/migrations", root)))
   .filter((name) => /\.(?:js|cjs|mjs|sql)$/.test(name));
-if (migrationFiles.length !== 6) {
-  throw new Error(`Expected bootstrap, forecast, coordination, scan, web-access, and transfer-alert migrations, received ${migrationFiles.length}`);
+if (migrationFiles.length !== 7) {
+  throw new Error(`Expected seven approved bootstrap through alert-acknowledgement migrations, received ${migrationFiles.length}`);
 }
 
 const prohibited = /blood_units|transfers|users|institutions|forecasts|notifications|audit_logs|sync(?:hronization)?_queues/i;

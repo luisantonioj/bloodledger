@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { pollingDelay } from "./polling";
+import { newMutationKeys, type MutationKeys } from "./mutation-keys";
 
 type Aggregate = { institutionId:string; institutionDisplayName:string; bloodType:string; component:string; inventoryStatus:string; confirmedCount:number; lastProjectedAt:string };
 type Unit = { unitId:string; bloodType:string; component:string; expiresAt:string; inventoryStatus:string; projectedAt:string };
@@ -54,9 +55,25 @@ function AggregateTable({items}:{items:Aggregate[]}) {
   return <div className="table-wrap"><table><thead><tr><th>Institution</th><th>Blood type</th><th>Component</th><th>Status</th><th>Confirmed</th><th>Projected</th></tr></thead><tbody>{items.map((item,index)=><tr key={`${item.institutionId}-${item.bloodType}-${item.component}-${item.inventoryStatus}-${index}`}><td>{item.institutionDisplayName}</td><td>{words(item.bloodType)}</td><td>{words(item.component)}</td><td><span className={chip(item.inventoryStatus)}>{words(item.inventoryStatus)}</span></td><td>{item.confirmedCount}</td><td>{format(item.lastProjectedAt)}</td></tr>)}</tbody></table></div>;
 }
 
-function AlertsTable({data}:{data:Alerts}) {
+function AcknowledgeAlert({alertId,onDone}:{alertId:string;onDone:()=>void}) {
+  const keys=useRef<MutationKeys|undefined>(undefined);
+  const[busy,setBusy]=useState(false),[error,setError]=useState("");
+  async function submit(){
+    setBusy(true);setError("");keys.current??=newMutationKeys();
+    try{
+      const response=await fetch("/api/v1/alerts/"+encodeURIComponent(alertId)+"/acknowledgements",{method:"POST",credentials:"same-origin",headers:{Accept:"application/json","Content-Type":"application/json","Idempotency-Key":keys.current.idempotencyKey},body:JSON.stringify({correlationId:keys.current.correlationId})});
+      const body=await response.json().catch(()=>null) as {error?:{message?:string}}|null;
+      if(!response.ok)throw new Error(body?.error?.message??"Acknowledgement failed.");
+      keys.current=undefined;onDone();
+    }catch(reason){setError(reason instanceof Error?reason.message:"Acknowledgement failed.");}
+    finally{setBusy(false)}
+  }
+  return <div className="ack-action"><button className="button" disabled={busy} onClick={()=>void submit()}>{busy?"Acknowledging...":error?"Retry acknowledgement":"Acknowledge"}</button>{error&&<span role="alert">{error}</span>}</div>;
+}
+
+function AlertsTable({data,canAcknowledge,onRefresh}:{data:Alerts;canAcknowledge:boolean;onRefresh:()=>void}) {
   if(data.scope==="CITY_AGGREGATE")return data.aggregates.length===0?<div className="empty"><strong>No aggregate alerts</strong>No approved alert aggregate is available.</div>:<div className="table-wrap"><table><thead><tr><th>Institution</th><th>Alert</th><th>Severity</th><th>Status</th><th>Count</th><th>Evaluated</th></tr></thead><tbody>{data.aggregates.map((item,index)=><tr key={`${item.institutionDisplayName}-${item.alertType}-${index}`}><td>{item.institutionDisplayName}</td><td>{words(item.alertType)}</td><td><span className={chip(item.severity)}>{item.severity}</span></td><td>{item.status}</td><td>{item.count}</td><td>{format(item.lastEvaluatedAt)}</td></tr>)}</tbody></table></div>;
-  return data.alerts.length===0?<div className="empty"><strong>No alerts</strong>No authorized alert currently requires display.</div>:<div className="table-wrap"><table><thead><tr><th>Alert</th><th>Unit</th><th>Blood/component</th><th>Severity</th><th>Expires</th><th>Acknowledged</th></tr></thead><tbody>{data.alerts.map(item=><tr key={item.alertId}><td>{words(item.alertType)}</td><td className="mono">{item.unitId??"Not applicable"}</td><td>{item.bloodType&&item.component?`${words(item.bloodType)} / ${words(item.component)}`:"Not applicable"}</td><td><span className={chip(item.severity)}>{item.severity}</span></td><td>{format(item.expiresAt)}</td><td>{item.acknowledged?"Acknowledged":"Not acknowledged"}</td></tr>)}</tbody></table></div>;
+  return data.alerts.length===0?<div className="empty"><strong>No alerts</strong>No authorized alert currently requires display.</div>:<div className="table-wrap"><table><thead><tr><th>Alert</th><th>Unit</th><th>Blood/component</th><th>Severity</th><th>Expires</th><th>Acknowledgement</th></tr></thead><tbody>{data.alerts.map(item=><tr key={item.alertId}><td>{words(item.alertType)}</td><td className="mono">{item.unitId??"Not applicable"}</td><td>{item.bloodType&&item.component?`${words(item.bloodType)} / ${words(item.component)}`:"Not applicable"}</td><td><span className={chip(item.severity)}>{item.severity}</span></td><td>{format(item.expiresAt)}</td><td>{item.acknowledged?"Acknowledged":canAcknowledge&&item.status==="OPEN"?<AcknowledgeAlert alertId={item.alertId} onDone={onRefresh}/>:"Not acknowledged"}</td></tr>)}</tbody></table></div>;
 }
 
 function TransfersTable({data}:{data:Transfers}) {
@@ -64,7 +81,7 @@ function TransfersTable({data}:{data:Transfers}) {
   return <div className="table-wrap"><table><thead><tr><th>Transfer</th><th>Route</th><th>Blood/component</th><th>Quantity</th><th>Urgency</th><th>Status</th><th>Evidence</th><th>Projected</th></tr></thead><tbody>{data.transfers.map(item=><tr key={item.transferId}><td className="mono">{item.transferId}</td><td>{item.sourceInstitutionId} to {item.destinationInstitutionId}</td><td>{words(item.bloodType)} / {words(item.component)}</td><td>{item.quantity}</td><td>{item.urgency}</td><td><span className={chip(item.status)}>{words(item.status)}</span></td><td>Dispatch {item.dispatchEvidenceRecorded?"recorded":"pending"}; receipt {item.receiptEvidenceRecorded?"recorded":"pending"}</td><td>{format(item.projectedAt)}</td></tr>)}</tbody></table></div>;
 }
 
-export function FeatureData({path}:{path:string}) {
+export function FeatureData({path,canAcknowledge=false}:{path:string;canAcknowledge?:boolean}) {
   const endpoint:Record<string,string>={"/":"/api/v1/dashboard","/inventory":"/api/v1/inventory","/alerts":"/api/v1/alerts","/transfers":"/api/v1/transfers"};
   const state=useLiveData<FeatureResponse>(endpoint[path]??null);
   if(!endpoint[path])return <div className="empty"><strong>Data unavailable</strong>The official feature API is not implemented yet. Runtime mock fallback is disabled.</div>;
@@ -74,7 +91,7 @@ export function FeatureData({path}:{path:string}) {
     const data=state.data as Dashboard,total=data.inventory.reduce((sum,item)=>sum+item.confirmedCount,0),pending=data.pendingScans.reduce((sum,item)=>sum+item.count,0);
     return <><div className="stats"><article><span>Ledger-confirmed</span><strong>{total}</strong></article><article><span>Uncommitted scan states</span><strong>{pending}</strong></article><article><span>Last projection</span><strong className="time">{format(data.lastSuccessfulProjectionAt)}</strong></article></div>{state.error&&<p className="notice" role="status">Showing the last confirmed view. Refresh failed: {state.error} <button className="button" onClick={state.manual}>Retry</button></p>}<AggregateTable items={data.inventory}/></>;
   }
-  if(path==="/alerts")return <AlertsTable data={state.data as Alerts}/>;
+  if(path==="/alerts")return <AlertsTable data={state.data as Alerts} canAcknowledge={canAcknowledge} onRefresh={state.manual}/>;
   if(path==="/transfers")return <TransfersTable data={state.data as Transfers}/>;
   const data=state.data as Inventory;
   if(data.scope==="CITY_AGGREGATE")return <AggregateTable items={data.aggregates}/>;

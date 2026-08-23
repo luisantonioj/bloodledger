@@ -21,6 +21,11 @@ rg -Fq 'listInventoryUnits(principal.institutionId)' services/api/src/app.ts
 rg -q '/api/v1/alerts' services/api/openapi.json services/api/src/app.ts
 rg -q '/api/v1/transfers' services/api/openapi.json services/api/src/app.ts
 rg -Fq 'listTransfers(principal.institutionId,"DESTINATION")' services/api/src/app.ts
+rg -Fq '/api/v1/alerts/{alertId}/acknowledgements' services/api/openapi.json
+rg -q 'pg_advisory_xact_lock' services/api/src/database-application-write.ts
+rg -Fq "institution_id=\$2 AND status='OPEN' FOR UPDATE" services/api/src/database-application-write.ts
+rg -q 'ALERT_IDEMPOTENCY_CONFLICT' services/api/src/database-application-write.ts
+rg -q "'ALERT_ACKNOWLEDGED'" services/api/src/database-application-write.ts
 
 if rg -n 'request\.log\..*(body|headers)|console\.log\(|logger: true' services/api/src; then
   echo "API source may log a request payload, header, or unsafe console output" >&2
