@@ -43,6 +43,11 @@ rg -Fq 'submitAsync("RecordDispatch"' services/api/src/fabric.ts
 rg -Fq "'TRANSFER_DISPATCHED'" services/api/src/database-application-write.ts
 rg -Fq "inventory_status='DISPATCHED'" services/api/src/database-application-write.ts
 rg -Fq 'app.location_evidence' services/api/src/database-application-write.ts
+rg -Fq '/api/v1/transfers/{transferId}/receipt' services/api/openapi.json
+rg -Fq 'TransferReceiptRequest' services/api/openapi.json
+rg -Fq 'submitAsync("RecordReceipt"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_RECEIVED'" services/api/src/database-application-write.ts
+rg -Fq "receipt_evidence_id" services/api/src/database-application-write.ts
 rg -Fq '/api/v1/transfers/{transferId}/transit-start' services/api/openapi.json
 rg -Fq 'TransferTransitRequest' services/api/openapi.json
 rg -Fq 'submitAsync("StartTransit"' services/api/src/fabric.ts

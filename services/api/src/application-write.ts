@@ -91,6 +91,55 @@ export interface TransferTransitResult {
   classification: "SIMULATION_ONLY";
 }
 
+export interface TransferReceiptCommand {
+  transferId: string;
+  destinationInstitutionId: string;
+  actorUserId: string;
+  expectedVersion: number;
+  eventTime: string;
+  correlationId: string;
+  idempotencyKey: string;
+  payloadSha256: string;
+  transferEventId: string;
+  auditEventId: string;
+  locationEvidence: {
+    evidenceId: string;
+    evidenceDigest: string;
+    institutionId: string;
+    phase: "RECEIPT";
+    latitude: number;
+    longitude: number;
+    accuracyMetres: number;
+    source: "DEVICE" | "FACILITY_FALLBACK";
+    fallbackReason: "DEVICE_UNAVAILABLE" | "PERMISSION_DENIED" | "SIGNAL_UNAVAILABLE" | null;
+    capturedAt: string;
+    facilityMatched: boolean;
+    fallback: boolean;
+    policyVersion: "SYNTHETIC_LOCATION_V1";
+    classification: "SYNTHETIC_DATA";
+    deleteAfter: string;
+  };
+}
+
+export interface TransferReceiptResult {
+  transferId: string;
+  status: "RECEIVED";
+  receivedUnitIds: string[];
+  locationEvidence: {
+    evidenceId: string;
+    capturedAt: string;
+    source: "DEVICE" | "FACILITY_FALLBACK";
+    facilityMatched: boolean;
+    fallback: boolean;
+    policyVersion: "SYNTHETIC_LOCATION_V1";
+  };
+  ledgerVersion: number;
+  ledgerTransactionId: string;
+  projectedAt: string;
+  replayed: boolean;
+  classification: "SIMULATION_ONLY";
+}
+
 export interface TransferDispatchCommand {
   transferId: string;
   sourceInstitutionId: string;
@@ -198,6 +247,7 @@ export interface ApplicationWriteRepository {
   approveTransfer(input: TransferApprovalCommand): Promise<TransferApprovalResult | null>;
   cancelTransfer(input: TransferCancellationCommand): Promise<TransferCancellationResult | null>;
   dispatchTransfer(input: TransferDispatchCommand): Promise<TransferDispatchResult | null>;
+  recordTransferReceipt(input: TransferReceiptCommand): Promise<TransferReceiptResult | null>;
   startTransferTransit(input: TransferTransitCommand): Promise<TransferTransitResult | null>;
   rejectTransfer(input: TransferRejectionCommand): Promise<TransferRejectionResult | null>;
 }

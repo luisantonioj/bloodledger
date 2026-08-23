@@ -351,6 +351,31 @@ export async function buildApp(
         return result;
       });
 
+      app.post<{ Params: { transferId: string } }>("/api/v1/transfers/:transferId/receipt", async(request)=>{
+        requireSameOrigin(request,webOrigin);
+        const{principal}=await restore(request);
+        if(principal.roleId!=="ROLE-03"||!permits(principal.roleId,"transfers:write"))throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","Transfer receipt is restricted to the authorized recipient institution.");
+        if(!TRANSFER_PATTERN.test(request.params.transferId))throw new ApiFailure(400,"INVALID_TRANSFER_ID","Transfer ID is invalid.");
+        if(!USER_PATTERN.test(principal.userId))throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","The authenticated user is outside the ledger actor policy.");
+        const idempotencyKey=request.headers["idempotency-key"];
+        if(typeof idempotencyKey!=="string"||!IDEMPOTENCY_PATTERN.test(idempotencyKey))throw new ApiFailure(400,"INVALID_IDEMPOTENCY_KEY","A valid Idempotency-Key header is required.");
+        const body=request.body as Record<string,unknown>|null,keys=body&&typeof body==="object"?Object.keys(body).sort():[],expected=["correlationId","eventTime","expectedVersion","location"];
+        const location=body?.location as Record<string,unknown>|null,locationKeys=location&&typeof location==="object"&&!Array.isArray(location)?Object.keys(location).sort():[],locationExpected=["accuracyMetres","capturedAt","fallbackReason","latitude","longitude","source"];
+        if(!body||keys.length!==expected.length||keys.some((key,index)=>key!==expected[index])||!Number.isSafeInteger(body.expectedVersion)||Number(body.expectedVersion)<1||
+          !validUtcInstant(body.eventTime)||new Date(body.eventTime).getTime()>clock().getTime()+60_000||typeof body.correlationId!=="string"||!CORRELATION_PATTERN.test(body.correlationId)||
+          !location||locationKeys.length!==locationExpected.length||locationKeys.some((key,index)=>key!==locationExpected[index])||
+          !Number.isFinite(location.latitude)||!Number.isFinite(location.longitude)||!Number.isFinite(location.accuracyMetres)||
+          !["DEVICE","FACILITY_FALLBACK"].includes(String(location.source))||!(location.fallbackReason===null||["DEVICE_UNAVAILABLE","PERMISSION_DENIED","SIGNAL_UNAVAILABLE"].includes(String(location.fallbackReason)))||
+          !validUtcInstant(location.capturedAt)||new Date(location.capturedAt).getTime()>new Date(body.eventTime).getTime())throw new ApiFailure(400,"INVALID_TRANSFER_RECEIPT","Transfer receipt input is invalid.");
+        const evidenceId="LOC_"+sha256({transferId:request.params.transferId,idempotencyKey,phase:"RECEIPT"}).slice(0,40).toUpperCase();
+        const locationEvidence=captureSyntheticLocationEvidence({institutionId:principal.institutionId,phase:"RECEIPT",latitude:Number(location.latitude),longitude:Number(location.longitude),accuracyMetres:Number(location.accuracyMetres),source:location.source as "DEVICE"|"FACILITY_FALLBACK",fallbackReason:location.fallbackReason as "DEVICE_UNAVAILABLE"|"PERMISSION_DENIED"|"SIGNAL_UNAVAILABLE"|null,capturedAt:location.capturedAt},evidenceId);
+        const payloadSha256=sha256({transferId:request.params.transferId,destinationInstitutionId:principal.institutionId,actorUserId:principal.userId,expectedVersion:body.expectedVersion,eventTime:body.eventTime,correlationId:body.correlationId,locationEvidence});
+        const transferEventId="TEVT_"+sha256({transferId:request.params.transferId,idempotencyKey,operation:"RECEIPT"}).slice(0,40).toUpperCase(),auditEventId="AUDT_"+sha256({transferId:request.params.transferId,idempotencyKey,operation:"TRANSFER_RECEIVED"}).slice(0,40).toUpperCase();
+        const result=await applicationWrites.recordTransferReceipt({transferId:request.params.transferId,destinationInstitutionId:principal.institutionId,actorUserId:principal.userId,expectedVersion:Number(body.expectedVersion),eventTime:body.eventTime,correlationId:body.correlationId,idempotencyKey,payloadSha256,transferEventId,auditEventId,locationEvidence});
+        if(!result)throw new ApiFailure(404,"TRANSFER_NOT_FOUND","A transfer was not found in the authorized recipient scope.");
+        return result;
+      });
+
       app.post<{ Params: { transferId: string } }>("/api/v1/transfers/:transferId/transit-start", async(request)=>{
         requireSameOrigin(request,webOrigin);
         const{principal}=await restore(request);
