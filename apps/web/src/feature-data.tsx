@@ -20,6 +20,7 @@ type AuditEvent = { auditEventId:string; institutionDisplayName:string; actionCo
 type Audit = { scope:"INSTITUTION"|"CITY_AGGREGATE"; events:AuditEvent[]; classification:"SIMULATION_ONLY" };
 type Report = { reportType:"CITY_INVENTORY_SUMMARY"; scope:"CITY_AGGREGATE"; generatedAt:string; inventory:Aggregate[]; alerts:AlertAggregate[]; transferSummary:TransferSummary[]; disclaimer:string; classification:"SIMULATION_ONLY" };
 type FeatureResponse = Dashboard | Inventory | Alerts | Transfers | Consortium | Audit | Report;
+type ProfilePrincipal = { userId:string; displayName:string; institutionId:string; institutionDisplayName:string; roleId:string; roleDisplayName:string; permissions:string[]; classification:"SIMULATION_ONLY" };
 
 async function load<T>(path:string, signal:AbortSignal):Promise<T> {
   const response = await fetch(path, { credentials:"same-origin", headers:{ Accept:"application/json" }, signal });
@@ -134,19 +135,24 @@ function AuditView({data}:{data:Audit}) {
   return <div className="table-wrap"><table><thead><tr><th>Institution</th><th>Action</th><th>Target</th><th>Outcome</th><th>Correlation</th><th>Ledger reference</th><th>Time</th></tr></thead><tbody>{data.events.map(item=><tr key={item.auditEventId}><td>{item.institutionDisplayName}</td><td>{words(item.actionCode)}</td><td>{words(item.targetType)}</td><td><span className={chip(item.outcome)}>{words(item.outcome)}</span>{item.safeErrorCode?" - "+words(item.safeErrorCode):""}</td><td className="mono">{item.correlationId}</td><td className="mono">{item.ledgerTransactionId??"Not applicable"}</td><td>{format(item.eventTime)}</td></tr>)}</tbody></table></div>;
 }
 
+function ProfileView({principal}:{principal:ProfilePrincipal}) {
+  return <div className="profile-grid"><article><span>Authenticated user</span><strong>{principal.displayName}</strong><small className="mono">{principal.userId}</small></article><article><span>Institution scope</span><strong>{principal.institutionDisplayName}</strong><small className="mono">{principal.institutionId}</small></article><article><span>Assigned role</span><strong>{principal.roleDisplayName}</strong><small>{principal.roleId}; assigned by the server</small></article><article><span>Data classification</span><strong>{words(principal.classification)}</strong><small>Controlled synthetic research access only</small></article><section><h3>Effective permissions</h3>{principal.permissions.length===0?<p>No application permissions are assigned.</p>:<ul>{principal.permissions.map(permission=><li className="mono" key={permission}>{permission}</li>)}</ul>}<p>Role and institution cannot be changed from this browser session.</p></section></div>;
+}
+
 function ReportView({data}:{data:Report}) {
   return <><div className="report-toolbar"><p><strong>SIMULATION ONLY.</strong> {data.disclaimer}<br/>Generated {format(data.generatedAt)}.</p><a className="button" href="/api/v1/reports/inventory.csv" download>Download simulation CSV</a></div><h3>Inventory aggregate</h3><AggregateTable items={data.inventory}/><h3>Alert aggregate</h3><AlertAggregateTable items={data.alerts}/><h3>Transfer aggregate</h3><TransferSummaryTable items={data.transferSummary}/></>;
 }
 
-export function FeatureData({path,canAcknowledge=false,canSubmitTransfer=false}:{path:string;canAcknowledge?:boolean;canSubmitTransfer?:boolean}) {
+export function FeatureData({path,canAcknowledge=false,canSubmitTransfer=false,canCapture=false,principal}:{path:string;canAcknowledge?:boolean;canSubmitTransfer?:boolean;canCapture?:boolean;principal?:ProfilePrincipal}) {
   const endpoint:Record<string,string>={"/":"/api/v1/dashboard","/inventory":"/api/v1/inventory","/alerts":"/api/v1/alerts","/transfers":"/api/v1/transfers","/consortium":"/api/v1/consortium","/audit":"/api/v1/audit","/reporting":"/api/v1/reports/inventory"};
   const state=useLiveData<FeatureResponse>(endpoint[path]??null);
+  if(path==="/profile"&&principal)return <ProfileView principal={principal}/>;
   if(!endpoint[path])return <div className="empty"><strong>Data unavailable</strong>The official feature API is not implemented yet. Runtime mock fallback is disabled.</div>;
   if(!state.data&&state.busy)return <div className="empty" aria-live="polite"><strong>Loading authorized data</strong>Waiting for the official API.</div>;
   if(!state.data)return <div className="empty" role="alert"><strong>Unable to load data</strong>{state.error}<br/><button className="button" onClick={state.manual}>Retry</button></div>;
   if(path==="/"){
     const data=state.data as Dashboard,total=data.inventory.reduce((sum,item)=>sum+item.confirmedCount,0),pending=data.pendingScans.reduce((sum,item)=>sum+item.count,0);
-    return <><div className="stats"><article><span>Ledger-confirmed</span><strong>{total}</strong></article><article><span>Uncommitted scan states</span><strong>{pending}</strong></article><article><span>Last projection</span><strong className="time">{format(data.lastSuccessfulProjectionAt)}</strong></article></div>{state.error&&<p className="notice" role="status">Showing the last confirmed view. Refresh failed: {state.error} <button className="button" onClick={state.manual}>Retry</button></p>}<AggregateTable items={data.inventory}/></>;
+    return <><div className="stats"><article><span>Ledger-confirmed</span><strong>{total}</strong></article><article><span>Uncommitted scan states</span><strong>{pending}</strong></article><article><span>Last projection</span><strong className="time">{format(data.lastSuccessfulProjectionAt)}</strong></article></div>{canCapture&&<div className="capture-link"><div><strong>Capture a confirmed unit</strong><span>The existing Sprint 4 privacy and offline rules remain in effect.</span></div><a className="button primary" href="/capture/">Open capture workspace</a></div>}{state.error&&<p className="notice" role="status">Showing the last confirmed view. Refresh failed: {state.error} <button className="button" onClick={state.manual}>Retry</button></p>}<AggregateTable items={data.inventory}/></>;
   }
   if(path==="/consortium")return <ConsortiumView data={state.data as Consortium}/>;
   if(path==="/audit")return <AuditView data={state.data as Audit}/>;
