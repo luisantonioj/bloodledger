@@ -99,7 +99,7 @@ try {
   const secondProjection=await repository.claimProjection(new Date("2026-08-17T12:02:02.000Z"));
   await repository.projectCommitted(secondProjection,new Date("2026-08-17T12:02:02.000Z"));
 
-  let requestLedgerCalls=0,approvalLedgerCalls=0,rejectionLedgerCalls=0,cancellationLedgerCalls=0,dispatchLedgerCalls=0,transitLedgerCalls=0,receiptLedgerCalls=0;
+  let requestLedgerCalls=0,approvalLedgerCalls=0,rejectionLedgerCalls=0,cancellationLedgerCalls=0,dispatchLedgerCalls=0,transitLedgerCalls=0,delayLedgerCalls=0,receiptLedgerCalls=0;
   const transferWriter = new PostgresApplicationWriteRepository(pool, {
     async submitRequest(input) {
       requestLedgerCalls+=1;
@@ -124,6 +124,10 @@ try {
     async startTransit(input) {
       transitLedgerCalls+=1;
       return { asset:{ transferId:input.transferId,status:"IN_TRANSIT",selectedUnitIds:["UNIT_SYNTH_S4_POSTGRES_002","UNIT_SYNTH_S4_POSTGRES_001"],actorUserId:input.actorUserId,version:input.expectedVersion+1,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_SYNTH_TRANSFER_TRANSIT_POSTGRES_001" }, committedAt:new Date(input.eventTime), ledgerReplayed:false };
+    },
+    async markDelayed(input) {
+      delayLedgerCalls+=1;
+      return { asset:{ transferId:input.transferId,status:"DELAYED",reasonCode:input.reasonCode,selectedUnitIds:["UNIT_SYNTH_S4_POSTGRES_002","UNIT_SYNTH_S4_POSTGRES_001"],actorUserId:input.actorUserId,version:input.expectedVersion+1,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_SYNTH_TRANSFER_DELAY_POSTGRES_001" }, committedAt:new Date(input.eventTime), ledgerReplayed:false };
     },
     async recordReceipt(input) {
       receiptLedgerCalls+=1;
@@ -193,10 +197,19 @@ try {
   assert.equal(new Set(inTransit.rows.map(row=>row.ledger_transaction_id)).size,1);
   assert.equal(inTransit.rows[0].ledger_transaction_id,"TX_SYNTH_TRANSFER_TRANSIT_POSTGRES_001");
 
-  const receiptCommand={transferId:dispatchRequest.transferId,destinationInstitutionId:"INST_DIVINE_LOVE",actorUserId:"USR_DIVINE_LOVE",expectedVersion:4,eventTime:"2026-08-20T01:35:00.000Z",correlationId:"CORR_"+"C".repeat(32),idempotencyKey:"IDEM_TRANSFER_RECEIPT_POSTGRES_001",payloadSha256:"e".repeat(64),transferEventId:"TEVT_"+"E".repeat(40),auditEventId:"AUDT_"+"F".repeat(40),locationEvidence:{evidenceId:"LOC_SYNTH_RECEIPT_POSTGRES_001",evidenceDigest:"f".repeat(64),institutionId:"INST_DIVINE_LOVE",phase:"RECEIPT",latitude:0,longitude:0.072,accuracyMetres:50,source:"FACILITY_FALLBACK",fallbackReason:"DEVICE_UNAVAILABLE",capturedAt:"2026-08-20T01:34:00.000Z",facilityMatched:true,fallback:true,policyVersion:"SYNTHETIC_LOCATION_V1",classification:"SYNTHETIC_DATA",deleteAfter:"2026-09-19T01:34:00.000Z"}};
+  const delayCommand={transferId:dispatchRequest.transferId,actorInstitutionId:"INST_DIVINE_LOVE",actorRoleId:"ROLE-03",actorUserId:"USR_DIVINE_LOVE",expectedVersion:4,reasonCode:"ROUTE_DELAY",eventTime:"2026-08-20T01:32:00.000Z",correlationId:"CORR_"+"D".repeat(32),idempotencyKey:"IDEM_TRANSFER_DELAY_POSTGRES_001",payloadSha256:"1".repeat(64),transferEventId:"TEVT_"+"0".repeat(40),auditEventId:"AUDT_"+"0".repeat(40)};
+  const delayedTransfer=await transferWriter.markTransferDelayed(delayCommand);
+  const replayedDelay=await transferWriter.markTransferDelayed(delayCommand);
+  assert.equal(delayedTransfer?.status,"DELAYED");assert.equal(delayedTransfer?.ledgerVersion,5);assert.equal(delayedTransfer?.reasonCode,"ROUTE_DELAY");assert.equal(replayedDelay?.replayed,true);assert.equal(delayLedgerCalls,1);
+  await assert.rejects(transferWriter.markTransferDelayed({...delayCommand,expectedVersion:5}),(error)=>error instanceof ApiFailure&&error.code==="TRANSFER_IDEMPOTENCY_CONFLICT");
+  const delayedUnits=await pool.query("SELECT unit_id,inventory_status,ledger_transaction_id FROM app.inventory_projection ORDER BY expires_at,unit_id");
+  assert.deepEqual(delayedUnits.rows.map(row=>[row.unit_id,row.inventory_status]),[["UNIT_SYNTH_S4_POSTGRES_002","IN_TRANSIT"],["UNIT_SYNTH_S4_POSTGRES_001","IN_TRANSIT"]]);
+  assert.equal(delayedUnits.rows[0].ledger_transaction_id,"TX_SYNTH_TRANSFER_TRANSIT_POSTGRES_001");
+
+  const receiptCommand={transferId:dispatchRequest.transferId,destinationInstitutionId:"INST_DIVINE_LOVE",actorUserId:"USR_DIVINE_LOVE",expectedVersion:5,eventTime:"2026-08-20T01:35:00.000Z",correlationId:"CORR_"+"C".repeat(32),idempotencyKey:"IDEM_TRANSFER_RECEIPT_POSTGRES_001",payloadSha256:"e".repeat(64),transferEventId:"TEVT_"+"E".repeat(40),auditEventId:"AUDT_"+"F".repeat(40),locationEvidence:{evidenceId:"LOC_SYNTH_RECEIPT_POSTGRES_001",evidenceDigest:"f".repeat(64),institutionId:"INST_DIVINE_LOVE",phase:"RECEIPT",latitude:0,longitude:0.072,accuracyMetres:50,source:"FACILITY_FALLBACK",fallbackReason:"DEVICE_UNAVAILABLE",capturedAt:"2026-08-20T01:34:00.000Z",facilityMatched:true,fallback:true,policyVersion:"SYNTHETIC_LOCATION_V1",classification:"SYNTHETIC_DATA",deleteAfter:"2026-09-19T01:34:00.000Z"}};
   const receivedTransfer=await transferWriter.recordTransferReceipt(receiptCommand);
   const replayedReceipt=await transferWriter.recordTransferReceipt(receiptCommand);
-  assert.equal(receivedTransfer?.status,"RECEIVED");assert.equal(receivedTransfer?.ledgerVersion,5);assert.deepEqual(receivedTransfer?.receivedUnitIds,["UNIT_SYNTH_S4_POSTGRES_002","UNIT_SYNTH_S4_POSTGRES_001"]);assert.equal(receivedTransfer?.locationEvidence.fallback,true);assert.equal(replayedReceipt?.replayed,true);assert.equal(receiptLedgerCalls,1);
+  assert.equal(receivedTransfer?.status,"RECEIVED");assert.equal(receivedTransfer?.ledgerVersion,6);assert.deepEqual(receivedTransfer?.receivedUnitIds,["UNIT_SYNTH_S4_POSTGRES_002","UNIT_SYNTH_S4_POSTGRES_001"]);assert.equal(receivedTransfer?.locationEvidence.fallback,true);assert.equal(replayedReceipt?.replayed,true);assert.equal(receiptLedgerCalls,1);
   await assert.rejects(transferWriter.recordTransferReceipt({...receiptCommand,payloadSha256:"0".repeat(64),locationEvidence:{...receiptCommand.locationEvidence,evidenceDigest:"0".repeat(64)}}),(error)=>error instanceof ApiFailure&&error.code==="TRANSFER_IDEMPOTENCY_CONFLICT");
   const received=await pool.query("SELECT unit_id,institution_id,inventory_status,ledger_transaction_id FROM app.inventory_projection ORDER BY expires_at,unit_id");
   assert.deepEqual(received.rows.map(row=>[row.unit_id,row.institution_id,row.inventory_status]),[["UNIT_SYNTH_S4_POSTGRES_002","INST_MEDIATRIX","RECEIVED"],["UNIT_SYNTH_S4_POSTGRES_001","INST_MEDIATRIX","RECEIVED"]]);
@@ -206,8 +219,8 @@ try {
   assert.deepEqual([receiptLocation.rows[0].evidence_id,receiptLocation.rows[0].institution_id,receiptLocation.rows[0].phase,receiptLocation.rows[0].fallback],[receiptCommand.locationEvidence.evidenceId,"INST_DIVINE_LOVE","RECEIPT",true]);
   assert.equal(receiptLocation.rows[0].retention.days,30);
 
-  const transferRows=await pool.query(`SELECT (SELECT count(*) FROM app.transfer_requests) requests,(SELECT count(*) FROM app.transfer_events) events,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REQUESTED') requested_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REJECTED') rejected_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_APPROVED') approved_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_CANCELLED') cancelled_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_DISPATCHED') dispatched_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_TRANSIT_STARTED') transit_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_RECEIVED') receipt_audits`);
-  assert.deepEqual(Object.values(transferRows.rows[0]).map(Number),[4,11,4,1,2,1,1,1,1]);
+  const transferRows=await pool.query(`SELECT (SELECT count(*) FROM app.transfer_requests) requests,(SELECT count(*) FROM app.transfer_events) events,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REQUESTED') requested_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REJECTED') rejected_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_APPROVED') approved_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_CANCELLED') cancelled_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_DISPATCHED') dispatched_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_TRANSIT_STARTED') transit_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_DELAYED') delayed_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_RECEIVED') receipt_audits`);
+  assert.deepEqual(Object.values(transferRows.rows[0]).map(Number),[4,12,4,1,2,1,1,1,1,1]);
 
   const rows = await pool.query(`
     SELECT
@@ -216,7 +229,7 @@ try {
       (SELECT count(*) FROM app.inventory_projection) AS projections
   `);
   assert.deepEqual(Object.values(rows.rows[0]).map(Number), [2, 4, 2]);
-  console.log("Sprint 4 scan and Sprint 5 transfer request/approval/rejection/cancellation/dispatch/transit/receipt PostgreSQL replay/conflict/projection/audit probes passed");
+  console.log("Sprint 4 scan and Sprint 5 transfer request/approval/rejection/cancellation/dispatch/transit/delay/receipt PostgreSQL replay/conflict/projection/audit probes passed");
 } finally {
   await pool.end();
 }

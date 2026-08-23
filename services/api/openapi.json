@@ -1198,6 +1198,85 @@
           }
         }
       }
+    },
+    "/api/v1/transfers/{transferId}/delay": {
+      "post": {
+        "summary": "Mark one in-transit synthetic transfer delayed with the approved non-PHI reason",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferDelayRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ledger delay transition committed and projected, or an exact idempotent replay returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferDelayResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3359,6 +3438,81 @@
           },
           "locationEvidence": {
             "$ref": "#/components/schemas/TransferLocationEvidenceSummary"
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 5
+          },
+          "ledgerTransactionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferDelayRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "reasonCode",
+          "eventTime",
+          "correlationId"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reasonCode": {
+            "type": "string",
+            "const": "ROUTE_DELAY"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "TransferDelayResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "status",
+          "reasonCode",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "DELAYED"
+          },
+          "reasonCode": {
+            "type": "string",
+            "const": "ROUTE_DELAY"
           },
           "ledgerVersion": {
             "type": "integer",

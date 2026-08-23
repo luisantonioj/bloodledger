@@ -9,6 +9,8 @@ import type {
   TransferCancellationResult,
   TransferDispatchCommand,
   TransferDispatchResult,
+  TransferDelayCommand,
+  TransferDelayResult,
   TransferReceiptCommand,
   TransferReceiptResult,
   TransferTransitCommand,
@@ -244,6 +246,30 @@ export class PostgresApplicationWriteRepository implements ApplicationWriteRepos
         ledgerVersion: asset.version, ledgerTransactionId: asset.lastTransactionId,
         projectedAt, replayed: ledger.ledgerReplayed, classification: "SIMULATION_ONLY",
       };
+    });
+  }
+
+  async markTransferDelayed(input: TransferDelayCommand): Promise<TransferDelayResult | null> {
+    return this.transaction(async(client)=>{
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[input.idempotencyKey]);
+      const existing=await client.query<Row>("SELECT e.transfer_id,e.to_status,e.actor_user_id,e.actor_institution_id,e.event_time,e.reason_code,e.correlation_id,e.ledger_transaction_id,e.ledger_version,r.projected_at FROM app.transfer_events e JOIN app.transfer_requests r ON r.transfer_id=e.transfer_id WHERE e.idempotency_key=$1",[input.idempotencyKey]);
+      if(existing.rows[0]){
+        const row=existing.rows[0],exact=String(row.transfer_id)===input.transferId&&String(row.to_status)==="DELAYED"&&String(row.actor_user_id)===input.actorUserId&&String(row.actor_institution_id)===input.actorInstitutionId&&new Date(String(row.event_time)).toISOString()===input.eventTime&&String(row.reason_code)===input.reasonCode&&String(row.correlation_id)===input.correlationId&&Number(row.ledger_version)===input.expectedVersion+1;
+        if(!exact)throw new ApiFailure(409,"TRANSFER_IDEMPOTENCY_CONFLICT","Idempotency key was used for a different transfer transition.");
+        return{transferId:input.transferId,status:"DELAYED",reasonCode:"ROUTE_DELAY",ledgerVersion:Number(row.ledger_version),ledgerTransactionId:String(row.ledger_transaction_id),projectedAt:new Date(String(row.projected_at)).toISOString(),replayed:true,classification:"SIMULATION_ONLY"};
+      }
+      const target=await client.query<Row>("SELECT transfer_id,status,ledger_version FROM app.transfer_requests WHERE transfer_id=$1 AND ((destination_institution_id=$2 AND $3='ROLE-03') OR (source_institution_id=$2 AND $3 IN ('ROLE-01','ROLE-02'))) FOR UPDATE",[input.transferId,input.actorInstitutionId,input.actorRoleId]);
+      if(!target.rows[0])return null;
+      if(String(target.rows[0].status)!=="IN_TRANSIT")throw new ApiFailure(409,"TRANSFER_STATE_CONFLICT","Only an in-transit transfer can be marked delayed.");
+      if(Number(target.rows[0].ledger_version)!==input.expectedVersion)throw new ApiFailure(409,"TRANSFER_VERSION_CONFLICT","The transfer changed; refresh before retrying.");
+      let ledger;
+      try{ledger=await this.transferLedger.markDelayed({transferId:input.transferId,actorUserId:input.actorUserId,eventTime:input.eventTime,expectedVersion:input.expectedVersion,correlationId:input.correlationId,idempotencyKey:input.idempotencyKey,policyVersion:"SYNTHETIC_TRANSFER_V1",reasonCode:"ROUTE_DELAY"});}
+      catch(error){if(!(error instanceof WorkerFailure))throw error;if(error.retryable)throw new ApiFailure(503,"FABRIC_GATEWAY_UNAVAILABLE","The ledger is unavailable; retry with the same idempotency key.");const status=error.code==="TRF_NOT_AUTHORIZED"?403:error.code.includes("CONFLICT")||["TRF_STATE_INVALID","TRF_TRANSITION_INVALID"].includes(error.code)?409:400;throw new ApiFailure(status,error.code,"The transfer delay transition was rejected by the authoritative ledger policy.");}
+      const asset=ledger.asset,projectedAt=new Date(Math.floor(Date.now()/1000)*1000).toISOString();
+      await client.query("UPDATE app.transfer_requests SET status='DELAYED',reason_code=$2,actor_user_id=$3,ledger_version=$4,ledger_transaction_id=$5,correlation_id=$6,projected_at=$7 WHERE transfer_id=$1",[asset.transferId,input.reasonCode,input.actorUserId,asset.version,asset.lastTransactionId,asset.correlationId,projectedAt]);
+      await client.query("INSERT INTO app.transfer_events(event_id,transfer_id,from_status,to_status,actor_user_id,actor_institution_id,event_time,reason_code,idempotency_key,correlation_id,ledger_transaction_id,ledger_version,classification) VALUES($1,$2,'IN_TRANSIT','DELAYED',$3,$4,$5,$6,$7,$8,$9,$10,'SIMULATION_ONLY')",[input.transferEventId,asset.transferId,input.actorUserId,input.actorInstitutionId,input.eventTime,input.reasonCode,input.idempotencyKey,input.correlationId,asset.lastTransactionId,asset.version]);
+      await client.query("INSERT INTO app.audit_events(audit_event_id,institution_id,actor_user_id,action_code,target_type,target_id,outcome,correlation_id,ledger_transaction_id,event_time,classification) VALUES($1,$2,$3,'TRANSFER_DELAYED','TRANSFER',$4,'SUCCEEDED',$5,$6,$7,'SIMULATION_ONLY')",[input.auditEventId,input.actorInstitutionId,input.actorUserId,asset.transferId,input.correlationId,asset.lastTransactionId,input.eventTime]);
+      return{transferId:asset.transferId,status:"DELAYED",reasonCode:"ROUTE_DELAY",ledgerVersion:asset.version,ledgerTransactionId:asset.lastTransactionId,projectedAt,replayed:ledger.ledgerReplayed,classification:"SIMULATION_ONLY"};
     });
   }
 

@@ -189,6 +189,32 @@ export interface TransferDispatchResult {
   classification: "SIMULATION_ONLY";
 }
 
+export interface TransferDelayCommand {
+  transferId: string;
+  actorInstitutionId: string;
+  actorRoleId: "ROLE-01" | "ROLE-02" | "ROLE-03";
+  actorUserId: string;
+  expectedVersion: number;
+  reasonCode: "ROUTE_DELAY";
+  eventTime: string;
+  correlationId: string;
+  idempotencyKey: string;
+  payloadSha256: string;
+  transferEventId: string;
+  auditEventId: string;
+}
+
+export interface TransferDelayResult {
+  transferId: string;
+  status: "DELAYED";
+  reasonCode: "ROUTE_DELAY";
+  ledgerVersion: number;
+  ledgerTransactionId: string;
+  projectedAt: string;
+  replayed: boolean;
+  classification: "SIMULATION_ONLY";
+}
+
 export interface TransferCancellationCommand {
   transferId: string;
   actorInstitutionId: string;
@@ -247,6 +273,7 @@ export interface ApplicationWriteRepository {
   approveTransfer(input: TransferApprovalCommand): Promise<TransferApprovalResult | null>;
   cancelTransfer(input: TransferCancellationCommand): Promise<TransferCancellationResult | null>;
   dispatchTransfer(input: TransferDispatchCommand): Promise<TransferDispatchResult | null>;
+  markTransferDelayed(input: TransferDelayCommand): Promise<TransferDelayResult | null>;
   recordTransferReceipt(input: TransferReceiptCommand): Promise<TransferReceiptResult | null>;
   startTransferTransit(input: TransferTransitCommand): Promise<TransferTransitResult | null>;
   rejectTransfer(input: TransferRejectionCommand): Promise<TransferRejectionResult | null>;

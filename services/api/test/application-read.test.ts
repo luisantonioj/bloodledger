@@ -4,7 +4,7 @@ import test from "node:test";
 import { buildApp } from "../src/app.js";
 import type { ApiConfig } from "../src/config.js";
 import type { ApplicationReadRepository } from "../src/application-read.js";
-import type { AlertAcknowledgementInput, AlertAcknowledgementResult, ApplicationWriteRepository, TransferApprovalCommand, TransferApprovalResult, TransferCancellationCommand, TransferCancellationResult, TransferDispatchCommand, TransferDispatchResult, TransferReceiptCommand, TransferReceiptResult, TransferTransitCommand, TransferTransitResult, TransferRejectionCommand, TransferRejectionResult, TransferRequestCommand, TransferRequestResult } from "../src/application-write.js";
+import type { AlertAcknowledgementInput, AlertAcknowledgementResult, ApplicationWriteRepository, TransferApprovalCommand, TransferApprovalResult, TransferCancellationCommand, TransferCancellationResult, TransferDispatchCommand, TransferDispatchResult, TransferDelayCommand, TransferDelayResult, TransferReceiptCommand, TransferReceiptResult, TransferTransitCommand, TransferTransitResult, TransferRejectionCommand, TransferRejectionResult, TransferRequestCommand, TransferRequestResult } from "../src/application-write.js";
 import { ApiFailure } from "../src/errors.js";
 import { deriveVerifier, type CredentialRecord, type SessionRepository } from "../src/session.js";
 import type { RoleId } from "../src/web-access.js";
@@ -17,6 +17,7 @@ class Writes implements ApplicationWriteRepository {
   approvalCalls: TransferApprovalCommand[] = [];
   cancellationCalls: TransferCancellationCommand[] = [];
   dispatchCalls: TransferDispatchCommand[] = [];
+  delayCalls: TransferDelayCommand[] = [];
   receiptCalls: TransferReceiptCommand[] = [];
   transitCalls: TransferTransitCommand[] = [];
   rejectionCalls: TransferRejectionCommand[] = [];
@@ -24,6 +25,7 @@ class Writes implements ApplicationWriteRepository {
   approvalFound = true;
   cancellationFound = true;
   dispatchFound = true;
+  delayFound = true;
   receiptFound = true;
   transitFound = true;
   rejectionFound = true;
@@ -32,6 +34,7 @@ class Writes implements ApplicationWriteRepository {
   approvalRecords = new Map<string,{payloadSha256:string;result:TransferApprovalResult}>();
   cancellationRecords = new Map<string,{payloadSha256:string;result:TransferCancellationResult}>();
   dispatchRecords = new Map<string,{payloadSha256:string;result:TransferDispatchResult}>();
+  delayRecords = new Map<string,{payloadSha256:string;result:TransferDelayResult}>();
   receiptRecords = new Map<string,{payloadSha256:string;result:TransferReceiptResult}>();
   transitRecords = new Map<string,{payloadSha256:string;result:TransferTransitResult}>();
   rejectionRecords = new Map<string,{payloadSha256:string;result:TransferRejectionResult}>();
@@ -72,6 +75,15 @@ class Writes implements ApplicationWriteRepository {
     const result:TransferApprovalResult={transferId:input.transferId,status:"APPROVED",selectedUnitIds:["UNIT_SYNTH_FEFO_01"],ledgerVersion:input.expectedVersion+1,ledgerTransactionId:"TX_SYNTH_TRANSFER_APPROVAL",projectedAt:input.eventTime,replayed:false,classification:"SIMULATION_ONLY"};
     this.approvalRecords.set(input.idempotencyKey,{payloadSha256:input.payloadSha256,result});
     return result;
+  }
+
+  async markTransferDelayed(input:TransferDelayCommand) {
+    this.delayCalls.push(input);
+    const existing=this.delayRecords.get(input.idempotencyKey);
+    if(existing){if(existing.payloadSha256!==input.payloadSha256)throw new ApiFailure(409,"TRANSFER_IDEMPOTENCY_CONFLICT","Idempotency key was used for a different transfer transition.");return{...existing.result,replayed:true}}
+    if(!this.delayFound)return null;
+    const result:TransferDelayResult={transferId:input.transferId,status:"DELAYED",reasonCode:"ROUTE_DELAY",ledgerVersion:input.expectedVersion+1,ledgerTransactionId:"TX_SYNTH_TRANSFER_DELAY",projectedAt:input.eventTime,replayed:false,classification:"SIMULATION_ONLY"};
+    this.delayRecords.set(input.idempotencyKey,{payloadSha256:input.payloadSha256,result});return result;
   }
 
   async recordTransferReceipt(input:TransferReceiptCommand) {
@@ -162,6 +174,12 @@ test("ROLE-01 starts transit for a dispatched scoped transfer and safely replays
 test("start transit permits ROLE-02 while denying destination/regulatory roles, cross-origin use, and caller scope",async()=>{const admin=await fixture("ROLE-02"),secondary=await fixture("ROLE-03"),regulatory=await fixture("ROLE-04");const url="/api/v1/transfers/TRF_SYNTH_VIEW_01/transit-start",eventTime=new Date().toISOString(),headers={origin,"idempotency-key":"IDEM_TRANSFER_TRANSIT_002"},payload={expectedVersion:3,eventTime,correlationId:"CORR_"+"5".repeat(32)};assert.equal((await admin.app.inject({method:"POST",url,headers:{...headers,cookie:admin.cookie},payload})).statusCode,200);assert.equal((await secondary.app.inject({method:"POST",url,headers:{...headers,cookie:secondary.cookie},payload})).statusCode,403);assert.equal((await regulatory.app.inject({method:"POST",url,headers:{...headers,cookie:regulatory.cookie},payload})).statusCode,403);assert.equal((await admin.app.inject({method:"POST",url,headers:{...headers,cookie:admin.cookie,origin:"http://127.0.0.1:9999"},payload})).statusCode,403);assert.equal((await admin.app.inject({method:"POST",url,headers:{...headers,cookie:admin.cookie},payload:{...payload,institutionId:"INST_SYNTH_01"}})).statusCode,400);await admin.app.close();await secondary.app.close();await regulatory.app.close()});
 
 test("start transit detects idempotency conflict and hidden-scope absence",async()=>{const{app,writes,cookie}=await fixture("ROLE-01");const url="/api/v1/transfers/TRF_SYNTH_VIEW_01/transit-start",eventTime=new Date().toISOString(),headers={cookie,origin,"idempotency-key":"IDEM_TRANSFER_TRANSIT_CONFLICT"},payload={expectedVersion:3,eventTime,correlationId:"CORR_"+"6".repeat(32)};assert.equal((await app.inject({method:"POST",url,headers,payload})).statusCode,200);const conflict=await app.inject({method:"POST",url,headers,payload:{...payload,expectedVersion:4}});assert.equal(conflict.statusCode,409);writes.transitFound=false;assert.equal((await app.inject({method:"POST",url:"/api/v1/transfers/TRF_SYNTH_VIEW_02/transit-start",headers:{...headers,"idempotency-key":"IDEM_TRANSFER_TRANSIT_MISSING"},payload})).statusCode,404);await app.close()});
+
+test("ROLE-01 marks an in-transit source transfer delayed and safely replays it",async()=>{const{app,writes,cookie}=await fixture("ROLE-01");const url="/api/v1/transfers/TRF_SYNTH_VIEW_01/delay",eventTime=new Date().toISOString(),headers={cookie,origin,"idempotency-key":"IDEM_TRANSFER_DELAY_001"},payload={expectedVersion:4,reasonCode:"ROUTE_DELAY",eventTime,correlationId:"CORR_"+"1".repeat(32)};const first=await app.inject({method:"POST",url,headers,payload}),replay=await app.inject({method:"POST",url,headers,payload});assert.equal(first.statusCode,200);assert.equal(first.json().status,"DELAYED");assert.equal(first.json().reasonCode,"ROUTE_DELAY");assert.equal(replay.json().replayed,true);assert.equal(writes.delayCalls[0].actorRoleId,"ROLE-01");assert.equal(writes.delayCalls[0].actorInstitutionId,"INST_MEDIATRIX");await app.close()});
+
+test("delay permits source admin and destination user while denying unrelated roles and caller-selected scope",async()=>{const admin=await fixture("ROLE-02"),recipient=await fixture("ROLE-03"),regulatory=await fixture("ROLE-04");const url="/api/v1/transfers/TRF_SYNTH_VIEW_01/delay",eventTime=new Date().toISOString(),headers={origin,"idempotency-key":"IDEM_TRANSFER_DELAY_002"},payload={expectedVersion:4,reasonCode:"ROUTE_DELAY",eventTime,correlationId:"CORR_"+"2".repeat(32)};assert.equal((await admin.app.inject({method:"POST",url,headers:{...headers,cookie:admin.cookie},payload})).statusCode,200);assert.equal((await recipient.app.inject({method:"POST",url,headers:{...headers,cookie:recipient.cookie,"idempotency-key":"IDEM_TRANSFER_DELAY_003"},payload})).statusCode,200);assert.equal(recipient.writes.delayCalls[0].actorRoleId,"ROLE-03");assert.equal((await regulatory.app.inject({method:"POST",url,headers:{...headers,cookie:regulatory.cookie},payload})).statusCode,403);assert.equal((await recipient.app.inject({method:"POST",url,headers:{...headers,cookie:recipient.cookie,origin:"http://127.0.0.1:9999"},payload})).statusCode,403);assert.equal((await recipient.app.inject({method:"POST",url,headers:{...headers,cookie:recipient.cookie,"idempotency-key":"IDEM_TRANSFER_DELAY_INVALID"},payload:{...payload,actorInstitutionId:"INST_MEDIATRIX"}})).statusCode,400);assert.equal((await recipient.app.inject({method:"POST",url,headers:{...headers,cookie:recipient.cookie,"idempotency-key":"IDEM_TRANSFER_DELAY_REASON"},payload:{...payload,reasonCode:"FREE_TEXT"}})).statusCode,400);await admin.app.close();await recipient.app.close();await regulatory.app.close()});
+
+test("delay reports idempotency conflict and hides a transfer outside custody scope",async()=>{const{app,writes,cookie}=await fixture("ROLE-02");const url="/api/v1/transfers/TRF_SYNTH_VIEW_01/delay",eventTime=new Date().toISOString(),headers={cookie,origin,"idempotency-key":"IDEM_TRANSFER_DELAY_CONFLICT"},payload={expectedVersion:4,reasonCode:"ROUTE_DELAY",eventTime,correlationId:"CORR_"+"3".repeat(32)};assert.equal((await app.inject({method:"POST",url,headers,payload})).statusCode,200);const conflict=await app.inject({method:"POST",url,headers,payload:{...payload,expectedVersion:5}});assert.equal(conflict.statusCode,409);writes.delayFound=false;assert.equal((await app.inject({method:"POST",url:"/api/v1/transfers/TRF_SYNTH_VIEW_02/delay",headers:{...headers,"idempotency-key":"IDEM_TRANSFER_DELAY_MISSING"},payload})).statusCode,404);await app.close()});
 
 test("ROLE-03 records receipt for an in-transit destination transfer with redacted synthetic evidence and safely replays it",async()=>{const{app,writes,cookie}=await fixture("ROLE-03","INST_DIVINE_LOVE");const url="/api/v1/transfers/TRF_SYNTH_VIEW_01/receipt",eventTime=new Date().toISOString(),headers={cookie,origin,"idempotency-key":"IDEM_TRANSFER_RECEIPT_001"},payload={expectedVersion:4,eventTime,correlationId:"CORR_"+"7".repeat(32),location:{latitude:0,longitude:0.072,accuracyMetres:50,source:"FACILITY_FALLBACK",fallbackReason:"DEVICE_UNAVAILABLE",capturedAt:eventTime}};const first=await app.inject({method:"POST",url,headers,payload}),replay=await app.inject({method:"POST",url,headers,payload});assert.equal(first.statusCode,200);assert.equal(first.json().status,"RECEIVED");assert.deepEqual(first.json().receivedUnitIds,["UNIT_SYNTH_FEFO_01"]);assert.equal(first.json().locationEvidence.fallback,true);assert.equal("latitude" in first.json().locationEvidence,false);assert.equal(replay.json().replayed,true);assert.equal(writes.receiptCalls[0].destinationInstitutionId,"INST_DIVINE_LOVE");await app.close()});
 
