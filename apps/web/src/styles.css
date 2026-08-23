@@ -3,3 +3,5 @@
 .status.warning{color:#9a5708;background:#fbefd8}.status.critical{color:#c12f2f;background:#fbe7e7}
 
 .ack-action{display:grid;gap:5px;min-width:150px}.ack-action .button{justify-self:start;padding:6px 9px}.ack-action span{max-width:240px;color:#c12f2f;font-size:11px}
+
+.card h3{margin:0;padding:13px 18px;border-top:1px solid #e8e3d8;border-bottom:1px solid #e8e3d8;font-size:12px}.report-note{margin:0;padding:12px 18px;color:#3a4250;background:#faf8f3;font-size:12px}.report-toolbar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 18px;background:#faf8f3}.report-toolbar p{margin:0;color:#3a4250;font-size:12px}.report-toolbar a{text-decoration:none;white-space:nowrap}@media(max-width:760px){.report-toolbar{align-items:stretch;flex-direction:column}}

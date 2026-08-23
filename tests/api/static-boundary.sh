@@ -26,6 +26,11 @@ rg -q 'pg_advisory_xact_lock' services/api/src/database-application-write.ts
 rg -Fq "institution_id=\$2 AND status='OPEN' FOR UPDATE" services/api/src/database-application-write.ts
 rg -q 'ALERT_IDEMPOTENCY_CONFLICT' services/api/src/database-application-write.ts
 rg -q "'ALERT_ACKNOWLEDGED'" services/api/src/database-application-write.ts
+rg -Fq '/api/v1/consortium' services/api/openapi.json services/api/src/app.ts
+rg -Fq '/api/v1/audit' services/api/openapi.json services/api/src/app.ts
+rg -Fq '/api/v1/reports/inventory.csv' services/api/openapi.json services/api/src/app.ts
+rg -Fq 'WHERE e.institution_id=$1' services/api/src/database-application-read.ts
+rg -q 'not an official regulatory filing' services/api/src/app.ts
 
 if rg -n 'request\.log\..*(body|headers)|console\.log\(|logger: true' services/api/src; then
   echo "API source may log a request payload, header, or unsafe console output" >&2

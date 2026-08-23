@@ -485,6 +485,125 @@
           }
         }
       }
+    },
+    "/api/v1/consortium": {
+      "get": {
+        "summary": "Read approved city-wide application aggregates",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Regulatory network view without fabricated peer ownership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsortiumResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/audit": {
+      "get": {
+        "summary": "Read redacted permission-scoped application audit events",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Institution or city-wide audit view according to verified role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/reports/inventory": {
+      "get": {
+        "summary": "Read the regulatory simulation inventory report",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Labeled prototype aggregate report; not an official filing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryReportResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/reports/inventory.csv": {
+      "get": {
+        "summary": "Export the regulatory simulation inventory report as safe CSV",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Labeled prototype CSV attachment with spreadsheet formula prefixes neutralized",
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1519,6 +1638,235 @@
           },
           "replayed": {
             "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "transferCount",
+          "unitCount"
+        ],
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "transferCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unitCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "ConsortiumResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope",
+          "inventory",
+          "alerts",
+          "transferSummary",
+          "lastSuccessfulProjectionAt",
+          "classification"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "const": "CITY_AGGREGATE"
+          },
+          "inventory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventoryAggregate"
+            }
+          },
+          "alerts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlertAggregateView"
+            }
+          },
+          "transferSummary": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransferSummary"
+            }
+          },
+          "lastSuccessfulProjectionAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "AuditEventView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "auditEventId",
+          "institutionId",
+          "institutionDisplayName",
+          "actionCode",
+          "targetType",
+          "outcome",
+          "safeErrorCode",
+          "correlationId",
+          "ledgerTransactionId",
+          "eventTime",
+          "classification"
+        ],
+        "properties": {
+          "auditEventId": {
+            "type": "string",
+            "pattern": "^AUDT_[0-9A-F]{40}$"
+          },
+          "institutionId": {
+            "type": "string"
+          },
+          "institutionDisplayName": {
+            "type": "string"
+          },
+          "actionCode": {
+            "type": "string"
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "SUCCEEDED",
+              "DENIED",
+              "FAILED"
+            ]
+          },
+          "safeErrorCode": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "ledgerTransactionId": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "AuditResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope",
+          "events",
+          "classification"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "INSTITUTION",
+              "CITY_AGGREGATE"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEventView"
+            }
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "InventoryReportResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reportType",
+          "scope",
+          "generatedAt",
+          "inventory",
+          "alerts",
+          "transferSummary",
+          "disclaimer",
+          "classification"
+        ],
+        "properties": {
+          "reportType": {
+            "type": "string",
+            "const": "CITY_INVENTORY_SUMMARY"
+          },
+          "scope": {
+            "type": "string",
+            "const": "CITY_AGGREGATE"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "inventory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventoryAggregate"
+            }
+          },
+          "alerts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlertAggregateView"
+            }
+          },
+          "transferSummary": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransferSummary"
+            }
+          },
+          "disclaimer": {
+            "type": "string"
           },
           "classification": {
             "type": "string",

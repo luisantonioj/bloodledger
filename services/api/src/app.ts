@@ -13,6 +13,7 @@ import { isRoleId, permissionsFor, permits, WEB_ACCESS_POLICY_VERSION } from "./
 import type { ApplicationReadRepository } from "./application-read.js";
 import type { ApplicationWriteRepository } from "./application-write.js";
 import { sha256 } from "./hash.js";
+import { csvCell } from "./csv.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
 const EVENT_PATTERN = /^SCAN_[0-9A-F]{32}$/;
@@ -37,6 +38,17 @@ function manilaDate(now: Date): string {
 function validBusinessDate(value: string): boolean {
   const parsed = new Date(`${value}T00:00:00.000Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function summarizeTransfers(transfers: readonly { status: string; quantity: number }[]): { status: string; transferCount: number; unitCount: number }[] {
+  const summary = new Map<string, { transferCount: number; unitCount: number }>();
+  for (const transfer of transfers) {
+    const current = summary.get(transfer.status) ?? { transferCount: 0, unitCount: 0 };
+    current.transferCount += 1;
+    current.unitCount += transfer.quantity;
+    summary.set(transfer.status, current);
+  }
+  return [...summary].sort(([left], [right]) => left.localeCompare(right)).map(([status, counts]) => ({ status, ...counts }));
 }
 
 const ROLE_NAMES = { "ROLE-01": "Medical Technologist", "ROLE-02": "Hospital Administrator", "ROLE-03": "Secondary Hospital User", "ROLE-04": "DOH/PRC Regulatory Viewer", "ROLE-05": "System Administrator", "ROLE-06": "Institution Account Administrator" } as const;
@@ -195,6 +207,36 @@ export async function buildApp(
         if (principal.roleId === "ROLE-04") return { scope:"CITY_AGGREGATE", transfers:await applicationReads.listTransfers(), classification:"SIMULATION_ONLY" };
         if (principal.roleId === "ROLE-03") return { scope:"DESTINATION_INSTITUTION", transfers:await applicationReads.listTransfers(principal.institutionId,"DESTINATION"), classification:"SIMULATION_ONLY" };
         return { scope:"SOURCE_INSTITUTION", transfers:await applicationReads.listTransfers(principal.institutionId,"SOURCE"), classification:"SIMULATION_ONLY" };
+      });
+      app.get("/api/v1/consortium", async (request) => {
+        const { principal } = await restore(request);
+        if (!permits(principal.roleId, "consortium:read")) throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","Network aggregate access is not permitted.");
+        const [inventory,alerts,transfers] = await Promise.all([applicationReads.listInventoryAggregates(),applicationReads.listAlertAggregates(),applicationReads.listTransfers()]);
+        const timestamps=inventory.map(item=>item.lastProjectedAt).sort();
+        return { scope:"CITY_AGGREGATE", inventory, alerts, transferSummary:summarizeTransfers(transfers), lastSuccessfulProjectionAt:timestamps.at(-1)??null, classification:"SIMULATION_ONLY" };
+      });
+      app.get("/api/v1/audit", async (request) => {
+        const { principal } = await restore(request);
+        if (!permits(principal.roleId, "audit:read")) throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","Audit access is not permitted.");
+        const cityWide=principal.roleId==="ROLE-04";
+        return { scope:cityWide?"CITY_AGGREGATE":"INSTITUTION", events:await applicationReads.listAuditEvents(cityWide?undefined:principal.institutionId), classification:"SIMULATION_ONLY" };
+      });
+      app.get("/api/v1/reports/inventory", async (request) => {
+        const { principal } = await restore(request);
+        if (!permits(principal.roleId, "reports:read")) throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","Regulatory report access is not permitted.");
+        const [inventory,alerts,transfers]=await Promise.all([applicationReads.listInventoryAggregates(),applicationReads.listAlertAggregates(),applicationReads.listTransfers()]);
+        return { reportType:"CITY_INVENTORY_SUMMARY", scope:"CITY_AGGREGATE", generatedAt:clock().toISOString(), inventory, alerts, transferSummary:summarizeTransfers(transfers), disclaimer:"Prototype simulation evidence; not an official regulatory filing or compliance determination.", classification:"SIMULATION_ONLY" };
+      });
+      app.get("/api/v1/reports/inventory.csv", async (request,reply) => {
+        const { principal } = await restore(request);
+        if (!permits(principal.roleId, "reports:read")) throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","Regulatory report access is not permitted.");
+        const generatedAt=clock().toISOString();
+        const inventory=await applicationReads.listInventoryAggregates();
+        const header=["classification","disclaimer","generated_at","institution","blood_type","component","inventory_status","confirmed_count","last_projected_at"];
+        const disclaimer="Prototype simulation evidence; not an official regulatory filing or compliance determination.";
+        const rows=inventory.map(item=>["SIMULATION_ONLY",disclaimer,generatedAt,item.institutionDisplayName,item.bloodType,item.component,item.inventoryStatus,item.confirmedCount,item.lastProjectedAt]);
+        const csv=[header,...rows].map(row=>row.map(csvCell).join(",")).join("\r\n")+"\r\n";
+        return reply.type("text/csv; charset=utf-8").header("content-disposition",'attachment; filename="bloodledger-simulation-inventory.csv"').send(csv);
       });
     }
     if (applicationWrites) {
