@@ -20,6 +20,10 @@ rg -q '/api/v1/inventory' services/api/openapi.json services/api/src/app.ts
 rg -Fq 'listInventoryUnits(principal.institutionId)' services/api/src/app.ts
 rg -q '/api/v1/alerts' services/api/openapi.json services/api/src/app.ts
 rg -q '/api/v1/transfers' services/api/openapi.json services/api/src/app.ts
+rg -Fq '/api/v1/transfers/{transferId}' services/api/openapi.json
+rg -Fq 'findTransfer(request.params.transferId' services/api/src/app.ts
+rg -Fq 'AND destination_institution_id=$2' services/api/src/database-application-read.ts
+rg -q 'DISABLED_UNAPPROVED_POLICY' services/api/src/algorithm-explanation.ts
 rg -Fq 'listTransfers(principal.institutionId,"DESTINATION")' services/api/src/app.ts
 rg -Fq '/api/v1/alerts/{alertId}/acknowledgements' services/api/openapi.json
 rg -q 'pg_advisory_xact_lock' services/api/src/database-application-write.ts

@@ -19,6 +19,7 @@ const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
 const EVENT_PATTERN = /^SCAN_[0-9A-F]{32}$/;
 const ALERT_PATTERN = /^ALRT_[0-9A-F]{40}$/;
 const CORRELATION_PATTERN = /^CORR_[0-9A-F]{32}$/;
+const TRANSFER_PATTERN = /^TRF_[A-Z0-9_-]{1,56}$/;
 
 function equalSecret(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left);
@@ -207,6 +208,21 @@ export async function buildApp(
         if (principal.roleId === "ROLE-04") return { scope:"CITY_AGGREGATE", transfers:await applicationReads.listTransfers(), classification:"SIMULATION_ONLY" };
         if (principal.roleId === "ROLE-03") return { scope:"DESTINATION_INSTITUTION", transfers:await applicationReads.listTransfers(principal.institutionId,"DESTINATION"), classification:"SIMULATION_ONLY" };
         return { scope:"SOURCE_INSTITUTION", transfers:await applicationReads.listTransfers(principal.institutionId,"SOURCE"), classification:"SIMULATION_ONLY" };
+      });
+      app.get<{ Params: { transferId: string } }>("/api/v1/transfers/:transferId", async (request) => {
+        const { principal } = await restore(request);
+        if (!permits(principal.roleId, "transfers:read")) throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","Transfer access is not permitted.");
+        if (!TRANSFER_PATTERN.test(request.params.transferId)) throw new ApiFailure(400,"INVALID_TRANSFER_ID","Transfer ID is invalid.");
+        const regulatory=principal.roleId==="ROLE-04";
+        const perspective=principal.roleId==="ROLE-03"?"DESTINATION":"SOURCE";
+        const transfer=await applicationReads.findTransfer(request.params.transferId,regulatory?undefined:principal.institutionId,regulatory?undefined:perspective);
+        if(!transfer)throw new ApiFailure(404,"TRANSFER_NOT_FOUND","Transfer was not found in the authorized institution scope.");
+        const [selectedUnitIds,timeline,explanations]=await Promise.all([
+          regulatory?Promise.resolve([]):applicationReads.listTransferSelectedUnits(transfer.transferId),
+          applicationReads.listTransferEvents(transfer.transferId),
+          applicationReads.listTransferExplanations(transfer.transferId,transfer.destinationInstitutionId,transfer.recommendationDigest,!regulatory),
+        ]);
+        return { transfer, selectedUnitIds, timeline, explanations, selectionPolicy:"FEFO", recommendationEligibility:"DISABLED_UNAPPROVED_POLICY", automaticApproval:false, classification:"SIMULATION_ONLY" };
       });
       app.get("/api/v1/consortium", async (request) => {
         const { principal } = await restore(request);

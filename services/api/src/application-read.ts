@@ -5,7 +5,10 @@ export interface PendingScanCount { status:string; count:number }
 export interface AlertView { alertId:string; institutionId:string; alertType:string; severity:string; unitId:string|null; bloodType:string|null; component:string|null; inventoryStatus:string|null; expiresAt:string|null; evaluatedAt:string; status:string; acknowledged:boolean; policyVersion:string; classification:"SIMULATION_ONLY" }
 export interface AlertAggregateView { institutionId:string; institutionDisplayName:string; alertType:string; severity:string; status:string; count:number; lastEvaluatedAt:string }
 export interface AuditEventView { auditEventId:string; institutionId:string; institutionDisplayName:string; actionCode:string; targetType:string; outcome:string; safeErrorCode:string|null; correlationId:string; ledgerTransactionId:string|null; eventTime:string; classification:"SIMULATION_ONLY" }
-export interface TransferView { transferId:string; sourceInstitutionId:string; destinationInstitutionId:string; bloodType:string; component:string; quantity:number; urgency:string; requestTime:string; status:string; reasonCode:string|null; ledgerVersion:number; ledgerTransactionId:string; correlationId:string; projectedAt:string; dispatchEvidenceRecorded:boolean; receiptEvidenceRecorded:boolean; classification:"SIMULATION_ONLY" }
+export interface TransferEventView { eventId:string; fromStatus:string|null; toStatus:string; eventTime:string; reasonCode:string|null; ledgerTransactionId:string; ledgerVersion:number; correlationId:string; classification:"SIMULATION_ONLY" }
+export interface AlgorithmFactorView { name:string; normalized:number; contribution:number }
+export interface AlgorithmExplanationView { runId:string; algorithm:"RPS"|"BROA"; algorithmVersion:string; recommendationEligibility:"DISABLED_UNAPPROVED_POLICY"; evaluationTime:string; inputSha256:string; configSha256:string; recommendationDigest:string|null; score:number; factors:AlgorithmFactorView[]; trigger:string|null; selectedUnitId:string|null; automaticApproval:false; classification:"SIMULATION_ONLY" }
+export interface TransferView { transferId:string; sourceInstitutionId:string; destinationInstitutionId:string; bloodType:string; component:string; quantity:number; urgency:string; requestTime:string; status:string; reasonCode:string|null; recommendationDigest:string|null; ledgerVersion:number; ledgerTransactionId:string; correlationId:string; projectedAt:string; dispatchEvidenceRecorded:boolean; receiptEvidenceRecorded:boolean; classification:"SIMULATION_ONLY" }
 export interface ApplicationReadRepository {
   listInventoryUnits(institutionId:string):Promise<InventoryUnitView[]>;
   listInventoryAggregates(institutionId?:string):Promise<InventoryAggregateView[]>;
@@ -13,5 +16,9 @@ export interface ApplicationReadRepository {
   listAlerts(institutionId:string,userId:string):Promise<AlertView[]>;
   listAlertAggregates():Promise<AlertAggregateView[]>;
   listTransfers(institutionId?:string,perspective?:"SOURCE"|"DESTINATION"):Promise<TransferView[]>;
+  findTransfer(transferId:string,institutionId?:string,perspective?:"SOURCE"|"DESTINATION"):Promise<TransferView|null>;
+  listTransferSelectedUnits(transferId:string):Promise<string[]>;
+  listTransferEvents(transferId:string):Promise<TransferEventView[]>;
+  listTransferExplanations(transferId:string,destinationInstitutionId:string,recommendationDigest:string|null,includeSelectedUnit:boolean):Promise<AlgorithmExplanationView[]>;
   listAuditEvents(institutionId?:string):Promise<AuditEventView[]>;
 }

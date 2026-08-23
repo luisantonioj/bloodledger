@@ -604,6 +604,51 @@
           }
         }
       }
+    },
+    "/api/v1/transfers/{transferId}": {
+      "get": {
+        "summary": "Read one transfer with scoped FEFO, lifecycle, and disabled optimization evidence",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Institution-scoped detail; regulatory viewers receive no selected unit identifiers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1489,6 +1534,7 @@
           "requestTime",
           "status",
           "reasonCode",
+          "recommendationDigest",
           "ledgerVersion",
           "ledgerTransactionId",
           "correlationId",
@@ -1573,6 +1619,17 @@
           "classification": {
             "type": "string",
             "const": "SIMULATION_ONLY"
+          },
+          "recommendationDigest": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -1867,6 +1924,253 @@
           },
           "disclaimer": {
             "type": "string"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferEventView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "eventId",
+          "fromStatus",
+          "toStatus",
+          "eventTime",
+          "reasonCode",
+          "ledgerTransactionId",
+          "ledgerVersion",
+          "correlationId",
+          "classification"
+        ],
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "pattern": "^TEVT_[0-9A-F]{40}$"
+          },
+          "fromStatus": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "toStatus": {
+            "type": "string"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reasonCode": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ledgerTransactionId": {
+            "type": "string"
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "AlgorithmFactorView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "normalized",
+          "contribution"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "urgency",
+              "wait",
+              "stockShortage",
+              "mlSurplus",
+              "distancePenalty"
+            ]
+          },
+          "normalized": {
+            "type": "number"
+          },
+          "contribution": {
+            "type": "number"
+          }
+        }
+      },
+      "AlgorithmExplanationView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "runId",
+          "algorithm",
+          "algorithmVersion",
+          "recommendationEligibility",
+          "evaluationTime",
+          "inputSha256",
+          "configSha256",
+          "recommendationDigest",
+          "score",
+          "factors",
+          "trigger",
+          "selectedUnitId",
+          "automaticApproval",
+          "classification"
+        ],
+        "properties": {
+          "runId": {
+            "type": "string",
+            "pattern": "^ARUN_[0-9A-F]{32}$"
+          },
+          "algorithm": {
+            "type": "string",
+            "enum": [
+              "RPS",
+              "BROA"
+            ]
+          },
+          "algorithmVersion": {
+            "type": "string",
+            "const": "SYNTHETIC_OPTIMIZATION_V1"
+          },
+          "recommendationEligibility": {
+            "type": "string",
+            "const": "DISABLED_UNAPPROVED_POLICY"
+          },
+          "evaluationTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "inputSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "configSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "recommendationDigest": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "score": {
+            "type": "number"
+          },
+          "factors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlgorithmFactorView"
+            }
+          },
+          "trigger": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "NEAR_EXPIRY",
+                  "FORECAST_SURPLUS"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "selectedUnitId": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "automaticApproval": {
+            "type": "boolean",
+            "const": false
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferDetailResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transfer",
+          "selectedUnitIds",
+          "timeline",
+          "explanations",
+          "selectionPolicy",
+          "recommendationEligibility",
+          "automaticApproval",
+          "classification"
+        ],
+        "properties": {
+          "transfer": {
+            "$ref": "#/components/schemas/TransferView"
+          },
+          "selectedUnitIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransferEventView"
+            }
+          },
+          "explanations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlgorithmExplanationView"
+            }
+          },
+          "selectionPolicy": {
+            "type": "string",
+            "const": "FEFO"
+          },
+          "recommendationEligibility": {
+            "type": "string",
+            "const": "DISABLED_UNAPPROVED_POLICY"
+          },
+          "automaticApproval": {
+            "type": "boolean",
+            "const": false
           },
           "classification": {
             "type": "string",
