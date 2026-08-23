@@ -882,6 +882,85 @@
           }
         }
       }
+    },
+    "/api/v1/transfers/{transferId}/cancellation": {
+      "post": {
+        "summary": "Cancel one pending or approved synthetic transfer within the authenticated institution scope",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferCancellationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ledger cancellation committed and projected, including release of approved FEFO reservations, or an exact idempotent replay returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferCancellationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2634,6 +2713,88 @@
             "items": {
               "type": "string",
               "pattern": "^UNIT_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "ledgerTransactionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferCancellationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "reasonCode",
+          "eventTime",
+          "correlationId"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reasonCode": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "TransferCancellationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "status",
+          "reasonCode",
+          "releasedUnitIds",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "CANCELLED"
+          },
+          "reasonCode": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+          },
+          "releasedUnitIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
             }
           },
           "ledgerVersion": {

@@ -5,6 +5,8 @@ import type {
   ApplicationWriteRepository,
   TransferApprovalCommand,
   TransferApprovalResult,
+  TransferCancellationCommand,
+  TransferCancellationResult,
   TransferRequestCommand,
   TransferRequestResult,
   TransferRejectionCommand,
@@ -236,6 +238,48 @@ export class PostgresApplicationWriteRepository implements ApplicationWriteRepos
         ledgerVersion: asset.version, ledgerTransactionId: asset.lastTransactionId,
         projectedAt, replayed: ledger.ledgerReplayed, classification: "SIMULATION_ONLY",
       };
+    });
+  }
+
+  async cancelTransfer(input: TransferCancellationCommand): Promise<TransferCancellationResult | null> {
+    return this.transaction(async (client) => {
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [input.idempotencyKey]);
+      const existing = await client.query<Row>(
+        `SELECT e.transfer_id,e.from_status,e.to_status,e.actor_user_id,e.actor_institution_id,e.event_time,e.reason_code,e.correlation_id,e.ledger_transaction_id,e.ledger_version,r.projected_at
+         FROM app.transfer_events e JOIN app.transfer_requests r ON r.transfer_id=e.transfer_id WHERE e.idempotency_key=$1`,
+        [input.idempotencyKey],
+      );
+      if (existing.rows[0]) {
+        const row=existing.rows[0];
+        const exact=String(row.transfer_id)===input.transferId&&String(row.to_status)==="CANCELLED"&&
+          String(row.actor_user_id)===input.actorUserId&&String(row.actor_institution_id)===input.actorInstitutionId&&
+          new Date(String(row.event_time)).toISOString()===input.eventTime&&String(row.reason_code)===input.reasonCode&&
+          String(row.correlation_id)===input.correlationId&&Number(row.ledger_version)===input.expectedVersion+1;
+        if(!exact)throw new ApiFailure(409,"TRANSFER_IDEMPOTENCY_CONFLICT","Idempotency key was used for a different transfer transition.");
+        const selected=String(row.from_status)==="APPROVED"?await client.query<Row>("SELECT unit_id FROM app.transfer_selected_units WHERE transfer_id=$1 ORDER BY fefo_position",[input.transferId]):{rows:[]};
+        return{transferId:input.transferId,status:"CANCELLED",reasonCode:input.reasonCode,releasedUnitIds:selected.rows.map(item=>String(item.unit_id)),ledgerVersion:Number(row.ledger_version),ledgerTransactionId:String(row.ledger_transaction_id),projectedAt:new Date(String(row.projected_at)).toISOString(),replayed:true,classification:"SIMULATION_ONLY"};
+      }
+      const target=await client.query<Row>(
+        `SELECT transfer_id,status,ledger_version FROM app.transfer_requests WHERE transfer_id=$1 AND
+         (($3='ROLE-02' AND source_institution_id=$2) OR ($3='ROLE-03' AND destination_institution_id=$2)) FOR UPDATE`,
+        [input.transferId,input.actorInstitutionId,input.actorRoleId],
+      );
+      if(!target.rows[0])return null;
+      const fromStatus=String(target.rows[0].status);
+      const allowed=input.actorRoleId==="ROLE-02"?["PENDING","APPROVED"]:["PENDING"];
+      if(!allowed.includes(fromStatus))throw new ApiFailure(409,"TRANSFER_STATE_CONFLICT","The transfer cannot be cancelled from its current state by this role.");
+      if(Number(target.rows[0].ledger_version)!==input.expectedVersion)throw new ApiFailure(409,"TRANSFER_VERSION_CONFLICT","The transfer changed; refresh before retrying.");
+      const selected=fromStatus==="APPROVED"?await client.query<Row>("SELECT unit_id FROM app.transfer_selected_units WHERE transfer_id=$1 ORDER BY fefo_position",[input.transferId]):{rows:[]};
+      const releasedUnitIds=selected.rows.map(row=>String(row.unit_id));
+      let ledger;
+      try{ledger=await this.transferLedger.cancelTransfer({transferId:input.transferId,actorUserId:input.actorUserId,eventTime:input.eventTime,expectedVersion:input.expectedVersion,correlationId:input.correlationId,idempotencyKey:input.idempotencyKey,policyVersion:"SYNTHETIC_TRANSFER_V1",reasonCode:input.reasonCode});}
+      catch(error){if(!(error instanceof WorkerFailure))throw error;if(error.retryable)throw new ApiFailure(503,"FABRIC_GATEWAY_UNAVAILABLE","The ledger is unavailable; retry with the same idempotency key.");const status=error.code==="TRF_NOT_AUTHORIZED"?403:error.code.includes("CONFLICT")||["TRF_STATE_INVALID","TRF_TRANSITION_INVALID","TRF_UNIT_STATE_INVALID"].includes(error.code)?409:400;throw new ApiFailure(status,error.code,"The transfer cancellation was rejected by the authoritative ledger policy.");}
+      const asset=ledger.asset,projectedAt=new Date(Math.floor(Date.now()/1000)*1000).toISOString();
+      await client.query(`UPDATE app.transfer_requests SET status='CANCELLED',reason_code=$2,actor_user_id=$3,ledger_version=$4,ledger_transaction_id=$5,correlation_id=$6,projected_at=$7 WHERE transfer_id=$1`,[asset.transferId,input.reasonCode,input.actorUserId,asset.version,asset.lastTransactionId,asset.correlationId,projectedAt]);
+      if(releasedUnitIds.length>0){const inventory=await client.query(`UPDATE app.inventory_projection SET inventory_status='AVAILABLE',ledger_version=ledger_version+1,ledger_transaction_id=$2,correlation_id=$3,projected_at=$4 WHERE unit_id=ANY($1::varchar[]) AND inventory_status='RESERVED'`,[releasedUnitIds,asset.lastTransactionId,asset.correlationId,projectedAt]);if(inventory.rowCount!==releasedUnitIds.length)throw new ApiFailure(503,"PROJECTION_RECONCILIATION_FAILED","Ledger cancellation committed but projection reconciliation requires retry with the same idempotency key.");}
+      await client.query(`INSERT INTO app.transfer_events(event_id,transfer_id,from_status,to_status,actor_user_id,actor_institution_id,event_time,reason_code,idempotency_key,correlation_id,ledger_transaction_id,ledger_version,classification) VALUES($1,$2,$3,'CANCELLED',$4,$5,$6,$7,$8,$9,$10,$11,'SIMULATION_ONLY')`,[input.transferEventId,asset.transferId,fromStatus,input.actorUserId,input.actorInstitutionId,input.eventTime,input.reasonCode,input.idempotencyKey,input.correlationId,asset.lastTransactionId,asset.version]);
+      await client.query(`INSERT INTO app.audit_events(audit_event_id,institution_id,actor_user_id,action_code,target_type,target_id,outcome,correlation_id,ledger_transaction_id,event_time,classification) VALUES($1,$2,$3,'TRANSFER_CANCELLED','TRANSFER',$4,'SUCCEEDED',$5,$6,$7,'SIMULATION_ONLY')`,[input.auditEventId,input.actorInstitutionId,input.actorUserId,asset.transferId,input.correlationId,asset.lastTransactionId,input.eventTime]);
+      return{transferId:asset.transferId,status:"CANCELLED",reasonCode:input.reasonCode,releasedUnitIds,ledgerVersion:asset.version,ledgerTransactionId:asset.lastTransactionId,projectedAt,replayed:ledger.ledgerReplayed,classification:"SIMULATION_ONLY"};
     });
   }
 

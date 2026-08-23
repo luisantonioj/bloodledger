@@ -67,6 +67,33 @@ export interface TransferApprovalResult {
   classification: "SIMULATION_ONLY";
 }
 
+export interface TransferCancellationCommand {
+  transferId: string;
+  actorInstitutionId: string;
+  actorRoleId: "ROLE-02" | "ROLE-03";
+  actorUserId: string;
+  expectedVersion: number;
+  reasonCode: string;
+  eventTime: string;
+  correlationId: string;
+  idempotencyKey: string;
+  payloadSha256: string;
+  transferEventId: string;
+  auditEventId: string;
+}
+
+export interface TransferCancellationResult {
+  transferId: string;
+  status: "CANCELLED";
+  reasonCode: string;
+  releasedUnitIds: string[];
+  ledgerVersion: number;
+  ledgerTransactionId: string;
+  projectedAt: string;
+  replayed: boolean;
+  classification: "SIMULATION_ONLY";
+}
+
 export interface TransferRejectionCommand {
   transferId: string;
   sourceInstitutionId: string;
@@ -96,5 +123,6 @@ export interface ApplicationWriteRepository {
   acknowledgeAlert(input: AlertAcknowledgementInput): Promise<AlertAcknowledgementResult | null>;
   submitTransferRequest(input: TransferRequestCommand): Promise<TransferRequestResult>;
   approveTransfer(input: TransferApprovalCommand): Promise<TransferApprovalResult | null>;
+  cancelTransfer(input: TransferCancellationCommand): Promise<TransferCancellationResult | null>;
   rejectTransfer(input: TransferRejectionCommand): Promise<TransferRejectionResult | null>;
 }

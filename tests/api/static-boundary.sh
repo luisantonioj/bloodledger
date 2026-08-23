@@ -32,6 +32,11 @@ rg -Fq 'TransferRejectionRequest' services/api/openapi.json
 rg -Fq 'principal.roleId !== "ROLE-02"' services/api/src/app.ts
 rg -Fq 'submitAsync("RejectTransfer"' services/api/src/fabric.ts
 rg -Fq "'TRANSFER_REJECTED'" services/api/src/database-application-write.ts
+rg -Fq '/api/v1/transfers/{transferId}/cancellation' services/api/openapi.json
+rg -Fq 'TransferCancellationRequest' services/api/openapi.json
+rg -Fq 'submitAsync("CancelTransfer"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_CANCELLED'" services/api/src/database-application-write.ts
+rg -Fq "inventory_status='AVAILABLE'" services/api/src/database-application-write.ts
 rg -Fq 'principal.roleId !== "ROLE-03"' services/api/src/app.ts
 rg -Fq 'evaluateTransaction("ReadTransfer"' services/api/src/fabric.ts
 rg -Fq 'submitAsync("SubmitTransferRequest"' services/api/src/fabric.ts

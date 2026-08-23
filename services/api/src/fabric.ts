@@ -74,6 +74,17 @@ export interface TransferApprovalInput {
   inventoryPolicyVersion: "SYNTHETIC_INVENTORY_V1";
 }
 
+export interface TransferCancellationInput {
+  transferId: string;
+  actorUserId: string;
+  eventTime: string;
+  expectedVersion: number;
+  correlationId: string;
+  idempotencyKey: string;
+  policyVersion: "SYNTHETIC_TRANSFER_V1";
+  reasonCode: string;
+}
+
 export interface TransferRejectionInput {
   transferId: string;
   actorUserId: string;
@@ -88,6 +99,7 @@ export interface TransferRejectionInput {
 export interface TransferLedger {
   submitRequest(input: TransferRequestInput): Promise<TransferLedgerResult>;
   approveTransfer(input: TransferApprovalInput): Promise<TransferLedgerResult>;
+  cancelTransfer(input: TransferCancellationInput): Promise<TransferLedgerResult>;
   rejectTransfer(input: TransferRejectionInput): Promise<TransferLedgerResult>;
 }
 
@@ -232,6 +244,43 @@ export class FabricGatewayTransfer implements TransferLedger {
       if (asset.status !== "APPROVED" || asset.version !== input.expectedVersion + 1 || !exactUnits ||
           asset.actorUserId !== input.actorUserId || asset.updatedAt !== input.eventTime ||
           asset.correlationId !== input.correlationId) {
+        throw new WorkerFailure("FABRIC_RESPONSE_INVALID", false);
+      }
+      return { asset, committedAt: ledgerReplayed ? new Date(asset.updatedAt) : new Date(), ledgerReplayed };
+    } catch (error) {
+      if (error instanceof WorkerFailure) throw error;
+      throw safeFabricError(error);
+    } finally {
+      gateway?.close();
+      client?.close();
+    }
+  }
+
+  async cancelTransfer(input: TransferCancellationInput): Promise<TransferLedgerResult> {
+    const repositoryRoot = resolve(this.environment.BLOODLEDGER_REPOSITORY_ROOT ?? process.cwd());
+    const organizationRoot = this.environment.FABRIC_ORGANIZATION_ROOT ?? join(repositoryRoot, "network/generated/organizations/peerOrganizations/mediatrix.bloodledger.local");
+    const mspRoot = this.environment.FABRIC_API_MSP_ROOT ?? join(organizationRoot, "users/ApiGateway@mediatrix.bloodledger.local/msp");
+    const tlsRootPath = this.environment.FABRIC_TLS_ROOT ?? join(organizationRoot, "peers/peer0.mediatrix.bloodledger.local/tls/ca.crt");
+    let client: grpc.Client | undefined;
+    let gateway: ReturnType<typeof connect> | undefined;
+    try {
+      const certificate = await readFile(await exactlyOneFile(join(mspRoot, "signcerts")));
+      const privateKey = createPrivateKey(await readFile(await exactlyOneFile(join(mspRoot, "keystore"))));
+      const tlsRoot = await readFile(tlsRootPath);
+      client = new grpc.Client(this.environment.FABRIC_PEER_ENDPOINT ?? "127.0.0.1:7051",grpc.credentials.createSsl(tlsRoot),{ "grpc.ssl_target_name_override": this.environment.FABRIC_PEER_HOST_ALIAS ?? "peer0.mediatrix.bloodledger.local" });
+      gateway = connect({client,identity:{mspId:"MediatrixMSP",credentials:certificate},signer:signers.newPrivateKeySigner(privateKey),hash:hash.sha256,evaluateOptions:()=>({deadline:deadline(15)}),endorseOptions:()=>({deadline:deadline(30)}),submitOptions:()=>({deadline:deadline(15)}),commitStatusOptions:()=>({deadline:deadline(30)})});
+      const contract = gateway.getNetwork(this.environment.FABRIC_CHANNEL ?? "bloodledger-dev").getContract(this.environment.FABRIC_CHAINCODE ?? "bloodledger-inventory", "TransferContract");
+      const existing = parseTransferAsset(await contract.evaluateTransaction("ReadTransfer", input.transferId));
+      const ledgerReplayed = existing.status === "CANCELLED";
+      if (!ledgerReplayed && existing.version !== input.expectedVersion) throw new WorkerFailure("TRF_VERSION_CONFLICT", false);
+      if (!ledgerReplayed && !["PENDING","APPROVED"].includes(existing.status)) throw new WorkerFailure("TRF_STATE_INVALID", false);
+      const submitted = await contract.submitAsync("CancelTransfer", { arguments: [JSON.stringify(input)] });
+      const status = await submitted.getStatus();
+      if (!status.successful || status.code !== StatusCode.VALID) throw new WorkerFailure("FABRIC_COMMIT_INVALID", false);
+      const asset = parseTransferAsset(submitted.getResult());
+      if (asset.status !== "CANCELLED" || asset.version !== input.expectedVersion + 1 ||
+          asset.reasonCode !== input.reasonCode || asset.actorUserId !== input.actorUserId ||
+          asset.updatedAt !== input.eventTime || asset.correlationId !== input.correlationId) {
         throw new WorkerFailure("FABRIC_RESPONSE_INVALID", false);
       }
       return { asset, committedAt: ledgerReplayed ? new Date(asset.updatedAt) : new Date(), ledgerReplayed };

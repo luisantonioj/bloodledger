@@ -99,7 +99,7 @@ try {
   const secondProjection=await repository.claimProjection(new Date("2026-08-17T12:02:02.000Z"));
   await repository.projectCommitted(secondProjection,new Date("2026-08-17T12:02:02.000Z"));
 
-  let requestLedgerCalls=0,approvalLedgerCalls=0,rejectionLedgerCalls=0;
+  let requestLedgerCalls=0,approvalLedgerCalls=0,rejectionLedgerCalls=0,cancellationLedgerCalls=0;
   const transferWriter = new PostgresApplicationWriteRepository(pool, {
     async submitRequest(input) {
       requestLedgerCalls+=1;
@@ -112,6 +112,10 @@ try {
     async rejectTransfer(input) {
       rejectionLedgerCalls+=1;
       return { asset:{ transferId:input.transferId,status:"REJECTED",reasonCode:input.reasonCode,actorUserId:input.actorUserId,version:input.expectedVersion+1,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_SYNTH_TRANSFER_REJECTION_POSTGRES_001" }, committedAt:new Date(input.eventTime), ledgerReplayed:false };
+    },
+    async cancelTransfer(input) {
+      cancellationLedgerCalls+=1;
+      return { asset:{ transferId:input.transferId,status:"CANCELLED",reasonCode:input.reasonCode,actorUserId:input.actorUserId,version:input.expectedVersion+1,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_SYNTH_TRANSFER_CANCELLATION_POSTGRES_001" }, committedAt:new Date(input.eventTime), ledgerReplayed:false };
     }
   });
   const transferCommand={ transferId:"TRF_SYNTH_POSTGRES_001",destinationInstitutionId:"INST_DIVINE_LOVE",actorUserId:"USR_DIVINE_LOVE",bloodType:"A_POSITIVE",component:"RED_BLOOD_CELLS",quantity:2,urgency:"URGENT",requestTime:"2026-08-20T01:00:00.000Z",eventTime:"2026-08-20T01:00:00.000Z",correlationId:"CORR_"+"A".repeat(32),idempotencyKey:"IDEM_TRANSFER_POSTGRES_001",payloadSha256:"d".repeat(64),transferEventId:"TEVT_"+"B".repeat(40),auditEventId:"AUDT_"+"C".repeat(40) };
@@ -141,8 +145,18 @@ try {
   await assert.rejects(transferWriter.approveTransfer(insufficientApproval),(error)=>error instanceof ApiFailure&&error.code==="TRF_INSUFFICIENT_STOCK");
   assert.equal(approvalLedgerCalls,1);
 
-  const transferRows=await pool.query(`SELECT (SELECT count(*) FROM app.transfer_requests) requests,(SELECT count(*) FROM app.transfer_events) events,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REQUESTED') requested_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REJECTED') rejected_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_APPROVED') approved_audits`);
-  assert.deepEqual(Object.values(transferRows.rows[0]).map(Number),[3,5,3,1,1]);
+  const cancellationCommand={transferId:approvalRequest.transferId,actorInstitutionId:"INST_MEDIATRIX",actorRoleId:"ROLE-02",actorUserId:"USR_MEDIATRIX_ADMIN",expectedVersion:2,reasonCode:"REQUEST_WITHDRAWN",eventTime:"2026-08-20T01:15:00.000Z",correlationId:"CORR_"+"7".repeat(32),idempotencyKey:"IDEM_TRANSFER_CANCEL_POSTGRES_001",payloadSha256:"7".repeat(64),transferEventId:"TEVT_"+"7".repeat(40),auditEventId:"AUDT_"+"7".repeat(40)};
+  const cancelledTransfer=await transferWriter.cancelTransfer(cancellationCommand);
+  const replayedCancellation=await transferWriter.cancelTransfer(cancellationCommand);
+  assert.equal(cancelledTransfer?.status,"CANCELLED");assert.equal(cancelledTransfer?.ledgerVersion,3);assert.deepEqual(cancelledTransfer?.releasedUnitIds,["UNIT_SYNTH_S4_POSTGRES_002","UNIT_SYNTH_S4_POSTGRES_001"]);assert.equal(replayedCancellation?.replayed,true);assert.deepEqual(replayedCancellation?.releasedUnitIds,cancelledTransfer?.releasedUnitIds);assert.equal(cancellationLedgerCalls,1);
+  await assert.rejects(transferWriter.cancelTransfer({...cancellationCommand,reasonCode:"REQUEST_CHANGED"}),(error)=>error instanceof ApiFailure&&error.code==="TRANSFER_IDEMPOTENCY_CONFLICT");
+  const released=await pool.query("SELECT unit_id,inventory_status,ledger_transaction_id FROM app.inventory_projection ORDER BY expires_at,unit_id");
+  assert.deepEqual(released.rows.map(row=>[row.unit_id,row.inventory_status]),[["UNIT_SYNTH_S4_POSTGRES_002","AVAILABLE"],["UNIT_SYNTH_S4_POSTGRES_001","AVAILABLE"]]);
+  assert.equal(new Set(released.rows.map(row=>row.ledger_transaction_id)).size,1);
+  assert.equal(released.rows[0].ledger_transaction_id,"TX_SYNTH_TRANSFER_CANCELLATION_POSTGRES_001");
+
+  const transferRows=await pool.query(`SELECT (SELECT count(*) FROM app.transfer_requests) requests,(SELECT count(*) FROM app.transfer_events) events,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REQUESTED') requested_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REJECTED') rejected_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_APPROVED') approved_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_CANCELLED') cancelled_audits`);
+  assert.deepEqual(Object.values(transferRows.rows[0]).map(Number),[3,6,3,1,1,1]);
 
   const rows = await pool.query(`
     SELECT
@@ -151,7 +165,7 @@ try {
       (SELECT count(*) FROM app.inventory_projection) AS projections
   `);
   assert.deepEqual(Object.values(rows.rows[0]).map(Number), [2, 4, 2]);
-  console.log("Sprint 4 scan and Sprint 5 transfer request/approval/rejection PostgreSQL replay/conflict/projection/audit probes passed");
+  console.log("Sprint 4 scan and Sprint 5 transfer request/approval/rejection/cancellation PostgreSQL replay/conflict/projection/audit probes passed");
 } finally {
   await pool.end();
 }

@@ -325,6 +325,24 @@ export async function buildApp(
         return result;
       });
 
+      app.post<{ Params: { transferId: string } }>("/api/v1/transfers/:transferId/cancellation", async (request) => {
+        requireSameOrigin(request, webOrigin);
+        const { principal } = await restore(request);
+        if (!["ROLE-02","ROLE-03"].includes(principal.roleId) || !permits(principal.roleId,"transfers:write")) throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","Transfer cancellation is not permitted.");
+        if (!TRANSFER_PATTERN.test(request.params.transferId)) throw new ApiFailure(400,"INVALID_TRANSFER_ID","Transfer ID is invalid.");
+        if (!USER_PATTERN.test(principal.userId)) throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","The authenticated user is outside the ledger actor policy.");
+        const idempotencyKey=request.headers["idempotency-key"];
+        if(typeof idempotencyKey!=="string"||!IDEMPOTENCY_PATTERN.test(idempotencyKey))throw new ApiFailure(400,"INVALID_IDEMPOTENCY_KEY","A valid Idempotency-Key header is required.");
+        const body=request.body as Record<string,unknown>|null,keys=body&&typeof body==="object"?Object.keys(body).sort():[],expected=["correlationId","eventTime","expectedVersion","reasonCode"];
+        if(!body||keys.length!==expected.length||keys.some((key,index)=>key!==expected[index])||!Number.isSafeInteger(body.expectedVersion)||Number(body.expectedVersion)<1||typeof body.reasonCode!=="string"||!REASON_PATTERN.test(body.reasonCode)||!validUtcInstant(body.eventTime)||new Date(body.eventTime).getTime()>clock().getTime()+60_000||typeof body.correlationId!=="string"||!CORRELATION_PATTERN.test(body.correlationId))throw new ApiFailure(400,"INVALID_TRANSFER_CANCELLATION","Transfer cancellation input is invalid.");
+        const actorRoleId=principal.roleId as "ROLE-02"|"ROLE-03";
+        const payloadSha256=sha256({transferId:request.params.transferId,actorInstitutionId:principal.institutionId,actorRoleId,actorUserId:principal.userId,expectedVersion:body.expectedVersion,reasonCode:body.reasonCode,eventTime:body.eventTime,correlationId:body.correlationId});
+        const transferEventId="TEVT_"+sha256({transferId:request.params.transferId,idempotencyKey,operation:"CANCEL"}).slice(0,40).toUpperCase(),auditEventId="AUDT_"+sha256({transferId:request.params.transferId,idempotencyKey,operation:"TRANSFER_CANCELLED"}).slice(0,40).toUpperCase();
+        const result=await applicationWrites.cancelTransfer({transferId:request.params.transferId,actorInstitutionId:principal.institutionId,actorRoleId,actorUserId:principal.userId,expectedVersion:Number(body.expectedVersion),reasonCode:body.reasonCode,eventTime:body.eventTime,correlationId:body.correlationId,idempotencyKey,payloadSha256,transferEventId,auditEventId});
+        if(!result)throw new ApiFailure(404,"TRANSFER_NOT_FOUND","A transfer was not found in the authorized institution scope.");
+        return result;
+      });
+
       app.post<{ Params: { transferId: string } }>("/api/v1/transfers/:transferId/rejection", async (request) => {
         requireSameOrigin(request, webOrigin);
         const { principal } = await restore(request);
