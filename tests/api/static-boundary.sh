@@ -43,6 +43,11 @@ rg -Fq 'submitAsync("RecordDispatch"' services/api/src/fabric.ts
 rg -Fq "'TRANSFER_DISPATCHED'" services/api/src/database-application-write.ts
 rg -Fq "inventory_status='DISPATCHED'" services/api/src/database-application-write.ts
 rg -Fq 'app.location_evidence' services/api/src/database-application-write.ts
+rg -Fq '/api/v1/transfers/{transferId}/transit-start' services/api/openapi.json
+rg -Fq 'TransferTransitRequest' services/api/openapi.json
+rg -Fq 'submitAsync("StartTransit"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_TRANSIT_STARTED'" services/api/src/database-application-write.ts
+rg -Fq "inventory_status='IN_TRANSIT'" services/api/src/database-application-write.ts
 rg -Fq 'principal.roleId !== "ROLE-03"' services/api/src/app.ts
 rg -Fq 'evaluateTransaction("ReadTransfer"' services/api/src/fabric.ts
 rg -Fq 'submitAsync("SubmitTransferRequest"' services/api/src/fabric.ts
