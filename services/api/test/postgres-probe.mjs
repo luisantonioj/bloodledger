@@ -32,8 +32,8 @@ try {
   const migrator = new Pool({ host:process.env.POSTGRES_HOST, port:Number(process.env.POSTGRES_PORT), database:process.env.POSTGRES_DB, user:process.env.POSTGRES_MIGRATOR_USER, password:process.env.POSTGRES_MIGRATOR_PASSWORD });
   try {
     await migrator.query(`INSERT INTO app.institutions(institution_id,display_name,category,status,classification) VALUES ('INST_MEDIATRIX','Synthetic Mediatrix Database Probe','HOSPITAL','ACTIVE','SIMULATION_ONLY'), ('INST_DIVINE_LOVE','Synthetic Divine Love Database Probe','HOSPITAL','ACTIVE','SIMULATION_ONLY')`);
-    await migrator.query(`INSERT INTO app.application_users(user_id,username,display_name,institution_id,password_algorithm,password_salt,password_verifier,status,classification) VALUES('USR_DIVINE_LOVE','synth_divine_love_probe','Synthetic Divine Love Probe','INST_DIVINE_LOVE','SCRYPT_V1',$1,$2,'ACTIVE','SIMULATION_ONLY')`, [randomBytes(16).toString("hex"), randomBytes(64).toString("hex")]);
-    await migrator.query(`INSERT INTO app.user_role_assignments(user_id,role_id,policy_version,assigned_at) VALUES('USR_DIVINE_LOVE','ROLE-03','SYNTHETIC_WEB_ACCESS_V1','2026-08-20T00:00:00.000Z')`);
+    await migrator.query(`INSERT INTO app.application_users(user_id,username,display_name,institution_id,password_algorithm,password_salt,password_verifier,status,classification) VALUES('USR_DIVINE_LOVE','synth_divine_love_probe','Synthetic Divine Love Probe','INST_DIVINE_LOVE','SCRYPT_V1',$1,$2,'ACTIVE','SIMULATION_ONLY'),('USR_MEDIATRIX_ADMIN','synth_mediatrix_admin_probe','Synthetic Mediatrix Admin Probe','INST_MEDIATRIX','SCRYPT_V1',$3,$4,'ACTIVE','SIMULATION_ONLY')`, [randomBytes(16).toString("hex"), randomBytes(64).toString("hex"), randomBytes(16).toString("hex"), randomBytes(64).toString("hex")]);
+    await migrator.query(`INSERT INTO app.user_role_assignments(user_id,role_id,policy_version,assigned_at) VALUES('USR_DIVINE_LOVE','ROLE-03','SYNTHETIC_WEB_ACCESS_V1','2026-08-20T00:00:00.000Z'),('USR_MEDIATRIX_ADMIN','ROLE-02','SYNTHETIC_WEB_ACCESS_V1','2026-08-20T00:00:00.000Z')`);
   } finally { await migrator.end(); }
 
   await pool.query(`
@@ -91,15 +91,29 @@ try {
   const committed = await repository.findScan(first.event.eventId, "INST_MEDIATRIX");
   assert.equal(committed?.status, "COMMITTED");
 
-  let ledgerCalls=0;
-  const transferWriter = new PostgresApplicationWriteRepository(pool, { async submitRequest(input) { ledgerCalls+=1; return { asset:{ transferId:input.transferId,sourceInstitutionId:input.sourceInstitutionId,destinationInstitutionId:input.destinationInstitutionId,bloodType:input.bloodType,component:input.component,quantity:input.quantity,urgency:input.urgency,requestTime:input.requestTime,status:"PENDING",actorUserId:input.actorUserId,policyVersion:input.policyVersion,inventoryPolicyVersion:input.inventoryPolicyVersion,version:1,createdAt:input.eventTime,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_SYNTH_TRANSFER_POSTGRES_001" }, committedAt:new Date(input.eventTime), ledgerReplayed:false }; } });
+  let requestLedgerCalls=0,rejectionLedgerCalls=0;
+  const transferWriter = new PostgresApplicationWriteRepository(pool, {
+    async submitRequest(input) {
+      requestLedgerCalls+=1;
+      return { asset:{ transferId:input.transferId,sourceInstitutionId:input.sourceInstitutionId,destinationInstitutionId:input.destinationInstitutionId,bloodType:input.bloodType,component:input.component,quantity:input.quantity,urgency:input.urgency,requestTime:input.requestTime,status:"PENDING",actorUserId:input.actorUserId,policyVersion:input.policyVersion,inventoryPolicyVersion:input.inventoryPolicyVersion,version:1,createdAt:input.eventTime,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_SYNTH_TRANSFER_POSTGRES_001" }, committedAt:new Date(input.eventTime), ledgerReplayed:false };
+    },
+    async rejectTransfer(input) {
+      rejectionLedgerCalls+=1;
+      return { asset:{ transferId:input.transferId,status:"REJECTED",reasonCode:input.reasonCode,actorUserId:input.actorUserId,version:input.expectedVersion+1,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_SYNTH_TRANSFER_REJECTION_POSTGRES_001" }, committedAt:new Date(input.eventTime), ledgerReplayed:false };
+    }
+  });
   const transferCommand={ transferId:"TRF_SYNTH_POSTGRES_001",destinationInstitutionId:"INST_DIVINE_LOVE",actorUserId:"USR_DIVINE_LOVE",bloodType:"A_POSITIVE",component:"RED_BLOOD_CELLS",quantity:2,urgency:"URGENT",requestTime:"2026-08-20T01:00:00.000Z",eventTime:"2026-08-20T01:00:00.000Z",correlationId:"CORR_"+"A".repeat(32),idempotencyKey:"IDEM_TRANSFER_POSTGRES_001",payloadSha256:"d".repeat(64),transferEventId:"TEVT_"+"B".repeat(40),auditEventId:"AUDT_"+"C".repeat(40) };
   const submittedTransfer=await transferWriter.submitTransferRequest(transferCommand);
   const replayedTransfer=await transferWriter.submitTransferRequest(transferCommand);
-  assert.equal(submittedTransfer.replayed,false);assert.equal(replayedTransfer.replayed,true);assert.equal(ledgerCalls,1);
+  assert.equal(submittedTransfer.replayed,false);assert.equal(replayedTransfer.replayed,true);assert.equal(requestLedgerCalls,1);
   await assert.rejects(transferWriter.submitTransferRequest({...transferCommand,payloadSha256:"e".repeat(64)}),(error)=>error instanceof ApiFailure&&error.code==="TRANSFER_IDEMPOTENCY_CONFLICT");
-  const transferRows=await pool.query(`SELECT (SELECT count(*) FROM app.transfer_requests) requests,(SELECT count(*) FROM app.transfer_events) events,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REQUESTED') audits`);
-  assert.deepEqual(Object.values(transferRows.rows[0]).map(Number),[1,1,1]);
+  const rejectionCommand={ transferId:transferCommand.transferId,sourceInstitutionId:"INST_MEDIATRIX",actorUserId:"USR_MEDIATRIX_ADMIN",expectedVersion:1,reasonCode:"INSUFFICIENT_STOCK",eventTime:"2026-08-20T01:05:00.000Z",correlationId:"CORR_"+"D".repeat(32),idempotencyKey:"IDEM_TRANSFER_REJECT_POSTGRES_001",payloadSha256:"f".repeat(64),transferEventId:"TEVT_"+"D".repeat(40),auditEventId:"AUDT_"+"E".repeat(40) };
+  const rejectedTransfer=await transferWriter.rejectTransfer(rejectionCommand);
+  const replayedRejection=await transferWriter.rejectTransfer(rejectionCommand);
+  assert.equal(rejectedTransfer?.status,"REJECTED");assert.equal(rejectedTransfer?.ledgerVersion,2);assert.equal(replayedRejection?.replayed,true);assert.equal(replayedRejection?.projectedAt,rejectedTransfer?.projectedAt);assert.equal(rejectionLedgerCalls,1);
+  await assert.rejects(transferWriter.rejectTransfer({...rejectionCommand,reasonCode:"POLICY_REJECTED"}),(error)=>error instanceof ApiFailure&&error.code==="TRANSFER_IDEMPOTENCY_CONFLICT");
+  const transferRows=await pool.query(`SELECT (SELECT count(*) FROM app.transfer_requests) requests,(SELECT count(*) FROM app.transfer_events) events,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REQUESTED') requested_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REJECTED') rejected_audits`);
+  assert.deepEqual(Object.values(transferRows.rows[0]).map(Number),[1,2,1,1]);
 
   const rows = await pool.query(`
     SELECT
@@ -108,7 +122,7 @@ try {
       (SELECT count(*) FROM app.inventory_projection) AS projections
   `);
   assert.deepEqual(Object.values(rows.rows[0]).map(Number), [1, 2, 1]);
-  console.log("Sprint 4 scan and Sprint 5 transfer PostgreSQL replay/conflict/projection/audit probes passed");
+  console.log("Sprint 4 scan and Sprint 5 transfer request/rejection PostgreSQL replay/conflict/projection/audit probes passed");
 } finally {
   await pool.end();
 }

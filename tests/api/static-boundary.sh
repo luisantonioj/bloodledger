@@ -22,6 +22,11 @@ rg -q '/api/v1/alerts' services/api/openapi.json services/api/src/app.ts
 rg -q '/api/v1/transfers' services/api/openapi.json services/api/src/app.ts
 rg -Fq '/api/v1/transfers/{transferId}' services/api/openapi.json
 rg -Fq 'TransferRequestCreate' services/api/openapi.json
+rg -Fq '/api/v1/transfers/{transferId}/rejection' services/api/openapi.json
+rg -Fq 'TransferRejectionRequest' services/api/openapi.json
+rg -Fq 'principal.roleId !== "ROLE-02"' services/api/src/app.ts
+rg -Fq 'submitAsync("RejectTransfer"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_REJECTED'" services/api/src/database-application-write.ts
 rg -Fq 'principal.roleId !== "ROLE-03"' services/api/src/app.ts
 rg -Fq 'evaluateTransaction("ReadTransfer"' services/api/src/fabric.ts
 rg -Fq 'submitAsync("SubmitTransferRequest"' services/api/src/fabric.ts

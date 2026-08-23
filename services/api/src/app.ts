@@ -20,6 +20,7 @@ const EVENT_PATTERN = /^SCAN_[0-9A-F]{32}$/;
 const ALERT_PATTERN = /^ALRT_[0-9A-F]{40}$/;
 const CORRELATION_PATTERN = /^CORR_[0-9A-F]{32}$/;
 const TRANSFER_PATTERN = /^TRF_[A-Z0-9_-]{1,56}$/;
+const REASON_PATTERN = /^[A-Z][A-Z0-9_]{2,63}$/;
 const USER_PATTERN = /^USR_[A-Z0-9_-]{1,48}$/;
 const BLOOD_TYPES = ["A_POSITIVE", "O_POSITIVE"] as const;
 const COMPONENTS = ["RED_BLOOD_CELLS", "PLATELETS"] as const;
@@ -295,6 +296,34 @@ export async function buildApp(
         const auditEventId = "AUDT_" + sha256({ transferId, idempotencyKey, operation:"TRANSFER_REQUESTED" }).slice(0,40).toUpperCase();
         const result = await applicationWrites.submitTransferRequest({ transferId, destinationInstitutionId:principal.institutionId, actorUserId:principal.userId, bloodType:body.bloodType as typeof BLOOD_TYPES[number], component:body.component as typeof COMPONENTS[number], quantity:Number(body.quantity), urgency:body.urgency as typeof URGENCIES[number], requestTime:body.requestTime, eventTime:body.eventTime, correlationId:body.correlationId, idempotencyKey, payloadSha256, transferEventId, auditEventId });
         return reply.status(result.replayed ? 200 : 201).send(result);
+      });
+
+      app.post<{ Params: { transferId: string } }>("/api/v1/transfers/:transferId/rejection", async (request) => {
+        requireSameOrigin(request, webOrigin);
+        const { principal } = await restore(request);
+        if (principal.roleId !== "ROLE-02" || !permits(principal.roleId, "transfers:write")) {
+          throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Transfer rejection is restricted to the hospital administrator.");
+        }
+        if (!TRANSFER_PATTERN.test(request.params.transferId)) throw new ApiFailure(400, "INVALID_TRANSFER_ID", "Transfer ID is invalid.");
+        if (!USER_PATTERN.test(principal.userId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "The authenticated user is outside the ledger actor policy.");
+        const idempotencyKey = request.headers["idempotency-key"];
+        if (typeof idempotencyKey !== "string" || !IDEMPOTENCY_PATTERN.test(idempotencyKey)) throw new ApiFailure(400, "INVALID_IDEMPOTENCY_KEY", "A valid Idempotency-Key header is required.");
+        const body = request.body as Record<string, unknown> | null;
+        const keys = body && typeof body === "object" ? Object.keys(body).sort() : [];
+        const expected = ["correlationId","eventTime","expectedVersion","reasonCode"];
+        if (!body || keys.length !== expected.length || keys.some((key,index)=>key!==expected[index]) ||
+          !Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1 ||
+          typeof body.reasonCode !== "string" || !REASON_PATTERN.test(body.reasonCode) ||
+          !validUtcInstant(body.eventTime) || new Date(body.eventTime).getTime() > clock().getTime() + 60_000 ||
+          typeof body.correlationId !== "string" || !CORRELATION_PATTERN.test(body.correlationId)) {
+          throw new ApiFailure(400, "INVALID_TRANSFER_REJECTION", "Transfer rejection input is invalid.");
+        }
+        const payloadSha256 = sha256({ transferId:request.params.transferId, sourceInstitutionId:principal.institutionId, actorUserId:principal.userId, expectedVersion:body.expectedVersion, reasonCode:body.reasonCode, eventTime:body.eventTime, correlationId:body.correlationId });
+        const transferEventId = "TEVT_" + sha256({ transferId:request.params.transferId, idempotencyKey, operation:"REJECT" }).slice(0,40).toUpperCase();
+        const auditEventId = "AUDT_" + sha256({ transferId:request.params.transferId, idempotencyKey, operation:"TRANSFER_REJECTED" }).slice(0,40).toUpperCase();
+        const result = await applicationWrites.rejectTransfer({ transferId:request.params.transferId, sourceInstitutionId:principal.institutionId, actorUserId:principal.userId, expectedVersion:Number(body.expectedVersion), reasonCode:body.reasonCode, eventTime:body.eventTime, correlationId:body.correlationId, idempotencyKey, payloadSha256, transferEventId, auditEventId });
+        if (!result) throw new ApiFailure(404, "TRANSFER_NOT_FOUND", "A transfer was not found in the authorized institution scope.");
+        return result;
       });
 
       app.post<{ Params: { alertId: string } }>("/api/v1/alerts/:alertId/acknowledgements", async (request) => {

@@ -43,7 +43,33 @@ export interface TransferRequestResult {
   classification: "SIMULATION_ONLY";
 }
 
+export interface TransferRejectionCommand {
+  transferId: string;
+  sourceInstitutionId: string;
+  actorUserId: string;
+  expectedVersion: number;
+  reasonCode: string;
+  eventTime: string;
+  correlationId: string;
+  idempotencyKey: string;
+  payloadSha256: string;
+  transferEventId: string;
+  auditEventId: string;
+}
+
+export interface TransferRejectionResult {
+  transferId: string;
+  status: "REJECTED";
+  reasonCode: string;
+  ledgerVersion: number;
+  ledgerTransactionId: string;
+  projectedAt: string;
+  replayed: boolean;
+  classification: "SIMULATION_ONLY";
+}
+
 export interface ApplicationWriteRepository {
   acknowledgeAlert(input: AlertAcknowledgementInput): Promise<AlertAcknowledgementResult | null>;
   submitTransferRequest(input: TransferRequestCommand): Promise<TransferRequestResult>;
+  rejectTransfer(input: TransferRejectionCommand): Promise<TransferRejectionResult | null>;
 }
