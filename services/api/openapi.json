@@ -803,6 +803,85 @@
           }
         }
       }
+    },
+    "/api/v1/transfers/{transferId}/approval": {
+      "post": {
+        "summary": "Approve one pending synthetic transfer request with server-selected FEFO units",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferApprovalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ledger approval and FEFO reservation committed and projected, or an exact idempotent replay returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferApprovalResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2481,6 +2560,81 @@
           "reasonCode": {
             "type": "string",
             "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "ledgerTransactionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferApprovalRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "eventTime",
+          "correlationId"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "TransferApprovalResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "status",
+          "selectedUnitIds",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "APPROVED"
+          },
+          "selectedUnitIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^UNIT_[A-Z0-9_-]{1,56}$"
+            }
           },
           "ledgerVersion": {
             "type": "integer",

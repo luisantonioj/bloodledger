@@ -44,6 +44,7 @@ export interface TransferLedgerAsset {
   urgency: string;
   requestTime: string;
   status: TransferStatus;
+  selectedUnitIds: string[];
   reasonCode?: string;
   actorUserId: string;
   policyVersion: "SYNTHETIC_TRANSFER_V1";
@@ -61,6 +62,18 @@ export interface TransferLedgerResult {
   ledgerReplayed: boolean;
 }
 
+export interface TransferApprovalInput {
+  transferId: string;
+  selectedUnitIds: string[];
+  actorUserId: string;
+  eventTime: string;
+  expectedVersion: number;
+  correlationId: string;
+  idempotencyKey: string;
+  policyVersion: "SYNTHETIC_TRANSFER_V1";
+  inventoryPolicyVersion: "SYNTHETIC_INVENTORY_V1";
+}
+
 export interface TransferRejectionInput {
   transferId: string;
   actorUserId: string;
@@ -74,6 +87,7 @@ export interface TransferRejectionInput {
 
 export interface TransferLedger {
   submitRequest(input: TransferRequestInput): Promise<TransferLedgerResult>;
+  approveTransfer(input: TransferApprovalInput): Promise<TransferLedgerResult>;
   rejectTransfer(input: TransferRejectionInput): Promise<TransferLedgerResult>;
 }
 
@@ -117,8 +131,8 @@ function sameTransferRequest(asset: TransferLedgerAsset, input: TransferRequestI
 function parseTransferAsset(bytes: Uint8Array): TransferLedgerAsset {
   const value = JSON.parse(Buffer.from(bytes).toString("utf8")) as Partial<TransferLedgerAsset>;
   const statuses: TransferStatus[] = ["PENDING","APPROVED","REJECTED","DISPATCHED","IN_TRANSIT","DELAYED","RECEIVED","COMPROMISED","CANCELLED"];
-  if (typeof value.transferId !== "string" || typeof value.lastTransactionId !== "string" ||
-      !statuses.includes(value.status as TransferStatus) || !Number.isSafeInteger(value.version) || Number(value.version) < 1) {
+  if (typeof value.transferId !== "string" || typeof value.lastTransactionId !== "string" || !Array.isArray(value.selectedUnitIds) ||
+      value.selectedUnitIds.some((unitId) => typeof unitId !== "string") || !statuses.includes(value.status as TransferStatus) || !Number.isSafeInteger(value.version) || Number(value.version) < 1) {
     throw new WorkerFailure("FABRIC_RESPONSE_INVALID", false);
   }
   return value as TransferLedgerAsset;
@@ -168,6 +182,59 @@ export class FabricGatewayTransfer implements TransferLedger {
       if (!status.successful || status.code !== StatusCode.VALID) throw new WorkerFailure("FABRIC_COMMIT_INVALID", false);
       const asset = parseTransferAsset(submitted.getResult());
       return { asset, committedAt: new Date(), ledgerReplayed: false };
+    } catch (error) {
+      if (error instanceof WorkerFailure) throw error;
+      throw safeFabricError(error);
+    } finally {
+      gateway?.close();
+      client?.close();
+    }
+  }
+
+  async approveTransfer(input: TransferApprovalInput): Promise<TransferLedgerResult> {
+    const repositoryRoot = resolve(this.environment.BLOODLEDGER_REPOSITORY_ROOT ?? process.cwd());
+    const organizationRoot = this.environment.FABRIC_ORGANIZATION_ROOT ?? join(repositoryRoot, "network/generated/organizations/peerOrganizations/mediatrix.bloodledger.local");
+    const mspRoot = this.environment.FABRIC_API_MSP_ROOT ?? join(organizationRoot, "users/ApiGateway@mediatrix.bloodledger.local/msp");
+    const tlsRootPath = this.environment.FABRIC_TLS_ROOT ?? join(organizationRoot, "peers/peer0.mediatrix.bloodledger.local/tls/ca.crt");
+    let client: grpc.Client | undefined;
+    let gateway: ReturnType<typeof connect> | undefined;
+    try {
+      const certificate = await readFile(await exactlyOneFile(join(mspRoot, "signcerts")));
+      const privateKey = createPrivateKey(await readFile(await exactlyOneFile(join(mspRoot, "keystore"))));
+      const tlsRoot = await readFile(tlsRootPath);
+      client = new grpc.Client(
+        this.environment.FABRIC_PEER_ENDPOINT ?? "127.0.0.1:7051",
+        grpc.credentials.createSsl(tlsRoot),
+        { "grpc.ssl_target_name_override": this.environment.FABRIC_PEER_HOST_ALIAS ?? "peer0.mediatrix.bloodledger.local" },
+      );
+      gateway = connect({
+        client,
+        identity: { mspId: "MediatrixMSP", credentials: certificate },
+        signer: signers.newPrivateKeySigner(privateKey),
+        hash: hash.sha256,
+        evaluateOptions: () => ({ deadline: deadline(15) }),
+        endorseOptions: () => ({ deadline: deadline(30) }),
+        submitOptions: () => ({ deadline: deadline(15) }),
+        commitStatusOptions: () => ({ deadline: deadline(30) }),
+      });
+      const contract = gateway.getNetwork(this.environment.FABRIC_CHANNEL ?? "bloodledger-dev")
+        .getContract(this.environment.FABRIC_CHAINCODE ?? "bloodledger-inventory", "TransferContract");
+      const existing = parseTransferAsset(await contract.evaluateTransaction("ReadTransfer", input.transferId));
+      const ledgerReplayed = existing.status === "APPROVED";
+      if (!ledgerReplayed && existing.version !== input.expectedVersion) throw new WorkerFailure("TRF_VERSION_CONFLICT", false);
+      if (!ledgerReplayed && existing.status !== "PENDING") throw new WorkerFailure("TRF_STATE_INVALID", false);
+      const submitted = await contract.submitAsync("ApproveTransfer", { arguments: [JSON.stringify(input)] });
+      const status = await submitted.getStatus();
+      if (!status.successful || status.code !== StatusCode.VALID) throw new WorkerFailure("FABRIC_COMMIT_INVALID", false);
+      const asset = parseTransferAsset(submitted.getResult());
+      const exactUnits = asset.selectedUnitIds.length === input.selectedUnitIds.length &&
+        asset.selectedUnitIds.every((unitId,index) => unitId === input.selectedUnitIds[index]);
+      if (asset.status !== "APPROVED" || asset.version !== input.expectedVersion + 1 || !exactUnits ||
+          asset.actorUserId !== input.actorUserId || asset.updatedAt !== input.eventTime ||
+          asset.correlationId !== input.correlationId) {
+        throw new WorkerFailure("FABRIC_RESPONSE_INVALID", false);
+      }
+      return { asset, committedAt: ledgerReplayed ? new Date(asset.updatedAt) : new Date(), ledgerReplayed };
     } catch (error) {
       if (error instanceof WorkerFailure) throw error;
       throw safeFabricError(error);

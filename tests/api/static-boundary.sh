@@ -22,6 +22,11 @@ rg -q '/api/v1/alerts' services/api/openapi.json services/api/src/app.ts
 rg -q '/api/v1/transfers' services/api/openapi.json services/api/src/app.ts
 rg -Fq '/api/v1/transfers/{transferId}' services/api/openapi.json
 rg -Fq 'TransferRequestCreate' services/api/openapi.json
+rg -Fq '/api/v1/transfers/{transferId}/approval' services/api/openapi.json
+rg -Fq 'TransferApprovalRequest' services/api/openapi.json
+rg -Fq 'submitAsync("ApproveTransfer"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_APPROVED'" services/api/src/database-application-write.ts
+rg -Fq "inventory_status='RESERVED'" services/api/src/database-application-write.ts
 rg -Fq '/api/v1/transfers/{transferId}/rejection' services/api/openapi.json
 rg -Fq 'TransferRejectionRequest' services/api/openapi.json
 rg -Fq 'principal.roleId !== "ROLE-02"' services/api/src/app.ts

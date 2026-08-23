@@ -277,3 +277,11 @@ different payloads using the same key fail safely. The API locks the scoped open
 alert during acknowledgement and writes a redacted audit event in the same
 transaction. Runtime access remains limited to `SELECT` and `INSERT`; no delete,
 DDL, or broad update privilege is added.
+
+Migration `20260823010000000_allow-shared-inventory-ledger-transactions.js`
+removes the accidental uniqueness constraint on
+`inventory_projection.ledger_transaction_id` and replaces it with a non-unique
+lookup index. One accepted transfer approval can reserve several FEFO units in
+one Fabric transaction, so every affected projection must be allowed to retain
+the same authoritative transaction reference. Unit IDs and source event IDs
+remain unique, and the migration grants no additional runtime privilege.

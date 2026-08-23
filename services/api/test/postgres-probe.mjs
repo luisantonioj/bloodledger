@@ -22,7 +22,7 @@ const capture = {
     bloodType: "A_POSITIVE",
     component: "RED_BLOOD_CELLS",
     collectedAt: "2026-08-17T00:00:00.000Z",
-    expiresAt: "2026-08-20T00:00:00.000Z"
+    expiresAt: "2026-08-25T00:00:00.000Z"
   },
   ocrEvidence: null
 };
@@ -91,11 +91,23 @@ try {
   const committed = await repository.findScan(first.event.eventId, "INST_MEDIATRIX");
   assert.equal(committed?.status, "COMMITTED");
 
-  let requestLedgerCalls=0,rejectionLedgerCalls=0;
+  const secondCapture={...capture,unit:{...capture.unit,unitId:"UNIT_SYNTH_S4_POSTGRES_002",expiresAt:"2026-08-24T00:00:00.000Z"}};
+  const second=await repository.acceptScan(principal,"IDEM_SCAN_POSTGRES_002",secondCapture,new Date("2026-08-17T12:02:00.000Z"));
+  const secondClaim=await repository.claimLedger("WORKER_POSTGRES_PROBE",new Date("2026-08-17T12:02:00.000Z"));
+  assert.equal(secondClaim?.eventId,second.event.eventId);
+  await repository.markLedgerCommitted(secondClaim,"TX_SYNTH_S4_POSTGRES_002",new Date("2026-08-17T12:02:01.000Z"));
+  const secondProjection=await repository.claimProjection(new Date("2026-08-17T12:02:02.000Z"));
+  await repository.projectCommitted(secondProjection,new Date("2026-08-17T12:02:02.000Z"));
+
+  let requestLedgerCalls=0,approvalLedgerCalls=0,rejectionLedgerCalls=0;
   const transferWriter = new PostgresApplicationWriteRepository(pool, {
     async submitRequest(input) {
       requestLedgerCalls+=1;
-      return { asset:{ transferId:input.transferId,sourceInstitutionId:input.sourceInstitutionId,destinationInstitutionId:input.destinationInstitutionId,bloodType:input.bloodType,component:input.component,quantity:input.quantity,urgency:input.urgency,requestTime:input.requestTime,status:"PENDING",actorUserId:input.actorUserId,policyVersion:input.policyVersion,inventoryPolicyVersion:input.inventoryPolicyVersion,version:1,createdAt:input.eventTime,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_SYNTH_TRANSFER_POSTGRES_001" }, committedAt:new Date(input.eventTime), ledgerReplayed:false };
+      return { asset:{ transferId:input.transferId,sourceInstitutionId:input.sourceInstitutionId,destinationInstitutionId:input.destinationInstitutionId,bloodType:input.bloodType,component:input.component,quantity:input.quantity,urgency:input.urgency,requestTime:input.requestTime,status:"PENDING",actorUserId:input.actorUserId,policyVersion:input.policyVersion,inventoryPolicyVersion:input.inventoryPolicyVersion,version:1,createdAt:input.eventTime,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_"+input.transferId }, committedAt:new Date(input.eventTime), ledgerReplayed:false };
+    },
+    async approveTransfer(input) {
+      approvalLedgerCalls+=1;
+      return { asset:{ transferId:input.transferId,status:"APPROVED",selectedUnitIds:input.selectedUnitIds,actorUserId:input.actorUserId,version:input.expectedVersion+1,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_SYNTH_TRANSFER_APPROVAL_POSTGRES_001" }, committedAt:new Date(input.eventTime), ledgerReplayed:false };
     },
     async rejectTransfer(input) {
       rejectionLedgerCalls+=1;
@@ -112,8 +124,25 @@ try {
   const replayedRejection=await transferWriter.rejectTransfer(rejectionCommand);
   assert.equal(rejectedTransfer?.status,"REJECTED");assert.equal(rejectedTransfer?.ledgerVersion,2);assert.equal(replayedRejection?.replayed,true);assert.equal(replayedRejection?.projectedAt,rejectedTransfer?.projectedAt);assert.equal(rejectionLedgerCalls,1);
   await assert.rejects(transferWriter.rejectTransfer({...rejectionCommand,reasonCode:"POLICY_REJECTED"}),(error)=>error instanceof ApiFailure&&error.code==="TRANSFER_IDEMPOTENCY_CONFLICT");
-  const transferRows=await pool.query(`SELECT (SELECT count(*) FROM app.transfer_requests) requests,(SELECT count(*) FROM app.transfer_events) events,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REQUESTED') requested_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REJECTED') rejected_audits`);
-  assert.deepEqual(Object.values(transferRows.rows[0]).map(Number),[1,2,1,1]);
+  const approvalRequest={...transferCommand,transferId:"TRF_SYNTH_POSTGRES_APPROVAL_001",quantity:2,idempotencyKey:"IDEM_TRANSFER_POSTGRES_APPROVAL_001",payloadSha256:"1".repeat(64),transferEventId:"TEVT_"+"1".repeat(40),auditEventId:"AUDT_"+"2".repeat(40)};
+  await transferWriter.submitTransferRequest(approvalRequest);
+  const approvalCommand={transferId:approvalRequest.transferId,sourceInstitutionId:"INST_MEDIATRIX",actorUserId:"USR_MEDIATRIX_ADMIN",expectedVersion:1,eventTime:"2026-08-20T01:10:00.000Z",correlationId:"CORR_"+"3".repeat(32),idempotencyKey:"IDEM_TRANSFER_APPROVE_POSTGRES_001",payloadSha256:"2".repeat(64),transferEventId:"TEVT_"+"3".repeat(40),auditEventId:"AUDT_"+"4".repeat(40)};
+  const approvedTransfer=await transferWriter.approveTransfer(approvalCommand);
+  const replayedApproval=await transferWriter.approveTransfer(approvalCommand);
+  assert.equal(approvedTransfer?.status,"APPROVED");assert.deepEqual(approvedTransfer?.selectedUnitIds,["UNIT_SYNTH_S4_POSTGRES_002","UNIT_SYNTH_S4_POSTGRES_001"]);assert.equal(replayedApproval?.replayed,true);assert.deepEqual(replayedApproval?.selectedUnitIds,approvedTransfer?.selectedUnitIds);assert.equal(approvalLedgerCalls,1);
+  await assert.rejects(transferWriter.approveTransfer({...approvalCommand,expectedVersion:2}),(error)=>error instanceof ApiFailure&&error.code==="TRANSFER_IDEMPOTENCY_CONFLICT");
+  const reserved=await pool.query("SELECT unit_id,inventory_status,ledger_transaction_id FROM app.inventory_projection ORDER BY expires_at,unit_id");
+  assert.deepEqual(reserved.rows.map(row=>[row.unit_id,row.inventory_status]),[["UNIT_SYNTH_S4_POSTGRES_002","RESERVED"],["UNIT_SYNTH_S4_POSTGRES_001","RESERVED"]]);
+  assert.equal(new Set(reserved.rows.map(row=>row.ledger_transaction_id)).size,1);
+
+  const insufficientRequest={...transferCommand,transferId:"TRF_SYNTH_POSTGRES_INSUFFICIENT_001",quantity:1,idempotencyKey:"IDEM_TRANSFER_POSTGRES_INSUFFICIENT_001",payloadSha256:"5".repeat(64),transferEventId:"TEVT_"+"5".repeat(40),auditEventId:"AUDT_"+"5".repeat(40)};
+  await transferWriter.submitTransferRequest(insufficientRequest);
+  const insufficientApproval={...approvalCommand,transferId:insufficientRequest.transferId,idempotencyKey:"IDEM_TRANSFER_APPROVE_INSUFFICIENT_001",payloadSha256:"6".repeat(64),transferEventId:"TEVT_"+"6".repeat(40),auditEventId:"AUDT_"+"6".repeat(40)};
+  await assert.rejects(transferWriter.approveTransfer(insufficientApproval),(error)=>error instanceof ApiFailure&&error.code==="TRF_INSUFFICIENT_STOCK");
+  assert.equal(approvalLedgerCalls,1);
+
+  const transferRows=await pool.query(`SELECT (SELECT count(*) FROM app.transfer_requests) requests,(SELECT count(*) FROM app.transfer_events) events,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REQUESTED') requested_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REJECTED') rejected_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_APPROVED') approved_audits`);
+  assert.deepEqual(Object.values(transferRows.rows[0]).map(Number),[3,5,3,1,1]);
 
   const rows = await pool.query(`
     SELECT
@@ -121,8 +150,8 @@ try {
       (SELECT count(*) FROM app.scan_event_attempts) AS attempts,
       (SELECT count(*) FROM app.inventory_projection) AS projections
   `);
-  assert.deepEqual(Object.values(rows.rows[0]).map(Number), [1, 2, 1]);
-  console.log("Sprint 4 scan and Sprint 5 transfer request/rejection PostgreSQL replay/conflict/projection/audit probes passed");
+  assert.deepEqual(Object.values(rows.rows[0]).map(Number), [2, 4, 2]);
+  console.log("Sprint 4 scan and Sprint 5 transfer request/approval/rejection PostgreSQL replay/conflict/projection/audit probes passed");
 } finally {
   await pool.end();
 }
