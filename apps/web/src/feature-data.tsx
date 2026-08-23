@@ -2,16 +2,13 @@ import { useRef, useState } from "react";
 import type { Principal } from "./auth/permissions";
 import { useLiveData } from "./hooks/use-live-data";
 import { newMutationKeys, type MutationKeys } from "./services/api/mutation-keys";
-import type { Aggregate, AlertAggregate, Alerts, Audit, Consortium, Dashboard, FeatureResponse, Inventory, Report, Transfer, TransferDetail, Transfers, TransferSummary } from "./services/api/types";
-
-const format=(value:string|null)=>value?new Intl.DateTimeFormat("en-PH",{timeZone:"Asia/Manila",dateStyle:"medium",timeStyle:"short"}).format(new Date(value)):"Not yet projected";
-const words=(value:string)=>value.replaceAll("_"," ");
-const chip=(value:string)=>`status ${["CRITICAL","FAILED","COMPROMISED","REJECTED"].includes(value)?"critical":["WARNING","DELAYED","PENDING"].includes(value)?"warning":""}`;
-
-function AggregateTable({items}:{items:Aggregate[]}) {
-  if(items.length===0)return <div className="empty"><strong>No committed inventory</strong>No ledger-confirmed projection is available for this scope.</div>;
-  return <div className="table-wrap"><table><thead><tr><th>Institution</th><th>Blood type</th><th>Component</th><th>Status</th><th>Confirmed</th><th>Projected</th></tr></thead><tbody>{items.map((item,index)=><tr key={`${item.institutionId}-${item.bloodType}-${item.component}-${item.inventoryStatus}-${index}`}><td>{item.institutionDisplayName}</td><td>{words(item.bloodType)}</td><td>{words(item.component)}</td><td><span className={chip(item.inventoryStatus)}>{words(item.inventoryStatus)}</span></td><td>{item.confirmedCount}</td><td>{format(item.lastProjectedAt)}</td></tr>)}</tbody></table></div>;
-}
+import { AggregateTable } from "./components/ui/aggregate-tables";
+import { formatManilaDateTime as format, humanizeCode as words, statusClassName as chip } from "./components/ui/display";
+import { AuditView } from "./features/audit/audit-view";
+import { ConsortiumView } from "./features/consortium/consortium-view";
+import { ProfileView } from "./features/profile/profile-view";
+import { ReportView } from "./features/reporting/report-view";
+import type { Alerts, Audit, Consortium, Dashboard, FeatureResponse, Inventory, Report, Transfer, TransferDetail, Transfers } from "./services/api/types";
 
 function AcknowledgeAlert({alertId,onDone}:{alertId:string;onDone:()=>void}) {
   const keys=useRef<MutationKeys|undefined>(undefined);
@@ -162,36 +159,6 @@ function TransferExplorer({data,canSubmit,canReject,canCancel,canCancelApproved,
   const detail=useLiveData<TransferDetail>(selected?"/api/v1/transfers/"+encodeURIComponent(selected):null);
   const refresh=()=>{detail.manual();onRefresh()};
   return <>{canSubmit&&<TransferRequestForm onDone={onRefresh}/>}<TransfersTable data={data} onSelect={setSelected}/>{selected&&<div className="detail-slot">{!detail.data&&(detail.busy||!detail.error)?<div className="empty"><strong>Loading transfer detail</strong>Waiting for scoped ledger projection evidence.</div>:!detail.data?<div className="empty" role="alert"><strong>Unable to load detail</strong>{detail.error}<br/><button className="button" onClick={detail.manual}>Retry</button> <button className="button" onClick={()=>setSelected(null)}>Close</button></div>:<TransferDetailView data={detail.data} close={()=>setSelected(null)} canReject={canReject} canCancel={canCancel} canCancelApproved={canCancelApproved} canDispatch={canDispatch} canStartTransit={canStartTransit} canDelay={canDelay} canResume={canResume} canReceive={canReceive} receiptInstitutionId={receiptInstitutionId} onDone={refresh}/>}</div>}</>;
-}
-
-function AlertAggregateTable({items}:{items:AlertAggregate[]}) {
-  if(items.length===0)return <div className="empty"><strong>No aggregate alerts</strong>No approved alert aggregate is available.</div>;
-  return <div className="table-wrap"><table><thead><tr><th>Institution</th><th>Alert</th><th>Severity</th><th>Status</th><th>Count</th><th>Evaluated</th></tr></thead><tbody>{items.map((item,index)=><tr key={item.institutionDisplayName+"-"+item.alertType+"-"+index}><td>{item.institutionDisplayName}</td><td>{words(item.alertType)}</td><td><span className={chip(item.severity)}>{item.severity}</span></td><td>{words(item.status)}</td><td>{item.count}</td><td>{format(item.lastEvaluatedAt)}</td></tr>)}</tbody></table></div>;
-}
-
-function TransferSummaryTable({items}:{items:TransferSummary[]}) {
-  if(items.length===0)return <div className="empty"><strong>No transfer summary</strong>No ledger-confirmed transfer aggregate is available.</div>;
-  return <div className="table-wrap"><table><thead><tr><th>Status</th><th>Transfers</th><th>Units</th></tr></thead><tbody>{items.map(item=><tr key={item.status}><td><span className={chip(item.status)}>{words(item.status)}</span></td><td>{item.transferCount}</td><td>{item.unitCount}</td></tr>)}</tbody></table></div>;
-}
-
-function ConsortiumView({data}:{data:Consortium}) {
-  const confirmed=data.inventory.reduce((sum,item)=>sum+item.confirmedCount,0);
-  const alerts=data.alerts.reduce((sum,item)=>sum+item.count,0);
-  const transfers=data.transferSummary.reduce((sum,item)=>sum+item.transferCount,0);
-  return <><p className="report-note">Application-level city aggregate. PRC and secondary hospitals are not represented as Fabric peer organizations.</p><div className="stats"><article><span>Ledger-confirmed units</span><strong>{confirmed}</strong></article><article><span>Aggregate alerts</span><strong>{alerts}</strong></article><article><span>Transfers</span><strong>{transfers}</strong></article></div><h3>Inventory by institution</h3><AggregateTable items={data.inventory}/><h3>Alert summary</h3><AlertAggregateTable items={data.alerts}/><h3>Transfer summary</h3><TransferSummaryTable items={data.transferSummary}/></>;
-}
-
-function AuditView({data}:{data:Audit}) {
-  if(data.events.length===0)return <div className="empty"><strong>No audit events</strong>No permitted redacted application event is available for this scope.</div>;
-  return <div className="table-wrap"><table><thead><tr><th>Institution</th><th>Action</th><th>Target</th><th>Outcome</th><th>Correlation</th><th>Ledger reference</th><th>Time</th></tr></thead><tbody>{data.events.map(item=><tr key={item.auditEventId}><td>{item.institutionDisplayName}</td><td>{words(item.actionCode)}</td><td>{words(item.targetType)}</td><td><span className={chip(item.outcome)}>{words(item.outcome)}</span>{item.safeErrorCode?" - "+words(item.safeErrorCode):""}</td><td className="mono">{item.correlationId}</td><td className="mono">{item.ledgerTransactionId??"Not applicable"}</td><td>{format(item.eventTime)}</td></tr>)}</tbody></table></div>;
-}
-
-function ProfileView({principal}:{principal:Principal}) {
-  return <div className="profile-grid"><article><span>Authenticated user</span><strong>{principal.displayName}</strong><small className="mono">{principal.userId}</small></article><article><span>Institution scope</span><strong>{principal.institutionDisplayName}</strong><small className="mono">{principal.institutionId}</small></article><article><span>Assigned role</span><strong>{principal.roleDisplayName}</strong><small>{principal.roleId}; assigned by the server</small></article><article><span>Data classification</span><strong>{words(principal.classification)}</strong><small>Controlled synthetic research access only</small></article><section><h3>Effective permissions</h3>{principal.permissions.length===0?<p>No application permissions are assigned.</p>:<ul>{principal.permissions.map(permission=><li className="mono" key={permission}>{permission}</li>)}</ul>}<p>Role and institution cannot be changed from this browser session.</p></section></div>;
-}
-
-function ReportView({data}:{data:Report}) {
-  return <><div className="report-toolbar"><p><strong>SIMULATION ONLY.</strong> {data.disclaimer}<br/>Generated {format(data.generatedAt)}.</p><a className="button" href="/api/v1/reports/inventory.csv" download>Download simulation CSV</a></div><h3>Inventory aggregate</h3><AggregateTable items={data.inventory}/><h3>Alert aggregate</h3><AlertAggregateTable items={data.alerts}/><h3>Transfer aggregate</h3><TransferSummaryTable items={data.transferSummary}/></>;
 }
 
 export function FeatureData({path,canAcknowledge=false,canSubmitTransfer=false,canRejectTransfer=false,canCancelTransfer=false,canCancelApprovedTransfer=false,canDispatchTransfer=false,canStartTransit=false,canDelayTransfer=false,canResumeTransfer=false,canReceiveTransfer=false,canCapture=false,principal}:{path:string;canAcknowledge?:boolean;canSubmitTransfer?:boolean;canRejectTransfer?:boolean;canCancelTransfer?:boolean;canCancelApprovedTransfer?:boolean;canDispatchTransfer?:boolean;canStartTransit?:boolean;canDelayTransfer?:boolean;canResumeTransfer?:boolean;canReceiveTransfer?:boolean;canCapture?:boolean;principal?:Principal}) {
