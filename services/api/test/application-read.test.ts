@@ -4,7 +4,7 @@ import test from "node:test";
 import { buildApp } from "../src/app.js";
 import type { ApiConfig } from "../src/config.js";
 import type { ApplicationReadRepository } from "../src/application-read.js";
-import type { AlertAcknowledgementInput, AlertAcknowledgementResult, ApplicationWriteRepository, TransferApprovalCommand, TransferApprovalResult, TransferCancellationCommand, TransferCancellationResult, TransferRejectionCommand, TransferRejectionResult, TransferRequestCommand, TransferRequestResult } from "../src/application-write.js";
+import type { AlertAcknowledgementInput, AlertAcknowledgementResult, ApplicationWriteRepository, TransferApprovalCommand, TransferApprovalResult, TransferCancellationCommand, TransferCancellationResult, TransferDispatchCommand, TransferDispatchResult, TransferRejectionCommand, TransferRejectionResult, TransferRequestCommand, TransferRequestResult } from "../src/application-write.js";
 import { ApiFailure } from "../src/errors.js";
 import { deriveVerifier, type CredentialRecord, type SessionRepository } from "../src/session.js";
 import type { RoleId } from "../src/web-access.js";
@@ -16,15 +16,18 @@ class Writes implements ApplicationWriteRepository {
   transferCalls: TransferRequestCommand[] = [];
   approvalCalls: TransferApprovalCommand[] = [];
   cancellationCalls: TransferCancellationCommand[] = [];
+  dispatchCalls: TransferDispatchCommand[] = [];
   rejectionCalls: TransferRejectionCommand[] = [];
   found = true;
   approvalFound = true;
   cancellationFound = true;
+  dispatchFound = true;
   rejectionFound = true;
   records = new Map<string,{payloadSha256:string;result:AlertAcknowledgementResult}>();
   transferRecords = new Map<string,{payloadSha256:string;result:TransferRequestResult}>();
   approvalRecords = new Map<string,{payloadSha256:string;result:TransferApprovalResult}>();
   cancellationRecords = new Map<string,{payloadSha256:string;result:TransferCancellationResult}>();
+  dispatchRecords = new Map<string,{payloadSha256:string;result:TransferDispatchResult}>();
   rejectionRecords = new Map<string,{payloadSha256:string;result:TransferRejectionResult}>();
 
   async acknowledgeAlert(input:AlertAcknowledgementInput) {
@@ -63,6 +66,16 @@ class Writes implements ApplicationWriteRepository {
     const result:TransferApprovalResult={transferId:input.transferId,status:"APPROVED",selectedUnitIds:["UNIT_SYNTH_FEFO_01"],ledgerVersion:input.expectedVersion+1,ledgerTransactionId:"TX_SYNTH_TRANSFER_APPROVAL",projectedAt:input.eventTime,replayed:false,classification:"SIMULATION_ONLY"};
     this.approvalRecords.set(input.idempotencyKey,{payloadSha256:input.payloadSha256,result});
     return result;
+  }
+
+  async dispatchTransfer(input:TransferDispatchCommand) {
+    this.dispatchCalls.push(input);
+    const existing=this.dispatchRecords.get(input.idempotencyKey);
+    if(existing){if(existing.payloadSha256!==input.payloadSha256)throw new ApiFailure(409,"TRANSFER_IDEMPOTENCY_CONFLICT","Idempotency key was used for a different transfer transition.");return{...existing.result,replayed:true}}
+    if(!this.dispatchFound)return null;
+    const evidence=input.locationEvidence;
+    const result:TransferDispatchResult={transferId:input.transferId,status:"DISPATCHED",dispatchedUnitIds:["UNIT_SYNTH_FEFO_01"],locationEvidence:{evidenceId:evidence.evidenceId,capturedAt:evidence.capturedAt,source:evidence.source,facilityMatched:evidence.facilityMatched,fallback:evidence.fallback,policyVersion:evidence.policyVersion},ledgerVersion:input.expectedVersion+1,ledgerTransactionId:"TX_SYNTH_TRANSFER_DISPATCH",projectedAt:input.eventTime,replayed:false,classification:"SIMULATION_ONLY"};
+    this.dispatchRecords.set(input.idempotencyKey,{payloadSha256:input.payloadSha256,result});return result;
   }
 
   async cancelTransfer(input:TransferCancellationCommand) {
@@ -118,6 +131,12 @@ test("ROLE-02 approves a pending transfer with server-selected FEFO evidence and
 test("transfer approval denies other roles, cross-origin calls, and caller-selected fields",async()=>{const admin=await fixture("ROLE-02"),technologist=await fixture("ROLE-01"),secondary=await fixture("ROLE-03");const url="/api/v1/transfers/TRF_SYNTH_VIEW_01/approval",payload={expectedVersion:1,eventTime:new Date().toISOString(),correlationId:"CORR_"+"8".repeat(32)},headers={origin,"idempotency-key":"IDEM_TRANSFER_APPROVE_002"};assert.equal((await technologist.app.inject({method:"POST",url,headers:{...headers,cookie:technologist.cookie},payload})).statusCode,403);assert.equal((await secondary.app.inject({method:"POST",url,headers:{...headers,cookie:secondary.cookie},payload})).statusCode,403);assert.equal((await admin.app.inject({method:"POST",url,headers:{...headers,cookie:admin.cookie,origin:"http://127.0.0.1:9999"},payload})).statusCode,403);assert.equal((await admin.app.inject({method:"POST",url,headers:{...headers,cookie:admin.cookie},payload:{...payload,selectedUnitIds:["UNIT_CALLER_CHOSEN"]}})).statusCode,400);assert.equal(admin.writes.approvalCalls.length,0);await admin.app.close();await technologist.app.close();await secondary.app.close()});
 
 test("transfer approval reports idempotency conflict and hidden-scope absence",async()=>{const{app,writes,cookie}=await fixture("ROLE-02");const url="/api/v1/transfers/TRF_SYNTH_VIEW_01/approval",headers={cookie,origin,"idempotency-key":"IDEM_TRANSFER_APPROVE_CONFLICT"},payload={expectedVersion:1,eventTime:new Date().toISOString(),correlationId:"CORR_"+"9".repeat(32)};assert.equal((await app.inject({method:"POST",url,headers,payload})).statusCode,200);const conflict=await app.inject({method:"POST",url,headers,payload:{...payload,expectedVersion:2}});assert.equal(conflict.statusCode,409);assert.equal(conflict.json().error.code,"TRANSFER_IDEMPOTENCY_CONFLICT");writes.approvalFound=false;const missing=await app.inject({method:"POST",url:"/api/v1/transfers/TRF_SYNTH_VIEW_02/approval",headers:{...headers,"idempotency-key":"IDEM_TRANSFER_APPROVE_MISSING"},payload});assert.equal(missing.statusCode,404);assert.equal(missing.json().error.code,"TRANSFER_NOT_FOUND");await app.close()});
+
+test("ROLE-01 dispatches an approved scoped transfer with redacted synthetic location evidence and safely replays it",async()=>{const{app,writes,cookie}=await fixture("ROLE-01");const url="/api/v1/transfers/TRF_SYNTH_VIEW_01/dispatch",headers={cookie,origin,"idempotency-key":"IDEM_TRANSFER_DISPATCH_001"},eventTime=new Date().toISOString(),payload={expectedVersion:2,eventTime,correlationId:"CORR_"+"1".repeat(32),location:{latitude:0,longitude:0,accuracyMetres:50,source:"FACILITY_FALLBACK",fallbackReason:"DEVICE_UNAVAILABLE",capturedAt:eventTime}};const first=await app.inject({method:"POST",url,headers,payload}),replay=await app.inject({method:"POST",url,headers,payload});assert.equal(first.statusCode,200);assert.equal(first.json().status,"DISPATCHED");assert.deepEqual(first.json().dispatchedUnitIds,["UNIT_SYNTH_FEFO_01"]);assert.equal(first.json().locationEvidence.fallback,true);assert.equal("latitude" in first.json().locationEvidence,false);assert.equal(replay.json().replayed,true);assert.equal(writes.dispatchCalls[0].sourceInstitutionId,"INST_MEDIATRIX");assert.equal(writes.dispatchCalls[0].locationEvidence.latitude,0);await app.close()});
+
+test("dispatch permits ROLE-02 but denies destination and regulatory roles plus non-exact or invalid location evidence",async()=>{const admin=await fixture("ROLE-02"),secondary=await fixture("ROLE-03"),regulatory=await fixture("ROLE-04");const url="/api/v1/transfers/TRF_SYNTH_VIEW_01/dispatch",eventTime=new Date().toISOString(),headers={origin,"idempotency-key":"IDEM_TRANSFER_DISPATCH_002"},payload={expectedVersion:2,eventTime,correlationId:"CORR_"+"2".repeat(32),location:{latitude:0,longitude:0,accuracyMetres:50,source:"FACILITY_FALLBACK",fallbackReason:"PERMISSION_DENIED",capturedAt:eventTime}};assert.equal((await admin.app.inject({method:"POST",url,headers:{...headers,cookie:admin.cookie},payload})).statusCode,200);assert.equal((await secondary.app.inject({method:"POST",url,headers:{...headers,cookie:secondary.cookie},payload})).statusCode,403);assert.equal((await regulatory.app.inject({method:"POST",url,headers:{...headers,cookie:regulatory.cookie},payload})).statusCode,403);assert.equal((await admin.app.inject({method:"POST",url,headers:{...headers,cookie:admin.cookie,"idempotency-key":"IDEM_TRANSFER_DISPATCH_BAD"},payload:{...payload,location:{...payload.location,latitude:1}}})).statusCode,400);assert.equal((await admin.app.inject({method:"POST",url,headers:{...headers,cookie:admin.cookie,"idempotency-key":"IDEM_TRANSFER_DISPATCH_SCOPE"},payload:{...payload,institutionId:"INST_SYNTH_01"}})).statusCode,400);await admin.app.close();await secondary.app.close();await regulatory.app.close()});
+
+test("transfer dispatch detects idempotency conflict, cross-origin use, and hidden-scope absence",async()=>{const{app,writes,cookie}=await fixture("ROLE-01");const url="/api/v1/transfers/TRF_SYNTH_VIEW_01/dispatch",eventTime=new Date().toISOString(),headers={cookie,origin,"idempotency-key":"IDEM_TRANSFER_DISPATCH_CONFLICT"},payload={expectedVersion:2,eventTime,correlationId:"CORR_"+"3".repeat(32),location:{latitude:0,longitude:0,accuracyMetres:50,source:"DEVICE",fallbackReason:null,capturedAt:eventTime}};assert.equal((await app.inject({method:"POST",url,headers,payload})).statusCode,200);const conflict=await app.inject({method:"POST",url,headers,payload:{...payload,location:{...payload.location,accuracyMetres:51}}});assert.equal(conflict.statusCode,409);assert.equal((await app.inject({method:"POST",url,headers:{...headers,origin:"http://127.0.0.1:9999"},payload})).statusCode,403);writes.dispatchFound=false;assert.equal((await app.inject({method:"POST",url:"/api/v1/transfers/TRF_SYNTH_VIEW_02/dispatch",headers:{...headers,"idempotency-key":"IDEM_TRANSFER_DISPATCH_MISSING"},payload})).statusCode,404);await app.close()});
 
 test("ROLE-02 cancels a scoped transfer and safely replays the same disposition",async()=>{const{app,writes,cookie}=await fixture("ROLE-02");const url="/api/v1/transfers/TRF_SYNTH_VIEW_01/cancellation",headers={cookie,origin,"idempotency-key":"IDEM_TRANSFER_CANCEL_001"},payload={expectedVersion:2,reasonCode:"REQUEST_WITHDRAWN",eventTime:new Date().toISOString(),correlationId:"CORR_"+"C".repeat(32)};const first=await app.inject({method:"POST",url,headers,payload}),replay=await app.inject({method:"POST",url,headers,payload});assert.equal(first.statusCode,200);assert.equal(first.json().status,"CANCELLED");assert.deepEqual(first.json().releasedUnitIds,["UNIT_SYNTH_FEFO_01"]);assert.equal(replay.json().replayed,true);assert.equal(writes.cancellationCalls[0].actorRoleId,"ROLE-02");assert.equal(writes.cancellationCalls[0].actorInstitutionId,"INST_MEDIATRIX");await app.close()});
 

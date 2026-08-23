@@ -99,7 +99,7 @@ try {
   const secondProjection=await repository.claimProjection(new Date("2026-08-17T12:02:02.000Z"));
   await repository.projectCommitted(secondProjection,new Date("2026-08-17T12:02:02.000Z"));
 
-  let requestLedgerCalls=0,approvalLedgerCalls=0,rejectionLedgerCalls=0,cancellationLedgerCalls=0;
+  let requestLedgerCalls=0,approvalLedgerCalls=0,rejectionLedgerCalls=0,cancellationLedgerCalls=0,dispatchLedgerCalls=0;
   const transferWriter = new PostgresApplicationWriteRepository(pool, {
     async submitRequest(input) {
       requestLedgerCalls+=1;
@@ -107,7 +107,7 @@ try {
     },
     async approveTransfer(input) {
       approvalLedgerCalls+=1;
-      return { asset:{ transferId:input.transferId,status:"APPROVED",selectedUnitIds:input.selectedUnitIds,actorUserId:input.actorUserId,version:input.expectedVersion+1,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_SYNTH_TRANSFER_APPROVAL_POSTGRES_001" }, committedAt:new Date(input.eventTime), ledgerReplayed:false };
+      return { asset:{ transferId:input.transferId,status:"APPROVED",selectedUnitIds:input.selectedUnitIds,actorUserId:input.actorUserId,version:input.expectedVersion+1,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_APPROVAL_"+input.transferId }, committedAt:new Date(input.eventTime), ledgerReplayed:false };
     },
     async rejectTransfer(input) {
       rejectionLedgerCalls+=1;
@@ -116,6 +116,10 @@ try {
     async cancelTransfer(input) {
       cancellationLedgerCalls+=1;
       return { asset:{ transferId:input.transferId,status:"CANCELLED",reasonCode:input.reasonCode,actorUserId:input.actorUserId,version:input.expectedVersion+1,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_SYNTH_TRANSFER_CANCELLATION_POSTGRES_001" }, committedAt:new Date(input.eventTime), ledgerReplayed:false };
+    },
+    async dispatchTransfer(input) {
+      dispatchLedgerCalls+=1;
+      return { asset:{ transferId:input.transferId,status:"DISPATCHED",selectedUnitIds:["UNIT_SYNTH_S4_POSTGRES_002","UNIT_SYNTH_S4_POSTGRES_001"],dispatchEvidence:input.locationEvidence,actorUserId:input.actorUserId,version:input.expectedVersion+1,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_SYNTH_TRANSFER_DISPATCH_POSTGRES_001" }, committedAt:new Date(input.eventTime), ledgerReplayed:false };
     }
   });
   const transferCommand={ transferId:"TRF_SYNTH_POSTGRES_001",destinationInstitutionId:"INST_DIVINE_LOVE",actorUserId:"USR_DIVINE_LOVE",bloodType:"A_POSITIVE",component:"RED_BLOOD_CELLS",quantity:2,urgency:"URGENT",requestTime:"2026-08-20T01:00:00.000Z",eventTime:"2026-08-20T01:00:00.000Z",correlationId:"CORR_"+"A".repeat(32),idempotencyKey:"IDEM_TRANSFER_POSTGRES_001",payloadSha256:"d".repeat(64),transferEventId:"TEVT_"+"B".repeat(40),auditEventId:"AUDT_"+"C".repeat(40) };
@@ -155,8 +159,24 @@ try {
   assert.equal(new Set(released.rows.map(row=>row.ledger_transaction_id)).size,1);
   assert.equal(released.rows[0].ledger_transaction_id,"TX_SYNTH_TRANSFER_CANCELLATION_POSTGRES_001");
 
-  const transferRows=await pool.query(`SELECT (SELECT count(*) FROM app.transfer_requests) requests,(SELECT count(*) FROM app.transfer_events) events,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REQUESTED') requested_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REJECTED') rejected_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_APPROVED') approved_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_CANCELLED') cancelled_audits`);
-  assert.deepEqual(Object.values(transferRows.rows[0]).map(Number),[3,6,3,1,1,1]);
+  const dispatchRequest={...transferCommand,transferId:"TRF_SYNTH_POSTGRES_DISPATCH_001",quantity:2,idempotencyKey:"IDEM_TRANSFER_POSTGRES_DISPATCH_001",payloadSha256:"8".repeat(64),transferEventId:"TEVT_"+"8".repeat(40),auditEventId:"AUDT_"+"8".repeat(40)};
+  await transferWriter.submitTransferRequest(dispatchRequest);
+  const dispatchApproval={...approvalCommand,transferId:dispatchRequest.transferId,eventTime:"2026-08-20T01:20:00.000Z",correlationId:"CORR_"+"8".repeat(32),idempotencyKey:"IDEM_TRANSFER_APPROVE_DISPATCH_001",payloadSha256:"9".repeat(64),transferEventId:"TEVT_"+"9".repeat(40),auditEventId:"AUDT_"+"9".repeat(40)};
+  await transferWriter.approveTransfer(dispatchApproval);
+  const dispatchCommand={transferId:dispatchRequest.transferId,sourceInstitutionId:"INST_MEDIATRIX",actorUserId:"USR_MEDIATRIX_ADMIN",expectedVersion:2,eventTime:"2026-08-20T01:25:00.000Z",correlationId:"CORR_"+"A".repeat(32),idempotencyKey:"IDEM_TRANSFER_DISPATCH_POSTGRES_001",payloadSha256:"a".repeat(64),transferEventId:"TEVT_"+"A".repeat(40),auditEventId:"AUDT_"+"A".repeat(40),locationEvidence:{evidenceId:"LOC_SYNTH_DISPATCH_POSTGRES_001",evidenceDigest:"b".repeat(64),institutionId:"INST_MEDIATRIX",phase:"DISPATCH",latitude:0,longitude:0,accuracyMetres:50,source:"FACILITY_FALLBACK",fallbackReason:"DEVICE_UNAVAILABLE",capturedAt:"2026-08-20T01:24:00.000Z",facilityMatched:true,fallback:true,policyVersion:"SYNTHETIC_LOCATION_V1",classification:"SYNTHETIC_DATA",deleteAfter:"2026-09-19T01:24:00.000Z"}};
+  const dispatchedTransfer=await transferWriter.dispatchTransfer(dispatchCommand);
+  const replayedDispatch=await transferWriter.dispatchTransfer(dispatchCommand);
+  assert.equal(dispatchedTransfer?.status,"DISPATCHED");assert.equal(dispatchedTransfer?.ledgerVersion,3);assert.deepEqual(dispatchedTransfer?.dispatchedUnitIds,["UNIT_SYNTH_S4_POSTGRES_002","UNIT_SYNTH_S4_POSTGRES_001"]);assert.equal(dispatchedTransfer?.locationEvidence.fallback,true);assert.equal(replayedDispatch?.replayed,true);assert.equal(dispatchLedgerCalls,1);
+  await assert.rejects(transferWriter.dispatchTransfer({...dispatchCommand,payloadSha256:"c".repeat(64),locationEvidence:{...dispatchCommand.locationEvidence,evidenceDigest:"c".repeat(64)}}),(error)=>error instanceof ApiFailure&&error.code==="TRANSFER_IDEMPOTENCY_CONFLICT");
+  const dispatched=await pool.query("SELECT unit_id,inventory_status,ledger_transaction_id FROM app.inventory_projection ORDER BY expires_at,unit_id");
+  assert.deepEqual(dispatched.rows.map(row=>[row.unit_id,row.inventory_status]),[["UNIT_SYNTH_S4_POSTGRES_002","DISPATCHED"],["UNIT_SYNTH_S4_POSTGRES_001","DISPATCHED"]]);
+  assert.equal(new Set(dispatched.rows.map(row=>row.ledger_transaction_id)).size,1);
+  const locationRow=await pool.query("SELECT evidence_id,institution_id,phase,fallback,delete_after-captured_at retention FROM app.location_evidence");
+  assert.deepEqual([locationRow.rows[0].evidence_id,locationRow.rows[0].institution_id,locationRow.rows[0].phase,locationRow.rows[0].fallback],[dispatchCommand.locationEvidence.evidenceId,"INST_MEDIATRIX","DISPATCH",true]);
+  assert.equal(locationRow.rows[0].retention.days,30);
+
+  const transferRows=await pool.query(`SELECT (SELECT count(*) FROM app.transfer_requests) requests,(SELECT count(*) FROM app.transfer_events) events,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REQUESTED') requested_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REJECTED') rejected_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_APPROVED') approved_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_CANCELLED') cancelled_audits,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_DISPATCHED') dispatched_audits`);
+  assert.deepEqual(Object.values(transferRows.rows[0]).map(Number),[4,9,4,1,2,1,1]);
 
   const rows = await pool.query(`
     SELECT
@@ -165,7 +185,7 @@ try {
       (SELECT count(*) FROM app.inventory_projection) AS projections
   `);
   assert.deepEqual(Object.values(rows.rows[0]).map(Number), [2, 4, 2]);
-  console.log("Sprint 4 scan and Sprint 5 transfer request/approval/rejection/cancellation PostgreSQL replay/conflict/projection/audit probes passed");
+  console.log("Sprint 4 scan and Sprint 5 transfer request/approval/rejection/cancellation/dispatch PostgreSQL replay/conflict/projection/audit probes passed");
 } finally {
   await pool.end();
 }

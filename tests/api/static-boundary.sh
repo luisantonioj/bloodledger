@@ -37,6 +37,12 @@ rg -Fq 'TransferCancellationRequest' services/api/openapi.json
 rg -Fq 'submitAsync("CancelTransfer"' services/api/src/fabric.ts
 rg -Fq "'TRANSFER_CANCELLED'" services/api/src/database-application-write.ts
 rg -Fq "inventory_status='AVAILABLE'" services/api/src/database-application-write.ts
+rg -Fq '/api/v1/transfers/{transferId}/dispatch' services/api/openapi.json
+rg -Fq 'TransferDispatchRequest' services/api/openapi.json
+rg -Fq 'submitAsync("RecordDispatch"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_DISPATCHED'" services/api/src/database-application-write.ts
+rg -Fq "inventory_status='DISPATCHED'" services/api/src/database-application-write.ts
+rg -Fq 'app.location_evidence' services/api/src/database-application-write.ts
 rg -Fq 'principal.roleId !== "ROLE-03"' services/api/src/app.ts
 rg -Fq 'evaluateTransaction("ReadTransfer"' services/api/src/fabric.ts
 rg -Fq 'submitAsync("SubmitTransferRequest"' services/api/src/fabric.ts

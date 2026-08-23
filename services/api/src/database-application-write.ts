@@ -7,6 +7,8 @@ import type {
   TransferApprovalResult,
   TransferCancellationCommand,
   TransferCancellationResult,
+  TransferDispatchCommand,
+  TransferDispatchResult,
   TransferRequestCommand,
   TransferRequestResult,
   TransferRejectionCommand,
@@ -238,6 +240,56 @@ export class PostgresApplicationWriteRepository implements ApplicationWriteRepos
         ledgerVersion: asset.version, ledgerTransactionId: asset.lastTransactionId,
         projectedAt, replayed: ledger.ledgerReplayed, classification: "SIMULATION_ONLY",
       };
+    });
+  }
+
+  async dispatchTransfer(input: TransferDispatchCommand): Promise<TransferDispatchResult | null> {
+    return this.transaction(async (client) => {
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [input.idempotencyKey]);
+      const existing=await client.query<Row>(
+        `SELECT e.transfer_id,e.to_status,e.actor_user_id,e.actor_institution_id,e.event_time,e.correlation_id,e.ledger_transaction_id,e.ledger_version,r.projected_at,
+                l.evidence_id,l.evidence_digest,l.captured_at,l.capture_source,l.facility_matched,l.fallback,l.policy_version
+         FROM app.transfer_events e JOIN app.transfer_requests r ON r.transfer_id=e.transfer_id
+         LEFT JOIN app.location_evidence l ON l.evidence_id=r.dispatch_evidence_id WHERE e.idempotency_key=$1`,
+        [input.idempotencyKey],
+      );
+      if(existing.rows[0]){
+        const row=existing.rows[0],evidence=input.locationEvidence;
+        const exact=String(row.transfer_id)===input.transferId&&String(row.to_status)==="DISPATCHED"&&
+          String(row.actor_user_id)===input.actorUserId&&String(row.actor_institution_id)===input.sourceInstitutionId&&
+          new Date(String(row.event_time)).toISOString()===input.eventTime&&String(row.correlation_id)===input.correlationId&&
+          Number(row.ledger_version)===input.expectedVersion+1&&String(row.evidence_id)===evidence.evidenceId&&
+          String(row.evidence_digest)===evidence.evidenceDigest;
+        if(!exact)throw new ApiFailure(409,"TRANSFER_IDEMPOTENCY_CONFLICT","Idempotency key was used for a different transfer transition.");
+        const selected=await client.query<Row>("SELECT unit_id FROM app.transfer_selected_units WHERE transfer_id=$1 ORDER BY fefo_position",[input.transferId]);
+        return{transferId:input.transferId,status:"DISPATCHED",dispatchedUnitIds:selected.rows.map(item=>String(item.unit_id)),locationEvidence:{evidenceId:String(row.evidence_id),capturedAt:new Date(String(row.captured_at)).toISOString(),source:String(row.capture_source) as "DEVICE"|"FACILITY_FALLBACK",facilityMatched:Boolean(row.facility_matched),fallback:Boolean(row.fallback),policyVersion:"SYNTHETIC_LOCATION_V1"},ledgerVersion:Number(row.ledger_version),ledgerTransactionId:String(row.ledger_transaction_id),projectedAt:new Date(String(row.projected_at)).toISOString(),replayed:true,classification:"SIMULATION_ONLY"};
+      }
+      const target=await client.query<Row>("SELECT transfer_id,status,ledger_version FROM app.transfer_requests WHERE transfer_id=$1 AND source_institution_id=$2 FOR UPDATE",[input.transferId,input.sourceInstitutionId]);
+      if(!target.rows[0])return null;
+      if(String(target.rows[0].status)!=="APPROVED")throw new ApiFailure(409,"TRANSFER_STATE_CONFLICT","Only an approved transfer can be dispatched.");
+      if(Number(target.rows[0].ledger_version)!==input.expectedVersion)throw new ApiFailure(409,"TRANSFER_VERSION_CONFLICT","The transfer changed; refresh before retrying.");
+      const selected=await client.query<Row>("SELECT unit_id FROM app.transfer_selected_units WHERE transfer_id=$1 ORDER BY fefo_position",[input.transferId]);
+      const dispatchedUnitIds=selected.rows.map(row=>String(row.unit_id));
+      if(dispatchedUnitIds.length===0)throw new ApiFailure(409,"TRANSFER_STATE_CONFLICT","The approved transfer has no reserved units.");
+      const evidence=input.locationEvidence;
+      await client.query(
+        `INSERT INTO app.location_evidence(evidence_id,evidence_digest,institution_id,phase,latitude,longitude,accuracy_metres,capture_source,fallback_reason,captured_at,facility_matched,fallback,policy_version,classification,delete_after)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+        [evidence.evidenceId,evidence.evidenceDigest,evidence.institutionId,evidence.phase,evidence.latitude,evidence.longitude,evidence.accuracyMetres,evidence.source,evidence.fallbackReason,evidence.capturedAt,evidence.facilityMatched,evidence.fallback,evidence.policyVersion,evidence.classification,evidence.deleteAfter],
+      );
+      let ledger;
+      try{ledger=await this.transferLedger.dispatchTransfer({transferId:input.transferId,actorUserId:input.actorUserId,eventTime:input.eventTime,expectedVersion:input.expectedVersion,correlationId:input.correlationId,idempotencyKey:input.idempotencyKey,policyVersion:"SYNTHETIC_TRANSFER_V1",locationEvidence:{evidenceId:evidence.evidenceId,evidenceDigest:evidence.evidenceDigest,phase:"DISPATCH",capturedAt:evidence.capturedAt,source:evidence.source,facilityMatched:evidence.facilityMatched,fallback:evidence.fallback,policyVersion:evidence.policyVersion}});}
+      catch(error){if(!(error instanceof WorkerFailure))throw error;if(error.retryable)throw new ApiFailure(503,"FABRIC_GATEWAY_UNAVAILABLE","The ledger is unavailable; retry with the same idempotency key.");const status=error.code==="TRF_NOT_AUTHORIZED"?403:error.code.includes("CONFLICT")||["TRF_STATE_INVALID","TRF_TRANSITION_INVALID","TRF_UNIT_STATE_INVALID"].includes(error.code)?409:400;throw new ApiFailure(status,error.code,"The transfer dispatch was rejected by the authoritative ledger policy.");}
+      const asset=ledger.asset;
+      const exactUnits=asset.selectedUnitIds.length===dispatchedUnitIds.length&&asset.selectedUnitIds.every((unitId,index)=>unitId===dispatchedUnitIds[index]);
+      if(!exactUnits)throw new ApiFailure(503,"PROJECTION_RECONCILIATION_FAILED","Ledger dispatch committed but selected-unit reconciliation requires retry with the same idempotency key.");
+      const projectedAt=new Date(Math.floor(Date.now()/1000)*1000).toISOString();
+      await client.query(`UPDATE app.transfer_requests SET status='DISPATCHED',dispatch_evidence_id=$2,actor_user_id=$3,ledger_version=$4,ledger_transaction_id=$5,correlation_id=$6,projected_at=$7 WHERE transfer_id=$1`,[asset.transferId,evidence.evidenceId,input.actorUserId,asset.version,asset.lastTransactionId,asset.correlationId,projectedAt]);
+      const inventory=await client.query(`UPDATE app.inventory_projection SET inventory_status='DISPATCHED',ledger_version=ledger_version+1,ledger_transaction_id=$2,correlation_id=$3,projected_at=$4 WHERE unit_id=ANY($1::varchar[]) AND inventory_status='RESERVED'`,[dispatchedUnitIds,asset.lastTransactionId,asset.correlationId,projectedAt]);
+      if(inventory.rowCount!==dispatchedUnitIds.length)throw new ApiFailure(503,"PROJECTION_RECONCILIATION_FAILED","Ledger dispatch committed but inventory projection reconciliation requires retry with the same idempotency key.");
+      await client.query(`INSERT INTO app.transfer_events(event_id,transfer_id,from_status,to_status,actor_user_id,actor_institution_id,event_time,reason_code,idempotency_key,correlation_id,ledger_transaction_id,ledger_version,classification) VALUES($1,$2,'APPROVED','DISPATCHED',$3,$4,$5,NULL,$6,$7,$8,$9,'SIMULATION_ONLY')`,[input.transferEventId,asset.transferId,input.actorUserId,input.sourceInstitutionId,input.eventTime,input.idempotencyKey,input.correlationId,asset.lastTransactionId,asset.version]);
+      await client.query(`INSERT INTO app.audit_events(audit_event_id,institution_id,actor_user_id,action_code,target_type,target_id,outcome,correlation_id,ledger_transaction_id,event_time,classification) VALUES($1,$2,$3,'TRANSFER_DISPATCHED','TRANSFER',$4,'SUCCEEDED',$5,$6,$7,'SIMULATION_ONLY')`,[input.auditEventId,input.sourceInstitutionId,input.actorUserId,asset.transferId,input.correlationId,asset.lastTransactionId,input.eventTime]);
+      return{transferId:asset.transferId,status:"DISPATCHED",dispatchedUnitIds,locationEvidence:{evidenceId:evidence.evidenceId,capturedAt:evidence.capturedAt,source:evidence.source,facilityMatched:evidence.facilityMatched,fallback:evidence.fallback,policyVersion:evidence.policyVersion},ledgerVersion:asset.version,ledgerTransactionId:asset.lastTransactionId,projectedAt,replayed:ledger.ledgerReplayed,classification:"SIMULATION_ONLY"};
     });
   }
 

@@ -3,7 +3,7 @@
   "info": {
     "title": "BloodLedger Sprint 5 Simulation API",
     "version": "0.2.0",
-    "description": "Simulation-only web access, mobile capture intake, synchronization status, and demand forecast reads. This API cannot approve transfers or clinical decisions."
+    "description": "Simulation-only web access, mobile capture intake, synchronization status, and demand forecast reads. This API cannot autonomously approve transfers or make clinical decisions."
   },
   "servers": [
     {
@@ -937,6 +937,85 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TransferCancellationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/transfers/{transferId}/dispatch": {
+      "post": {
+        "summary": "Record synthetic dispatch location evidence and dispatch reserved FEFO units",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferDispatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ledger dispatch and reserved-unit projection committed, or an exact idempotent replay returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferDispatchResult"
                 }
               }
             }
@@ -2800,6 +2879,178 @@
           "ledgerVersion": {
             "type": "integer",
             "minimum": 2
+          },
+          "ledgerTransactionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferLocationCapture": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "latitude",
+          "longitude",
+          "accuracyMetres",
+          "source",
+          "fallbackReason",
+          "capturedAt"
+        ],
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "accuracyMetres": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1000
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "DEVICE",
+              "FACILITY_FALLBACK"
+            ]
+          },
+          "fallbackReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "DEVICE_UNAVAILABLE",
+              "PERMISSION_DENIED",
+              "SIGNAL_UNAVAILABLE",
+              null
+            ]
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TransferDispatchRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "eventTime",
+          "correlationId",
+          "location"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "location": {
+            "$ref": "#/components/schemas/TransferLocationCapture"
+          }
+        }
+      },
+      "TransferLocationEvidenceSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "evidenceId",
+          "capturedAt",
+          "source",
+          "facilityMatched",
+          "fallback",
+          "policyVersion"
+        ],
+        "properties": {
+          "evidenceId": {
+            "type": "string",
+            "pattern": "^LOC_[A-Z0-9_-]{1,56}$"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "DEVICE",
+              "FACILITY_FALLBACK"
+            ]
+          },
+          "facilityMatched": {
+            "type": "boolean"
+          },
+          "fallback": {
+            "type": "boolean"
+          },
+          "policyVersion": {
+            "type": "string",
+            "const": "SYNTHETIC_LOCATION_V1"
+          }
+        }
+      },
+      "TransferDispatchResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "status",
+          "dispatchedUnitIds",
+          "locationEvidence",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "DISPATCHED"
+          },
+          "dispatchedUnitIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "locationEvidence": {
+            "$ref": "#/components/schemas/TransferLocationEvidenceSummary"
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 3
           },
           "ledgerTransactionId": {
             "type": "string",

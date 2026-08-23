@@ -67,6 +67,55 @@ export interface TransferApprovalResult {
   classification: "SIMULATION_ONLY";
 }
 
+export interface TransferDispatchCommand {
+  transferId: string;
+  sourceInstitutionId: string;
+  actorUserId: string;
+  expectedVersion: number;
+  eventTime: string;
+  correlationId: string;
+  idempotencyKey: string;
+  payloadSha256: string;
+  transferEventId: string;
+  auditEventId: string;
+  locationEvidence: {
+    evidenceId: string;
+    evidenceDigest: string;
+    institutionId: string;
+    phase: "DISPATCH";
+    latitude: number;
+    longitude: number;
+    accuracyMetres: number;
+    source: "DEVICE" | "FACILITY_FALLBACK";
+    fallbackReason: "DEVICE_UNAVAILABLE" | "PERMISSION_DENIED" | "SIGNAL_UNAVAILABLE" | null;
+    capturedAt: string;
+    facilityMatched: boolean;
+    fallback: boolean;
+    policyVersion: "SYNTHETIC_LOCATION_V1";
+    classification: "SYNTHETIC_DATA";
+    deleteAfter: string;
+  };
+}
+
+export interface TransferDispatchResult {
+  transferId: string;
+  status: "DISPATCHED";
+  dispatchedUnitIds: string[];
+  locationEvidence: {
+    evidenceId: string;
+    capturedAt: string;
+    source: "DEVICE" | "FACILITY_FALLBACK";
+    facilityMatched: boolean;
+    fallback: boolean;
+    policyVersion: "SYNTHETIC_LOCATION_V1";
+  };
+  ledgerVersion: number;
+  ledgerTransactionId: string;
+  projectedAt: string;
+  replayed: boolean;
+  classification: "SIMULATION_ONLY";
+}
+
 export interface TransferCancellationCommand {
   transferId: string;
   actorInstitutionId: string;
@@ -124,5 +173,6 @@ export interface ApplicationWriteRepository {
   submitTransferRequest(input: TransferRequestCommand): Promise<TransferRequestResult>;
   approveTransfer(input: TransferApprovalCommand): Promise<TransferApprovalResult | null>;
   cancelTransfer(input: TransferCancellationCommand): Promise<TransferCancellationResult | null>;
+  dispatchTransfer(input: TransferDispatchCommand): Promise<TransferDispatchResult | null>;
   rejectTransfer(input: TransferRejectionCommand): Promise<TransferRejectionResult | null>;
 }
