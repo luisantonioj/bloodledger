@@ -2,34 +2,15 @@ import { useRef, useState } from "react";
 import type { Principal } from "./auth/permissions";
 import { useLiveData } from "./hooks/use-live-data";
 import { newMutationKeys, type MutationKeys } from "./services/api/mutation-keys";
-import { AggregateTable } from "./components/ui/aggregate-tables";
 import { formatManilaDateTime as format, humanizeCode as words, statusClassName as chip } from "./components/ui/display";
 import { AuditView } from "./features/audit/audit-view";
+import { AlertsView } from "./features/alerts/alerts-view";
+import { DashboardView } from "./features/dashboard/dashboard-view";
+import { InventoryView } from "./features/inventory/inventory-view";
 import { ConsortiumView } from "./features/consortium/consortium-view";
 import { ProfileView } from "./features/profile/profile-view";
 import { ReportView } from "./features/reporting/report-view";
 import type { Alerts, Audit, Consortium, Dashboard, FeatureResponse, Inventory, Report, Transfer, TransferDetail, Transfers } from "./services/api/types";
-
-function AcknowledgeAlert({alertId,onDone}:{alertId:string;onDone:()=>void}) {
-  const keys=useRef<MutationKeys|undefined>(undefined);
-  const[busy,setBusy]=useState(false),[error,setError]=useState("");
-  async function submit(){
-    setBusy(true);setError("");keys.current??=newMutationKeys();
-    try{
-      const response=await fetch("/api/v1/alerts/"+encodeURIComponent(alertId)+"/acknowledgements",{method:"POST",credentials:"same-origin",headers:{Accept:"application/json","Content-Type":"application/json","Idempotency-Key":keys.current.idempotencyKey},body:JSON.stringify({correlationId:keys.current.correlationId})});
-      const body=await response.json().catch(()=>null) as {error?:{message?:string}}|null;
-      if(!response.ok)throw new Error(body?.error?.message??"Acknowledgement failed.");
-      keys.current=undefined;onDone();
-    }catch(reason){setError(reason instanceof Error?reason.message:"Acknowledgement failed.");}
-    finally{setBusy(false)}
-  }
-  return <div className="ack-action"><button className="button" disabled={busy} onClick={()=>void submit()}>{busy?"Acknowledging...":error?"Retry acknowledgement":"Acknowledge"}</button>{error&&<span role="alert">{error}</span>}</div>;
-}
-
-function AlertsTable({data,canAcknowledge,onRefresh}:{data:Alerts;canAcknowledge:boolean;onRefresh:()=>void}) {
-  if(data.scope==="CITY_AGGREGATE")return data.aggregates.length===0?<div className="empty"><strong>No aggregate alerts</strong>No approved alert aggregate is available.</div>:<div className="table-wrap"><table><thead><tr><th>Institution</th><th>Alert</th><th>Severity</th><th>Status</th><th>Count</th><th>Evaluated</th></tr></thead><tbody>{data.aggregates.map((item,index)=><tr key={`${item.institutionDisplayName}-${item.alertType}-${index}`}><td>{item.institutionDisplayName}</td><td>{words(item.alertType)}</td><td><span className={chip(item.severity)}>{item.severity}</span></td><td>{item.status}</td><td>{item.count}</td><td>{format(item.lastEvaluatedAt)}</td></tr>)}</tbody></table></div>;
-  return data.alerts.length===0?<div className="empty"><strong>No alerts</strong>No authorized alert currently requires display.</div>:<div className="table-wrap"><table><thead><tr><th>Alert</th><th>Unit</th><th>Blood/component</th><th>Severity</th><th>Expires</th><th>Acknowledgement</th></tr></thead><tbody>{data.alerts.map(item=><tr key={item.alertId}><td>{words(item.alertType)}</td><td className="mono">{item.unitId??"Not applicable"}</td><td>{item.bloodType&&item.component?`${words(item.bloodType)} / ${words(item.component)}`:"Not applicable"}</td><td><span className={chip(item.severity)}>{item.severity}</span></td><td>{format(item.expiresAt)}</td><td>{item.acknowledged?"Acknowledged":canAcknowledge&&item.status==="OPEN"?<AcknowledgeAlert alertId={item.alertId} onDone={onRefresh}/>:"Not acknowledged"}</td></tr>)}</tbody></table></div>;
-}
 
 function TransfersTable({data,onSelect}:{data:Transfers;onSelect:(id:string)=>void}) {
   if(data.transfers.length===0)return <div className="empty"><strong>No transfers</strong>No ledger-confirmed transfer is available for this scope.</div>;
@@ -168,16 +149,11 @@ export function FeatureData({path,canAcknowledge=false,canSubmitTransfer=false,c
   if(!endpoint[path])return <div className="empty"><strong>Data unavailable</strong>The official feature API is not implemented yet. Runtime mock fallback is disabled.</div>;
   if(!state.data&&state.busy)return <div className="empty" aria-live="polite"><strong>Loading authorized data</strong>Waiting for the official API.</div>;
   if(!state.data)return <div className="empty" role="alert"><strong>Unable to load data</strong>{state.error}<br/><button className="button" onClick={state.manual}>Retry</button></div>;
-  if(path==="/"){
-    const data=state.data as Dashboard,total=data.inventory.reduce((sum,item)=>sum+item.confirmedCount,0),pending=data.pendingScans.reduce((sum,item)=>sum+item.count,0);
-    return <><div className="stats"><article><span>Ledger-confirmed</span><strong>{total}</strong></article><article><span>Uncommitted scan states</span><strong>{pending}</strong></article><article><span>Last projection</span><strong className="time">{format(data.lastSuccessfulProjectionAt)}</strong></article></div>{canCapture&&<div className="capture-link"><div><strong>Capture a confirmed unit</strong><span>The existing Sprint 4 privacy and offline rules remain in effect.</span></div><a className="button primary" href="/capture/">Open capture workspace</a></div>}{state.error&&<p className="notice" role="status">Showing the last confirmed view. Refresh failed: {state.error} <button className="button" onClick={state.manual}>Retry</button></p>}<AggregateTable items={data.inventory}/></>;
-  }
+  if(path==="/")return <DashboardView data={state.data as Dashboard} canCapture={canCapture} refreshError={state.error} onRetry={state.manual}/>;
   if(path==="/consortium")return <ConsortiumView data={state.data as Consortium}/>;
   if(path==="/audit")return <AuditView data={state.data as Audit}/>;
   if(path==="/reporting")return <ReportView data={state.data as Report}/>;
-  if(path==="/alerts")return <AlertsTable data={state.data as Alerts} canAcknowledge={canAcknowledge} onRefresh={state.manual}/>;
+  if(path==="/alerts")return <AlertsView data={state.data as Alerts} canAcknowledge={canAcknowledge} onRefresh={state.manual}/>;
   if(path==="/transfers")return <TransferExplorer data={state.data as Transfers} canSubmit={canSubmitTransfer} canReject={canRejectTransfer} canCancel={canCancelTransfer} canCancelApproved={canCancelApprovedTransfer} canDispatch={canDispatchTransfer} canStartTransit={canStartTransit} canDelay={canDelayTransfer} canResume={canResumeTransfer} canReceive={canReceiveTransfer} receiptInstitutionId={principal?.institutionId??""} onRefresh={state.manual}/>;
-  const data=state.data as Inventory;
-  if(data.scope==="CITY_AGGREGATE")return <AggregateTable items={data.aggregates}/>;
-  return data.units.length===0?<div className="empty"><strong>No committed units</strong>No ledger-confirmed units are available for this institution.</div>:<div className="table-wrap"><table><thead><tr><th>Unit</th><th>Blood type</th><th>Component</th><th>Status</th><th>Expires</th><th>Projected</th></tr></thead><tbody>{data.units.map(item=><tr key={item.unitId}><td className="mono">{item.unitId}</td><td>{words(item.bloodType)}</td><td>{words(item.component)}</td><td><span className={chip(item.inventoryStatus)}>{words(item.inventoryStatus)}</span></td><td>{format(item.expiresAt)}</td><td>{format(item.projectedAt)}</td></tr>)}</tbody></table></div>;
+  return <InventoryView data={state.data as Inventory}/>;
 }
