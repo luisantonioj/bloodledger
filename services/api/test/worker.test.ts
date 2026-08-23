@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { WorkerFailure } from "../src/errors.js";
-import type { InventoryLedger } from "../src/fabric.js";
+import { safeFabricError, type InventoryLedger } from "../src/fabric.js";
 import { ScanSyncWorker } from "../src/worker.js";
 import { fixedNow, MemoryRepository, scanEvent } from "./test-support.js";
 
@@ -14,6 +14,11 @@ class Ledger implements InventoryLedger {
     return { transactionId: "TX_SPRINT4_001", committedAt: fixedNow };
   }
 }
+
+test("FR-05 preserves stable Fabric transfer policy errors without exposing Gateway details", () => {
+  assert.deepEqual({ code: safeFabricError(new Error("endorsement failed: TRF_NOT_AUTHORIZED")).code, retryable: safeFabricError(new Error("endorsement failed: TRF_NOT_AUTHORIZED")).retryable }, { code: "TRF_NOT_AUTHORIZED", retryable: false });
+  assert.deepEqual({ code: safeFabricError(new Error("connection closed")).code, retryable: safeFabricError(new Error("connection closed")).retryable }, { code: "FABRIC_GATEWAY_UNAVAILABLE", retryable: true });
+});
 
 test("FR-13 recovers leases and completes pending projections before Fabric submission", async () => {
   const repository = new MemoryRepository();

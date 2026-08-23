@@ -15,6 +15,53 @@ export interface InventoryLedger {
   register(event: ScanEvent): Promise<FabricCommit>;
 }
 
+export interface TransferRequestInput {
+  transferId: string;
+  sourceInstitutionId: "INST_MEDIATRIX";
+  destinationInstitutionId: string;
+  bloodType: "A_POSITIVE" | "O_POSITIVE";
+  component: "RED_BLOOD_CELLS" | "PLATELETS";
+  quantity: number;
+  urgency: "ROUTINE" | "URGENT" | "CRITICAL";
+  requestTime: string;
+  actorUserId: string;
+  eventTime: string;
+  correlationId: string;
+  idempotencyKey: string;
+  policyVersion: "SYNTHETIC_TRANSFER_V1";
+  inventoryPolicyVersion: "SYNTHETIC_INVENTORY_V1";
+}
+
+export interface TransferLedgerAsset {
+  transferId: string;
+  sourceInstitutionId: string;
+  destinationInstitutionId: string;
+  bloodType: string;
+  component: string;
+  quantity: number;
+  urgency: string;
+  requestTime: string;
+  status: "PENDING";
+  actorUserId: string;
+  policyVersion: "SYNTHETIC_TRANSFER_V1";
+  inventoryPolicyVersion: "SYNTHETIC_INVENTORY_V1";
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  correlationId: string;
+  lastTransactionId: string;
+}
+
+export interface TransferLedgerResult {
+  asset: TransferLedgerAsset;
+  committedAt: Date;
+  ledgerReplayed: boolean;
+}
+
+export interface TransferLedger {
+  submitRequest(input: TransferRequestInput): Promise<TransferLedgerResult>;
+}
+
 function deadline(seconds: number): Date {
   return new Date(Date.now() + seconds * 1000);
 }
@@ -35,9 +82,82 @@ export function safeFabricError(error: unknown): WorkerFailure {
       }
     }
   }
-  const code = details.join(" ").match(/\bINV_[A-Z_]+\b/)?.[0];
+  const code = details.join(" ").match(/\b(?:INV|TRF)_[A-Z_]+\b/)?.[0];
   if (code) return new WorkerFailure(code, false);
   return new WorkerFailure("FABRIC_GATEWAY_UNAVAILABLE", true);
+}
+
+function sameTransferRequest(asset: TransferLedgerAsset, input: TransferRequestInput): boolean {
+  return asset.transferId === input.transferId &&
+    asset.sourceInstitutionId === input.sourceInstitutionId &&
+    asset.destinationInstitutionId === input.destinationInstitutionId &&
+    asset.bloodType === input.bloodType && asset.component === input.component &&
+    asset.quantity === input.quantity && asset.urgency === input.urgency &&
+    asset.requestTime === input.requestTime && asset.actorUserId === input.actorUserId &&
+    asset.createdAt === input.eventTime && asset.correlationId === input.correlationId &&
+    asset.policyVersion === input.policyVersion && asset.inventoryPolicyVersion === input.inventoryPolicyVersion;
+}
+
+function parseTransferAsset(bytes: Uint8Array): TransferLedgerAsset {
+  const value = JSON.parse(Buffer.from(bytes).toString("utf8")) as Partial<TransferLedgerAsset>;
+  if (typeof value.transferId !== "string" || typeof value.lastTransactionId !== "string" || value.status !== "PENDING" || value.version !== 1) {
+    throw new WorkerFailure("FABRIC_RESPONSE_INVALID", false);
+  }
+  return value as TransferLedgerAsset;
+}
+
+export class FabricGatewayTransfer implements TransferLedger {
+  constructor(private readonly environment: NodeJS.ProcessEnv = process.env) {}
+
+  async submitRequest(input: TransferRequestInput): Promise<TransferLedgerResult> {
+    const repositoryRoot = resolve(this.environment.BLOODLEDGER_REPOSITORY_ROOT ?? process.cwd());
+    const organizationRoot = this.environment.FABRIC_ORGANIZATION_ROOT ?? join(repositoryRoot, "network/generated/organizations/peerOrganizations/mediatrix.bloodledger.local");
+    const mspRoot = this.environment.FABRIC_API_MSP_ROOT ?? join(organizationRoot, "users/ApiGateway@mediatrix.bloodledger.local/msp");
+    const tlsRootPath = this.environment.FABRIC_TLS_ROOT ?? join(organizationRoot, "peers/peer0.mediatrix.bloodledger.local/tls/ca.crt");
+    let client: grpc.Client | undefined;
+    let gateway: ReturnType<typeof connect> | undefined;
+    try {
+      const certificate = await readFile(await exactlyOneFile(join(mspRoot, "signcerts")));
+      const privateKey = createPrivateKey(await readFile(await exactlyOneFile(join(mspRoot, "keystore"))));
+      const tlsRoot = await readFile(tlsRootPath);
+      client = new grpc.Client(
+        this.environment.FABRIC_PEER_ENDPOINT ?? "127.0.0.1:7051",
+        grpc.credentials.createSsl(tlsRoot),
+        { "grpc.ssl_target_name_override": this.environment.FABRIC_PEER_HOST_ALIAS ?? "peer0.mediatrix.bloodledger.local" },
+      );
+      gateway = connect({
+        client,
+        identity: { mspId: "MediatrixMSP", credentials: certificate },
+        signer: signers.newPrivateKeySigner(privateKey),
+        hash: hash.sha256,
+        evaluateOptions: () => ({ deadline: deadline(15) }),
+        endorseOptions: () => ({ deadline: deadline(30) }),
+        submitOptions: () => ({ deadline: deadline(15) }),
+        commitStatusOptions: () => ({ deadline: deadline(30) }),
+      });
+      const contract = gateway.getNetwork(this.environment.FABRIC_CHANNEL ?? "bloodledger-dev")
+        .getContract(this.environment.FABRIC_CHAINCODE ?? "bloodledger-inventory", "TransferContract");
+      try {
+        const existing = parseTransferAsset(await contract.evaluateTransaction("ReadTransfer", input.transferId));
+        if (!sameTransferRequest(existing, input)) throw new WorkerFailure("TRF_IDEMPOTENCY_CONFLICT", false);
+        return { asset: existing, committedAt: new Date(existing.updatedAt), ledgerReplayed: true };
+      } catch (error) {
+        const failure = error instanceof WorkerFailure ? error : safeFabricError(error);
+        if (failure.code !== "TRF_NOT_FOUND") throw failure;
+      }
+      const submitted = await contract.submitAsync("SubmitTransferRequest", { arguments: [JSON.stringify(input)] });
+      const status = await submitted.getStatus();
+      if (!status.successful || status.code !== StatusCode.VALID) throw new WorkerFailure("FABRIC_COMMIT_INVALID", false);
+      const asset = parseTransferAsset(submitted.getResult());
+      return { asset, committedAt: new Date(), ledgerReplayed: false };
+    } catch (error) {
+      if (error instanceof WorkerFailure) throw error;
+      throw safeFabricError(error);
+    } finally {
+      gateway?.close();
+      client?.close();
+    }
+  }
 }
 
 export class FabricGatewayInventory implements InventoryLedger {

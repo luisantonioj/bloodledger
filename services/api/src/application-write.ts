@@ -16,6 +16,34 @@ export interface AlertAcknowledgementResult {
   classification: "SIMULATION_ONLY";
 }
 
+export interface TransferRequestCommand {
+  transferId: string;
+  destinationInstitutionId: string;
+  actorUserId: string;
+  bloodType: "A_POSITIVE" | "O_POSITIVE";
+  component: "RED_BLOOD_CELLS" | "PLATELETS";
+  quantity: number;
+  urgency: "ROUTINE" | "URGENT" | "CRITICAL";
+  requestTime: string;
+  eventTime: string;
+  correlationId: string;
+  idempotencyKey: string;
+  payloadSha256: string;
+  transferEventId: string;
+  auditEventId: string;
+}
+
+export interface TransferRequestResult {
+  transferId: string;
+  status: "PENDING";
+  ledgerVersion: number;
+  ledgerTransactionId: string;
+  projectedAt: string;
+  replayed: boolean;
+  classification: "SIMULATION_ONLY";
+}
+
 export interface ApplicationWriteRepository {
   acknowledgeAlert(input: AlertAcknowledgementInput): Promise<AlertAcknowledgementResult | null>;
+  submitTransferRequest(input: TransferRequestCommand): Promise<TransferRequestResult>;
 }

@@ -408,6 +408,81 @@
             "$ref": "#/components/responses/Error"
           }
         }
+      },
+      "post": {
+        "summary": "Submit one synthetic institution-scoped transfer request",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferRequestCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matching idempotent replay returned the existing committed projection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferRequestCreated"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Ledger committed and projection reconciled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferRequestCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
       }
     },
     "/api/v1/alerts/{alertId}/acknowledgements": {
@@ -1630,6 +1705,102 @@
                 "type": "null"
               }
             ]
+          }
+        }
+      },
+      "TransferRequestCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bloodType",
+          "component",
+          "quantity",
+          "urgency",
+          "requestTime",
+          "eventTime",
+          "correlationId"
+        ],
+        "properties": {
+          "bloodType": {
+            "type": "string",
+            "enum": [
+              "A_POSITIVE",
+              "O_POSITIVE"
+            ]
+          },
+          "component": {
+            "type": "string",
+            "enum": [
+              "RED_BLOOD_CELLS",
+              "PLATELETS"
+            ]
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "urgency": {
+            "type": "string",
+            "enum": [
+              "ROUTINE",
+              "URGENT",
+              "CRITICAL"
+            ]
+          },
+          "requestTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "TransferRequestCreated": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "status",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "PENDING"
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "const": 1
+          },
+          "ledgerTransactionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
           }
         }
       },

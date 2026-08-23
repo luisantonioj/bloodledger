@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
+import { Pool } from "pg";
 import { ApiFailure } from "../build/src/errors.js";
 import { createPoolFromEnvironment, PostgresScanRepository } from "../build/src/database.js";
+import { PostgresApplicationWriteRepository } from "../build/src/database-application-write.js";
 
 const pool = createPoolFromEnvironment();
 const repository = new PostgresScanRepository(pool);
@@ -26,6 +29,13 @@ const capture = {
 const receivedAt = new Date("2026-08-17T12:00:00.000Z");
 
 try {
+  const migrator = new Pool({ host:process.env.POSTGRES_HOST, port:Number(process.env.POSTGRES_PORT), database:process.env.POSTGRES_DB, user:process.env.POSTGRES_MIGRATOR_USER, password:process.env.POSTGRES_MIGRATOR_PASSWORD });
+  try {
+    await migrator.query(`INSERT INTO app.institutions(institution_id,display_name,category,status,classification) VALUES ('INST_MEDIATRIX','Synthetic Mediatrix Database Probe','HOSPITAL','ACTIVE','SIMULATION_ONLY'), ('INST_DIVINE_LOVE','Synthetic Divine Love Database Probe','HOSPITAL','ACTIVE','SIMULATION_ONLY')`);
+    await migrator.query(`INSERT INTO app.application_users(user_id,username,display_name,institution_id,password_algorithm,password_salt,password_verifier,status,classification) VALUES('USR_DIVINE_LOVE','synth_divine_love_probe','Synthetic Divine Love Probe','INST_DIVINE_LOVE','SCRYPT_V1',$1,$2,'ACTIVE','SIMULATION_ONLY')`, [randomBytes(16).toString("hex"), randomBytes(64).toString("hex")]);
+    await migrator.query(`INSERT INTO app.user_role_assignments(user_id,role_id,policy_version,assigned_at) VALUES('USR_DIVINE_LOVE','ROLE-03','SYNTHETIC_WEB_ACCESS_V1','2026-08-20T00:00:00.000Z')`);
+  } finally { await migrator.end(); }
+
   await pool.query(`
     INSERT INTO app.forecast_runs (
       run_id, run_key, payload_sha256, dataset_version, generator_version,
@@ -81,6 +91,16 @@ try {
   const committed = await repository.findScan(first.event.eventId, "INST_MEDIATRIX");
   assert.equal(committed?.status, "COMMITTED");
 
+  let ledgerCalls=0;
+  const transferWriter = new PostgresApplicationWriteRepository(pool, { async submitRequest(input) { ledgerCalls+=1; return { asset:{ transferId:input.transferId,sourceInstitutionId:input.sourceInstitutionId,destinationInstitutionId:input.destinationInstitutionId,bloodType:input.bloodType,component:input.component,quantity:input.quantity,urgency:input.urgency,requestTime:input.requestTime,status:"PENDING",actorUserId:input.actorUserId,policyVersion:input.policyVersion,inventoryPolicyVersion:input.inventoryPolicyVersion,version:1,createdAt:input.eventTime,updatedAt:input.eventTime,correlationId:input.correlationId,lastTransactionId:"TX_SYNTH_TRANSFER_POSTGRES_001" }, committedAt:new Date(input.eventTime), ledgerReplayed:false }; } });
+  const transferCommand={ transferId:"TRF_SYNTH_POSTGRES_001",destinationInstitutionId:"INST_DIVINE_LOVE",actorUserId:"USR_DIVINE_LOVE",bloodType:"A_POSITIVE",component:"RED_BLOOD_CELLS",quantity:2,urgency:"URGENT",requestTime:"2026-08-20T01:00:00.000Z",eventTime:"2026-08-20T01:00:00.000Z",correlationId:"CORR_"+"A".repeat(32),idempotencyKey:"IDEM_TRANSFER_POSTGRES_001",payloadSha256:"d".repeat(64),transferEventId:"TEVT_"+"B".repeat(40),auditEventId:"AUDT_"+"C".repeat(40) };
+  const submittedTransfer=await transferWriter.submitTransferRequest(transferCommand);
+  const replayedTransfer=await transferWriter.submitTransferRequest(transferCommand);
+  assert.equal(submittedTransfer.replayed,false);assert.equal(replayedTransfer.replayed,true);assert.equal(ledgerCalls,1);
+  await assert.rejects(transferWriter.submitTransferRequest({...transferCommand,payloadSha256:"e".repeat(64)}),(error)=>error instanceof ApiFailure&&error.code==="TRANSFER_IDEMPOTENCY_CONFLICT");
+  const transferRows=await pool.query(`SELECT (SELECT count(*) FROM app.transfer_requests) requests,(SELECT count(*) FROM app.transfer_events) events,(SELECT count(*) FROM app.audit_events WHERE action_code='TRANSFER_REQUESTED') audits`);
+  assert.deepEqual(Object.values(transferRows.rows[0]).map(Number),[1,1,1]);
+
   const rows = await pool.query(`
     SELECT
       (SELECT count(*) FROM app.scan_events) AS events,
@@ -88,7 +108,7 @@ try {
       (SELECT count(*) FROM app.inventory_projection) AS projections
   `);
   assert.deepEqual(Object.values(rows.rows[0]).map(Number), [1, 2, 1]);
-  console.log("Sprint 4 PostgreSQL intake/replay/conflict/claim/projection probe passed");
+  console.log("Sprint 4 scan and Sprint 5 transfer PostgreSQL replay/conflict/projection/audit probes passed");
 } finally {
   await pool.end();
 }

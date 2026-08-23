@@ -20,6 +20,10 @@ const EVENT_PATTERN = /^SCAN_[0-9A-F]{32}$/;
 const ALERT_PATTERN = /^ALRT_[0-9A-F]{40}$/;
 const CORRELATION_PATTERN = /^CORR_[0-9A-F]{32}$/;
 const TRANSFER_PATTERN = /^TRF_[A-Z0-9_-]{1,56}$/;
+const USER_PATTERN = /^USR_[A-Z0-9_-]{1,48}$/;
+const BLOOD_TYPES = ["A_POSITIVE", "O_POSITIVE"] as const;
+const COMPONENTS = ["RED_BLOOD_CELLS", "PLATELETS"] as const;
+const URGENCIES = ["ROUTINE", "URGENT", "CRITICAL"] as const;
 
 function equalSecret(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left);
@@ -39,6 +43,12 @@ function manilaDate(now: Date): string {
 function validBusinessDate(value: string): boolean {
   const parsed = new Date(`${value}T00:00:00.000Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function validUtcInstant(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return false;
+  const parsed = new Date(value);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === value;
 }
 
 function summarizeTransfers(transfers: readonly { status: string; quantity: number }[]): { status: string; transferCount: number; unitCount: number }[] {
@@ -256,6 +266,37 @@ export async function buildApp(
       });
     }
     if (applicationWrites) {
+      app.post("/api/v1/transfers", async (request, reply) => {
+        requireSameOrigin(request, webOrigin);
+        const { principal } = await restore(request);
+        if (principal.roleId !== "ROLE-03" || !permits(principal.roleId, "transfers:write")) {
+          throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Transfer request submission is not permitted.");
+        }
+        if (!USER_PATTERN.test(principal.userId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "The authenticated user is outside the ledger actor policy.");
+        const idempotencyKey = request.headers["idempotency-key"];
+        if (typeof idempotencyKey !== "string" || !IDEMPOTENCY_PATTERN.test(idempotencyKey)) throw new ApiFailure(400, "INVALID_IDEMPOTENCY_KEY", "A valid Idempotency-Key header is required.");
+        const body = request.body as Record<string, unknown> | null;
+        const keys = body && typeof body === "object" ? Object.keys(body).sort() : [];
+        const expected = ["bloodType","component","correlationId","eventTime","quantity","requestTime","urgency"];
+        if (!body || keys.length !== expected.length || keys.some((key,index)=>key!==expected[index]) ||
+          !BLOOD_TYPES.includes(body.bloodType as typeof BLOOD_TYPES[number]) ||
+          !COMPONENTS.includes(body.component as typeof COMPONENTS[number]) ||
+          !URGENCIES.includes(body.urgency as typeof URGENCIES[number]) ||
+          !Number.isSafeInteger(body.quantity) || Number(body.quantity) < 1 || Number(body.quantity) > 10 ||
+          !validUtcInstant(body.requestTime) || !validUtcInstant(body.eventTime) ||
+          new Date(body.requestTime).getTime() > new Date(body.eventTime).getTime() ||
+          new Date(body.eventTime).getTime() > clock().getTime() + 60_000 ||
+          typeof body.correlationId !== "string" || !CORRELATION_PATTERN.test(body.correlationId)) {
+          throw new ApiFailure(400, "INVALID_TRANSFER_REQUEST", "Transfer request input is invalid.");
+        }
+        const transferId = "TRF_" + sha256({ idempotencyKey, userId: principal.userId, institutionId: principal.institutionId }).slice(0,32).toUpperCase();
+        const payloadSha256 = sha256({ transferId, destinationInstitutionId:principal.institutionId, actorUserId:principal.userId, bloodType:body.bloodType, component:body.component, quantity:body.quantity, urgency:body.urgency, requestTime:body.requestTime, eventTime:body.eventTime, correlationId:body.correlationId });
+        const transferEventId = "TEVT_" + sha256({ transferId, idempotencyKey, operation:"SUBMIT" }).slice(0,40).toUpperCase();
+        const auditEventId = "AUDT_" + sha256({ transferId, idempotencyKey, operation:"TRANSFER_REQUESTED" }).slice(0,40).toUpperCase();
+        const result = await applicationWrites.submitTransferRequest({ transferId, destinationInstitutionId:principal.institutionId, actorUserId:principal.userId, bloodType:body.bloodType as typeof BLOOD_TYPES[number], component:body.component as typeof COMPONENTS[number], quantity:Number(body.quantity), urgency:body.urgency as typeof URGENCIES[number], requestTime:body.requestTime, eventTime:body.eventTime, correlationId:body.correlationId, idempotencyKey, payloadSha256, transferEventId, auditEventId });
+        return reply.status(result.replayed ? 200 : 201).send(result);
+      });
+
       app.post<{ Params: { alertId: string } }>("/api/v1/alerts/:alertId/acknowledgements", async (request) => {
         requireSameOrigin(request, webOrigin);
         const { principal } = await restore(request);

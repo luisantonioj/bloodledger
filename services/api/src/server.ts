@@ -4,10 +4,11 @@ import { createPoolFromEnvironment, PostgresScanRepository } from "./database.js
 import { PostgresSessionRepository } from "./database-session.js";
 import { PostgresApplicationReadRepository } from "./database-application-read.js";
 import { PostgresApplicationWriteRepository } from "./database-application-write.js";
+import { FabricGatewayTransfer } from "./fabric.js";
 
 const config = readApiConfig();
 const pool = createPoolFromEnvironment();
-const app = await buildApp(new PostgresScanRepository(pool), config, undefined, new PostgresSessionRepository(pool), new PostgresApplicationReadRepository(pool), new PostgresApplicationWriteRepository(pool));
+const app = await buildApp(new PostgresScanRepository(pool), config, undefined, new PostgresSessionRepository(pool), new PostgresApplicationReadRepository(pool), new PostgresApplicationWriteRepository(pool, new FabricGatewayTransfer()));
 
 const shutdown = async (): Promise<void> => {
   await app.close();
