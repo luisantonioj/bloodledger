@@ -20,4 +20,5 @@
 
 .receipt-form{display:grid;grid-template-columns:minmax(240px,1fr) minmax(170px,230px) minmax(170px,220px);gap:14px;align-items:end;padding:16px 18px;background:#f1f7ff}.receipt-form h3{padding:0;border:0}.receipt-form p{margin:5px 0 0;color:#3a4250;font-size:12px}.receipt-form label{margin:0}.receipt-form select{width:100%;padding:9px;border:1px solid var(--line);border-radius:5px;background:#fff}@media(max-width:900px){.receipt-form{grid-template-columns:1fr}}
 
+.resume-form{display:grid;grid-template-columns:minmax(260px,1fr) minmax(180px,240px);gap:14px;align-items:end;padding:16px 18px;background:#eef8f3}.resume-form h3{padding:0;border:0}.resume-form p{margin:5px 0 0;color:#3a4250;font-size:12px}@media(max-width:900px){.resume-form{grid-template-columns:1fr}}
 .delay-form{display:grid;grid-template-columns:minmax(260px,1fr) minmax(180px,240px);gap:14px;align-items:end;padding:16px 18px;background:#fff8e8}.delay-form h3{padding:0;border:0}.delay-form p{margin:5px 0 0;color:#3a4250;font-size:12px}@media(max-width:900px){.delay-form{grid-template-columns:1fr}}

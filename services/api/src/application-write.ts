@@ -189,6 +189,30 @@ export interface TransferDispatchResult {
   classification: "SIMULATION_ONLY";
 }
 
+export interface TransferResumeCommand {
+  transferId: string;
+  sourceInstitutionId: string;
+  actorUserId: string;
+  expectedVersion: number;
+  eventTime: string;
+  correlationId: string;
+  idempotencyKey: string;
+  payloadSha256: string;
+  transferEventId: string;
+  auditEventId: string;
+}
+
+export interface TransferResumeResult {
+  transferId: string;
+  status: "IN_TRANSIT";
+  inTransitUnitIds: string[];
+  ledgerVersion: number;
+  ledgerTransactionId: string;
+  projectedAt: string;
+  replayed: boolean;
+  classification: "SIMULATION_ONLY";
+}
+
 export interface TransferDelayCommand {
   transferId: string;
   actorInstitutionId: string;
@@ -275,6 +299,7 @@ export interface ApplicationWriteRepository {
   dispatchTransfer(input: TransferDispatchCommand): Promise<TransferDispatchResult | null>;
   markTransferDelayed(input: TransferDelayCommand): Promise<TransferDelayResult | null>;
   recordTransferReceipt(input: TransferReceiptCommand): Promise<TransferReceiptResult | null>;
+  resumeTransfer(input: TransferResumeCommand): Promise<TransferResumeResult | null>;
   startTransferTransit(input: TransferTransitCommand): Promise<TransferTransitResult | null>;
   rejectTransfer(input: TransferRejectionCommand): Promise<TransferRejectionResult | null>;
 }

@@ -47,6 +47,10 @@ rg -Fq '/api/v1/transfers/{transferId}/delay' services/api/openapi.json
 rg -Fq 'TransferDelayRequest' services/api/openapi.json
 rg -Fq 'submitAsync("MarkTransferDelayed"' services/api/src/fabric.ts
 rg -Fq "'TRANSFER_DELAYED'" services/api/src/database-application-write.ts
+rg -Fq '/api/v1/transfers/{transferId}/resume' services/api/openapi.json
+rg -Fq 'TransferResumeRequest' services/api/openapi.json
+rg -Fq 'submitAsync("ResumeTransfer"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_TRANSIT_RESUMED'" services/api/src/database-application-write.ts
 rg -Fq '/api/v1/transfers/{transferId}/receipt' services/api/openapi.json
 rg -Fq 'TransferReceiptRequest' services/api/openapi.json
 rg -Fq 'submitAsync("RecordReceipt"' services/api/src/fabric.ts
