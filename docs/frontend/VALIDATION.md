@@ -98,7 +98,35 @@ Fabric `CONFIGURED`, classification `SIMULATION_ONLY`, and forecast readiness
 `UNAVAILABLE`. `UNAVAILABLE` is an honest allowed forecast state, not evidence
 of an operational forecast.
 
+## Technical visual comparison
+
+On 2026-08-24 every approved mockup source file matched the frozen SHA-256
+values in `MOCKUP_REFERENCE.md`, including the recorded aggregate source. The
+comparison did not read excluded fixtures into the official implementation.
+
+At a `1440x1000` desktop viewport, temporary local captures covered sign-in,
+dashboard, inventory, transfers, alerts, network view, audit, reports, and
+profile. The authenticated captures used only the existing synthetic browser
+contracts; no runtime fixture adapter or mock fallback was added.
+
+The official surfaces retained the approved shell, hierarchy, density, palette,
+typography roles, card/table language, and status vocabulary while replacing
+fabricated mockup content with scoped projection and provenance evidence. The
+inspection found one clipped transfer-detail action; reducing the table minimum
+from `1180px` to `1100px` produced `1150px` client/scroll widths and placed the
+button fully inside the viewport. The 27 web unit and 24 browser tests passed.
+
 ### Open review obligations
 
-- Lat's visual comparison of the selected pages against
+- Lat's owner review of the technical comparison against
   `MOCKUP_VISUAL_2026-08-20` remains pending.
+
+- Lat's accountable-owner Sprint Review, incomplete-item disposition, and
+  retrospective remain pending.
+- The NFR-06 browser scenario retains the limited boundary documented above;
+  it is not an end-to-end physical scan or production latency claim.
+- Physical Android OCR evidence remains the explicitly accepted Sprint 4
+  deferral and is not reclassified by this checkpoint.
+- All accounts, data, locations, reports, and outcomes remain synthetic and
+  `SIMULATION_ONLY`; no clinical, regulatory, or production-readiness claim is
+  supported.

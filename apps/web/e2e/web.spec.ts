@@ -215,6 +215,7 @@ test("secondary request retry preserves idempotency and excludes caller-selected
 });
 
 test("human FEFO approval retry preserves intent and never submits selected units", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
   const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_APPROVAL", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_SYNTH_SECONDARY_A", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "URGENT", requestTime: timestamp, status: "PENDING", reasonCode: null, recommendationDigest: null, ledgerVersion: 1, projectedAt: timestamp, dispatchEvidenceRecorded: false, receiptEvidenceRecorded: false };
   const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
   let attempts = 0;
@@ -247,6 +248,7 @@ test("human FEFO approval retry preserves intent and never submits selected unit
   await page.getByRole("link", { name: "Transfers", exact: true }).click();
   await expect(page.locator(".transfer-overview")).toBeVisible();
   await expect(page.locator(".transfer-route")).toContainText("INST_MEDIATRIX");
+  await expect(page.getByRole("button", { name: "View" })).toBeInViewport({ ratio: 1 });
   await page.getByRole("button", { name: "View" }).click();
   await expect(page.getByText("Human FEFO authorization", { exact: true })).toBeVisible();
   await expect(page.getByText("Disabled; human authorization required", { exact: true })).toBeVisible();
