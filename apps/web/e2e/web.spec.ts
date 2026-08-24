@@ -52,15 +52,24 @@ function fulfillJson(route: Route, body: unknown, status = 200) {
   return route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
 }
 
-async function authenticatedApi(page: Page, roleId: RoleId, override?: (route: Route, path: string) => boolean | Promise<boolean>) {
-  const activePrincipal = principal(roleId);
+function dashboardFor(roleId: RoleId) {
+  const body = responses["/api/v1/dashboard"] as object;
+  if (roleId === "ROLE-04") return { ...body, composition: "REGULATORY", scope: "CITY_AGGREGATE" };
+  if (roleId === "ROLE-03") return { ...body, composition: "OPERATIONAL", scope: "CITY_AGGREGATE" };
+  if (["ROLE-05", "ROLE-06"].includes(roleId)) return { ...body, composition: "ADMINISTRATIVE", scope: "PRINCIPAL", inventory: [], pendingScans: [], lastSuccessfulProjectionAt: null };
+  return body;
+}
+
+async function authenticatedApi(page: Page, roleId: RoleId, override?: (route: Route, path: string) => boolean | Promise<boolean>, principalOverride: Partial<ReturnType<typeof principal>> = {}) {
+  const activePrincipal = { ...principal(roleId), ...principalOverride };
   await page.route("**/api/v1/**", async route => {
     const path = new URL(route.request().url()).pathname;
     if (override && await override(route, path)) return;
     if (path === "/api/v1/auth/session") return fulfillJson(route, { principal: activePrincipal });
     if (path === "/api/v1/reports/inventory.csv") return route.fulfill({ status: 200, contentType: "text/csv", body: "classification\nSIMULATION_ONLY\n" });
     const body = responses[path];
-    if (body) return fulfillJson(route, path === "/api/v1/dashboard" && roleId === "ROLE-04" ? { ...body as object, composition: "REGULATORY", scope: "CITY_AGGREGATE" } : body);
+    if (path === "/api/v1/dashboard") return fulfillJson(route, dashboardFor(roleId));
+    if (body) return fulfillJson(route, body);
     return fulfillJson(route, { error: { code: "TEST_ROUTE_MISSING", message: "Browser fixture route is unavailable." } }, 404);
   });
   return activePrincipal;
@@ -76,6 +85,54 @@ for (const roleId of Object.keys(navigation) as RoleId[]) {
     await expect(page.getByText("SIMULATION ONLY", { exact: true })).toBeVisible();
   });
 }
+
+test("two synthetic secondary hospitals share structure while retaining distinct context", async ({ browser }) => {
+  for (const [institutionId, institutionDisplayName, confirmedCount] of [
+    ["INST_SYNTH_SECONDARY_A", "Synthetic Secondary Hospital A", 2],
+    ["INST_SYNTH_SECONDARY_B", "Synthetic Secondary Hospital B", 7],
+  ] as const) {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await authenticatedApi(page, "ROLE-03", async (route, path) => {
+      if (path !== "/api/v1/dashboard") return false;
+      await fulfillJson(route, { ...dashboardFor("ROLE-03"), inventory: [{ ...aggregate, institutionId, institutionDisplayName, confirmedCount }] });
+      return true;
+    }, { institutionId, institutionDisplayName });
+    await page.goto("/");
+    await expect(page.getByText("Secondary-hospital coordination", { exact: true })).toBeVisible();
+    await expect(page.getByText(`${institutionDisplayName} requests, transfers, receipts, and alerts with approved city-wide inventory aggregates.`, { exact: true })).toBeVisible();
+    const confirmed = page.locator(".stats article").filter({ hasText: "Ledger-confirmed" }).locator("strong");
+    await expect(confirmed).toHaveText(String(confirmedCount));
+    await expect(page.getByRole("link", { name: "Inventory", exact: true })).toHaveCount(0);
+    await context.close();
+  }
+});
+
+test("PRC, DOH, and administrators receive truthful non-operational compositions", async ({ browser }) => {
+  const cases = [
+    ["ROLE-04", "INST_SYNTH_PRC", "Synthetic PRC Chapter", "Regulatory overview"],
+    ["ROLE-04", "INST_SYNTH_DOH", "Synthetic DOH Office", "Regulatory overview"],
+    ["ROLE-05", "INST_SYNTH_SYSTEM", "Synthetic System Scope", "Administration"],
+    ["ROLE-06", "INST_SYNTH_ACCOUNT", "Synthetic Institution Account", "Administration"],
+  ] as const;
+  for (const [roleId, institutionId, institutionDisplayName, eyebrow] of cases) {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await authenticatedApi(page, roleId, undefined, { institutionId, institutionDisplayName });
+    await page.goto("/");
+    await expect(page.getByText(institutionDisplayName, { exact: true })).toBeVisible();
+    await expect(page.getByText(eyebrow, { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open capture workspace" })).toHaveCount(0);
+    if (roleId === "ROLE-04") {
+      await expect(page.getByText("Ledger-confirmed", { exact: true })).toBeVisible();
+      await expect(page.getByText("Non-clinical workspace", { exact: true })).toHaveCount(0);
+    } else {
+      await expect(page.getByText("Non-clinical workspace", { exact: true })).toBeVisible();
+      await expect(page.getByText("Ledger-confirmed", { exact: true })).toHaveCount(0);
+    }
+    await context.close();
+  }
+});
 
 test("login fails safely, then accepts only the server-returned principal and can revoke the session", async ({ page }) => {
   const activePrincipal = principal("ROLE-01");

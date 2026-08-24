@@ -1,6 +1,6 @@
 export type Aggregate = { institutionId:string; institutionDisplayName:string; bloodType:string; component:string; inventoryStatus:string; confirmedCount:number; lastProjectedAt:string };
 export type Unit = { unitId:string; bloodType:string; component:string; expiresAt:string; inventoryStatus:string; projectedAt:string };
-export type Dashboard = { composition:string; scope:string; inventory:Aggregate[]; pendingScans:{status:string;count:number}[]; lastSuccessfulProjectionAt:string|null; classification:"SIMULATION_ONLY" };
+export type Dashboard = { composition:"OPERATIONAL"|"REGULATORY"|"ADMINISTRATIVE"; scope:"INSTITUTION"|"CITY_AGGREGATE"|"PRINCIPAL"; inventory:Aggregate[]; pendingScans:{status:string;count:number}[]; lastSuccessfulProjectionAt:string|null; classification:"SIMULATION_ONLY" };
 export type Inventory = { scope:string; aggregates:Aggregate[]; units:Unit[]; classification:"SIMULATION_ONLY" };
 export type Alert = { alertId:string; alertType:string; severity:string; unitId:string|null; bloodType:string|null; component:string|null; expiresAt:string|null; evaluatedAt:string; status:string; acknowledged:boolean };
 export type AlertAggregate = { institutionDisplayName:string; alertType:string; severity:string; status:string; count:number; lastEvaluatedAt:string };

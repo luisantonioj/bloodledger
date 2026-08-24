@@ -13,13 +13,16 @@ const pages: Record<string, [string, string, string]> = {
 
 function dashboardPage(principal: Principal): [string, string, string] {
   const view = composition(principal);
+  const secondaryHospital = principal.roleId === "ROLE-03";
   return [
-    view === "REGULATORY" ? "Regulatory overview" : view === "OPERATIONAL" ? "Blood-bank operations" : "Administration",
+    view === "REGULATORY" ? "Regulatory overview" : view === "OPERATIONAL" ? secondaryHospital ? "Secondary-hospital coordination" : "Blood-bank operations" : "Administration",
     "Dashboard",
     view === "REGULATORY"
       ? "Approved aggregate inventory, alerts, transfers, audit summaries, and reports."
       : view === "OPERATIONAL"
-        ? principal.institutionDisplayName + " inventory, requests, transfers, and alerts."
+        ? secondaryHospital
+          ? principal.institutionDisplayName + " requests, transfers, receipts, and alerts with approved city-wide inventory aggregates."
+          : principal.institutionDisplayName + " inventory, requests, transfers, and alerts."
         : "Your approved non-clinical workspace.",
   ];
 }
