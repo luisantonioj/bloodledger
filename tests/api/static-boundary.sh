@@ -71,6 +71,8 @@ rg -Fq 'AND destination_institution_id=$2' services/api/src/database-application
 rg -q 'DISABLED_UNAPPROVED_POLICY' services/api/src/algorithm-explanation.ts
 rg -Fq 'listTransfers(principal.institutionId,"DESTINATION")' services/api/src/app.ts
 rg -Fq '/api/v1/alerts/{alertId}/acknowledgements' services/api/openapi.json
+rg -Fq '../../../coordination/policy/synthetic-location-v1.json' services/api/src/location-evidence.ts
+rg -Fq 'COPY --from=build /workspace/services/coordination/policy ./services/coordination/policy' services/api/Dockerfile
 rg -q 'pg_advisory_xact_lock' services/api/src/database-application-write.ts
 rg -Fq "institution_id=\$2 AND status='OPEN' FOR UPDATE" services/api/src/database-application-write.ts
 rg -q 'ALERT_IDEMPOTENCY_CONFLICT' services/api/src/database-application-write.ts

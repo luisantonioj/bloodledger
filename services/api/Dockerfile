@@ -16,6 +16,7 @@ COPY --from=build /workspace/package.json /workspace/package-lock.json ./
 COPY --from=build /workspace/node_modules ./node_modules
 COPY --from=build /workspace/services/api/package.json ./services/api/package.json
 COPY --from=build /workspace/services/api/build ./services/api/build
+COPY --from=build /workspace/services/coordination/policy ./services/coordination/policy
 COPY --from=build /workspace/apps/capture-pwa/dist ./apps/capture-pwa/dist
 COPY --from=build /workspace/apps/web/dist ./apps/web/dist
 
