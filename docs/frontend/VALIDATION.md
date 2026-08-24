@@ -34,3 +34,71 @@ Run the scenario from the repository root with:
 ```bash
 npm --workspace @bloodledger/web run test:e2e -- --grep "frontend NFR-06 budget"
 ```
+
+## 2026-08-24 integrated validation checkpoint
+
+This checkpoint was run on the canonical WSL2 Ubuntu 24.04 working copy with
+Node.js `24.17.0`, npm `11.13.0`, the pinned repository dependencies, and the
+local project-scoped Docker services. The implementation baseline through
+`cdbc569` was under test. This evidence validates the automated Sprint 5 slice;
+it does not accept the sprint or replace Lat's accountable-owner review.
+
+The following static, build, boundary, and security checks passed:
+
+```bash
+npm run check:foundation
+npm run check:inventory-contract
+npm run check:forecasting
+npm run check:coordination
+npm run check:capture
+npm run check:web
+npm run check:api
+npm run scan:secrets
+npm run check:fabric-identities
+npm run check:fabric-nodes
+npm run check:fabric-channel
+npm run check:fabric-health-contract
+```
+
+Gitleaks `8.30.1` found no leaks in Git history, the index, or tracked and
+candidate content. The web and capture production builds completed without a
+runtime CDN dependency.
+
+The consolidated unit results were:
+
+- inventory/transfer chaincode: 22 passing tests;
+- forecasting: 32 passing tests;
+- coordination policy: 9 passing tests;
+- capture PWA: 25 passing tests;
+- web application: 27 passing tests; and
+- application API: 76 passing tests.
+
+The full Playwright web suite passed 24 scenarios. It covered all six roles,
+two distinct synthetic secondary hospitals using the shared structure,
+PRC/DOH regulatory composition, administrative non-clinical composition,
+session restoration/revocation, cross-institution isolation, selected transfer
+and alert mutation retries, loading/empty/error states, polling cleanup and
+backoff, keyboard navigation, regulatory CSV access, and the controlled NFR-06
+browser condition.
+
+The isolated PostgreSQL integrations passed for the API, forecasting, and
+coordination services. Each integration created a fixed isolated database,
+applied all eight forward migrations, validated its feature behavior, and
+removed the database on exit. The forecasting integration's pre-feature schema
+assertion was updated from the obsolete Sprint 3 count (`4|7`) to the current
+forward-only migration baseline (`8|19`); its forecasting persistence,
+idempotency, classification, and conflict assertions were unchanged and passed
+after the correction.
+
+The non-destructive consolidated infrastructure status passed: both Fabric CAs,
+the Mediatrix peer, orderer, PostgreSQL, channel membership, committed health
+contract, and fixed probe were healthy. Same-origin HTTP probes returned `200`
+for `/` and `/capture/`; `/healthz` returned API and database `READY`, worker
+Fabric `CONFIGURED`, classification `SIMULATION_ONLY`, and forecast readiness
+`UNAVAILABLE`. `UNAVAILABLE` is an honest allowed forecast state, not evidence
+of an operational forecast.
+
+### Open review obligations
+
+- Lat's visual comparison of the selected pages against
+  `MOCKUP_VISUAL_2026-08-20` remains pending.

@@ -493,6 +493,12 @@ involved.
 
 ## 8. Review record
 
+**Automated checkpoint (2026-08-24):** The integrated static, unit, browser,
+isolated PostgreSQL, secret-scan, infrastructure-health, and same-origin checks
+are recorded in `docs/frontend/VALIDATION.md`. The selected page and component
+registers record implementation with automated validation passed. This is
+technical evidence only; it is not Lat's accountable-owner Sprint Review.
+
 Populate only after implementation and validation. Record:
 
 - the accepted Sprint 4 baseline tag and Sprint 5 dates;
