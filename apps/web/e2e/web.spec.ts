@@ -143,6 +143,60 @@ test("failed dashboard load exposes a non-destructive retry and recovers", async
   expect(dashboardCalls).toBe(2);
 });
 
+test("inventory exposes loading and empty states without inventing committed data", async ({ page }) => {
+  let releaseInventory: (() => void) | undefined;
+  await authenticatedApi(page, "ROLE-01", async (route, path) => {
+    if (path !== "/api/v1/inventory") return false;
+    await new Promise<void>(resolve => { releaseInventory = resolve; });
+    await fulfillJson(route, { scope: "INSTITUTION", aggregates: [], units: [], classification: "SIMULATION_ONLY" });
+    return true;
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Inventory", exact: true }).click();
+  await expect(page.getByText("Loading authorized data", { exact: true })).toBeVisible();
+  expect(releaseInventory).toBeDefined();
+  releaseInventory?.();
+  await expect(page.getByText("No committed inventory", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("0 records");
+});
+
+test("refresh failure preserves confirmed data and backs off until manual retry", async ({ page }) => {
+  let dashboardCalls = 0;
+  await authenticatedApi(page, "ROLE-01", async (route, path) => {
+    if (path !== "/api/v1/dashboard") return false;
+    dashboardCalls += 1;
+    if (dashboardCalls === 2) await fulfillJson(route, { error: { code: "PROJECTION_UNAVAILABLE", message: "Projection is temporarily unavailable." } }, 503);
+    else await fulfillJson(route, responses[path]);
+    return true;
+  });
+  await page.goto("/");
+  await expect(page.getByText("Ledger-confirmed", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("Showing the last confirmed view. Refresh failed: Projection is temporarily unavailable.");
+  expect(dashboardCalls).toBe(2);
+  await page.waitForTimeout(2_200);
+  expect(dashboardCalls).toBe(2);
+  await page.getByRole("button", { name: "Retry" }).click();
+  await expect(page.getByRole("status")).toHaveCount(0);
+  expect(dashboardCalls).toBe(3);
+});
+
+test("route changes clean up the previous poller and refresh only the active page", async ({ page }) => {
+  let dashboardCalls = 0;
+  let inventoryCalls = 0;
+  await authenticatedApi(page, "ROLE-01", (_route, path) => {
+    if (path === "/api/v1/dashboard") dashboardCalls += 1;
+    if (path === "/api/v1/inventory") inventoryCalls += 1;
+    return false;
+  });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Inventory", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Inventory", exact: true })).toBeVisible();
+  await page.waitForTimeout(2_200);
+  expect(dashboardCalls).toBe(1);
+  expect(inventoryCalls).toBeGreaterThanOrEqual(2);
+});
+
 test("keyboard navigation reaches an authorized page without changing institution scope", async ({ page }) => {
   const activePrincipal = await authenticatedApi(page, "ROLE-06");
   await page.goto("/");
