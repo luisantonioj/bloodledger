@@ -515,10 +515,11 @@ technical evidence only; it is not Lat's accountable-owner Sprint Review.
 - Evidence: the commands and results in `docs/frontend/VALIDATION.md` cover
   static/build/security checks, 191 unit tests, 24 browser scenarios, isolated
   PostgreSQL integrations, Fabric health, and same-origin application probes.
-- Owner evidence: Yuri Lat approved the controlled Sprint 05 visual result on
-  2026-08-24. Buno's web-workspace validation remains pending. Jopia's
-  API/database/Fabric validation and required self-validation disclosure remain
-  pending.
+- Participant evidence: Yuri Lat approved the controlled Sprint 05 visual
+  result on 2026-08-24. Buno validated the web workspace and its simulation-only
+  limitations on 2026-08-24. Luis Jopia validated the API/database/Fabric
+  evidence on 2026-08-24 and explicitly disclosed that this includes
+  self-validation of his assigned boundary.
 - Accountable decision: Lat's consolidated Sprint Review acceptance or rejection
   remains pending. Passing technical checks and visual approval do not replace
   that decision.
@@ -554,9 +555,8 @@ technical evidence only; it is not Lat's accountable-owner Sprint Review.
 
 ### Formal Testing-phase handoff
 
-The technical package is prepared, but handoff remains pending Buno's
-web-workspace validation, Jopia's API/database/Fabric validation with
-self-validation disclosed, Lat's accountable-owner decision, and acceptance of
-this retrospective and incomplete-item disposition.
+The technical package and participant validations are prepared, but handoff
+remains pending Lat's accountable-owner decision and acceptance of this
+retrospective and incomplete-item disposition.
 
 Empty or pending participant evidence must never be treated as a passing result.

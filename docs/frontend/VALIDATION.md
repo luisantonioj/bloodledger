@@ -136,6 +136,13 @@ Sprint 05 visual result. This accepts the controlled visual comparison against
 Sprint Review, supersede unresolved policy decisions, or change the
 `SIMULATION_ONLY` classification.
 
+### Participant validation decisions
+
+On 2026-08-24 Buno validated the Sprint 05 web workspace and its simulation-only
+limitations. On 2026-08-24 Luis Jopia validated the Sprint 05
+API/database/Fabric evidence and explicitly disclosed that this includes
+self-validation of his assigned boundary.
+
 ### Open review obligations
 
 - Lat's accountable-owner Sprint Review, incomplete-item disposition, and
