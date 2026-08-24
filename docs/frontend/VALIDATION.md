@@ -116,6 +116,17 @@ inspection found one clipped transfer-detail action; reducing the table minimum
 from `1180px` to `1100px` produced `1150px` client/scroll widths and placed the
 button fully inside the viewport. The 27 web unit and 24 browser tests passed.
 
+## Local six-role review readiness
+
+On 2026-08-24 the owner authorized local provisioning of one opaque synthetic
+account for each `ROLE-01` through `ROLE-06`. Credentials remain in an owner-only
+file outside the repository; no password, cookie, salt, or verifier is evidence.
+
+Each role passed the live same-origin sequence: login `200`, session restoration
+`200`, logout `204`, and revoked-session denial `401`. A read-only database
+aggregate confirmed one active user and active institution for every role. This
+role-access readiness does not accept the visual result or the sprint.
+
 ### Open review obligations
 
 - Lat's owner review of the technical comparison against
