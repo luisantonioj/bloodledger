@@ -245,6 +245,8 @@ test("human FEFO approval retry preserves intent and never submits selected unit
   });
   await page.goto("/");
   await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await expect(page.locator(".transfer-overview")).toBeVisible();
+  await expect(page.locator(".transfer-route")).toContainText("INST_MEDIATRIX");
   await page.getByRole("button", { name: "View" }).click();
   await expect(page.getByText("Human FEFO authorization", { exact: true })).toBeVisible();
   await expect(page.getByText("Disabled; human authorization required", { exact: true })).toBeVisible();
