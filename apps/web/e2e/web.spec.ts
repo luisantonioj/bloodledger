@@ -598,6 +598,47 @@ test("regulatory navigation renders every selected read-only page and CSV bounda
   }
 });
 
+test("committed projection becomes visible within the frontend NFR-06 budget", async ({ page }, testInfo) => {
+  let committed = false;
+  let commitTime = "";
+  let commitStartedAt = 0;
+  let firstCommittedProjectionResponseAt = 0;
+  let dashboardCalls = 0;
+  await authenticatedApi(page, "ROLE-01", async (route, path) => {
+    if (path !== "/api/v1/dashboard") return false;
+    dashboardCalls += 1;
+    if (committed && firstCommittedProjectionResponseAt === 0) firstCommittedProjectionResponseAt = Date.now();
+    await fulfillJson(route, {
+      composition: "OPERATIONAL",
+      scope: "INSTITUTION",
+      inventory: [{ ...aggregate, confirmedCount: committed ? 2 : 1, lastProjectedAt: committed ? commitTime : timestamp }],
+      pendingScans: committed ? [] : [{ status: "PROCESSING", count: 1 }],
+      lastSuccessfulProjectionAt: committed ? commitTime : timestamp,
+      classification: "SIMULATION_ONLY",
+    });
+    return true;
+  });
+  await page.goto("/");
+  const confirmedCount = page.locator(".stats article").filter({ hasText: "Ledger-confirmed" }).locator("strong");
+  const pendingCount = page.locator(".stats article").filter({ hasText: "Uncommitted scan states" }).locator("strong");
+  await expect.poll(() => page.evaluate(() => document.visibilityState)).toBe("visible");
+  await expect(confirmedCount).toHaveText("1");
+  await expect(pendingCount).toHaveText("1");
+  commitTime = new Date().toISOString();
+  commitStartedAt = Date.now();
+  committed = true;
+  await expect(confirmedCount).toHaveText("2", { timeout: 5_000 });
+  await expect(pendingCount).toHaveText("0");
+  const visibleAt = Date.now();
+  expect(firstCommittedProjectionResponseAt).toBeGreaterThanOrEqual(commitStartedAt);
+  expect(visibleAt - commitStartedAt).toBeLessThanOrEqual(5_000);
+  await testInfo.attach("nfr-06-frontend-timing", {
+    body: JSON.stringify({ commitTime, commitStartedAt, firstCommittedProjectionResponseAt, visibleAt, elapsedMilliseconds: visibleAt - commitStartedAt }, null, 2),
+    contentType: "application/json",
+  });
+  expect(dashboardCalls).toBeGreaterThanOrEqual(2);
+});
+
 test("failed dashboard load exposes a non-destructive retry and recovers", async ({ page }) => {
   let dashboardCalls = 0;
   await authenticatedApi(page, "ROLE-01", async (route, path) => {

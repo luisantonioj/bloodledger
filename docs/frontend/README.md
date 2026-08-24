@@ -23,6 +23,7 @@ fixture data, topology claims, or browser-only writes.
 - `MOCKUP_REFERENCE.md` — immutable selected-source hashes and exclusions.
 - `COMPONENT_MIGRATION.md` — shared visual primitive mapping and evidence.
 - `PAGE_MIGRATION.md` — selected/deferred page mapping and API dependencies.
+- `VALIDATION.md` — reproducible frontend-only validation conditions and limits.
 
 An entry is complete only when the official implementation, applicable tests,
 and review evidence are recorded. A visually similar mockup is not completion.
