@@ -167,6 +167,94 @@ test("login fails safely, then accepts only the server-returned principal and ca
   expect(revoked).toBe(true);
 });
 
+test("secondary request retry preserves idempotency and excludes caller-selected scope", async ({ page }) => {
+  const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
+  let attempts = 0;
+  await authenticatedApi(page, "ROLE-03", async (route, path) => {
+    const request = route.request();
+    if (path === "/api/v1/transfers" && request.method() === "GET") {
+      await fulfillJson(route, { scope: "DESTINATION_INSTITUTION", transfers: [], classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path !== "/api/v1/transfers" || request.method() !== "POST") return false;
+    attempts += 1;
+    submissions.push({ idempotencyKey: request.headers()["idempotency-key"], body: request.postDataJSON() as Record<string, unknown> });
+    if (attempts === 1) {
+      await fulfillJson(route, { error: { code: "FABRIC_GATEWAY_UNAVAILABLE", message: "The ledger is unavailable; retry with the same idempotency key." } }, 503);
+      return true;
+    }
+    await fulfillJson(route, { transferId: "TRF_SYNTH_BROWSER_CREATED", status: "PENDING", replayed: false, classification: "SIMULATION_ONLY" }, 201);
+    return true;
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByLabel("Blood type").selectOption("O_POSITIVE");
+  await page.getByLabel("Component").selectOption("PLATELETS");
+  await page.getByLabel("Quantity").fill("3");
+  await page.getByLabel("Urgency").selectOption("URGENT");
+  await page.getByRole("button", { name: "Submit request" }).click();
+  await expect(page.getByRole("alert")).toContainText("retry with the same idempotency key");
+  await page.getByRole("button", { name: "Retry same request" }).click();
+  await expect(page.getByRole("status")).toContainText("Committed as TRF_SYNTH_BROWSER_CREATED");
+  expect(attempts).toBe(2);
+  expect(submissions[0].idempotencyKey).toBe(submissions[1].idempotencyKey);
+  expect(submissions[0].body).toEqual(submissions[1].body);
+  const submitted = submissions[0];
+  expect(submitted.idempotencyKey).toMatch(/^IDEM_WEB_[0-9A-F]{32}$/);
+  expect(Object.keys(submitted.body).sort()).toEqual(["bloodType", "component", "correlationId", "eventTime", "quantity", "requestTime", "urgency"]);
+  expect(submitted.body).toMatchObject({ bloodType: "O_POSITIVE", component: "PLATELETS", quantity: 3, urgency: "URGENT" });
+  expect("institutionId" in submitted.body).toBe(false);
+});
+
+test("human FEFO approval retry preserves intent and never submits selected units", async ({ page }) => {
+  const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_APPROVAL", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_SYNTH_SECONDARY_A", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "URGENT", requestTime: timestamp, status: "PENDING", reasonCode: null, recommendationDigest: null, ledgerVersion: 1, projectedAt: timestamp, dispatchEvidenceRecorded: false, receiptEvidenceRecorded: false };
+  const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
+  let attempts = 0;
+  let approved = false;
+  await authenticatedApi(page, "ROLE-02", async (route, path) => {
+    const request = route.request();
+    if (path === "/api/v1/transfers" && request.method() === "GET") {
+      await fulfillJson(route, { scope: "SOURCE_INSTITUTION", transfers: [{ ...baseTransfer, status: approved ? "APPROVED" : "PENDING", ledgerVersion: approved ? 2 : 1 }], classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v1/transfers/${baseTransfer.transferId}` && request.method() === "GET") {
+      const transfer = { ...baseTransfer, status: approved ? "APPROVED" : "PENDING", ledgerVersion: approved ? 2 : 1 };
+      await fulfillJson(route, { transfer, selectedUnitIds: approved ? ["UNIT_SYNTH_FEFO_BROWSER_01"] : [], timeline: [], explanations: [], selectionPolicy: "FEFO", recommendationEligibility: "DISABLED_UNAPPROVED_POLICY", automaticApproval: false, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v1/transfers/${baseTransfer.transferId}/approval` && request.method() === "POST") {
+      attempts += 1;
+      submissions.push({ idempotencyKey: request.headers()["idempotency-key"], body: request.postDataJSON() as Record<string, unknown> });
+      if (attempts === 1) {
+        await fulfillJson(route, { error: { code: "FABRIC_GATEWAY_UNAVAILABLE", message: "The ledger is unavailable; retry the same approval." } }, 503);
+        return true;
+      }
+      approved = true;
+      await fulfillJson(route, { transferId: baseTransfer.transferId, status: "APPROVED", selectedUnitIds: ["UNIT_SYNTH_FEFO_BROWSER_01"], ledgerVersion: 2, replayed: false, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    return false;
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("button", { name: "View" }).click();
+  await expect(page.getByText("Human FEFO authorization", { exact: true })).toBeVisible();
+  await expect(page.getByText("Disabled; human authorization required", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Approve FEFO selection" }).click();
+  await expect(page.getByRole("alert")).toContainText("retry the same approval");
+  await page.getByRole("button", { name: "Retry same approval" }).click();
+  await expect(page.getByText("FEFO-selected units", { exact: true })).toBeVisible();
+  await expect(page.getByText("UNIT_SYNTH_FEFO_BROWSER_01", { exact: true })).toBeVisible();
+  expect(attempts).toBe(2);
+  expect(submissions[0].idempotencyKey).toBe(submissions[1].idempotencyKey);
+  expect(submissions[0].body).toEqual(submissions[1].body);
+  const submitted = submissions[0];
+  expect(Object.keys(submitted.body).sort()).toEqual(["correlationId", "eventTime", "expectedVersion"]);
+  expect(submitted.body).toMatchObject({ expectedVersion: 1 });
+  expect("selectedUnitIds" in submitted.body).toBe(false);
+  expect("institutionId" in submitted.body).toBe(false);
+});
+
 test("regulatory navigation renders every selected read-only page and CSV boundary", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", error => pageErrors.push(error.message));

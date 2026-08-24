@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { requestJson } from "../services/api/client";
 import { pollingDelay } from "./polling";
 
@@ -7,9 +7,11 @@ export function useLiveData<T>(endpoint:string|null) {
   const [error,setError] = useState("");
   const [busy,setBusy] = useState(false);
   const [retry,setRetry] = useState(0);
+  const activeEndpoint=useRef(endpoint);
   const manual = useCallback(() => setRetry(value => value + 1), []);
   useEffect(() => {
-    setData(undefined);setError("");
+    if(activeEndpoint.current!==endpoint){activeEndpoint.current=endpoint;setData(undefined)}
+    setError("");
     if (!endpoint) return;
     let timer:ReturnType<typeof globalThis.setTimeout>|undefined;
     let failures=0, closed=false, attempt=0;
