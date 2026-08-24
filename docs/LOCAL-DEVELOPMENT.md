@@ -129,11 +129,24 @@ configuration. Application credentials are provisioned separately from
 untracked values and are never added to `.env.example`, fixtures, Git, logs, or
 screenshots.
 
+On a new Ubuntu/WSL development host, install the lockfile-pinned Playwright
+browser and its Chromium system libraries once before running browser checks:
+
+```bash
+npx playwright install chromium
+npx playwright install-deps chromium
+```
+
+The second command may request the Ubuntu `sudo` password. Browser binaries and
+system libraries are host prerequisites; neither command adds generated browser
+artifacts to the repository.
+
 Run the focused non-database checks with:
 
 ```bash
 npm run check:web
 npm run test:web
+npm run test:web:e2e
 npm run check:api
 npm run test:api
 ```

@@ -181,6 +181,7 @@ Sprint 5 adds a focused dashboard development server:
 ```bash
 npm run check:web
 npm run test:web
+npm run test:web:e2e
 npm run dev --workspace @bloodledger/web
 ```
 
@@ -189,6 +190,10 @@ API image uses one loopback origin instead: dashboard at `/`, capture at
 `/capture/`, and the versioned API at `/api/v1` on port `3000` by default.
 Live login still requires migrated PostgreSQL state and separately provisioned
 opaque synthetic accounts.
+
+The one-time Chromium host prerequisites for `test:web:e2e`, including the
+Ubuntu `sudo` step, are documented in
+[`docs/LOCAL-DEVELOPMENT.md`](docs/LOCAL-DEVELOPMENT.md#32-sprint-5-web-session-profile).
 
 The JWT secret must contain at least 32 characters and the synthetic operator
 credential at least 12. Neither value belongs in Git, logs, screenshots, or
