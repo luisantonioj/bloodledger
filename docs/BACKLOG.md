@@ -357,7 +357,8 @@ cannot mutate operational state.
 
 **Evidence:** Regulatory composition, aggregate-only API reads, no-mutation
 browser assertions, and safe simulation CSV export passed on 2026-08-24.
-Owner visual review and accountable-owner Sprint Review remain pending.
+Yuri Lat approved the Sprint 05 visual result on 2026-08-24. The consolidated
+accountable-owner Sprint Review remains pending.
 
 ### BL-WEB-05 — Institutional application and status UI
 

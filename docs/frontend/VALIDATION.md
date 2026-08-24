@@ -127,10 +127,16 @@ Each role passed the live same-origin sequence: login `200`, session restoration
 aggregate confirmed one active user and active institution for every role. This
 role-access readiness does not accept the visual result or the sprint.
 
-### Open review obligations
+### Accountable-owner visual decision
 
-- Lat's owner review of the technical comparison against
-  `MOCKUP_VISUAL_2026-08-20` remains pending.
+On 2026-08-24 Yuri Lat reviewed the running Sprint 05 application using the
+provisioned six-role synthetic review accounts and explicitly approved the
+Sprint 05 visual result. This accepts the controlled visual comparison against
+`MOCKUP_VISUAL_2026-08-20`; it does not by itself accept the consolidated
+Sprint Review, supersede unresolved policy decisions, or change the
+`SIMULATION_ONLY` classification.
+
+### Open review obligations
 
 - Lat's accountable-owner Sprint Review, incomplete-item disposition, and
   retrospective remain pending.
