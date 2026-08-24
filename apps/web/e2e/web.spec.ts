@@ -395,6 +395,97 @@ test("dispatch retry preserves approved synthetic source evidence and mutation i
   expect("selectedUnitIds" in submitted.body).toBe(false);
 });
 
+test("transit delay and resume retries preserve custody and versioned intent", async ({ page }) => {
+  const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_TRANSIT", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_METRO_LIPA", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "URGENT", requestTime: timestamp, status: "DISPATCHED", reasonCode: null, recommendationDigest: null, ledgerVersion: 3, projectedAt: timestamp, dispatchEvidenceRecorded: true, receiptEvidenceRecorded: false };
+  const selectedUnitId = "UNIT_SYNTH_TRANSIT_BROWSER_01";
+  const submissions = {
+    transit: [] as { idempotencyKey: string; body: Record<string, unknown> }[],
+    delay: [] as { idempotencyKey: string; body: Record<string, unknown> }[],
+    resume: [] as { idempotencyKey: string; body: Record<string, unknown> }[],
+  };
+  const attempts = { transit: 0, delay: 0, resume: 0 };
+  let state: { status: string; ledgerVersion: number; reasonCode: string | null } = { status: "DISPATCHED", ledgerVersion: 3, reasonCode: null };
+  await authenticatedApi(page, "ROLE-02", async (route, path) => {
+    const request = route.request();
+    const transfer = { ...baseTransfer, ...state };
+    if (path === "/api/v1/transfers" && request.method() === "GET") {
+      await fulfillJson(route, { scope: "SOURCE_INSTITUTION", transfers: [transfer], classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v1/transfers/${baseTransfer.transferId}` && request.method() === "GET") {
+      const timeline = state.ledgerVersion >= 5 ? [{ eventId: "TEVT_" + "D".repeat(40), fromStatus: "IN_TRANSIT", toStatus: "DELAYED", eventTime: timestamp, reasonCode: "ROUTE_DELAY", ledgerTransactionId: "TX_SYNTH_TRANSIT_DELAY_BROWSER", ledgerVersion: 5, correlationId: "CORR_" + "D".repeat(32) }] : [];
+      await fulfillJson(route, { transfer, selectedUnitIds: [selectedUnitId], timeline, explanations: [], selectionPolicy: "FEFO", recommendationEligibility: "DISABLED_UNAPPROVED_POLICY", automaticApproval: false, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v1/transfers/${baseTransfer.transferId}/transit-start` && request.method() === "POST") {
+      attempts.transit += 1;
+      submissions.transit.push({ idempotencyKey: request.headers()["idempotency-key"], body: request.postDataJSON() as Record<string, unknown> });
+      if (attempts.transit === 1) {
+        await fulfillJson(route, { error: { code: "FABRIC_GATEWAY_UNAVAILABLE", message: "The ledger is unavailable; retry the same transit transition." } }, 503);
+        return true;
+      }
+      state = { status: "IN_TRANSIT", ledgerVersion: 4, reasonCode: null };
+      await fulfillJson(route, { transferId: baseTransfer.transferId, status: "IN_TRANSIT", inTransitUnitIds: [selectedUnitId], ledgerVersion: 4, replayed: false, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v1/transfers/${baseTransfer.transferId}/delay` && request.method() === "POST") {
+      attempts.delay += 1;
+      submissions.delay.push({ idempotencyKey: request.headers()["idempotency-key"], body: request.postDataJSON() as Record<string, unknown> });
+      if (attempts.delay === 1) {
+        await fulfillJson(route, { error: { code: "FABRIC_GATEWAY_UNAVAILABLE", message: "The ledger is unavailable; retry the same delay." } }, 503);
+        return true;
+      }
+      state = { status: "DELAYED", ledgerVersion: 5, reasonCode: "ROUTE_DELAY" };
+      await fulfillJson(route, { transferId: baseTransfer.transferId, status: "DELAYED", reasonCode: "ROUTE_DELAY", ledgerVersion: 5, replayed: false, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v1/transfers/${baseTransfer.transferId}/resume` && request.method() === "POST") {
+      attempts.resume += 1;
+      submissions.resume.push({ idempotencyKey: request.headers()["idempotency-key"], body: request.postDataJSON() as Record<string, unknown> });
+      if (attempts.resume === 1) {
+        await fulfillJson(route, { error: { code: "FABRIC_GATEWAY_UNAVAILABLE", message: "The ledger is unavailable; retry the same resume transition." } }, 503);
+        return true;
+      }
+      state = { status: "IN_TRANSIT", ledgerVersion: 6, reasonCode: "ROUTE_DELAY" };
+      await fulfillJson(route, { transferId: baseTransfer.transferId, status: "IN_TRANSIT", inTransitUnitIds: [selectedUnitId], ledgerVersion: 6, replayed: false, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    return false;
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("button", { name: "View" }).click();
+  await page.getByRole("button", { name: "Start transit", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("retry the same transit transition");
+  await page.getByRole("button", { name: "Retry same transition", exact: true }).click();
+  await expect(page.getByText("IN TRANSIT at version 4", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Report route delay", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("retry the same delay");
+  await page.getByRole("button", { name: "Retry same delay", exact: true }).click();
+  await expect(page.getByText("DELAYED at version 5", { exact: true })).toBeVisible();
+  await expect(page.getByText(selectedUnitId, { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Resume transit", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("retry the same resume transition");
+  await page.getByRole("button", { name: "Retry same transition", exact: true }).click();
+  await expect(page.getByText("IN TRANSIT at version 6", { exact: true })).toBeVisible();
+  await expect(page.getByText("ROUTE DELAY", { exact: true })).toBeVisible();
+  await expect(page.getByText(selectedUnitId, { exact: true })).toBeVisible();
+  for (const records of [submissions.transit, submissions.delay, submissions.resume]) {
+    expect(records).toHaveLength(2);
+    expect(records[0].idempotencyKey).toBe(records[1].idempotencyKey);
+    expect(records[0].body).toEqual(records[1].body);
+    expect("institutionId" in records[0].body).toBe(false);
+    expect("selectedUnitIds" in records[0].body).toBe(false);
+  }
+  expect(submissions.transit[0].body).toMatchObject({ expectedVersion: 3 });
+  expect(Object.keys(submissions.transit[0].body).sort()).toEqual(["correlationId", "eventTime", "expectedVersion"]);
+  expect(submissions.delay[0].body).toMatchObject({ expectedVersion: 4, reasonCode: "ROUTE_DELAY" });
+  expect(Object.keys(submissions.delay[0].body).sort()).toEqual(["correlationId", "eventTime", "expectedVersion", "reasonCode"]);
+  expect(submissions.resume[0].body).toMatchObject({ expectedVersion: 5 });
+  expect(Object.keys(submissions.resume[0].body).sort()).toEqual(["correlationId", "eventTime", "expectedVersion"]);
+  expect(new Set([submissions.transit[0].idempotencyKey, submissions.delay[0].idempotencyKey, submissions.resume[0].idempotencyKey]).size).toBe(3);
+});
+
 test("receipt retry preserves approved synthetic destination evidence and scoped authority", async ({ page }) => {
   const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_RECEIPT", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_METRO_LIPA", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "URGENT", requestTime: timestamp, status: "IN_TRANSIT", reasonCode: null, recommendationDigest: null, ledgerVersion: 4, projectedAt: timestamp, dispatchEvidenceRecorded: true, receiptEvidenceRecorded: false };
   const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
