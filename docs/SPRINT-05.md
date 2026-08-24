@@ -391,9 +391,10 @@ synthetic data and covers:
 7. logout/session revocation without leaking credentials, tokens, prohibited
    data, or exact restricted location evidence.
 
-Passing checks does not accept the sprint. Jopia records a separate accountable-
+Passing checks does not accept the sprint. Lat records a separate accountable-
 owner decision, incomplete-item disposition, and retrospective before the
-formal Testing phase begins.
+formal Testing phase begins. Jopia separately records API/database/Fabric
+validation and discloses self-validation.
 
 ## 4. Excluded and deferred work
 
@@ -499,14 +500,63 @@ are recorded in `docs/frontend/VALIDATION.md`. The selected page and component
 registers record implementation with automated validation passed. This is
 technical evidence only; it is not Lat's accountable-owner Sprint Review.
 
-Populate only after implementation and validation. Record:
+### Consolidated evidence package
 
-- the accepted Sprint 4 baseline tag and Sprint 5 dates;
-- approved decisions/policy versions and any superseded source claims;
-- versions, commands, environment, and evidence for each selected task;
-- owner validation and disclosed self-validation;
-- incomplete-item disposition and formal Testing-phase handoff; and
-- Jopia's accountable-owner acceptance or rejection plus retrospective.
+- Baseline: accepted tag `sprint-04-accepted-2026-08-20`; Sprint 05 window
+  2026-08-20 through 2026-08-26.
+- Accepted synthetic decisions: `SYNTHETIC_INVENTORY_V1`,
+  `SYNTHETIC_TRANSFER_V1`, `SYNTHETIC_LOCATION_V1`,
+  `SYNTHETIC_OPTIMIZATION_V1`, `SYNTHETIC_CAPTURE_V1`, and
+  `SYNTHETIC_WEB_ACCESS_V1`. The frozen visual reference is
+  `MOCKUP_VISUAL_2026-08-20`.
+- Environment: canonical WSL2 Ubuntu 24.04 working copy, Node.js `24.17.0`,
+  npm `11.13.0`, pinned repository dependencies, and project-scoped Docker
+  services.
+- Evidence: the commands and results in `docs/frontend/VALIDATION.md` cover
+  static/build/security checks, 191 unit tests, 24 browser scenarios, isolated
+  PostgreSQL integrations, Fabric health, and same-origin application probes.
+- Owner evidence: Yuri Lat approved the controlled Sprint 05 visual result on
+  2026-08-24. Buno's web-workspace validation remains pending. Jopia's
+  API/database/Fabric validation and required self-validation disclosure remain
+  pending.
+- Accountable decision: Lat's consolidated Sprint Review acceptance or rejection
+  remains pending. Passing technical checks and visual approval do not replace
+  that decision.
 
-Empty evidence in this section means not yet performed; it must never be treated
-as a passing result.
+### Incomplete-item disposition
+
+- Physical Android OCR evidence remains deferred from Sprint 04 to a later
+  authorized physical-device evaluation. The deferral continues to block
+  real-device, real-label, clinical-accuracy, and production-readiness claims.
+- The NFR-06 browser result covers polling and rendering only. Full
+  scan-to-Fabric-to-projection latency evidence is handed to the formal Testing
+  phase and must not be inferred from the browser result.
+- `BL-API-02`, `BL-WEB-05`, `BL-WEB-06`, and `BL-TST-02` remain deferred
+  behind `RQ-14` and a separate activating plan; they are not Sprint 05
+  failures or silently completed scope.
+- Forecast readiness was honestly `UNAVAILABLE` at the checkpoint. This is an
+  allowed degraded state and does not establish an operational forecast.
+- All implemented behavior and evidence remain synthetic and
+  `SIMULATION_ONLY`.
+
+### Retrospective draft
+
+- Worked well: the frozen visual reference, official design tokens,
+  feature-first boundaries, typed same-origin APIs, six-role isolation tests,
+  and explicit synthetic-state labels kept the migration controlled.
+- Improve: owner/validator wording was inconsistent, final participant review
+  was scheduled after the automated checkpoint, and the controlled NFR-06 test
+  did not cover the full physical-to-ledger path.
+- Follow-up: use one RACI table in the next sprint plan, schedule participant
+  validation before the exit date, retain limitation wording at every handoff,
+  and plan physical-device and end-to-end latency evidence only in an explicitly
+  authorized phase.
+
+### Formal Testing-phase handoff
+
+The technical package is prepared, but handoff remains pending Buno's
+web-workspace validation, Jopia's API/database/Fabric validation with
+self-validation disclosed, Lat's accountable-owner decision, and acceptance of
+this retrospective and incomplete-item disposition.
+
+Empty or pending participant evidence must never be treated as a passing result.
