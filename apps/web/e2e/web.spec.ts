@@ -81,6 +81,9 @@ for (const roleId of Object.keys(navigation) as RoleId[]) {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
     await expect(page.locator("nav a")).toHaveText(navigation[roleId]);
+    await expect(page.locator(".side-brand")).toBeVisible();
+    await expect(page.locator(".facility-context")).toBeVisible();
+    await expect(page.locator(".page-head")).toBeVisible();
     await expect(page.getByText(activePrincipal.institutionDisplayName, { exact: true })).toBeVisible();
     await expect(page.getByText("SIMULATION ONLY", { exact: true })).toBeVisible();
   });

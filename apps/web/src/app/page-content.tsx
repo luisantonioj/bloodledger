@@ -29,5 +29,11 @@ function dashboardPage(principal: Principal): [string, string, string] {
 
 export function PageContent({ path, principal }: { path: string; principal: Principal }) {
   const page = path === "/" ? dashboardPage(principal) : pages[path] ?? ["Unavailable", "Page not found", "This route is not part of Sprint 5."];
-  return <div className="page"><p className="eyebrow">{page[0]}</p><h1>{page[1]}</h1><p className="subtitle">{page[2]}</p><section className="card"><h2>{page[1]} data</h2><FeatureRouter key={path} path={path} canAcknowledge={can(principal, "alerts:acknowledge")} canSubmitTransfer={principal.roleId === "ROLE-03"} canRejectTransfer={principal.roleId === "ROLE-02"} canCancelTransfer={["ROLE-02", "ROLE-03"].includes(principal.roleId)} canCancelApprovedTransfer={principal.roleId === "ROLE-02"} canDispatchTransfer={["ROLE-01", "ROLE-02"].includes(principal.roleId)} canStartTransit={["ROLE-01", "ROLE-02"].includes(principal.roleId)} canResumeTransfer={["ROLE-01", "ROLE-02"].includes(principal.roleId)} canDelayTransfer={["ROLE-01", "ROLE-02", "ROLE-03"].includes(principal.roleId)} canReceiveTransfer={principal.roleId === "ROLE-03"} canCapture={can(principal, "inventory:write")} principal={principal}/></section></div>;
+  return <div className="page">
+    <header className="page-head"><div><p className="eyebrow">{page[0]}</p><h1 className="page-title">{page[1]}</h1><p className="subtitle">{page[2]}</p></div><span className="page-classification">Synthetic evidence</span></header>
+    <section className="card feature-card">
+      <div className="card-heading"><div><h2>{page[1]} data</h2><p>Authorized official API view with explicit freshness and state.</p></div><span>SIMULATION_ONLY</span></div>
+      <FeatureRouter key={path} path={path} canAcknowledge={can(principal, "alerts:acknowledge")} canSubmitTransfer={principal.roleId === "ROLE-03"} canRejectTransfer={principal.roleId === "ROLE-02"} canCancelTransfer={["ROLE-02", "ROLE-03"].includes(principal.roleId)} canCancelApprovedTransfer={principal.roleId === "ROLE-02"} canDispatchTransfer={["ROLE-01", "ROLE-02"].includes(principal.roleId)} canStartTransit={["ROLE-01", "ROLE-02"].includes(principal.roleId)} canResumeTransfer={["ROLE-01", "ROLE-02"].includes(principal.roleId)} canDelayTransfer={["ROLE-01", "ROLE-02", "ROLE-03"].includes(principal.roleId)} canReceiveTransfer={principal.roleId === "ROLE-03"} canCapture={can(principal, "inventory:write")} principal={principal}/>
+    </section>
+  </div>;
 }
