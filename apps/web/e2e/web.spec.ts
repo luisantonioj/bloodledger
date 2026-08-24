@@ -574,6 +574,7 @@ test("alert acknowledgement retry preserves scoped intent and confirmed state", 
   await page.goto("/");
   await page.getByRole("link", { name: "Alerts", exact: true }).click();
   await expect(page.getByText("UNIT_SYNTH_ALERT_BROWSER_01", { exact: true })).toBeVisible();
+  await expect(page.locator(".alert-card")).toHaveCount(1);
   await page.getByRole("button", { name: "Acknowledge", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("retry the same acknowledgement");
   await page.getByRole("button", { name: "Retry acknowledgement", exact: true }).click();
@@ -712,6 +713,7 @@ test("route changes clean up the previous poller and refresh only the active pag
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Inventory", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Inventory", exact: true })).toBeVisible();
+  await expect(page.locator(".blood-type")).toHaveText("A+");
   await page.waitForTimeout(2_200);
   expect(dashboardCalls).toBe(1);
   expect(inventoryCalls).toBeGreaterThanOrEqual(2);

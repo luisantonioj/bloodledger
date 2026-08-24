@@ -4,6 +4,10 @@ export function formatManilaDateTime(value:string|null):string {
     : "Not yet projected";
 }
 
+export function formatBloodType(value:string):string {
+  return value.replace("_POSITIVE", "+").replace("_NEGATIVE", "-").replaceAll("_", " ");
+}
+
 export const humanizeCode = (value:string) => value.replaceAll("_", " ");
 
 export function statusClassName(value:string):string {

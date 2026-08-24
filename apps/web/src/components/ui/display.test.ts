@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatManilaDateTime, humanizeCode, statusClassName } from "./display";
+import { formatBloodType, formatManilaDateTime, humanizeCode, statusClassName } from "./display";
 
 describe("shared data presentation", () => {
   it("formats UTC evidence in Asia/Manila and preserves missing projection state", () => {
@@ -11,5 +11,10 @@ describe("shared data presentation", () => {
     expect(statusClassName("DELAYED")).toBe("status warning");
     expect(statusClassName("FAILED")).toBe("status critical");
     expect(statusClassName("COMMITTED")).toBe("status ");
+  });
+  it("uses compact blood-type labels without changing the API code", () => {
+    expect(formatBloodType("A_POSITIVE")).toBe("A+");
+    expect(formatBloodType("O_NEGATIVE")).toBe("O-");
+    expect(formatBloodType("BOMBAY")).toBe("BOMBAY");
   });
 });

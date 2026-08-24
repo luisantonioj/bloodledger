@@ -1,9 +1,13 @@
 import type { Aggregate, AlertAggregate, TransferSummary } from "../../services/api/types";
-import { formatManilaDateTime, humanizeCode, statusClassName } from "./display";
+import { formatBloodType, formatManilaDateTime, humanizeCode, statusClassName } from "./display";
+
+export function BloodTypeBadge({value}:{value:string}) {
+  return <span className="blood-type" aria-label={humanizeCode(value)}>{formatBloodType(value)}</span>;
+}
 
 export function AggregateTable({items}:{items:Aggregate[]}) {
   if(items.length===0)return <div className="empty"><strong>No committed inventory</strong>No ledger-confirmed projection is available for this scope.</div>;
-  return <div className="table-wrap"><table><thead><tr><th>Institution</th><th>Blood type</th><th>Component</th><th>Status</th><th>Confirmed</th><th>Projected</th></tr></thead><tbody>{items.map((item,index)=><tr key={`${item.institutionId}-${item.bloodType}-${item.component}-${item.inventoryStatus}-${index}`}><td>{item.institutionDisplayName}</td><td>{humanizeCode(item.bloodType)}</td><td>{humanizeCode(item.component)}</td><td><span className={statusClassName(item.inventoryStatus)}>{humanizeCode(item.inventoryStatus)}</span></td><td>{item.confirmedCount}</td><td>{formatManilaDateTime(item.lastProjectedAt)}</td></tr>)}</tbody></table></div>;
+  return <div className="table-wrap"><table className="data-table"><thead><tr><th>Institution</th><th>Blood type</th><th>Component</th><th>Status</th><th>Confirmed</th><th>Projected</th></tr></thead><tbody>{items.map((item,index)=><tr key={`${item.institutionId}-${item.bloodType}-${item.component}-${item.inventoryStatus}-${index}`}><td><strong>{item.institutionDisplayName}</strong></td><td><BloodTypeBadge value={item.bloodType}/></td><td>{humanizeCode(item.component)}</td><td><span className={statusClassName(item.inventoryStatus)}>{humanizeCode(item.inventoryStatus)}</span></td><td className="numeric">{item.confirmedCount}</td><td className="data-time">{formatManilaDateTime(item.lastProjectedAt)}</td></tr>)}</tbody></table></div>;
 }
 
 export function AlertAggregateTable({items}:{items:AlertAggregate[]}) {
