@@ -252,6 +252,13 @@ The runtime role may read the minimum authentication rows, create sessions, and
 update only revocation columns. It receives no identity DDL, delete, onboarding,
 or user-management privilege.
 
+The development-only `npm run provision:web-account` command uses the migrator
+role to create one explicitly supplied synthetic institution, user, and role
+assignment. It reads the password only from the untracked environment, reuses
+the API's parameterized `SCRYPT_V1` implementation, and refuses replacement or
+conflicting replay. This is local validation provisioning, not the deferred
+institutional onboarding or user-management workflow.
+
 ## 13. Sprint 5 transfer, alert, and audit projections
 
 Migration `20260820010000000_create-transfer-alert-projections.js` adds the

@@ -4,6 +4,7 @@ import { Pool } from "pg";
 import { ApiFailure } from "../build/src/errors.js";
 import { createPoolFromEnvironment, PostgresScanRepository } from "../build/src/database.js";
 import { PostgresApplicationWriteRepository } from "../build/src/database-application-write.js";
+import { provisionSyntheticAccount } from "../build/src/synthetic-account.js";
 
 const pool = createPoolFromEnvironment();
 const repository = new PostgresScanRepository(pool);
@@ -31,9 +32,17 @@ const receivedAt = new Date("2026-08-17T12:00:00.000Z");
 try {
   const migrator = new Pool({ host:process.env.POSTGRES_HOST, port:Number(process.env.POSTGRES_PORT), database:process.env.POSTGRES_DB, user:process.env.POSTGRES_MIGRATOR_USER, password:process.env.POSTGRES_MIGRATOR_PASSWORD });
   try {
-    await migrator.query(`INSERT INTO app.institutions(institution_id,display_name,category,status,classification) VALUES ('INST_MEDIATRIX','Synthetic Mediatrix Database Probe','HOSPITAL','ACTIVE','SIMULATION_ONLY'), ('INST_DIVINE_LOVE','Synthetic Divine Love Database Probe','HOSPITAL','ACTIVE','SIMULATION_ONLY')`);
-    await migrator.query(`INSERT INTO app.application_users(user_id,username,display_name,institution_id,password_algorithm,password_salt,password_verifier,status,classification) VALUES('USR_DIVINE_LOVE','synth_divine_love_probe','Synthetic Divine Love Probe','INST_DIVINE_LOVE','SCRYPT_V1',$1,$2,'ACTIVE','SIMULATION_ONLY'),('USR_MEDIATRIX_ADMIN','synth_mediatrix_admin_probe','Synthetic Mediatrix Admin Probe','INST_MEDIATRIX','SCRYPT_V1',$3,$4,'ACTIVE','SIMULATION_ONLY')`, [randomBytes(16).toString("hex"), randomBytes(64).toString("hex"), randomBytes(16).toString("hex"), randomBytes(64).toString("hex")]);
-    await migrator.query(`INSERT INTO app.user_role_assignments(user_id,role_id,policy_version,assigned_at) VALUES('USR_DIVINE_LOVE','ROLE-03','SYNTHETIC_WEB_ACCESS_V1','2026-08-20T00:00:00.000Z'),('USR_MEDIATRIX_ADMIN','ROLE-02','SYNTHETIC_WEB_ACCESS_V1','2026-08-20T00:00:00.000Z')`);
+    const secondaryInput={institutionId:"INST_DIVINE_LOVE",institutionDisplayName:"Synthetic Divine Love Database Probe",institutionCategory:"HOSPITAL",userId:"USR_DIVINE_LOVE",username:"synth_divine_love_probe",userDisplayName:"Synthetic Divine Love Probe",roleId:"ROLE-03",password:randomBytes(24).toString("base64url")};
+    const secondaryCreated=await provisionSyntheticAccount(migrator,secondaryInput);
+    assert.equal(secondaryCreated.created,true);
+    assert.equal((await provisionSyntheticAccount(migrator,secondaryInput)).created,false);
+    const administratorInput={institutionId:"INST_MEDIATRIX",institutionDisplayName:"Synthetic Mediatrix Database Probe",institutionCategory:"HOSPITAL",userId:"USR_MEDIATRIX_ADMIN",username:"synth_mediatrix_admin_probe",userDisplayName:"Synthetic Mediatrix Admin Probe",roleId:"ROLE-02",password:randomBytes(24).toString("base64url")};
+    assert.equal((await provisionSyntheticAccount(migrator,administratorInput)).created,true);
+    const stored=await migrator.query("SELECT password_algorithm,password_salt,password_verifier FROM app.application_users WHERE user_id=$1",[secondaryInput.userId]);
+    assert.equal(stored.rows[0].password_algorithm,"SCRYPT_V1");
+    assert.match(stored.rows[0].password_salt,/^[0-9a-f]{32}$/);
+    assert.match(stored.rows[0].password_verifier,/^[0-9a-f]{128}$/);
+    assert.notEqual(stored.rows[0].password_verifier,secondaryInput.password);
   } finally { await migrator.end(); }
 
   await pool.query(`

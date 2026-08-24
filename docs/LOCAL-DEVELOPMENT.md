@@ -154,6 +154,27 @@ Live session validation additionally requires applying all database migrations
 and provisioning opaque synthetic accounts without committing their salts,
 verifiers, or source credentials.
 
+Provision exactly one development account at a time by setting these values only
+in the untracked shell environment or local `.env`:
+
+- `SPRINT5_DEV_INSTITUTION_ID`, `SPRINT5_DEV_INSTITUTION_DISPLAY_NAME`, and
+  `SPRINT5_DEV_INSTITUTION_CATEGORY`;
+- `SPRINT5_DEV_USER_ID`, `SPRINT5_DEV_USERNAME`, and
+  `SPRINT5_DEV_USER_DISPLAY_NAME`; and
+- `SPRINT5_DEV_ROLE_ID` and `SPRINT5_DEV_PASSWORD`.
+
+Do not add these variables or their values to `.env.example`, Git, screenshots,
+logs, or Sprint evidence. After migrations are current, run:
+
+```bash
+npm run provision:web-account
+```
+
+The command accepts only synthetic identifiers and display names, enforces the
+accepted role/category scope, generates a unique `SCRYPT_V1` salt and verifier,
+and prints only non-secret metadata. Exact replay is safe; conflicting metadata,
+role, username, or credential fails without replacing the existing account.
+
 The API serves the built dashboard and capture PWA and listens only on host loopback by default. For
 the required physical Android Chrome evidence, USB debugging may expose that
 same loopback origin without opening a LAN port:

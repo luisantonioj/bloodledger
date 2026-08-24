@@ -59,6 +59,7 @@
     "test:database": "bash tests/database/integration.sh",
     "migrate:up": "npm run migrate:up --workspace @bloodledger/database",
     "migrate:status": "npm run migrate:status --workspace @bloodledger/database",
+    "provision:web-account": "npm run provision:synthetic-account --workspace @bloodledger/api",
     "scan:secrets": "bash scripts/scan-secrets.sh"
   }
 }
