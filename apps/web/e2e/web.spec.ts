@@ -351,6 +351,53 @@ test("receipt retry preserves approved synthetic destination evidence and scoped
   expect("destinationInstitutionId" in submitted.body).toBe(false);
 });
 
+test("alert acknowledgement retry preserves scoped intent and confirmed state", async ({ page }) => {
+  const alertId = "ALRT_" + "A".repeat(40);
+  const submissions: { idempotencyKey: string; body: Record<string, unknown>; path: string }[] = [];
+  let attempts = 0;
+  let acknowledged = false;
+  await authenticatedApi(page, "ROLE-01", async (route, path) => {
+    const request = route.request();
+    if (path === "/api/v1/alerts" && request.method() === "GET") {
+      await fulfillJson(route, {
+        scope: "INSTITUTION",
+        alerts: [{ alertId, alertType: "EXPIRY_WARNING", severity: "WARNING", unitId: "UNIT_SYNTH_ALERT_BROWSER_01", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", expiresAt: timestamp, evaluatedAt: timestamp, status: "OPEN", acknowledged }],
+        aggregates: [],
+        classification: "SIMULATION_ONLY",
+      });
+      return true;
+    }
+    if (path === `/api/v1/alerts/${alertId}/acknowledgements` && request.method() === "POST") {
+      attempts += 1;
+      submissions.push({ path, idempotencyKey: request.headers()["idempotency-key"], body: request.postDataJSON() as Record<string, unknown> });
+      if (attempts === 1) {
+        await fulfillJson(route, { error: { code: "DATABASE_UNAVAILABLE", message: "Acknowledgement is unavailable; retry the same acknowledgement." } }, 503);
+        return true;
+      }
+      acknowledged = true;
+      await fulfillJson(route, { alertId, acknowledgedAt: timestamp, replayed: false, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    return false;
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Alerts", exact: true }).click();
+  await expect(page.getByText("UNIT_SYNTH_ALERT_BROWSER_01", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Acknowledge", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("retry the same acknowledgement");
+  await page.getByRole("button", { name: "Retry acknowledgement", exact: true }).click();
+  await expect(page.getByText("Acknowledged", { exact: true })).toBeVisible();
+  expect(attempts).toBe(2);
+  expect(submissions[0].path).toBe(`/api/v1/alerts/${alertId}/acknowledgements`);
+  expect(submissions[0].idempotencyKey).toBe(submissions[1].idempotencyKey);
+  expect(submissions[0].body).toEqual(submissions[1].body);
+  expect(submissions[0].idempotencyKey).toMatch(/^IDEM_WEB_[0-9A-F]{32}$/);
+  expect(Object.keys(submissions[0].body)).toEqual(["correlationId"]);
+  expect(submissions[0].body.correlationId).toMatch(/^CORR_[0-9A-F]{32}$/);
+  expect("alertId" in submissions[0].body).toBe(false);
+  expect("institutionId" in submissions[0].body).toBe(false);
+});
+
 test("regulatory navigation renders every selected read-only page and CSV boundary", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", error => pageErrors.push(error.message));

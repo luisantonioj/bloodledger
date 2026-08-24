@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
 import { formatManilaDateTime, humanizeCode, statusClassName } from "../../components/ui/display";
-import { requestJson } from "../../services/api/client";
 import { newMutationKeys, type MutationKeys } from "../../services/api/mutation-keys";
 import type { Alert, AlertAggregate, Alerts } from "../../services/api/types";
+import { acknowledgeAlert } from "./alert-api";
 import { alertOptions, filterAlerts } from "./alert-filter";
 
 function AcknowledgeAlert({alertId,onDone}:{alertId:string;onDone:()=>void}) {
@@ -10,7 +10,7 @@ function AcknowledgeAlert({alertId,onDone}:{alertId:string;onDone:()=>void}) {
   const[busy,setBusy]=useState(false),[error,setError]=useState("");
   async function submit(){
     setBusy(true);setError("");keys.current??=newMutationKeys();
-    try{await requestJson("/api/v1/alerts/"+encodeURIComponent(alertId)+"/acknowledgements",{method:"POST",headers:{"Idempotency-Key":keys.current.idempotencyKey},body:JSON.stringify({correlationId:keys.current.correlationId})},"Acknowledgement failed.");keys.current=undefined;onDone()}
+    try{await acknowledgeAlert(alertId,{correlationId:keys.current.correlationId},keys.current);keys.current=undefined;onDone()}
     catch(reason){setError(reason instanceof Error?reason.message:"Acknowledgement failed.")}
     finally{setBusy(false)}
   }
