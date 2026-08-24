@@ -1,6 +1,6 @@
 # BloodLedger Product Backlog
 
-**Status:** Sprints 1–4 accepted; Sprint 5 implementation and validation in progress
+**Status:** Sprints 1–5 accepted for their documented prototype scopes
 **Baseline date:** 2026-08-24
 **Prioritization:** MoSCoW, then dependency order
 
@@ -270,15 +270,15 @@ visible pending/conflict states.
 
 ### BL-API-01 — Application orchestration API
 
-**Priority:** Must | **Status:** In Progress | **Target:** Sprint 4/5
+**Priority:** Must | **Status:** Done | **Target:** Sprint 4/5
 **Dependencies:** inventory and transfer contracts
 
 Acceptance: versioned OpenAPI contract covers authentication, inventory,
 requests, transfers, alerts, transaction status, and consistent errors.
 
 **Evidence:** The Sprint 5 OpenAPI, isolated PostgreSQL integration, 76 API
-tests, and same-origin route checks passed on 2026-08-24. Accountable-owner
-Sprint Review remains pending; see `docs/frontend/VALIDATION.md`.
+tests, and same-origin route checks passed on 2026-08-24. Lat accepted the
+simulation-only Sprint Review on 2026-08-24; see `docs/SPRINT-05.md`.
 
 ### BL-API-02 — Institutional onboarding domain and API
 
@@ -313,19 +313,19 @@ Sprint 3 forecasts read-only with recommendation eligibility disabled.
 
 ### BL-WEB-01 — Authentication and institutional RBAC
 
-**Priority:** Must | **Status:** In Progress | **Target:** Sprint 5
+**Priority:** Must | **Status:** Done | **Target:** Sprint 5
 **Requirements:** FR-12, NFR-01
 
 Acceptance: unauthenticated, cross-role, and cross-institution access tests fail
 safely at server and ledger boundaries.
 
 **Evidence:** Six-role browser/API allow/deny, session restoration/revocation,
-and multi-institution isolation checks passed on 2026-08-24. Accountable-owner
-Sprint Review remains pending; see `docs/frontend/VALIDATION.md`.
+and multi-institution isolation checks passed on 2026-08-24. Lat accepted the
+simulation-only Sprint Review on 2026-08-24; see `docs/SPRINT-05.md`.
 
 ### BL-WEB-02 — Inventory and alert views
 
-**Priority:** Must | **Status:** In Progress | **Target:** Sprint 5
+**Priority:** Must | **Status:** Done | **Target:** Sprint 5
 **Requirements:** FR-03, FR-04, FR-09, NFR-06, NFR-11
 
 Acceptance: stock, shortage, expiry, forecast freshness, and synchronization
@@ -337,7 +337,7 @@ boundary remains disclosed in `docs/frontend/VALIDATION.md`.
 
 ### BL-WEB-03 — Request and transfer views
 
-**Priority:** Must | **Status:** In Progress | **Target:** Sprint 5
+**Priority:** Must | **Status:** Done | **Target:** Sprint 5
 **Requirements:** FR-05–07, FR-10–11
 
 Acceptance: users complete permitted workflows and can inspect ranking and
@@ -345,11 +345,11 @@ custody evidence without exposure of prohibited data.
 
 **Evidence:** Request, approval/rejection, FEFO, cancellation, dispatch,
 transit, delay/resume, receipt, conflict, replay, and scoped evidence checks
-passed on 2026-08-24. Accountable-owner Sprint Review remains pending.
+passed on 2026-08-24. Lat accepted the simulation-only Sprint Review that day.
 
 ### BL-WEB-04 — Regulatory reports
 
-**Priority:** Must | **Status:** In Progress | **Target:** Sprint 5
+**Priority:** Must | **Status:** Done | **Target:** Sprint 5
 **Requirements:** FR-03, FR-12
 
 Acceptance: DOH/PRC users can view/export approved aggregate information but
@@ -357,8 +357,8 @@ cannot mutate operational state.
 
 **Evidence:** Regulatory composition, aggregate-only API reads, no-mutation
 browser assertions, and safe simulation CSV export passed on 2026-08-24.
-Yuri Lat approved the Sprint 05 visual result on 2026-08-24. The consolidated
-accountable-owner Sprint Review remains pending.
+Yuri Lat approved the visual result and accepted the simulation-only Sprint
+Review on 2026-08-24.
 
 ### BL-WEB-05 — Institutional application and status UI
 

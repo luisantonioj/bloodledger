@@ -1,10 +1,10 @@
 # Sprint 5 — Controlled Frontend Migration and Application API
 
-**Status:** Authorized by Jopia on 2026-08-20; implementation in progress
+**Status:** Accepted by Lat on 2026-08-24 for the documented simulation-only scope
 
 **Sprint authorization:** Jopia / 2026-08-20
-**Accountable owner:** Lat (final Sprint Review confirmation remains required)
-**API owner/validator:** Jopia (self-validation must be disclosed)
+**Accountable owner:** Lat (accepted 2026-08-24)
+**API owner/validator:** Jopia (self-validation disclosed 2026-08-24)
 **Review participants:** Jopia, Buno, and Lat
 **Planning branch:** `codex/sprint-05-planning`
 **Implementation branch:** `codex/sprint-05-implementation`
@@ -520,9 +520,11 @@ technical evidence only; it is not Lat's accountable-owner Sprint Review.
   limitations on 2026-08-24. Luis Jopia validated the API/database/Fabric
   evidence on 2026-08-24 and explicitly disclosed that this includes
   self-validation of his assigned boundary.
-- Accountable decision: Lat's consolidated Sprint Review acceptance or rejection
-  remains pending. Passing technical checks and visual approval do not replace
-  that decision.
+- Accountable decision: on 2026-08-24 Lat accepted the Sprint 05 simulation-only
+  scope, the documented incomplete-item disposition, the retrospective, and the
+  formal Testing-phase handoff. Lat acknowledged the physical Android OCR and
+  full end-to-end NFR-06 latency deferrals and made no clinical, regulatory, or
+  production-readiness claim.
 
 ### Incomplete-item disposition
 
@@ -540,7 +542,7 @@ technical evidence only; it is not Lat's accountable-owner Sprint Review.
 - All implemented behavior and evidence remain synthetic and
   `SIMULATION_ONLY`.
 
-### Retrospective draft
+### Retrospective
 
 - Worked well: the frozen visual reference, official design tokens,
   feature-first boundaries, typed same-origin APIs, six-role isolation tests,
@@ -555,8 +557,8 @@ technical evidence only; it is not Lat's accountable-owner Sprint Review.
 
 ### Formal Testing-phase handoff
 
-The technical package and participant validations are prepared, but handoff
-remains pending Lat's accountable-owner decision and acceptance of this
-retrospective and incomplete-item disposition.
-
-Empty or pending participant evidence must never be treated as a passing result.
+Lat accepted the technical package, participant validations, retrospective,
+incomplete-item disposition, and formal Testing-phase handoff on 2026-08-24 for
+the documented simulation-only scope. Deferred evidence remains incomplete and
+must never be treated as a passing result or as support for clinical,
+regulatory, or production-readiness claims.

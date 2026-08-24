@@ -143,10 +143,14 @@ limitations. On 2026-08-24 Luis Jopia validated the Sprint 05
 API/database/Fabric evidence and explicitly disclosed that this includes
 self-validation of his assigned boundary.
 
-### Open review obligations
+### Accountable-owner decision and accepted limitations
 
-- Lat's accountable-owner Sprint Review, incomplete-item disposition, and
-  retrospective remain pending.
+On 2026-08-24 Yuri Lat accepted the Sprint 05 simulation-only scope, documented
+incomplete-item disposition, retrospective, and formal Testing-phase handoff.
+Lat acknowledged that physical Android OCR and full end-to-end NFR-06 latency
+evidence remain deferred and that acceptance does not establish clinical,
+regulatory, or production readiness.
+
 - The NFR-06 browser scenario retains the limited boundary documented above;
   it is not an end-to-end physical scan or production latency claim.
 - Physical Android OCR evidence remains the explicitly accepted Sprint 4

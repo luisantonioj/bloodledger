@@ -32,10 +32,14 @@ real-label, clinical-accuracy, and production-readiness claims.
 
 Jopia authorized Sprint 5 for 2026-08-20 through 2026-08-26 using
 `SYNTHETIC_WEB_ACCESS_V1` and visual snapshot
-`MOCKUP_VISUAL_2026-08-20`. Implementation belongs on
-`codex/sprint-05-implementation`; the mockup is a visual reference, while
-`docs/DESIGN.md`, official requirements, architecture, and machine-readable
-contracts control the implementation.
+`MOCKUP_VISUAL_2026-08-20`. Lat accepted the simulation-only Sprint 5 scope
+on 2026-08-24 after Buno validated the web workspace and Jopia validated the
+API/database/Fabric boundary with self-validation disclosed. The implementation
+is recorded on `codex/sprint-05-implementation`; the mockup remains a visual
+reference, while `docs/DESIGN.md`, official requirements, architecture, and
+machine-readable contracts control the implementation. Physical Android OCR
+evidence and full end-to-end NFR-06 latency evidence remain deferred. This
+acceptance does not establish clinical, regulatory, or production readiness.
 
 The project is a research prototype. Never describe it as production-ready,
 clinically validated, regulator-approved, or a deployed multi-organization
