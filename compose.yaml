@@ -208,6 +208,9 @@ services:
       API_HOST: 0.0.0.0
       API_PORT: "3000"
       CAPTURE_PWA_DIST: /workspace/apps/capture-pwa/dist
+      WEB_DIST: /workspace/apps/web/dist
+      WEB_ORIGIN: http://127.0.0.1:${API_HOST_PORT:-3000}
+      WEB_COOKIE_SECURE: "false"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: bloodledger_dev

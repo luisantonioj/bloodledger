@@ -176,6 +176,20 @@ npm run test:api:database
 docker compose --profile sprint4 up --detach --build api sync-worker
 ```
 
+Sprint 5 adds a focused dashboard development server:
+
+```bash
+npm run check:web
+npm run test:web
+npm run dev --workspace @bloodledger/web
+```
+
+The development dashboard is available at `http://127.0.0.1:5174`. The built
+API image uses one loopback origin instead: dashboard at `/`, capture at
+`/capture/`, and the versioned API at `/api/v1` on port `3000` by default.
+Live login still requires migrated PostgreSQL state and separately provisioned
+opaque synthetic accounts.
+
 The JWT secret must contain at least 32 characters and the synthetic operator
 credential at least 12. Neither value belongs in Git, logs, screenshots, or
 Sprint evidence. The API is host-loopback-bound by default.

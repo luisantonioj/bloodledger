@@ -4,6 +4,7 @@ WORKDIR /workspace
 COPY . .
 RUN npm ci --ignore-scripts \
     && npm run build --workspace @bloodledger/capture-pwa \
+    && npm run build --workspace @bloodledger/web \
     && npm run build --workspace @bloodledger/api \
     && npm prune --omit=dev
 
@@ -16,6 +17,7 @@ COPY --from=build /workspace/node_modules ./node_modules
 COPY --from=build /workspace/services/api/package.json ./services/api/package.json
 COPY --from=build /workspace/services/api/build ./services/api/build
 COPY --from=build /workspace/apps/capture-pwa/dist ./apps/capture-pwa/dist
+COPY --from=build /workspace/apps/web/dist ./apps/web/dist
 
 USER node
 EXPOSE 3000

@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  base: "/capture/",
   plugins: [
     react(),
     VitePWA({
@@ -15,11 +16,11 @@ export default defineConfig({
         theme_color: "#7f1d1d",
         background_color: "#fffaf8",
         display: "standalone",
-        start_url: "/",
-        icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" }],
+        start_url: "/capture/",
+        icons: [{ src: "/capture/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" }],
       },
       workbox: {
-        navigateFallback: "/index.html",
+        navigateFallback: "/capture/index.html",
         maximumFileSizeToCacheInBytes: 5_250_000,
         runtimeCaching: [],
       },

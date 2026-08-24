@@ -567,9 +567,19 @@ export async function buildApp(
     });
   });
 
-  if (config.captureDist && existsSync(config.captureDist)) {
-    await app.register(fastifyStatic, { root: config.captureDist, wildcard: false });
-    app.get("/*", (_request, reply) => reply.sendFile("index.html"));
+  const webDist = config.webDist && existsSync(config.webDist) ? config.webDist : undefined;
+  const captureDist = config.captureDist && existsSync(config.captureDist) ? config.captureDist : undefined;
+  if (webDist) {
+    await app.register(fastifyStatic, { root: webDist, wildcard: false });
+  }
+  if (captureDist) {
+    await app.register(fastifyStatic, { root: captureDist, prefix: "/capture/", wildcard: false, decorateReply: !webDist });
+    app.get("/capture/*", (_request, reply) => reply.sendFile("index.html", captureDist));
+  }
+  if (webDist) {
+    for (const route of ["/inventory", "/alerts", "/transfers", "/consortium", "/audit", "/reporting", "/profile"]) {
+      app.get(route, (_request, reply) => reply.sendFile("index.html", webDist));
+    }
   }
 
   return app;

@@ -138,11 +138,23 @@ npm run check:api
 npm run test:api
 ```
 
+Start the standalone dashboard development server with:
+
+```bash
+npm run dev --workspace @bloodledger/web
+```
+
+Open `http://127.0.0.1:5174`; Vite proxies `/api` to the loopback API on port
+`3000`. For the containerized same-origin layout, the API image builds both
+frontends and serves the dashboard at `http://127.0.0.1:3000/`, capture at
+`http://127.0.0.1:3000/capture/`, and the API below `/api/v1`. The Compose API
+service sets its accepted web origin to its configured loopback host port.
+
 Live session validation additionally requires applying all database migrations
 and provisioning opaque synthetic accounts without committing their salts,
 verifiers, or source credentials.
 
-The API serves the built PWA and listens only on host loopback by default. For
+The API serves the built dashboard and capture PWA and listens only on host loopback by default. For
 the required physical Android Chrome evidence, USB debugging may expose that
 same loopback origin without opening a LAN port:
 
