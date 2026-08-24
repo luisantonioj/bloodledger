@@ -156,6 +156,11 @@ test("login fails safely, then accepts only the server-returned principal and ca
     return fulfillJson(route, {}, 404);
   });
   await page.goto("/");
+  await expect(page.locator(".auth-hero")).toBeVisible();
+  await expect(page.locator(".auth-card")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "One ledger. Clear custody. Every unit accounted for." })).toBeVisible();
+  await expect(page.getByText("Server-assigned access", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Apply for access" })).toHaveCount(0);
   await page.getByLabel("Username").fill("synth_browser_user");
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
@@ -163,7 +168,7 @@ test("login fails safely, then accepts only the server-returned principal and ca
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(page.getByRole("heading", { name: "Sign in to your workspace" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sign in to BloodLedger" })).toBeVisible();
   expect(revoked).toBe(true);
 });
 
