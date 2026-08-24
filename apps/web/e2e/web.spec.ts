@@ -255,6 +255,102 @@ test("human FEFO approval retry preserves intent and never submits selected unit
   expect("institutionId" in submitted.body).toBe(false);
 });
 
+test("dispatch retry preserves approved synthetic source evidence and mutation identity", async ({ page }) => {
+  const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_DISPATCH", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_METRO_LIPA", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "URGENT", requestTime: timestamp, status: "APPROVED", reasonCode: null, recommendationDigest: null, ledgerVersion: 2, projectedAt: timestamp, dispatchEvidenceRecorded: false, receiptEvidenceRecorded: false };
+  const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
+  let attempts = 0;
+  let dispatched = false;
+  await authenticatedApi(page, "ROLE-01", async (route, path) => {
+    const request = route.request();
+    const transfer = { ...baseTransfer, status: dispatched ? "DISPATCHED" : "APPROVED", ledgerVersion: dispatched ? 3 : 2, dispatchEvidenceRecorded: dispatched };
+    if (path === "/api/v1/transfers" && request.method() === "GET") {
+      await fulfillJson(route, { scope: "SOURCE_INSTITUTION", transfers: [transfer], classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v1/transfers/${baseTransfer.transferId}` && request.method() === "GET") {
+      await fulfillJson(route, { transfer, selectedUnitIds: ["UNIT_SYNTH_DISPATCH_BROWSER_01"], timeline: [], explanations: [], selectionPolicy: "FEFO", recommendationEligibility: "DISABLED_UNAPPROVED_POLICY", automaticApproval: false, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v1/transfers/${baseTransfer.transferId}/dispatch` && request.method() === "POST") {
+      attempts += 1;
+      submissions.push({ idempotencyKey: request.headers()["idempotency-key"], body: request.postDataJSON() as Record<string, unknown> });
+      if (attempts === 1) {
+        await fulfillJson(route, { error: { code: "FABRIC_GATEWAY_UNAVAILABLE", message: "The ledger is unavailable; retry the same dispatch." } }, 503);
+        return true;
+      }
+      dispatched = true;
+      await fulfillJson(route, { transferId: baseTransfer.transferId, status: "DISPATCHED", ledgerVersion: 3, locationEvidence: { source: "FACILITY_FALLBACK", fallbackReason: "PERMISSION_DENIED", policyVersion: "SYNTHETIC_LOCATION_V1", evidenceDigest: "a".repeat(64), exactLocationRetainedUntil: "2026-09-23T03:00:00.000Z" }, replayed: false, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    return false;
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("button", { name: "View" }).click();
+  await page.getByLabel("Fallback reason").selectOption("PERMISSION_DENIED");
+  await page.getByRole("button", { name: "Record dispatch" }).click();
+  await expect(page.getByRole("alert")).toContainText("retry the same dispatch");
+  await page.getByRole("button", { name: "Retry same dispatch" }).click();
+  await expect(page.getByText("DISPATCHED at version 3", { exact: true })).toBeVisible();
+  expect(attempts).toBe(2);
+  expect(submissions[0].idempotencyKey).toBe(submissions[1].idempotencyKey);
+  expect(submissions[0].body).toEqual(submissions[1].body);
+  const submitted = submissions[0];
+  expect(Object.keys(submitted.body).sort()).toEqual(["correlationId", "eventTime", "expectedVersion", "location"]);
+  expect(submitted.body).toMatchObject({ expectedVersion: 2 });
+  expect(submitted.body.location).toEqual({ latitude: 0, longitude: 0, accuracyMetres: 50, source: "FACILITY_FALLBACK", fallbackReason: "PERMISSION_DENIED", capturedAt: submitted.body.eventTime });
+  expect("institutionId" in submitted.body).toBe(false);
+  expect("selectedUnitIds" in submitted.body).toBe(false);
+});
+
+test("receipt retry preserves approved synthetic destination evidence and scoped authority", async ({ page }) => {
+  const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_RECEIPT", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_METRO_LIPA", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "URGENT", requestTime: timestamp, status: "IN_TRANSIT", reasonCode: null, recommendationDigest: null, ledgerVersion: 4, projectedAt: timestamp, dispatchEvidenceRecorded: true, receiptEvidenceRecorded: false };
+  const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
+  let attempts = 0;
+  let received = false;
+  await authenticatedApi(page, "ROLE-03", async (route, path) => {
+    const request = route.request();
+    const transfer = { ...baseTransfer, status: received ? "RECEIVED" : "IN_TRANSIT", ledgerVersion: received ? 5 : 4, receiptEvidenceRecorded: received };
+    if (path === "/api/v1/transfers" && request.method() === "GET") {
+      await fulfillJson(route, { scope: "DESTINATION_INSTITUTION", transfers: [transfer], classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v1/transfers/${baseTransfer.transferId}` && request.method() === "GET") {
+      await fulfillJson(route, { transfer, selectedUnitIds: ["UNIT_SYNTH_RECEIPT_BROWSER_01"], timeline: [], explanations: [], selectionPolicy: "FEFO", recommendationEligibility: "DISABLED_UNAPPROVED_POLICY", automaticApproval: false, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v1/transfers/${baseTransfer.transferId}/receipt` && request.method() === "POST") {
+      attempts += 1;
+      submissions.push({ idempotencyKey: request.headers()["idempotency-key"], body: request.postDataJSON() as Record<string, unknown> });
+      if (attempts === 1) {
+        await fulfillJson(route, { error: { code: "FABRIC_GATEWAY_UNAVAILABLE", message: "The ledger is unavailable; retry the same receipt." } }, 503);
+        return true;
+      }
+      received = true;
+      await fulfillJson(route, { transferId: baseTransfer.transferId, status: "RECEIVED", ledgerVersion: 5, locationEvidence: { source: "FACILITY_FALLBACK", fallbackReason: "SIGNAL_UNAVAILABLE", policyVersion: "SYNTHETIC_LOCATION_V1", evidenceDigest: "b".repeat(64), exactLocationRetainedUntil: "2026-09-23T03:00:00.000Z" }, replayed: false, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    return false;
+  }, { institutionId: "INST_METRO_LIPA", institutionDisplayName: "Synthetic Metro Lipa Hospital" });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("button", { name: "View" }).click();
+  await page.getByLabel("Fallback reason").selectOption("SIGNAL_UNAVAILABLE");
+  await page.getByRole("button", { name: "Record receipt" }).click();
+  await expect(page.getByRole("alert")).toContainText("retry the same receipt");
+  await page.getByRole("button", { name: "Retry same receipt" }).click();
+  await expect(page.getByText("RECEIVED at version 5", { exact: true })).toBeVisible();
+  expect(attempts).toBe(2);
+  expect(submissions[0].idempotencyKey).toBe(submissions[1].idempotencyKey);
+  expect(submissions[0].body).toEqual(submissions[1].body);
+  const submitted = submissions[0];
+  expect(Object.keys(submitted.body).sort()).toEqual(["correlationId", "eventTime", "expectedVersion", "location"]);
+  expect(submitted.body).toMatchObject({ expectedVersion: 4 });
+  expect(submitted.body.location).toEqual({ latitude: 0, longitude: 0.018, accuracyMetres: 50, source: "FACILITY_FALLBACK", fallbackReason: "SIGNAL_UNAVAILABLE", capturedAt: submitted.body.eventTime });
+  expect("institutionId" in submitted.body).toBe(false);
+  expect("destinationInstitutionId" in submitted.body).toBe(false);
+});
+
 test("regulatory navigation renders every selected read-only page and CSV boundary", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", error => pageErrors.push(error.message));

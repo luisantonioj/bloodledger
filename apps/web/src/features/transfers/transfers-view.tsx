@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { formatManilaDateTime as format, humanizeCode as words, statusClassName as chip } from "../../components/ui/display";
+import { syntheticFacilityPoint } from "../../config/synthetic-location";
 import { useLiveData } from "../../hooks/use-live-data";
 import { newMutationKeys, type MutationKeys } from "../../services/api/mutation-keys";
 import type { Transfer, TransferDetail, Transfers } from "../../services/api/types";
@@ -55,21 +56,13 @@ function ResumeTransferAction({transfer,onDone}:{transfer:Transfer;onDone:()=>vo
   return <form className="resume-form" onSubmit={event=>void submit(event)}><div><p className="eyebrow">Authorized source custody transition</p><h3>Resume transit</h3><p>Returns the delayed transfer to transit. The earlier route-delay reason remains visible in its ledger history.</p></div><div className="transfer-submit"><button className="button primary" disabled={busy}>{busy?"Waiting for ledger commit":error?"Retry same transition":"Resume transit"}</button>{error&&<span role="alert">{error}</span>}{committed&&<span role="status">Transit resumed.</span>}</div></form>;
 }
 
-const receiptFacilityPoints:Record<string,{latitude:number;longitude:number}>={
-  INST_METRO_LIPA:{latitude:0,longitude:0.018},
-  INST_LIPA_CITY_DISTRICT:{latitude:0,longitude:0.036},
-  INST_SAN_ANTONIO:{latitude:0,longitude:0.054},
-  INST_DIVINE_LOVE:{latitude:0,longitude:0.072},
-  INST_OSPITAL_NG_LIPA:{latitude:0,longitude:0.09},
-};
-
 function ReceiveTransferForm({transfer,institutionId,onDone}:{transfer:Transfer;institutionId:string;onDone:()=>void}) {
   const[fallbackReason,setFallbackReason]=useState("DEVICE_UNAVAILABLE"),[busy,setBusy]=useState(false),[error,setError]=useState(""),[committed,setCommitted]=useState(false);
   const attempt=useRef<{keys:MutationKeys;payload:{expectedVersion:number;eventTime:string;correlationId:string;location:{latitude:number;longitude:number;accuracyMetres:number;source:"FACILITY_FALLBACK";fallbackReason:string;capturedAt:string}}}|undefined>(undefined);
   function changeReason(value:string){setFallbackReason(value);attempt.current=undefined;setError("");setCommitted(false)}
   async function submit(event:React.FormEvent){
     event.preventDefault();setBusy(true);setError("");setCommitted(false);
-    const point=receiptFacilityPoints[institutionId];
+    const point=syntheticFacilityPoint(institutionId);
     if(!point){setError("No approved synthetic receipt fixture exists for this institution.");setBusy(false);return}
     const current=attempt.current??(()=>{const keys=newMutationKeys(),eventTime=new Date().toISOString();return{keys,payload:{expectedVersion:transfer.ledgerVersion,eventTime,correlationId:keys.correlationId,location:{...point,accuracyMetres:50,source:"FACILITY_FALLBACK" as const,fallbackReason,capturedAt:eventTime}}}})();attempt.current=current;
     try{await receiveTransfer(transfer.transferId,current.payload,current.keys);setCommitted(true);attempt.current=undefined;onDone()}catch(reason){setError(reason instanceof Error?reason.message:"Transfer receipt failed.")}finally{setBusy(false)}
@@ -94,10 +87,12 @@ function DispatchTransferForm({transfer,onDone}:{transfer:Transfer;onDone:()=>vo
   function changeReason(value:string){setFallbackReason(value);attempt.current=undefined;setError("");setCommitted(false)}
   async function submit(event:React.FormEvent){
     event.preventDefault();setBusy(true);setError("");setCommitted(false);
-    const current=attempt.current??(()=>{const keys=newMutationKeys(),eventTime=new Date().toISOString();return{keys,payload:{expectedVersion:transfer.ledgerVersion,eventTime,correlationId:keys.correlationId,location:{latitude:0,longitude:0,accuracyMetres:50,source:"FACILITY_FALLBACK" as const,fallbackReason,capturedAt:eventTime}}}})();attempt.current=current;
+    const point=syntheticFacilityPoint(transfer.sourceInstitutionId);
+    if(!point){setError("No approved synthetic dispatch fixture exists for the source institution.");setBusy(false);return}
+    const current=attempt.current??(()=>{const keys=newMutationKeys(),eventTime=new Date().toISOString();return{keys,payload:{expectedVersion:transfer.ledgerVersion,eventTime,correlationId:keys.correlationId,location:{...point,accuracyMetres:50,source:"FACILITY_FALLBACK" as const,fallbackReason,capturedAt:eventTime}}}})();attempt.current=current;
     try{await dispatchTransfer(transfer.transferId,current.payload,current.keys);setCommitted(true);attempt.current=undefined;onDone()}catch(reason){setError(reason instanceof Error?reason.message:"Transfer dispatch failed.")}finally{setBusy(false)}
   }
-  return <form className="dispatch-form" onSubmit={event=>void submit(event)}><div><p className="eyebrow">Synthetic custody evidence</p><h3>Record dispatch</h3><p>Uses the approved invented Mediatrix facility point. No real device location or continuous route is collected.</p></div><label>Fallback reason<select value={fallbackReason} onChange={event=>changeReason(event.target.value)}><option value="DEVICE_UNAVAILABLE">Device unavailable</option><option value="PERMISSION_DENIED">Permission denied</option><option value="SIGNAL_UNAVAILABLE">Signal unavailable</option></select></label><div className="transfer-submit"><button className="button primary" disabled={busy}>{busy?"Waiting for ledger commit":error?"Retry same dispatch":"Record dispatch"}</button>{error&&<span role="alert">{error}</span>}{committed&&<span role="status">Dispatch committed.</span>}</div></form>;
+  return <form className="dispatch-form" onSubmit={event=>void submit(event)}><div><p className="eyebrow">Synthetic custody evidence</p><h3>Record dispatch</h3><p>Uses the approved invented source-facility point. No real device location or continuous route is collected.</p></div><label>Fallback reason<select value={fallbackReason} onChange={event=>changeReason(event.target.value)}><option value="DEVICE_UNAVAILABLE">Device unavailable</option><option value="PERMISSION_DENIED">Permission denied</option><option value="SIGNAL_UNAVAILABLE">Signal unavailable</option></select></label><div className="transfer-submit"><button className="button primary" disabled={busy}>{busy?"Waiting for ledger commit":error?"Retry same dispatch":"Record dispatch"}</button>{error&&<span role="alert">{error}</span>}{committed&&<span role="status">Dispatch committed.</span>}</div></form>;
 }
 
 function CancelTransferForm({transfer,onDone}:{transfer:Transfer;onDone:()=>void}) {
