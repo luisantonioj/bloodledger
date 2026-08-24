@@ -255,6 +255,98 @@ test("human FEFO approval retry preserves intent and never submits selected unit
   expect("institutionId" in submitted.body).toBe(false);
 });
 
+test("human rejection retry preserves controlled reason and source authority", async ({ page }) => {
+  const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_REJECTION", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_METRO_LIPA", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "ROUTINE", requestTime: timestamp, status: "PENDING", reasonCode: null, recommendationDigest: null, ledgerVersion: 1, projectedAt: timestamp, dispatchEvidenceRecorded: false, receiptEvidenceRecorded: false };
+  const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
+  let attempts = 0;
+  let rejected = false;
+  await authenticatedApi(page, "ROLE-02", async (route, path) => {
+    const request = route.request();
+    const transfer = { ...baseTransfer, status: rejected ? "REJECTED" : "PENDING", reasonCode: rejected ? "INSUFFICIENT_STOCK" : null, ledgerVersion: rejected ? 2 : 1 };
+    if (path === "/api/v1/transfers" && request.method() === "GET") {
+      await fulfillJson(route, { scope: "SOURCE_INSTITUTION", transfers: [transfer], classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v1/transfers/${baseTransfer.transferId}` && request.method() === "GET") {
+      await fulfillJson(route, { transfer, selectedUnitIds: [], timeline: [], explanations: [], selectionPolicy: "FEFO", recommendationEligibility: "DISABLED_UNAPPROVED_POLICY", automaticApproval: false, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v1/transfers/${baseTransfer.transferId}/rejection` && request.method() === "POST") {
+      attempts += 1;
+      submissions.push({ idempotencyKey: request.headers()["idempotency-key"], body: request.postDataJSON() as Record<string, unknown> });
+      if (attempts === 1) {
+        await fulfillJson(route, { error: { code: "FABRIC_GATEWAY_UNAVAILABLE", message: "The ledger is unavailable; retry the same rejection." } }, 503);
+        return true;
+      }
+      rejected = true;
+      await fulfillJson(route, { transferId: baseTransfer.transferId, status: "REJECTED", reasonCode: "INSUFFICIENT_STOCK", ledgerVersion: 2, replayed: false, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    return false;
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("button", { name: "View" }).click();
+  await page.getByRole("button", { name: "Reject request", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("retry the same rejection");
+  await page.getByRole("button", { name: "Retry same rejection", exact: true }).click();
+  await expect(page.getByText("REJECTED at version 2", { exact: true })).toBeVisible();
+  expect(attempts).toBe(2);
+  expect(submissions[0].idempotencyKey).toBe(submissions[1].idempotencyKey);
+  expect(submissions[0].body).toEqual(submissions[1].body);
+  expect(Object.keys(submissions[0].body).sort()).toEqual(["correlationId", "eventTime", "expectedVersion", "reasonCode"]);
+  expect(submissions[0].body).toMatchObject({ expectedVersion: 1, reasonCode: "INSUFFICIENT_STOCK" });
+  expect("institutionId" in submissions[0].body).toBe(false);
+  expect("actorUserId" in submissions[0].body).toBe(false);
+});
+
+test("approved cancellation retry preserves reason through projection reconciliation", async ({ page }) => {
+  const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_CANCELLATION", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_METRO_LIPA", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "URGENT", requestTime: timestamp, status: "APPROVED", reasonCode: null, recommendationDigest: null, ledgerVersion: 2, projectedAt: timestamp, dispatchEvidenceRecorded: false, receiptEvidenceRecorded: false };
+  const selectedUnitId = "UNIT_SYNTH_CANCEL_BROWSER_01";
+  const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
+  let attempts = 0;
+  let cancelled = false;
+  await authenticatedApi(page, "ROLE-02", async (route, path) => {
+    const request = route.request();
+    const transfer = { ...baseTransfer, status: cancelled ? "CANCELLED" : "APPROVED", reasonCode: cancelled ? "REQUEST_WITHDRAWN" : null, ledgerVersion: cancelled ? 3 : 2 };
+    if (path === "/api/v1/transfers" && request.method() === "GET") {
+      await fulfillJson(route, { scope: "SOURCE_INSTITUTION", transfers: [transfer], classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v1/transfers/${baseTransfer.transferId}` && request.method() === "GET") {
+      await fulfillJson(route, { transfer, selectedUnitIds: [selectedUnitId], timeline: [], explanations: [], selectionPolicy: "FEFO", recommendationEligibility: "DISABLED_UNAPPROVED_POLICY", automaticApproval: false, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v1/transfers/${baseTransfer.transferId}/cancellation` && request.method() === "POST") {
+      attempts += 1;
+      submissions.push({ idempotencyKey: request.headers()["idempotency-key"], body: request.postDataJSON() as Record<string, unknown> });
+      if (attempts === 1) {
+        await fulfillJson(route, { error: { code: "PROJECTION_RECONCILIATION_FAILED", message: "Cancellation requires reconciliation; retry the same cancellation." } }, 503);
+        return true;
+      }
+      cancelled = true;
+      await fulfillJson(route, { transferId: baseTransfer.transferId, status: "CANCELLED", reasonCode: "REQUEST_WITHDRAWN", releasedUnitIds: [selectedUnitId], ledgerVersion: 3, replayed: true, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    return false;
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("button", { name: "View" }).click();
+  await page.getByRole("button", { name: "Cancel transfer", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("retry the same cancellation");
+  await page.getByRole("button", { name: "Retry same cancellation", exact: true }).click();
+  await expect(page.getByText("CANCELLED at version 3", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Record dispatch", exact: true })).toHaveCount(0);
+  expect(attempts).toBe(2);
+  expect(submissions[0].idempotencyKey).toBe(submissions[1].idempotencyKey);
+  expect(submissions[0].body).toEqual(submissions[1].body);
+  expect(Object.keys(submissions[0].body).sort()).toEqual(["correlationId", "eventTime", "expectedVersion", "reasonCode"]);
+  expect(submissions[0].body).toMatchObject({ expectedVersion: 2, reasonCode: "REQUEST_WITHDRAWN" });
+  expect("releasedUnitIds" in submissions[0].body).toBe(false);
+  expect("institutionId" in submissions[0].body).toBe(false);
+});
+
 test("dispatch retry preserves approved synthetic source evidence and mutation identity", async ({ page }) => {
   const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_DISPATCH", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_METRO_LIPA", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "URGENT", requestTime: timestamp, status: "APPROVED", reasonCode: null, recommendationDigest: null, ledgerVersion: 2, projectedAt: timestamp, dispatchEvidenceRecorded: false, receiptEvidenceRecorded: false };
   const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
