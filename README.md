@@ -23,16 +23,19 @@ governed by immutable synthetic policies. Forecasts and algorithm results remain
 `SIMULATION_ONLY` with operational recommendation eligibility disabled. This is
 a research prototype, not a production or clinically validated system.
 
-Sprint 4 is authorized on `codex/sprint-04-scan-middleware`. It adds an
-installable mobile capture PWA, on-device synthetic-label OCR with mandatory
-confirmation, a durable PostgreSQL scan queue, Node.js middleware/Fabric
-reconciliation, and read-only forecast freshness. Raw label images do not leave
-the device, and real-label/ISBT and operational-use claims remain blocked.
+Sprint 4 was accepted on 2026-08-20 with physical Android OCR evidence deferred.
+Sprint 5 was accepted by Lat on 2026-08-24 after Buno validated the web
+workspace and Jopia validated the API/database/Fabric boundary with
+self-validation disclosed. Its controlled frontend migration, six-role
+application access, same-origin API, and selected dashboard workflows were
+merged into `main` through PR #3.
 
-The roadmap now includes invitation-based institutional application and
-administrator activation for later API/web sprints. Application approval is
-separate from Fabric membership and does not change the one-organization
-prototype topology.
+Lat authorized formal Testing-phase planning on 2026-08-26. The plan selects
+requirements-traceable system tests, gated UAT preparation, and synthetic
+BROA/RPS scenario validation. It does not authorize participant UAT,
+institutional onboarding, operational forecast claims, deployment, or
+production use. Physical Android OCR and full end-to-end NFR-06 evidence remain
+open.
 
 Sprint 2 was completed under the versioned `SYNTHETIC_INVENTORY_V1` prototype
 assumptions while Mediatrix data-gathering approval is pending. The values are
@@ -88,6 +91,8 @@ deviations separately.
 | [Sprint 2 record](docs/SPRINT-02.md) | Accepted deterministic inventory-ledger scope, evidence, and review |
 | [Sprint 3 continuation](docs/SPRINT-03.md) | Transfer, location, optimization, forecasting, gates, and exit obligations |
 | [Sprint 4 plan](docs/SPRINT-04.md) | Mobile OCR, durable scan synchronization, API/forecast interfaces, validation, and acceptance gates |
+| [Sprint 5 record](docs/SPRINT-05.md) | Accepted controlled frontend migration, API, validation, and review |
+| [Formal Testing phase](docs/TESTING-PHASE.md) | System validation, traceability, UAT gates, algorithm scenarios, defects, and exit criteria |
 | [Local development](docs/LOCAL-DEVELOPMENT.md) | Planned WSL2 workflow, version evidence, reset safety, and troubleshooting |
 | [Fabric network](network/README.md) | Network identifiers, ports, CA identities, generated material, and health contract |
 | [Development database](database/README.md) | PostgreSQL roles, migrations, forecast/location/algorithm simulation schema, and persistence |
@@ -101,7 +106,7 @@ Each fact should have one authoritative home:
 - required behavior → `docs/REQUIREMENTS.md`;
 - structural decisions → `docs/ARCHITECTURE.md`;
 - future work → `docs/BACKLOG.md`; and
-- selected work → the current sprint document.
+- selected work → the current sprint or phase document.
 
 When documents disagree, do not choose silently. Record the contradiction and
 obtain the required decision.

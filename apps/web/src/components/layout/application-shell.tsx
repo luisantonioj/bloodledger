@@ -10,6 +10,7 @@ const iconPaths: Record<string, string> = {
   "/consortium": "M9 15l6-6m-3-3 1-1a4 4 0 1 1 5.6 5.6L17 12M7 12l-1.6 1.6A4 4 0 0 0 11 19.2L12 18",
   "/audit": "M5 4h11l3 3v13H5V4Zm3 4h5m-5 4h8m-8 4h6",
   "/reporting": "M4 20V10m6 10V4m6 16v-7m5 7V8",
+  "/accounts": "M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 8a8 8 0 0 1 16 0M18 6h4m-2-2v4",
   "/profile": "M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0",
 };
 
@@ -17,7 +18,7 @@ const sectionFor = (href: string) => href === "/" ? "Overview"
   : ["/inventory"].includes(href) ? "Inventory"
     : ["/transfers", "/alerts", "/audit"].includes(href) ? "Requests & activity"
       : ["/consortium", "/reporting"].includes(href) ? "Oversight"
-        : "Account";
+        : ["/accounts"].includes(href) ? "Administration" : "Account";
 
 function NavigationIcon({ href }: { href: string }) {
   return <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d={iconPaths[href]} /></svg>;
@@ -52,8 +53,8 @@ export function ApplicationShell({ principal, path, navigation, onNavigate, onSi
           previousSection = section;
           return <div className="nav-entry" key={item.href}>
             {showSection && <div className="nav-section-label">{section}</div>}
-            <a href={item.href} aria-current={path === item.href ? "page" : undefined} onClick={event => { event.preventDefault(); onNavigate(item.href); }}>
-              <NavigationIcon href={item.href}/><span>{item.label}</span>
+            <a href={item.href} aria-label={item.label} aria-current={path === item.href ? "page" : undefined} onClick={event => { event.preventDefault(); onNavigate(item.href); }}>
+              <NavigationIcon href={item.href}/><span>{item.label}</span>{item.badge && <small className="nav-badge">{item.badge}</small>}
             </a>
           </div>;
         })}
@@ -69,6 +70,7 @@ export function ApplicationShell({ principal, path, navigation, onNavigate, onSi
     <main className="main">
       <header className="top">
         <div className="breadcrumbs"><span>BloodLedger</span><i>/</i><strong>{currentLabel}</strong></div>
+        <label className="global-search"><span aria-hidden="true">⌕</span><input aria-label="Search records" placeholder="Search records (preview only)" readOnly title="Global search is not connected"/></label>
         <div className="top-status"><span><i aria-hidden="true"/>Authenticated scope</span><b>SIMULATION ONLY</b></div>
       </header>
       {children}

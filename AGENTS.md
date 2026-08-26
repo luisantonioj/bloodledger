@@ -41,6 +41,15 @@ machine-readable contracts control the implementation. Physical Android OCR
 evidence and full end-to-end NFR-06 latency evidence remain deferred. This
 acceptance does not establish clinical, regulatory, or production readiness.
 
+Lat authorized formal Testing-phase planning on 2026-08-26 from the merged
+Sprint 5 baseline. The authoritative plan is `docs/TESTING-PHASE.md` on
+`codex/testing-phase-planning`. Technical preparation may proceed, but UAT
+execution remains gated by approved participants, consent, instrument/scoring,
+and external research-data custody. `BL-TST-02` remains blocked by onboarding
+dependencies and `RQ-14`; operational forecast-accuracy claims remain blocked
+by `RQ-07`. Testing does not authorize deployment or relax any deferred
+clinical, privacy, regulatory, or production gate.
+
 The project is a research prototype. Never describe it as production-ready,
 clinically validated, regulator-approved, or a deployed multi-organization
 consortium unless evidence and scope documents are formally updated.
@@ -56,7 +65,7 @@ Use one home for each type of truth:
 | What visual and interaction language applies? | `docs/DESIGN.md` |
 | How is it structured and why? | `docs/ARCHITECTURE.md` |
 | What is planned overall? | `docs/BACKLOG.md` |
-| What is selected for the current sprint? | `docs/SPRINT-01.md` or its successor |
+| What is selected for the current sprint or phase? | Its current `docs/SPRINT-*.md` or `docs/TESTING-PHASE.md` |
 | How should local setup and reset behave? | `docs/LOCAL-DEVELOPMENT.md` |
 | What Fabric names, identities, ports, and health contract apply? | `network/README.md` |
 | What PostgreSQL and migration rules apply? | `database/README.md` |
@@ -72,7 +81,7 @@ repository documents are the implementation baseline after proponent review.
 
 ## 3. Task-based reading map
 
-For every task, read this file and the current sprint document.
+For every task, read this file and the current sprint or phase document.
 
 Then read only what the task requires:
 

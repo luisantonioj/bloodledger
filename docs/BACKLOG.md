@@ -1,15 +1,15 @@
 # BloodLedger Product Backlog
 
-**Status:** Sprints 1–5 accepted for their documented prototype scopes
-**Baseline date:** 2026-08-24
+**Status:** Sprints 1–5 accepted; formal Testing-phase planning authorized
+**Baseline date:** 2026-08-26
 **Prioritization:** MoSCoW, then dependency order
 
 ## 1. Backlog rules
 
 - An item is **Ready** only when linked requirements, acceptance criteria,
   dependencies, test approach, and required decisions are known.
-- The backlog describes outcomes. The current sprint document contains the
-  actionable implementation plan.
+- The backlog describes outcomes. The current sprint or phase document contains
+  the actionable implementation plan.
 - Status values: `Proposed`, `Ready`, `Selected`, `In Progress`, `Done`,
   `Blocked`, and `Deferred`.
 - `Done` requires evidence; a manuscript test case is not proof of completion.
@@ -389,10 +389,13 @@ application approval does not grant Fabric membership.
 
 ### BL-TST-01 — Requirements-traceable system tests
 
-**Priority:** Must | **Status:** Proposed | **Target:** Testing phase
+**Priority:** Must | **Status:** Selected | **Target:** Testing phase
 
 Acceptance: each requirement has passing/failing evidence, environment/version,
 fixture provenance, defect record, and rerun result where applicable.
+
+**Selection evidence:** Lat authorized formal Testing-phase planning on
+2026-08-26; results remain unexecuted.
 
 ### BL-TST-02 — Onboarding authorization, audit, and boundary tests
 
@@ -411,18 +414,26 @@ endorsement, single-organization regression, and prohibited-data/secret scans.
 
 ### BL-UAT-01 — User acceptance testing
 
-**Priority:** Must | **Status:** Proposed | **Target:** Testing phase
+**Priority:** Must | **Status:** Selected | **Target:** Testing phase
 
 Acceptance: approved participants complete guided workflows and the anonymized
 survey; quantitative and qualitative analysis follows the proposal protocol.
 
+**Selection evidence:** Preparation is selected under `docs/TESTING-PHASE.md`;
+participant execution remains gated by research authorization, consent,
+instrument/scoring approval, and external raw-data custody.
+
 ### BL-ALG-VAL-01 — BROA/RPS scenario validation
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 3/testing
+**Priority:** Must | **Status:** Selected | **Target:** Sprint 3/testing
 
 Acceptance: simulated and, where approved, historical scenarios test urgency,
 expiry, scarcity, distance, ties, constraints, and failure cases against
 documented expected rankings.
+
+**Selection evidence:** Synthetic scenario validation is selected for the
+formal Testing phase. Historical/operational interpretation remains gated by
+approved data and `RQ-05`–`07`.
 
 ## 10. EPIC-08 — Later/deferred work
 
