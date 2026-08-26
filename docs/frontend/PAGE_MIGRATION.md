@@ -11,8 +11,11 @@
 | Audit | `pages/audit.jsx` | `apps/web/src/features/audit/` | permission-scoped | redacted audit events | Implemented; automated validation passed |
 | Reporting | `pages/reporting.jsx` | `apps/web/src/features/reporting/` | regulatory read-only | simulation JSON/CSV reports | Implemented; automated validation passed |
 | Profile | `pages/profile.jsx` | `apps/web/src/features/profile/` | own safe principal/institution metadata | current session/profile | Implemented; automated validation passed |
-| Accounts/onboarding | `pages/accounts.jsx` and login application flow | none in Sprint 5 | unavailable | BL-API-02 | Deferred |
+| Accounts/onboarding | `pages/accounts.jsx` and login application flow | `features/auth/access-page.tsx` and `features/accounts/accounts-preview.tsx` | frontend-only preview for applicants and administrative compositions | BL-API-02 | Visual parity extension implemented after Sprint 5; all submission, persistence, review, authorization, and mutation behavior deferred |
 | Scanner | `pages/scanner.jsx` | existing `apps/capture-pwa/` link | authorized capture users | Sprint 4 scan API | Rejected duplicate |
 
 All selected runtime pages use typed official API services. Fixtures are limited
+
+The post-Sprint-05 visual-only boundary and every missing activation dependency
+are recorded in [`FRONTEND_ONLY_EXTENSION.md`](./FRONTEND_ONLY_EXTENSION.md).
 to tests and isolated component validation; there is no runtime mock fallback.

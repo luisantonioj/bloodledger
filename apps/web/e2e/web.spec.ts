@@ -17,8 +17,8 @@ const navigation: Record<RoleId, string[]> = {
   "ROLE-02": ["Dashboard", "Inventory", "Transfers", "Alerts", "Audit", "Profile"],
   "ROLE-03": ["Dashboard", "Transfers", "Alerts", "Profile"],
   "ROLE-04": ["Dashboard", "Inventory", "Transfers", "Alerts", "Network view", "Audit", "Reports", "Profile"],
-  "ROLE-05": ["Dashboard", "Profile"],
-  "ROLE-06": ["Dashboard", "Profile"],
+  "ROLE-05": ["Dashboard", "Accounts", "Profile"],
+  "ROLE-06": ["Dashboard", "Accounts", "Profile"],
 };
 
 const timestamp = "2026-08-24T03:00:00.000Z";
@@ -80,7 +80,7 @@ for (const roleId of Object.keys(navigation) as RoleId[]) {
     const activePrincipal = await authenticatedApi(page, roleId);
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
-    await expect(page.locator("nav a")).toHaveText(navigation[roleId]);
+    await expect(page.locator("nav a > span")).toHaveText(navigation[roleId]);
     await expect(page.locator(".side-brand")).toBeVisible();
     await expect(page.locator(".facility-context")).toBeVisible();
     await expect(page.locator(".page-head")).toBeVisible();
@@ -124,7 +124,7 @@ test("PRC, DOH, and administrators receive truthful non-operational compositions
     await authenticatedApi(page, roleId, undefined, { institutionId, institutionDisplayName });
     await page.goto("/");
     await expect(page.getByText(institutionDisplayName, { exact: true })).toBeVisible();
-    await expect(page.getByText(eyebrow, { exact: true })).toBeVisible();
+    await expect(page.getByRole("main").locator(".eyebrow")).toHaveText(eyebrow);
     await expect(page.getByRole("link", { name: "Open capture workspace" })).toHaveCount(0);
     if (roleId === "ROLE-04") {
       await expect(page.getByText("Ledger-confirmed", { exact: true })).toBeVisible();
@@ -163,7 +163,14 @@ test("login fails safely, then accepts only the server-returned principal and ca
   await expect(page.locator(".auth-card")).toBeVisible();
   await expect(page.getByRole("heading", { name: "One ledger. Clear custody. Every unit accounted for." })).toBeVisible();
   await expect(page.getByText("Server-assigned access", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Apply for access" })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Apply for access" }).click();
+  await expect(page.getByRole("heading", { name: "How will your facility participate?" })).toBeVisible();
+  await expect(page.getByText("Frontend preview only", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /Apply as a Blood Bank/ }).click();
+  await expect(page.getByRole("heading", { name: "Institution qualification" })).toBeVisible();
+  await expect(page.getByText("Step 1 of 4 · Facility", { exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Sign in" }).click();
+  await expect(page.getByText("Server-assigned access", { exact: true })).toBeVisible();
   await page.getByLabel("Username").fill("synth_browser_user");
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
@@ -733,6 +740,19 @@ test("keyboard navigation reaches an authorized page without changing institutio
   await page.getByRole("link", { name: "Profile", exact: true }).focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { name: "Profile", exact: true })).toBeVisible();
-  await expect(page.getByText(activePrincipal.institutionId, { exact: true })).toBeVisible();
+  await expect(page.locator(".profile-kv dd.mono").filter({ hasText: activePrincipal.institutionId })).toBeVisible();
   await expect(page.getByText("Role and institution cannot be changed from this browser session.")).toBeVisible();
+});
+
+test("administrators can review the visual-only account workspace without mutation APIs", async ({ page }) => {
+  await authenticatedApi(page, "ROLE-05");
+  await page.goto("/");
+  await page.getByRole("link", { name: "Accounts", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "System administration", exact: true })).toBeVisible();
+  await expect(page.getByText("Visual administration workspace", { exact: true })).toBeVisible();
+  await expect(page.getByText("APP-SYNTH-0001", { exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "User accounts" }).click();
+  await expect(page.getByText("No account-management API", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Provision account" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Manage account" })).toBeDisabled();
 });

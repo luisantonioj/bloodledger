@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Principal } from "../auth/permissions";
 import { ApplicationShell } from "../components/layout/application-shell";
 import { visibleNavigation } from "../config/navigation";
-import { LoginPage } from "../features/auth/login-page";
+import { AccessPage } from "../features/auth/access-page";
 import { requestJson } from "../services/api/client";
 import { PageContent } from "./page-content";
 
@@ -36,7 +36,7 @@ export function App() {
   }
 
   if (loading) return <main className="login-panel"><h1>Restoring session...</h1></main>;
-  if (!principal) return <LoginPage onAuthenticated={setPrincipal}/>;
+  if (!principal) return <AccessPage onAuthenticated={setPrincipal}/>;
 
   return <ApplicationShell principal={principal} path={path} navigation={visibleNavigation(principal)} onNavigate={navigate} onSignOut={() => void signOut()}><PageContent path={path} principal={principal}/></ApplicationShell>;
 }
