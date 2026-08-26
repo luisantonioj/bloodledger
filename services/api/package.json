@@ -9,7 +9,8 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test --test-isolation=none build/test/*.test.js",
     "start": "node build/src/server.js",
-    "worker": "node build/src/worker-main.js"
+    "worker": "node build/src/worker-main.js",
+    "provision:synthetic-account": "npm run build && node build/src/provision-synthetic-account.js"
   },
   "dependencies": {
     "@fastify/jwt": "10.2.1",

@@ -10,6 +10,7 @@ const files = [
   "services/coordination/policy/synthetic-location-v1.json",
   "services/coordination/policy/synthetic-optimization-v1.json",
   "services/coordination/tsconfig.json",
+  "services/api/openapi.json",
 ];
 
 for (const file of files) {

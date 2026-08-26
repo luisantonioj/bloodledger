@@ -208,6 +208,9 @@ services:
       API_HOST: 0.0.0.0
       API_PORT: "3000"
       CAPTURE_PWA_DIST: /workspace/apps/capture-pwa/dist
+      WEB_DIST: /workspace/apps/web/dist
+      WEB_ORIGIN: http://127.0.0.1:${API_HOST_PORT:-3000}
+      WEB_COOKIE_SECURE: "false"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: bloodledger_dev
@@ -217,10 +220,19 @@ services:
       SPRINT4_OPERATOR_CREDENTIAL: ${SPRINT4_OPERATOR_CREDENTIAL:-}
       SPRINT4_JWT_SECRET: ${SPRINT4_JWT_SECRET:-}
       FABRIC_SYNC_ENABLED: "true"
+      BLOODLEDGER_REPOSITORY_ROOT: /workspace
+      FABRIC_PEER_ENDPOINT: peer0-mediatrix:7051
+      FABRIC_PEER_HOST_ALIAS: peer0.mediatrix.bloodledger.local
+      FABRIC_CHANNEL: bloodledger-dev
+      FABRIC_CHAINCODE: bloodledger-inventory
+    volumes:
+      - ./network/generated:/workspace/network/generated:ro
     ports:
       - "127.0.0.1:${API_HOST_PORT:-3000}:3000"
     depends_on:
       postgres:
+        condition: service_healthy
+      peer0-mediatrix:
         condition: service_healthy
 
   sync-worker:

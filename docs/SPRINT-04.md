@@ -1,7 +1,7 @@
 # Sprint 4 — Mobile OCR Ingestion and Node.js Middleware
 
-**Status:** Implementation and automated validation complete on 2026-08-17;
-physical Android OCR gate deferred on 2026-08-18; Sprint Review acceptance pending
+**Status:** Accepted by Jopia on 2026-08-20 for the simulation-only Sprint 4
+scope; physical Android OCR evidence remains explicitly deferred
 
 **Accountable owner:** Jopia  
 **Assigned owner/validator:** Jopia (self-validation disclosed)  
@@ -346,6 +346,9 @@ included in this evidence.
   present. No real labels, credentials, raw OCR text, or images were used. The
   gate remains open for a printed or transferred synthetic PNG, another
   supported Android device, or an explicitly authorized mobile-OCR fix.
-- **Pending:** after the Android evidence is recorded, Jopia must explicitly
-  accept or reject Sprint 4 in the Sprint Review. Until then Task 76 and Sprint
-  4 remain unaccepted, and Sprint 5 implementation must not begin.
+- **Accepted with deferred evidence:** on 2026-08-20 Jopia accepted the
+  simulation-only Sprint 4 scope and closed Task 76 for progression to Sprint 5.
+  The physical Android Chrome OCR run remains an explicit incomplete validation
+  item for the formal Testing phase; it does not become passing evidence and
+  blocks real-device, real-label, clinical-accuracy, or production-readiness
+  claims until separately completed and reviewed.

@@ -1,81 +1,182 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "BloodLedger Sprint 4 Simulation API",
-    "version": "0.1.0",
-    "description": "Simulation-only mobile capture intake, synchronization status, and demand forecast reads. This API cannot approve transfers or clinical decisions."
+    "title": "BloodLedger Sprint 5 Simulation API",
+    "version": "0.2.0",
+    "description": "Simulation-only web access, mobile capture intake, synchronization status, and demand forecast reads. This API cannot autonomously approve transfers or make clinical decisions."
   },
-  "servers": [{ "url": "https://localhost:3000" }],
+  "servers": [
+    {
+      "url": "https://localhost:3000"
+    }
+  ],
   "paths": {
     "/api/v1/simulation/session": {
       "post": {
         "summary": "Create a short-lived synthetic operator session",
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SessionRequest" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionRequest"
+              }
+            }
+          }
         },
         "responses": {
-          "200": { "description": "Synthetic session", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SessionResponse" } } } },
-          "401": { "$ref": "#/components/responses/Error" }
+          "200": {
+            "description": "Synthetic session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
         }
       }
     },
     "/api/v1/scan-events": {
       "post": {
         "summary": "Durably accept one confirmed structured synthetic capture",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "name": "Idempotency-Key",
-          "in": "header",
-          "required": true,
-          "schema": { "type": "string", "pattern": "^IDEM_[A-Z0-9_-]{1,59}$" }
-        }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ConfirmedCapture" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmedCapture"
+              }
+            }
+          }
         },
         "responses": {
-          "202": { "description": "Durably queued or idempotently replayed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AcceptedScan" } } } },
-          "400": { "$ref": "#/components/responses/Error" },
-          "401": { "$ref": "#/components/responses/Error" },
-          "403": { "$ref": "#/components/responses/Error" },
-          "409": { "$ref": "#/components/responses/Error" }
+          "202": {
+            "description": "Durably queued or idempotently replayed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedScan"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
         }
       }
     },
     "/api/v1/scan-events/{eventId}": {
       "get": {
         "summary": "Read synchronization status within the authenticated institution",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "name": "eventId",
-          "in": "path",
-          "required": true,
-          "schema": { "type": "string", "pattern": "^SCAN_[0-9A-F]{32}$" }
-        }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^SCAN_[0-9A-F]{32}$"
+            }
+          }
+        ],
         "responses": {
-          "200": { "description": "Synchronization status", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ScanStatus" } } } },
-          "400": { "$ref": "#/components/responses/Error" },
-          "401": { "$ref": "#/components/responses/Error" },
-          "403": { "$ref": "#/components/responses/Error" },
-          "404": { "$ref": "#/components/responses/Error" }
+          "200": {
+            "description": "Synchronization status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
         }
       }
     },
     "/api/v1/demand-forecasts": {
       "get": {
         "summary": "Read the exact or latest completed simulation forecast",
-        "security": [{ "bearerAuth": [] }],
-        "parameters": [{
-          "name": "businessDate",
-          "in": "query",
-          "required": true,
-          "schema": { "type": "string", "format": "date" }
-        }],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "businessDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
         "responses": {
-          "200": { "description": "CURRENT, STALE, or UNAVAILABLE forecast state", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ForecastResponse" } } } },
-          "400": { "$ref": "#/components/responses/Error" },
-          "401": { "$ref": "#/components/responses/Error" }
+          "200": {
+            "description": "CURRENT, STALE, or UNAVAILABLE forecast state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
         }
       }
     },
@@ -83,137 +184,3506 @@
       "get": {
         "summary": "Readiness without secret or payload disclosure",
         "responses": {
-          "200": { "description": "Ready" },
-          "503": { "description": "Degraded" }
+          "200": {
+            "description": "Ready"
+          },
+          "503": {
+            "description": "Degraded"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/session": {
+      "post": {
+        "summary": "Create a revocable synthetic web session",
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Safe principal with a 15-minute HttpOnly SameSite=Strict cookie",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebSessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "get": {
+        "summary": "Restore an active synthetic web session",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Safe active principal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebSessionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Revoke the current synthetic web session idempotently",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session revoked or already inactive; cookie cleared",
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "summary": "Read the permission-scoped dashboard projection",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operational, regulatory, or administrative dashboard summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/inventory": {
+      "get": {
+        "summary": "Read institution details or approved city aggregates",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Permission-scoped committed inventory",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts": {
+      "get": {
+        "summary": "Read institution alert detail or regulatory alert aggregates",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Permission-scoped synthetic alerts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/transfers": {
+      "get": {
+        "summary": "Read permission-scoped ledger-confirmed transfer projections",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Safe transfer history without exact location evidence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransfersResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "summary": "Submit one synthetic institution-scoped transfer request",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferRequestCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Matching idempotent replay returned the existing committed projection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferRequestCreated"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Ledger committed and projection reconciled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferRequestCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/alerts/{alertId}/acknowledgements": {
+      "post": {
+        "summary": "Acknowledge an open alert in the authenticated institution scope",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alertId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^ALRT_[0-9A-F]{40}$"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertAcknowledgementRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Acknowledgement persisted or safely replayed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertAcknowledgementResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/consortium": {
+      "get": {
+        "summary": "Read approved city-wide application aggregates",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Regulatory network view without fabricated peer ownership",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsortiumResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/audit": {
+      "get": {
+        "summary": "Read redacted permission-scoped application audit events",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Institution or city-wide audit view according to verified role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/reports/inventory": {
+      "get": {
+        "summary": "Read the regulatory simulation inventory report",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Labeled prototype aggregate report; not an official filing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryReportResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/reports/inventory.csv": {
+      "get": {
+        "summary": "Export the regulatory simulation inventory report as safe CSV",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Labeled prototype CSV attachment with spreadsheet formula prefixes neutralized",
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/transfers/{transferId}": {
+      "get": {
+        "summary": "Read one transfer with scoped FEFO, lifecycle, and disabled optimization evidence",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Institution-scoped detail; regulatory viewers receive no selected unit identifiers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/transfers/{transferId}/rejection": {
+      "post": {
+        "summary": "Reject one pending synthetic transfer request as the source hospital administrator",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferRejectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ledger rejection committed and projected, or an exact idempotent replay returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferRejectionResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/transfers/{transferId}/approval": {
+      "post": {
+        "summary": "Approve one pending synthetic transfer request with server-selected FEFO units",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferApprovalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ledger approval and FEFO reservation committed and projected, or an exact idempotent replay returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferApprovalResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/transfers/{transferId}/cancellation": {
+      "post": {
+        "summary": "Cancel one pending or approved synthetic transfer within the authenticated institution scope",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferCancellationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ledger cancellation committed and projected, including release of approved FEFO reservations, or an exact idempotent replay returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferCancellationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/transfers/{transferId}/dispatch": {
+      "post": {
+        "summary": "Record synthetic dispatch location evidence and dispatch reserved FEFO units",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferDispatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ledger dispatch and reserved-unit projection committed, or an exact idempotent replay returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferDispatchResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/transfers/{transferId}/transit-start": {
+      "post": {
+        "summary": "Start transit for one dispatched synthetic transfer and its selected units",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferTransitRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ledger transit transition and selected-unit projection committed, or an exact idempotent replay returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferTransitResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/transfers/{transferId}/receipt": {
+      "post": {
+        "summary": "Record synthetic receipt location evidence for one in-transit or delayed destination transfer",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferReceiptRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ledger receipt and selected-unit projection committed, or an exact idempotent replay returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferReceiptResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/transfers/{transferId}/delay": {
+      "post": {
+        "summary": "Mark one in-transit synthetic transfer delayed with the approved non-PHI reason",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferDelayRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ledger delay transition committed and projected, or an exact idempotent replay returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferDelayResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/transfers/{transferId}/resume": {
+      "post": {
+        "summary": "Resume one delayed synthetic transfer to in-transit status by authorized source-hospital staff",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferResumeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ledger resume transition and selected-unit projection committed, or an exact idempotent replay returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferResumeResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
         }
       }
     }
   },
   "components": {
     "securitySchemes": {
-      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "bloodledger_session"
+      }
     },
     "responses": {
       "Error": {
         "description": "Safe failure",
-        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
       }
     },
     "schemas": {
       "SessionRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["operatorId", "credential"],
+        "required": [
+          "operatorId",
+          "credential"
+        ],
         "properties": {
-          "operatorId": { "type": "string", "const": "USR_SYNTH_CAPTURE" },
-          "credential": { "type": "string", "minLength": 12 }
+          "operatorId": {
+            "type": "string",
+            "const": "USR_SYNTH_CAPTURE"
+          },
+          "credential": {
+            "type": "string",
+            "minLength": 12
+          }
         }
       },
       "SessionResponse": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["token", "tokenType", "expiresInSeconds", "classification"],
+        "required": [
+          "token",
+          "tokenType",
+          "expiresInSeconds",
+          "classification"
+        ],
         "properties": {
-          "token": { "type": "string" },
-          "tokenType": { "type": "string", "const": "Bearer" },
-          "expiresInSeconds": { "type": "integer", "const": 900 },
-          "classification": { "type": "string", "const": "SIMULATION_ONLY" }
+          "token": {
+            "type": "string"
+          },
+          "tokenType": {
+            "type": "string",
+            "const": "Bearer"
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "const": 900
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
         }
       },
       "Unit": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["unitId", "bloodType", "component", "collectedAt", "expiresAt"],
+        "required": [
+          "unitId",
+          "bloodType",
+          "component",
+          "collectedAt",
+          "expiresAt"
+        ],
         "properties": {
-          "unitId": { "type": "string", "pattern": "^UNIT_[A-Z0-9_-]{1,56}$" },
-          "bloodType": { "type": "string", "enum": ["A_POSITIVE", "O_POSITIVE"] },
-          "component": { "type": "string", "enum": ["RED_BLOOD_CELLS", "PLATELETS"] },
-          "collectedAt": { "type": "string", "format": "date-time" },
-          "expiresAt": { "type": "string", "format": "date-time" }
+          "unitId": {
+            "type": "string",
+            "pattern": "^UNIT_[A-Z0-9_-]{1,56}$"
+          },
+          "bloodType": {
+            "type": "string",
+            "enum": [
+              "A_POSITIVE",
+              "O_POSITIVE"
+            ]
+          },
+          "component": {
+            "type": "string",
+            "enum": [
+              "RED_BLOOD_CELLS",
+              "PLATELETS"
+            ]
+          },
+          "collectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "FieldConfidence": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["unitId", "bloodType", "component", "collectedAt", "expiresAt"],
+        "required": [
+          "unitId",
+          "bloodType",
+          "component",
+          "collectedAt",
+          "expiresAt"
+        ],
         "properties": {
-          "unitId": { "type": "integer", "minimum": 90, "maximum": 100 },
-          "bloodType": { "type": "integer", "minimum": 90, "maximum": 100 },
-          "component": { "type": "integer", "minimum": 90, "maximum": 100 },
-          "collectedAt": { "type": "integer", "minimum": 90, "maximum": 100 },
-          "expiresAt": { "type": "integer", "minimum": 90, "maximum": 100 }
+          "unitId": {
+            "type": "integer",
+            "minimum": 90,
+            "maximum": 100
+          },
+          "bloodType": {
+            "type": "integer",
+            "minimum": 90,
+            "maximum": 100
+          },
+          "component": {
+            "type": "integer",
+            "minimum": 90,
+            "maximum": 100
+          },
+          "collectedAt": {
+            "type": "integer",
+            "minimum": 90,
+            "maximum": 100
+          },
+          "expiresAt": {
+            "type": "integer",
+            "minimum": 90,
+            "maximum": 100
+          }
         }
       },
       "OcrEvidence": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["engine", "engineVersion", "fieldConfidence"],
+        "required": [
+          "engine",
+          "engineVersion",
+          "fieldConfidence"
+        ],
         "properties": {
-          "engine": { "type": "string", "const": "TESSERACT_JS" },
-          "engineVersion": { "type": "string", "const": "7.0.0" },
-          "fieldConfidence": { "$ref": "#/components/schemas/FieldConfidence" }
+          "engine": {
+            "type": "string",
+            "const": "TESSERACT_JS"
+          },
+          "engineVersion": {
+            "type": "string",
+            "const": "7.0.0"
+          },
+          "fieldConfidence": {
+            "$ref": "#/components/schemas/FieldConfidence"
+          }
         }
       },
       "ConfirmedCapture": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["captureMethod", "capturePolicyVersion", "capturedAt", "confirmedAt", "unit", "ocrEvidence"],
+        "required": [
+          "captureMethod",
+          "capturePolicyVersion",
+          "capturedAt",
+          "confirmedAt",
+          "unit",
+          "ocrEvidence"
+        ],
         "properties": {
-          "captureMethod": { "type": "string", "enum": ["OCR", "CODE_128_FALLBACK", "DATA_MATRIX_FALLBACK", "SYNTHETIC_QR_FALLBACK"] },
-          "capturePolicyVersion": { "type": "string", "const": "SYNTHETIC_CAPTURE_V1" },
-          "capturedAt": { "type": "string", "format": "date-time" },
-          "confirmedAt": { "type": "string", "format": "date-time" },
-          "unit": { "$ref": "#/components/schemas/Unit" },
-          "ocrEvidence": { "oneOf": [{ "$ref": "#/components/schemas/OcrEvidence" }, { "type": "null" }] }
+          "captureMethod": {
+            "type": "string",
+            "enum": [
+              "OCR",
+              "CODE_128_FALLBACK",
+              "DATA_MATRIX_FALLBACK",
+              "SYNTHETIC_QR_FALLBACK"
+            ]
+          },
+          "capturePolicyVersion": {
+            "type": "string",
+            "const": "SYNTHETIC_CAPTURE_V1"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/Unit"
+          },
+          "ocrEvidence": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OcrEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
         }
       },
       "AcceptedScan": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["eventId", "correlationId", "status", "receivedAt", "replayed"],
+        "required": [
+          "eventId",
+          "correlationId",
+          "status",
+          "receivedAt",
+          "replayed"
+        ],
         "properties": {
-          "eventId": { "type": "string" },
-          "correlationId": { "type": "string" },
-          "status": { "type": "string", "const": "QUEUED" },
-          "receivedAt": { "type": "string", "format": "date-time" },
-          "replayed": { "type": "boolean" }
+          "eventId": {
+            "type": "string"
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "const": "QUEUED"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
         }
       },
       "ScanStatus": {
         "type": "object",
         "properties": {
-          "eventId": { "type": "string" },
-          "correlationId": { "type": "string" },
-          "status": { "type": "string", "enum": ["QUEUED", "SUBMITTING", "RETRY_WAIT", "LEDGER_COMMITTED_PROJECTION_PENDING", "COMMITTED", "FAILED", "CONFLICT"] },
-          "attemptCount": { "type": "integer", "minimum": 0 },
-          "safeErrorCode": { "type": ["string", "null"] },
-          "ledgerTransactionId": { "type": ["string", "null"] },
-          "receivedAt": { "type": "string", "format": "date-time" },
-          "classification": { "type": "string", "const": "SIMULATION_ONLY" }
+          "eventId": {
+            "type": "string"
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "SUBMITTING",
+              "RETRY_WAIT",
+              "LEDGER_COMMITTED_PROJECTION_PENDING",
+              "COMMITTED",
+              "FAILED",
+              "CONFLICT"
+            ]
+          },
+          "attemptCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "safeErrorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ledgerTransactionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
         },
-        "required": ["eventId", "correlationId", "status", "attemptCount", "safeErrorCode", "ledgerTransactionId", "receivedAt", "classification"]
+        "required": [
+          "eventId",
+          "correlationId",
+          "status",
+          "attemptCount",
+          "safeErrorCode",
+          "ledgerTransactionId",
+          "receivedAt",
+          "classification"
+        ]
       },
       "ForecastResponse": {
         "type": "object",
-        "required": ["businessDate", "status", "forecasts"],
+        "required": [
+          "businessDate",
+          "status",
+          "forecasts"
+        ],
         "properties": {
-          "businessDate": { "type": "string", "format": "date" },
-          "status": { "type": "string", "enum": ["CURRENT", "STALE", "UNAVAILABLE"] },
-          "forecasts": { "type": "array", "maxItems": 4, "items": { "type": "object" } }
+          "businessDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "CURRENT",
+              "STALE",
+              "UNAVAILABLE"
+            ]
+          },
+          "forecasts": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "type": "object"
+            }
+          }
         }
       },
       "ErrorEnvelope": {
         "type": "object",
-        "required": ["error"],
+        "required": [
+          "error"
+        ],
         "properties": {
           "error": {
             "type": "object",
-            "required": ["code", "message", "correlationId"],
+            "required": [
+              "code",
+              "message",
+              "correlationId"
+            ],
             "properties": {
-              "code": { "type": "string" },
-              "message": { "type": "string" },
-              "correlationId": { "type": "string" }
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "correlationId": {
+                "type": "string"
+              }
             }
+          }
+        }
+      },
+      "WebSessionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "pattern": "^synth_[a-z0-9_]{3,57}$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "writeOnly": true
+          }
+        }
+      },
+      "WebPrincipal": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "userId",
+          "displayName",
+          "institutionId",
+          "institutionDisplayName",
+          "institutionCategory",
+          "roleId",
+          "roleDisplayName",
+          "permissions",
+          "classification"
+        ],
+        "properties": {
+          "userId": {
+            "type": "string",
+            "pattern": "^USR_[A-Z0-9_-]{1,48}$"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "institutionId": {
+            "type": "string",
+            "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+          },
+          "institutionDisplayName": {
+            "type": "string"
+          },
+          "institutionCategory": {
+            "type": "string",
+            "enum": [
+              "HOSPITAL",
+              "REGULATOR",
+              "SYSTEM"
+            ]
+          },
+          "roleId": {
+            "type": "string",
+            "enum": [
+              "ROLE-01",
+              "ROLE-02",
+              "ROLE-03",
+              "ROLE-04",
+              "ROLE-05",
+              "ROLE-06"
+            ]
+          },
+          "roleDisplayName": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "dashboard:operational",
+                "dashboard:regulatory",
+                "inventory:read",
+                "inventory:write",
+                "transfers:read",
+                "transfers:write",
+                "alerts:read",
+                "alerts:acknowledge",
+                "consortium:read",
+                "audit:read",
+                "reports:read",
+                "profile:read"
+              ]
+            }
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "WebSessionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "principal"
+        ],
+        "properties": {
+          "principal": {
+            "$ref": "#/components/schemas/WebPrincipal"
+          }
+        }
+      },
+      "InventoryAggregate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "institutionId",
+          "institutionDisplayName",
+          "bloodType",
+          "component",
+          "inventoryStatus",
+          "confirmedCount",
+          "lastProjectedAt"
+        ],
+        "properties": {
+          "institutionId": {
+            "type": "string"
+          },
+          "institutionDisplayName": {
+            "type": "string"
+          },
+          "bloodType": {
+            "type": "string"
+          },
+          "component": {
+            "type": "string"
+          },
+          "inventoryStatus": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "RESERVED",
+              "DISPATCHED",
+              "IN_TRANSIT",
+              "RECEIVED",
+              "COMPROMISED",
+              "EXPIRED"
+            ]
+          },
+          "confirmedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lastProjectedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "InventoryUnitView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unitId",
+          "institutionId",
+          "bloodType",
+          "component",
+          "collectedAt",
+          "expiresAt",
+          "inventoryStatus",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "classification"
+        ],
+        "properties": {
+          "unitId": {
+            "type": "string"
+          },
+          "institutionId": {
+            "type": "string"
+          },
+          "bloodType": {
+            "type": "string"
+          },
+          "component": {
+            "type": "string"
+          },
+          "collectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "inventoryStatus": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "RESERVED",
+              "DISPATCHED",
+              "IN_TRANSIT",
+              "RECEIVED",
+              "COMPROMISED",
+              "EXPIRED"
+            ]
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "ledgerTransactionId": {
+            "type": "string"
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "PendingScanCount": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "count"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "SUBMITTING",
+              "RETRY_WAIT",
+              "LEDGER_COMMITTED_PROJECTION_PENDING",
+              "FAILED",
+              "CONFLICT"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "DashboardResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "composition",
+          "scope",
+          "inventory",
+          "pendingScans",
+          "lastSuccessfulProjectionAt",
+          "classification"
+        ],
+        "properties": {
+          "composition": {
+            "type": "string",
+            "enum": [
+              "OPERATIONAL",
+              "REGULATORY",
+              "ADMINISTRATIVE"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "INSTITUTION",
+              "CITY_AGGREGATE",
+              "PRINCIPAL"
+            ]
+          },
+          "inventory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventoryAggregate"
+            }
+          },
+          "pendingScans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendingScanCount"
+            }
+          },
+          "lastSuccessfulProjectionAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "InventoryResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope",
+          "aggregates",
+          "units",
+          "classification"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "INSTITUTION",
+              "CITY_AGGREGATE"
+            ]
+          },
+          "aggregates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventoryAggregate"
+            }
+          },
+          "units": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventoryUnitView"
+            }
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "AlertView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "alertId",
+          "institutionId",
+          "alertType",
+          "severity",
+          "unitId",
+          "bloodType",
+          "component",
+          "inventoryStatus",
+          "expiresAt",
+          "evaluatedAt",
+          "status",
+          "acknowledged",
+          "policyVersion",
+          "classification"
+        ],
+        "properties": {
+          "alertId": {
+            "type": "string"
+          },
+          "institutionId": {
+            "type": "string"
+          },
+          "alertType": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "INFORMATION",
+              "WARNING",
+              "CRITICAL"
+            ]
+          },
+          "unitId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bloodType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "component": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "inventoryStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiresAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evaluatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "RESOLVED"
+            ]
+          },
+          "acknowledged": {
+            "type": "boolean"
+          },
+          "policyVersion": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "AlertAggregateView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "institutionId",
+          "institutionDisplayName",
+          "alertType",
+          "severity",
+          "status",
+          "count",
+          "lastEvaluatedAt"
+        ],
+        "properties": {
+          "institutionId": {
+            "type": "string"
+          },
+          "institutionDisplayName": {
+            "type": "string"
+          },
+          "alertType": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lastEvaluatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AlertsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope",
+          "alerts",
+          "aggregates",
+          "classification"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "INSTITUTION",
+              "CITY_AGGREGATE"
+            ]
+          },
+          "alerts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlertView"
+            }
+          },
+          "aggregates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlertAggregateView"
+            }
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "sourceInstitutionId",
+          "destinationInstitutionId",
+          "bloodType",
+          "component",
+          "quantity",
+          "urgency",
+          "requestTime",
+          "status",
+          "reasonCode",
+          "recommendationDigest",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "correlationId",
+          "projectedAt",
+          "dispatchEvidenceRecorded",
+          "receiptEvidenceRecorded",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string"
+          },
+          "sourceInstitutionId": {
+            "type": "string"
+          },
+          "destinationInstitutionId": {
+            "type": "string"
+          },
+          "bloodType": {
+            "type": "string"
+          },
+          "component": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "urgency": {
+            "type": "string",
+            "enum": [
+              "ROUTINE",
+              "URGENT",
+              "CRITICAL"
+            ]
+          },
+          "requestTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED",
+              "DISPATCHED",
+              "IN_TRANSIT",
+              "DELAYED",
+              "RECEIVED",
+              "COMPROMISED",
+              "CANCELLED"
+            ]
+          },
+          "reasonCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "ledgerTransactionId": {
+            "type": "string"
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dispatchEvidenceRecorded": {
+            "type": "boolean"
+          },
+          "receiptEvidenceRecorded": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          },
+          "recommendationDigest": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "TransferRequestCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bloodType",
+          "component",
+          "quantity",
+          "urgency",
+          "requestTime",
+          "eventTime",
+          "correlationId"
+        ],
+        "properties": {
+          "bloodType": {
+            "type": "string",
+            "enum": [
+              "A_POSITIVE",
+              "O_POSITIVE"
+            ]
+          },
+          "component": {
+            "type": "string",
+            "enum": [
+              "RED_BLOOD_CELLS",
+              "PLATELETS"
+            ]
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "urgency": {
+            "type": "string",
+            "enum": [
+              "ROUTINE",
+              "URGENT",
+              "CRITICAL"
+            ]
+          },
+          "requestTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "TransferRequestCreated": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "status",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "PENDING"
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "const": 1
+          },
+          "ledgerTransactionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransfersResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope",
+          "transfers",
+          "classification"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "SOURCE_INSTITUTION",
+              "DESTINATION_INSTITUTION",
+              "CITY_AGGREGATE"
+            ]
+          },
+          "transfers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransferView"
+            }
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "AlertAcknowledgementRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "correlationId"
+        ],
+        "properties": {
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "AlertAcknowledgementResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "alertId",
+          "acknowledgedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "alertId": {
+            "type": "string",
+            "pattern": "^ALRT_[0-9A-F]{40}$"
+          },
+          "acknowledgedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "transferCount",
+          "unitCount"
+        ],
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "transferCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unitCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "ConsortiumResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope",
+          "inventory",
+          "alerts",
+          "transferSummary",
+          "lastSuccessfulProjectionAt",
+          "classification"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "const": "CITY_AGGREGATE"
+          },
+          "inventory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventoryAggregate"
+            }
+          },
+          "alerts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlertAggregateView"
+            }
+          },
+          "transferSummary": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransferSummary"
+            }
+          },
+          "lastSuccessfulProjectionAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "AuditEventView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "auditEventId",
+          "institutionId",
+          "institutionDisplayName",
+          "actionCode",
+          "targetType",
+          "outcome",
+          "safeErrorCode",
+          "correlationId",
+          "ledgerTransactionId",
+          "eventTime",
+          "classification"
+        ],
+        "properties": {
+          "auditEventId": {
+            "type": "string",
+            "pattern": "^AUDT_[0-9A-F]{40}$"
+          },
+          "institutionId": {
+            "type": "string"
+          },
+          "institutionDisplayName": {
+            "type": "string"
+          },
+          "actionCode": {
+            "type": "string"
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "SUCCEEDED",
+              "DENIED",
+              "FAILED"
+            ]
+          },
+          "safeErrorCode": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "ledgerTransactionId": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "AuditResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope",
+          "events",
+          "classification"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "INSTITUTION",
+              "CITY_AGGREGATE"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEventView"
+            }
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "InventoryReportResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reportType",
+          "scope",
+          "generatedAt",
+          "inventory",
+          "alerts",
+          "transferSummary",
+          "disclaimer",
+          "classification"
+        ],
+        "properties": {
+          "reportType": {
+            "type": "string",
+            "const": "CITY_INVENTORY_SUMMARY"
+          },
+          "scope": {
+            "type": "string",
+            "const": "CITY_AGGREGATE"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "inventory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventoryAggregate"
+            }
+          },
+          "alerts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlertAggregateView"
+            }
+          },
+          "transferSummary": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransferSummary"
+            }
+          },
+          "disclaimer": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferEventView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "eventId",
+          "fromStatus",
+          "toStatus",
+          "eventTime",
+          "reasonCode",
+          "ledgerTransactionId",
+          "ledgerVersion",
+          "correlationId",
+          "classification"
+        ],
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "pattern": "^TEVT_[0-9A-F]{40}$"
+          },
+          "fromStatus": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "toStatus": {
+            "type": "string"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reasonCode": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ledgerTransactionId": {
+            "type": "string"
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "AlgorithmFactorView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "normalized",
+          "contribution"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "urgency",
+              "wait",
+              "stockShortage",
+              "mlSurplus",
+              "distancePenalty"
+            ]
+          },
+          "normalized": {
+            "type": "number"
+          },
+          "contribution": {
+            "type": "number"
+          }
+        }
+      },
+      "AlgorithmExplanationView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "runId",
+          "algorithm",
+          "algorithmVersion",
+          "recommendationEligibility",
+          "evaluationTime",
+          "inputSha256",
+          "configSha256",
+          "recommendationDigest",
+          "score",
+          "factors",
+          "trigger",
+          "selectedUnitId",
+          "automaticApproval",
+          "classification"
+        ],
+        "properties": {
+          "runId": {
+            "type": "string",
+            "pattern": "^ARUN_[0-9A-F]{32}$"
+          },
+          "algorithm": {
+            "type": "string",
+            "enum": [
+              "RPS",
+              "BROA"
+            ]
+          },
+          "algorithmVersion": {
+            "type": "string",
+            "const": "SYNTHETIC_OPTIMIZATION_V1"
+          },
+          "recommendationEligibility": {
+            "type": "string",
+            "const": "DISABLED_UNAPPROVED_POLICY"
+          },
+          "evaluationTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "inputSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "configSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "recommendationDigest": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "score": {
+            "type": "number"
+          },
+          "factors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlgorithmFactorView"
+            }
+          },
+          "trigger": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "NEAR_EXPIRY",
+                  "FORECAST_SURPLUS"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "selectedUnitId": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "automaticApproval": {
+            "type": "boolean",
+            "const": false
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferDetailResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transfer",
+          "selectedUnitIds",
+          "timeline",
+          "explanations",
+          "selectionPolicy",
+          "recommendationEligibility",
+          "automaticApproval",
+          "classification"
+        ],
+        "properties": {
+          "transfer": {
+            "$ref": "#/components/schemas/TransferView"
+          },
+          "selectedUnitIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransferEventView"
+            }
+          },
+          "explanations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlgorithmExplanationView"
+            }
+          },
+          "selectionPolicy": {
+            "type": "string",
+            "const": "FEFO"
+          },
+          "recommendationEligibility": {
+            "type": "string",
+            "const": "DISABLED_UNAPPROVED_POLICY"
+          },
+          "automaticApproval": {
+            "type": "boolean",
+            "const": false
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferRejectionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "reasonCode",
+          "eventTime",
+          "correlationId"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reasonCode": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "TransferRejectionResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "status",
+          "reasonCode",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "REJECTED"
+          },
+          "reasonCode": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "ledgerTransactionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferApprovalRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "eventTime",
+          "correlationId"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "TransferApprovalResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "status",
+          "selectedUnitIds",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "APPROVED"
+          },
+          "selectedUnitIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^UNIT_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "ledgerTransactionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferCancellationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "reasonCode",
+          "eventTime",
+          "correlationId"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reasonCode": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "TransferCancellationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "status",
+          "reasonCode",
+          "releasedUnitIds",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "CANCELLED"
+          },
+          "reasonCode": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+          },
+          "releasedUnitIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "ledgerTransactionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferLocationCapture": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "latitude",
+          "longitude",
+          "accuracyMetres",
+          "source",
+          "fallbackReason",
+          "capturedAt"
+        ],
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "accuracyMetres": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1000
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "DEVICE",
+              "FACILITY_FALLBACK"
+            ]
+          },
+          "fallbackReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "DEVICE_UNAVAILABLE",
+              "PERMISSION_DENIED",
+              "SIGNAL_UNAVAILABLE",
+              null
+            ]
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TransferDispatchRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "eventTime",
+          "correlationId",
+          "location"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "location": {
+            "$ref": "#/components/schemas/TransferLocationCapture"
+          }
+        }
+      },
+      "TransferLocationEvidenceSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "evidenceId",
+          "capturedAt",
+          "source",
+          "facilityMatched",
+          "fallback",
+          "policyVersion"
+        ],
+        "properties": {
+          "evidenceId": {
+            "type": "string",
+            "pattern": "^LOC_[A-Z0-9_-]{1,56}$"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "DEVICE",
+              "FACILITY_FALLBACK"
+            ]
+          },
+          "facilityMatched": {
+            "type": "boolean"
+          },
+          "fallback": {
+            "type": "boolean"
+          },
+          "policyVersion": {
+            "type": "string",
+            "const": "SYNTHETIC_LOCATION_V1"
+          }
+        }
+      },
+      "TransferDispatchResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "status",
+          "dispatchedUnitIds",
+          "locationEvidence",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "DISPATCHED"
+          },
+          "dispatchedUnitIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "locationEvidence": {
+            "$ref": "#/components/schemas/TransferLocationEvidenceSummary"
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 3
+          },
+          "ledgerTransactionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferTransitRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "eventTime",
+          "correlationId"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "TransferTransitResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "status",
+          "inTransitUnitIds",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "IN_TRANSIT"
+          },
+          "inTransitUnitIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 4
+          },
+          "ledgerTransactionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferReceiptRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "eventTime",
+          "correlationId",
+          "location"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "location": {
+            "$ref": "#/components/schemas/TransferLocationCapture"
+          }
+        }
+      },
+      "TransferReceiptResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "status",
+          "receivedUnitIds",
+          "locationEvidence",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "RECEIVED"
+          },
+          "receivedUnitIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "locationEvidence": {
+            "$ref": "#/components/schemas/TransferLocationEvidenceSummary"
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 5
+          },
+          "ledgerTransactionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferDelayRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "reasonCode",
+          "eventTime",
+          "correlationId"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "reasonCode": {
+            "type": "string",
+            "const": "ROUTE_DELAY"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "TransferDelayResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "status",
+          "reasonCode",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "DELAYED"
+          },
+          "reasonCode": {
+            "type": "string",
+            "const": "ROUTE_DELAY"
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 5
+          },
+          "ledgerTransactionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "TransferResumeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "eventTime",
+          "correlationId"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "TransferResumeResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "status",
+          "inTransitUnitIds",
+          "ledgerVersion",
+          "ledgerTransactionId",
+          "projectedAt",
+          "replayed",
+          "classification"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "status": {
+            "type": "string",
+            "const": "IN_TRANSIT"
+          },
+          "inTransitUnitIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "ledgerVersion": {
+            "type": "integer",
+            "minimum": 6
+          },
+          "ledgerTransactionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "projectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
           }
         }
       }

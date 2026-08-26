@@ -12,6 +12,76 @@ rg -q 'LEDGER_COMMITTED_PROJECTION_PENDING' services/api/src database/migrations
 rg -q 'pg_advisory_xact_lock' services/api/src/database.ts
 rg -q 'FOR UPDATE SKIP LOCKED' services/api/src/database.ts
 rg -q 'SYNTHETIC_CAPTURE_V1' services/api/src apps/capture-pwa/src
+rg -q 'SYNTHETIC_WEB_ACCESS_V1' services/api/openapi.json services/api/src database/migrations/20260820000000000_create-synthetic-web-access-tables.js
+rg -q 'HttpOnly; SameSite=Strict' services/api/src/app.ts
+rg -q 'password_verifier' services/api/src/database-session.ts
+rg -q '/api/v1/dashboard' services/api/openapi.json services/api/src/app.ts
+rg -q '/api/v1/inventory' services/api/openapi.json services/api/src/app.ts
+rg -Fq 'listInventoryUnits(principal.institutionId)' services/api/src/app.ts
+rg -q '/api/v1/alerts' services/api/openapi.json services/api/src/app.ts
+rg -q '/api/v1/transfers' services/api/openapi.json services/api/src/app.ts
+rg -Fq '/api/v1/transfers/{transferId}' services/api/openapi.json
+rg -Fq 'TransferRequestCreate' services/api/openapi.json
+rg -Fq '/api/v1/transfers/{transferId}/approval' services/api/openapi.json
+rg -Fq 'TransferApprovalRequest' services/api/openapi.json
+rg -Fq 'submitAsync("ApproveTransfer"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_APPROVED'" services/api/src/database-application-write.ts
+rg -Fq "inventory_status='RESERVED'" services/api/src/database-application-write.ts
+rg -Fq '/api/v1/transfers/{transferId}/rejection' services/api/openapi.json
+rg -Fq 'TransferRejectionRequest' services/api/openapi.json
+rg -Fq 'principal.roleId !== "ROLE-02"' services/api/src/app.ts
+rg -Fq 'submitAsync("RejectTransfer"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_REJECTED'" services/api/src/database-application-write.ts
+rg -Fq '/api/v1/transfers/{transferId}/cancellation' services/api/openapi.json
+rg -Fq 'TransferCancellationRequest' services/api/openapi.json
+rg -Fq 'submitAsync("CancelTransfer"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_CANCELLED'" services/api/src/database-application-write.ts
+rg -Fq "inventory_status='AVAILABLE'" services/api/src/database-application-write.ts
+rg -Fq '/api/v1/transfers/{transferId}/dispatch' services/api/openapi.json
+rg -Fq 'TransferDispatchRequest' services/api/openapi.json
+rg -Fq 'submitAsync("RecordDispatch"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_DISPATCHED'" services/api/src/database-application-write.ts
+rg -Fq "inventory_status='DISPATCHED'" services/api/src/database-application-write.ts
+rg -Fq 'app.location_evidence' services/api/src/database-application-write.ts
+rg -Fq '/api/v1/transfers/{transferId}/delay' services/api/openapi.json
+rg -Fq 'TransferDelayRequest' services/api/openapi.json
+rg -Fq 'submitAsync("MarkTransferDelayed"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_DELAYED'" services/api/src/database-application-write.ts
+rg -Fq '/api/v1/transfers/{transferId}/resume' services/api/openapi.json
+rg -Fq 'TransferResumeRequest' services/api/openapi.json
+rg -Fq 'submitAsync("ResumeTransfer"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_TRANSIT_RESUMED'" services/api/src/database-application-write.ts
+rg -Fq '/api/v1/transfers/{transferId}/receipt' services/api/openapi.json
+rg -Fq 'TransferReceiptRequest' services/api/openapi.json
+rg -Fq 'submitAsync("RecordReceipt"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_RECEIVED'" services/api/src/database-application-write.ts
+rg -Fq "receipt_evidence_id" services/api/src/database-application-write.ts
+rg -Fq '/api/v1/transfers/{transferId}/transit-start' services/api/openapi.json
+rg -Fq 'TransferTransitRequest' services/api/openapi.json
+rg -Fq 'submitAsync("StartTransit"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_TRANSIT_STARTED'" services/api/src/database-application-write.ts
+rg -Fq "inventory_status='IN_TRANSIT'" services/api/src/database-application-write.ts
+rg -Fq 'principal.roleId !== "ROLE-03"' services/api/src/app.ts
+rg -Fq 'evaluateTransaction("ReadTransfer"' services/api/src/fabric.ts
+rg -Fq 'submitAsync("SubmitTransferRequest"' services/api/src/fabric.ts
+rg -Fq "'TRANSFER_REQUESTED'" services/api/src/database-application-write.ts
+rg -Fq './network/generated:/workspace/network/generated:ro' compose.yaml
+rg -Fq 'findTransfer(request.params.transferId' services/api/src/app.ts
+rg -Fq 'AND destination_institution_id=$2' services/api/src/database-application-read.ts
+rg -q 'DISABLED_UNAPPROVED_POLICY' services/api/src/algorithm-explanation.ts
+rg -Fq 'listTransfers(principal.institutionId,"DESTINATION")' services/api/src/app.ts
+rg -Fq '/api/v1/alerts/{alertId}/acknowledgements' services/api/openapi.json
+rg -Fq '../../../coordination/policy/synthetic-location-v1.json' services/api/src/location-evidence.ts
+rg -Fq 'COPY --from=build /workspace/services/coordination/policy ./services/coordination/policy' services/api/Dockerfile
+rg -q 'pg_advisory_xact_lock' services/api/src/database-application-write.ts
+rg -Fq "institution_id=\$2 AND status='OPEN' FOR UPDATE" services/api/src/database-application-write.ts
+rg -q 'ALERT_IDEMPOTENCY_CONFLICT' services/api/src/database-application-write.ts
+rg -q "'ALERT_ACKNOWLEDGED'" services/api/src/database-application-write.ts
+rg -Fq '/api/v1/consortium' services/api/openapi.json services/api/src/app.ts
+rg -Fq '/api/v1/audit' services/api/openapi.json services/api/src/app.ts
+rg -Fq '/api/v1/reports/inventory.csv' services/api/openapi.json services/api/src/app.ts
+rg -Fq 'WHERE e.institution_id=$1' services/api/src/database-application-read.ts
+rg -q 'not an official regulatory filing' services/api/src/app.ts
 
 if rg -n 'request\.log\..*(body|headers)|console\.log\(|logger: true' services/api/src; then
   echo "API source may log a request payload, header, or unsafe console output" >&2
@@ -22,4 +92,4 @@ if rg -n 'submitAsync|submitTransaction' services/api/src/app.ts services/api/sr
   exit 1
 fi
 
-echo "Sprint 4 API and privacy boundary checks passed"
+echo "Sprint 4 capture and Sprint 5 web-access API boundaries passed"

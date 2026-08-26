@@ -2,13 +2,17 @@ import { readFile, readdir } from "node:fs/promises";
 
 const root = new URL("../../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
-const [compose, bootstrap, migration, forecastMigration, coordinationMigration, scanMigration, databasePackage] = await Promise.all([
+const [compose, bootstrap, migration, forecastMigration, coordinationMigration, scanMigration, webAccessMigration, transferAlertMigration, alertAckMigration, sharedInventoryTransactionMigration, databasePackage] = await Promise.all([
   read("compose.yaml"),
   read("database/bootstrap/001-create-development-roles.sh"),
   read("database/migrations/20260715000000000_bootstrap-app-schema.js"),
   read("database/migrations/20260812000000000_create-simulation-forecast-tables.js"),
   read("database/migrations/20260814000000000_create-synthetic-coordination-tables.js"),
   read("database/migrations/20260817000000000_create-synthetic-scan-sync-tables.js"),
+  read("database/migrations/20260820000000000_create-synthetic-web-access-tables.js"),
+  read("database/migrations/20260820010000000_create-transfer-alert-projections.js"),
+  read("database/migrations/20260820020000000_add-alert-acknowledgement-idempotency.js"),
+  read("database/migrations/20260823010000000_allow-shared-inventory-ledger-transactions.js"),
   read("database/package.json").then(JSON.parse)
 ]);
 
@@ -45,6 +49,31 @@ const assertions = [
   [scanMigration.includes("DISABLED_UNAPPROVED_POLICY"), "scan recommendation disabled"],
   [scanMigration.includes("GRANT UPDATE ("), "runtime column update grant"],
   [scanMigration.includes("exports.down = false"), "scan forward-only migration"],
+  [webAccessMigration.includes("CREATE TABLE app.institutions"), "synthetic institution table"],
+  [webAccessMigration.includes("CREATE TABLE app.application_users"), "opaque application user table"],
+  [webAccessMigration.includes("CREATE TABLE app.user_role_assignments"), "explicit six-role assignment"],
+  [webAccessMigration.includes("CREATE TABLE app.application_sessions"), "revocable application session table"],
+  [webAccessMigration.includes("password_algorithm = 'SCRYPT_V1'"), "parameterized verifier algorithm"],
+  [webAccessMigration.includes("token_digest char(64)"), "session token digest only"],
+  [webAccessMigration.includes("SYNTHETIC_WEB_ACCESS_V1"), "accepted web access policy"],
+  [webAccessMigration.includes("GRANT UPDATE (revoked_at, safe_revocation_reason)"), "least-privilege session revocation"],
+  [webAccessMigration.includes("exports.down = false"), "web access forward-only migration"],
+  [transferAlertMigration.includes("CREATE TABLE app.transfer_requests"), "transfer request projection"],
+  [transferAlertMigration.includes("CREATE TABLE app.transfer_events"), "transfer event timeline"],
+  [transferAlertMigration.includes("CREATE TABLE app.stock_thresholds"), "versioned stock thresholds"],
+  [transferAlertMigration.includes("CREATE TABLE app.alerts"), "derived alert table"],
+  [transferAlertMigration.includes("CREATE TABLE app.alert_acknowledgements"), "alert acknowledgements"],
+  [transferAlertMigration.includes("CREATE TABLE app.audit_events"), "redacted audit events"],
+  [transferAlertMigration.includes("REFERENCES app.location_evidence"), "location evidence references"],
+  [transferAlertMigration.includes("GRANT UPDATE (status,reason_code"), "column-level transfer projection update"],
+  [transferAlertMigration.includes("exports.down = false"), "transfer alert forward-only migration"],
+  [alertAckMigration.includes("CREATE TABLE app.alert_acknowledgement_commands"), "alert acknowledgement idempotency evidence"],
+  [alertAckMigration.includes("FOREIGN KEY (alert_id,user_id)"), "acknowledgement command ownership"],
+  [alertAckMigration.includes("GRANT SELECT,INSERT"), "acknowledgement command least privilege"],
+  [alertAckMigration.includes("exports.down = false"), "alert acknowledgement forward-only migration"],
+  [sharedInventoryTransactionMigration.includes("DROP CONSTRAINT inventory_projection_ledger_transaction_id_key"), "shared inventory transaction correction"],
+  [sharedInventoryTransactionMigration.includes("CREATE INDEX inventory_projection_ledger_transaction_idx"), "shared inventory transaction lookup"],
+  [sharedInventoryTransactionMigration.includes("exports.down = false"), "shared inventory transaction forward-only migration"],
   [databasePackage.scripts["migrate:up"] === "node scripts/migrate.mjs", "apply command"],
   [databasePackage.scripts["migrate:status"] === "node scripts/migration-status.mjs", "status command"]
 ];
@@ -55,8 +84,8 @@ for (const [passed, label] of assertions) {
 
 const migrationFiles = (await readdir(new URL("database/migrations", root)))
   .filter((name) => /\.(?:js|cjs|mjs|sql)$/.test(name));
-if (migrationFiles.length !== 4) {
-  throw new Error(`Expected bootstrap, forecast, coordination, and scan migrations, received ${migrationFiles.length}`);
+if (migrationFiles.length !== 8) {
+  throw new Error(`Expected eight approved bootstrap through shared-inventory-transaction migrations, received ${migrationFiles.length}`);
 }
 
 const prohibited = /blood_units|transfers|users|institutions|forecasts|notifications|audit_logs|sync(?:hronization)?_queues/i;

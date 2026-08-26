@@ -10,6 +10,7 @@
   "packageManager": "npm@11.13.0",
   "workspaces": [
     "apps/capture-pwa",
+    "apps/web",
     "chaincode",
     "database",
     "network/health-contract",
@@ -35,6 +36,9 @@
     "check:capture": "npm run check --workspace @bloodledger/capture-pwa",
     "test:capture": "npm run test --workspace @bloodledger/capture-pwa",
     "test:capture:e2e": "npm run test:e2e --workspace @bloodledger/capture-pwa",
+    "check:web": "npm run check --workspace @bloodledger/web",
+    "test:web": "npm run test --workspace @bloodledger/web",
+    "test:web:e2e": "npm run test:e2e --workspace @bloodledger/web",
     "check:api": "npm run check --workspace @bloodledger/api && bash tests/api/static-boundary.sh",
     "test:api": "npm run test --workspace @bloodledger/api",
     "test:api:database": "bash tests/api/postgres-integration.sh",
@@ -56,6 +60,7 @@
     "test:database": "bash tests/database/integration.sh",
     "migrate:up": "npm run migrate:up --workspace @bloodledger/database",
     "migrate:status": "npm run migrate:status --workspace @bloodledger/database",
+    "provision:web-account": "npm run provision:synthetic-account --workspace @bloodledger/api",
     "scan:secrets": "bash scripts/scan-secrets.sh"
   }
 }

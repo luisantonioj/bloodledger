@@ -5,7 +5,10 @@ export interface ApiConfig {
   operatorId: string;
   operatorCredential: string;
   captureDist?: string;
+  webDist?: string;
   workerConfigured: boolean;
+  webOrigin?: string;
+  webCookieSecure?: boolean;
 }
 
 export function readApiConfig(environment: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -22,6 +25,9 @@ export function readApiConfig(environment: NodeJS.ProcessEnv = process.env): Api
     operatorId,
     operatorCredential,
     captureDist: environment.CAPTURE_PWA_DIST,
+    webDist: environment.WEB_DIST,
     workerConfigured: environment.FABRIC_SYNC_ENABLED === "true",
+    webOrigin: environment.WEB_ORIGIN ?? "http://127.0.0.1:5174",
+    webCookieSecure: environment.WEB_COOKIE_SECURE === undefined ? undefined : environment.WEB_COOKIE_SECURE === "true",
   };
 }
