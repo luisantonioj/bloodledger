@@ -7,6 +7,8 @@ import {
   parseSyntheticOcrLines,
 } from "./capture-policy";
 import type { CaptureMethod, CapturedUnit, FieldConfidence } from "./types";
+const OCR_ASSET_BASE = `${import.meta.env.BASE_URL}ocr-assets`;
+
 
 export interface RecognitionResult {
   unit: CapturedUnit;
@@ -16,9 +18,9 @@ export interface RecognitionResult {
 
 export async function recognizeSyntheticLabel(image: File): Promise<RecognitionResult> {
   const worker = await createWorker("eng", OEM.LSTM_ONLY, {
-    workerPath: "/ocr-assets/worker.min.js",
-    corePath: "/ocr-assets/core",
-    langPath: "/ocr-assets/lang",
+    workerPath: `${OCR_ASSET_BASE}/worker.min.js`,
+    corePath: `${OCR_ASSET_BASE}/core`,
+    langPath: `${OCR_ASSET_BASE}/lang`,
     cacheMethod: "none",
     logger: () => undefined,
   });

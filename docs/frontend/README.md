@@ -23,6 +23,8 @@ fixture data, topology claims, or browser-only writes.
 - `MOCKUP_REFERENCE.md` — immutable selected-source hashes and exclusions.
 - `COMPONENT_MIGRATION.md` — shared visual primitive mapping and evidence.
 - `PAGE_MIGRATION.md` — selected/deferred page mapping and API dependencies.
+- `FRONTEND_ONLY_EXTENSION.md` — post-Sprint-05 visual-only surfaces and deferred dependencies.
+- `CAPTURE_PWA_VISUAL_PARITY.md` — scanner appearance adaptation and preserved Capture PWA boundaries.
 - `VALIDATION.md` — reproducible frontend-only validation conditions and limits.
 
 An entry is complete only when the official implementation, applicable tests,

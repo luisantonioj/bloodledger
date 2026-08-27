@@ -12,10 +12,11 @@
 | Reporting | `pages/reporting.jsx` | `apps/web/src/features/reporting/` | regulatory read-only | simulation JSON/CSV reports | Implemented; automated validation passed |
 | Profile | `pages/profile.jsx` | `apps/web/src/features/profile/` | own safe principal/institution metadata | current session/profile | Implemented; automated validation passed |
 | Accounts/onboarding | `pages/accounts.jsx` and login application flow | `features/auth/access-page.tsx` and `features/accounts/accounts-parity-preview.tsx` | frontend-only preview for applicants and administrative compositions | BL-API-02 | Visual parity extension implemented after Sprint 5; all submission, persistence, review, authorization, and mutation behavior deferred |
-| Scanner | `pages/scanner.jsx` | existing `apps/capture-pwa/` link | authorized capture users | Sprint 4 scan API | Rejected duplicate |
+| Scanner | `pages/scanner.jsx` | `apps/capture-pwa/` | authorized capture users | Sprint 4 scan API and offline queue | Mockup-derived visual adaptation implemented after Sprint 5; official capture behavior preserved |
 
 All selected runtime pages use typed official API services. Fixtures are limited
-
-The post-Sprint-05 visual-only boundary and every missing activation dependency
-are recorded in [`FRONTEND_ONLY_EXTENSION.md`](./FRONTEND_ONLY_EXTENSION.md).
 to tests and isolated component validation; there is no runtime mock fallback.
+The post-Sprint-05 visual-only boundary and every missing activation dependency
+are recorded in [`FRONTEND_ONLY_EXTENSION.md`](./FRONTEND_ONLY_EXTENSION.md),
+while scanner-specific differences are recorded in
+[`CAPTURE_PWA_VISUAL_PARITY.md`](./CAPTURE_PWA_VISUAL_PARITY.md).

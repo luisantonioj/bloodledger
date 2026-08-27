@@ -30,7 +30,7 @@ Only synthetic information may be entered during review.
 | Expanded profile | `features/profile/profile-parity-preview.tsx` | Personal, facility, licensing, application, access, security sections and edit dialogs | Safe session fields only; submissions disabled |
 | Global search, notifications, and pending count | application shell | Mockup-derived local popovers and categorized preview results | No query, notification feed, or authoritative count; preview state only |
 | Navigation badge | application shell | Accounts Preview badge | Static visual label, not an authoritative count |
-| Scanner | existing `apps/capture-pwa/` | No duplicate web scanner | Sprint 04 capture boundary remains authoritative |
+| Scanner | `apps/capture-pwa/src/app.tsx` | Mockup-derived mobile header, framed capture area, staged confirmation, offline banner, and device queue | Existing Sprint 04 OCR, fallback, confirmation, privacy, and synchronization behavior remains authoritative; see `CAPTURE_PWA_VISUAL_PARITY.md` |
 | Design preview panel | `components/layout/design-preview-panel.tsx` | Local theme, accent, and density controls | Component state only; no persistence or host protocol |
 
 The Accounts link is composed for `ROLE-05` and `ROLE-06` in the browser to
@@ -39,13 +39,14 @@ only and is not backend authorization.
 
 ## Remaining exclusions
 
-The scanner is the only mockup product page not visually reproduced in
-`apps/web`. It remains owned by the separately reviewed Capture PWA and is not
-changed by this extension. The mockup's fixture/session architecture,
-plaintext credentials, real-person-like records, fabricated hashes or network
-topology, runtime CDN/Babel loading, global `window.*` collections, duplicate
-source tree, and host messaging/persistence behavior remain rejected. Visual
-parity does not authorize reconstructing those implementation patterns.
+All approved product surfaces are now visually represented across `apps/web`
+and the separately owned Capture PWA. The scanner adaptation is documented in
+`CAPTURE_PWA_VISUAL_PARITY.md`; it does not duplicate scanning in `apps/web`.
+The mockup's fixture/session architecture, plaintext credentials,
+real-person-like records, fabricated hashes or network topology, runtime
+CDN/Babel loading, global `window.*` collections, duplicate source tree, and
+host messaging/persistence behavior remain rejected. Visual parity does not
+authorize reconstructing those implementation patterns.
 
 ## Deferred dependency register
 

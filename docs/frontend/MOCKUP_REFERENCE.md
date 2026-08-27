@@ -48,3 +48,9 @@ separately authorized a frontend-only visual parity extension on 2026-08-26 and
 recorded in `FRONTEND_ONLY_EXTENSION.md`. That later authorization does not
 adopt the mockup's fixture/session architecture and does not change the Capture
 PWA ownership boundary.
+
+Lat later authorized a visual adaptation of the excluded scanner appearance on
+2026-08-27. That decision is documented in `CAPTURE_PWA_VISUAL_PARITY.md` and
+preserves the official PWA's OCR, fallback, confirmation, privacy, offline
+queue, and synchronization contracts. It does not retroactively add scanner
+behavior to the frozen Sprint 05 visual snapshot.
