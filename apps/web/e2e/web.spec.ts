@@ -255,8 +255,8 @@ test("human FEFO approval retry preserves intent and never submits selected unit
   await page.getByRole("link", { name: "Transfers", exact: true }).click();
   await expect(page.locator(".transfer-overview")).toBeVisible();
   await expect(page.locator(".transfer-route")).toContainText("INST_MEDIATRIX");
-  await expect(page.getByRole("button", { name: "View" })).toBeInViewport({ ratio: 1 });
-  await page.getByRole("button", { name: "View" }).click();
+  await expect(page.getByRole("button", { name: "View", exact: true })).toBeInViewport({ ratio: 1 });
+  await page.getByRole("button", { name: "View", exact: true }).click();
   await expect(page.getByText("Human FEFO authorization", { exact: true })).toBeVisible();
   await expect(page.getByText("Disabled; human authorization required", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Approve FEFO selection" }).click();
@@ -305,7 +305,7 @@ test("human rejection retry preserves controlled reason and source authority", a
   });
   await page.goto("/");
   await page.getByRole("link", { name: "Transfers", exact: true }).click();
-  await page.getByRole("button", { name: "View" }).click();
+  await page.getByRole("button", { name: "View", exact: true }).click();
   await page.getByRole("button", { name: "Reject request", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("retry the same rejection");
   await page.getByRole("button", { name: "Retry same rejection", exact: true }).click();
@@ -351,7 +351,7 @@ test("approved cancellation retry preserves reason through projection reconcilia
   });
   await page.goto("/");
   await page.getByRole("link", { name: "Transfers", exact: true }).click();
-  await page.getByRole("button", { name: "View" }).click();
+  await page.getByRole("button", { name: "View", exact: true }).click();
   await page.getByRole("button", { name: "Cancel transfer", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("retry the same cancellation");
   await page.getByRole("button", { name: "Retry same cancellation", exact: true }).click();
@@ -397,7 +397,7 @@ test("dispatch retry preserves approved synthetic source evidence and mutation i
   });
   await page.goto("/");
   await page.getByRole("link", { name: "Transfers", exact: true }).click();
-  await page.getByRole("button", { name: "View" }).click();
+  await page.getByRole("button", { name: "View", exact: true }).click();
   await page.getByLabel("Fallback reason").selectOption("PERMISSION_DENIED");
   await page.getByRole("button", { name: "Record dispatch" }).click();
   await expect(page.getByRole("alert")).toContainText("retry the same dispatch");
@@ -473,7 +473,7 @@ test("transit delay and resume retries preserve custody and versioned intent", a
   });
   await page.goto("/");
   await page.getByRole("link", { name: "Transfers", exact: true }).click();
-  await page.getByRole("button", { name: "View" }).click();
+  await page.getByRole("button", { name: "View", exact: true }).click();
   await page.getByRole("button", { name: "Start transit", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("retry the same transit transition");
   await page.getByRole("button", { name: "Retry same transition", exact: true }).click();
@@ -536,7 +536,7 @@ test("receipt retry preserves approved synthetic destination evidence and scoped
   }, { institutionId: "INST_METRO_LIPA", institutionDisplayName: "Synthetic Metro Lipa Hospital" });
   await page.goto("/");
   await page.getByRole("link", { name: "Transfers", exact: true }).click();
-  await page.getByRole("button", { name: "View" }).click();
+  await page.getByRole("button", { name: "View", exact: true }).click();
   await page.getByLabel("Fallback reason").selectOption("SIGNAL_UNAVAILABLE");
   await page.getByRole("button", { name: "Record receipt" }).click();
   await expect(page.getByRole("alert")).toContainText("retry the same receipt");
@@ -742,6 +742,14 @@ test("keyboard navigation reaches an authorized page without changing institutio
   await expect(page.getByRole("heading", { name: "Profile", exact: true })).toBeVisible();
   await expect(page.locator(".profile-kv dd.mono").filter({ hasText: activePrincipal.institutionId })).toBeVisible();
   await expect(page.getByText("Role and institution cannot be changed from this browser session.")).toBeVisible();
+  await page.getByRole("button", { name: "Edit contact" }).click();
+  await expect(page.getByRole("dialog", { name: "Edit contact information" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "Change password" }).click();
+  await expect(page.getByRole("dialog", { name: "Change password" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Update password" })).toBeDisabled();
+  await page.getByRole("button", { name: "Cancel" }).click();
 });
 
 test("administrators can review the visual-only account workspace without mutation APIs", async ({ page }) => {
@@ -752,7 +760,37 @@ test("administrators can review the visual-only account workspace without mutati
   await expect(page.getByText("Visual administration workspace", { exact: true })).toBeVisible();
   await expect(page.getByText("APP-SYNTH-0001", { exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "User accounts" }).click();
-  await expect(page.getByText("No account-management API", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Provision account" })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Manage account" })).toBeDisabled();
+  await expect(page.getByText("Authorized user accounts", { exact: true })).toBeVisible();
+  await expect(page.getByText("USR-SYNTH-ROLE01", { exact: true })).toBeVisible();
+  await expect(page.getByText("USR-SYNTH-ROLE06", { exact: true })).toBeVisible();
+  await expect(page.getByText("6 preview rows", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Provision account" }).click();
+  await expect(page.getByRole("dialog", { name: "Manage user account" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save account" })).toBeDisabled();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("tab", { name: "Roles & capabilities" }).click();
+  await expect(page.getByRole("heading", { name: "Official roles and capabilities" })).toBeVisible();
+  for (const roleId of ["ROLE-01", "ROLE-02", "ROLE-03", "ROLE-04", "ROLE-05", "ROLE-06"]) {
+    await expect(page.getByText(roleId, { exact: true })).toBeVisible();
+  }
+  await expect(page.getByText("Boundary: No clinical, custody, or transfer authority by default.", { exact: true })).toBeVisible();
+});
+
+test("visual parity controls remain local previews without connected claims", async ({ page }) => {
+  await authenticatedApi(page, "ROLE-01");
+  await page.goto("/");
+  await page.getByLabel("Search records").fill("SYNTH-UNIT");
+  await expect(page.getByText("No connected results for")).toBeVisible();
+  await expect(page.getByText("Search API unavailable", { exact: true })).toHaveCount(3);
+  await page.getByRole("button", { name: "Close search preview" }).click();
+  await page.getByRole("button", { name: "Open notifications preview" }).click();
+  await expect(page.getByText("No connected notification feed", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Close notifications preview" }).click();
+  await page.getByRole("button", { name: "Open design preview controls" }).click();
+  await page.getByRole("button", { name: "Dark" }).click();
+  await expect(page.locator(".shell")).toHaveClass(/preview-dark/);
+  await page.getByRole("button", { name: "Green accent" }).click();
+  await expect(page.locator(".shell")).toHaveClass(/preview-accent-green/);
+  await page.getByRole("button", { name: "Compact" }).click();
+  await expect(page.locator(".shell")).toHaveClass(/preview-compact/);
 });

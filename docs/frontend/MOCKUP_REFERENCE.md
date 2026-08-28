@@ -39,3 +39,18 @@ The snapshot identifies appearance and interaction references only. It excludes:
 
 Excluded content must not be reconstructed from the mockup during migration.
 Use opaque test fixtures and official contracts.
+
+## Historical boundary and later extension
+
+The exclusions above remain the immutable Sprint 05 migration boundary. Lat
+separately authorized a frontend-only visual parity extension on 2026-08-26 and
+2026-08-27. Its implemented surfaces and deliberately missing dependencies are
+recorded in `FRONTEND_ONLY_EXTENSION.md`. That later authorization does not
+adopt the mockup's fixture/session architecture and does not change the Capture
+PWA ownership boundary.
+
+Lat later authorized a visual adaptation of the excluded scanner appearance on
+2026-08-27. That decision is documented in `CAPTURE_PWA_VISUAL_PARITY.md` and
+preserves the official PWA's OCR, fallback, confirmation, privacy, offline
+queue, and synchronization contracts. It does not retroactively add scanner
+behavior to the frozen Sprint 05 visual snapshot.

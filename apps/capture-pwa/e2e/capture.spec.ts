@@ -45,6 +45,10 @@ test("PA-S4-01 extracts all 16 clean synthetic labels exactly on device", async 
     }
   });
   await app.goto("/");
+  await expect(app.getByText("Mobile OCR Scanner", { exact: true })).toBeVisible();
+  await expect(app.getByRole("heading", { name: "Blood Unit Capture" })).toBeVisible();
+  await expect(app.getByText("ALIGN LABEL INSIDE FRAME", { exact: true })).toBeVisible();
+  await expect(app.getByText("Images are never uploaded", { exact: true })).toBeVisible();
   for (const [index, label] of labels.entries()) {
     await recognize(app, await labelImage(generator, label), `clean-${index + 1}.png`);
     const review = app.getByRole("heading", { name: "2. Confirm extracted fields" });
@@ -127,6 +131,7 @@ test("FR-13 retains only structured data offline and replays it after connectivi
   await expect(page.getByRole("heading", { name: "2. Confirm extracted fields" })).toBeVisible();
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
   await context.setOffline(true);
+  await expect(page.getByText("Offline capture is available", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "I confirm every field" }).click();
   await expect(page.getByText("Saved locally; synchronization will be retried.")).toBeVisible();
   expect(intakeCalls).toBe(0);

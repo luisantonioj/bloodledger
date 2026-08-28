@@ -1,7 +1,7 @@
 # Frontend-Only Parity Extension Register
 
-**Status:** Implemented visual preview; backend and integrated behavior deferred
-**Authorization:** Lat / 2026-08-26
+**Status:** Non-capture mockup visual parity implemented; backend and integrated behavior deferred
+**Authorization:** Lat / 2026-08-26 and 2026-08-27
 **Baseline:** accepted Sprint 05 merge `7c87c67`, followed by formal Testing-phase planning commit `2ebc3ea`
 **Visual reference:** `MOCKUP_VISUAL_2026-08-20`
 
@@ -26,16 +26,35 @@ Only synthetic information may be entered during review.
 | Four-step application | `features/auth/access-page.tsx` | Facility, qualification, primary account, documents | Values are not submitted or persisted |
 | Document cards | `features/auth/access-page.tsx` | Mockup-derived upload areas | Controls are disabled; no files are read or stored |
 | Completion state | `features/auth/access-page.tsx` | Reviewable end state | Explicitly says no application was submitted |
-| Administration workspace | `features/accounts/accounts-preview.tsx` | Overview, applications, institutions, users, activity | Two synthetic display rows; all mutations disabled |
-| Expanded profile | `features/profile/profile-preview.tsx` | Personal, facility, licensing, application, access, security sections | Safe session fields only; unavailable fields say so |
-| Global search | application shell | Mockup-derived search field | Read-only and labeled preview-only |
-| Navigation badge | application shell | Accounts Preview badge | Static visual label, not a count |
-| Scanner | existing `apps/capture-pwa/` | No duplicate web scanner | Sprint 04 capture boundary remains authoritative |
-| Runtime theme panel | none | Not reproduced | Still intentionally excluded |
+| Administration workspace | `features/accounts/accounts-parity-preview.tsx` | Overview, applications, institutions, all six official user-role compositions, role capability boundaries, activity, and review dialogs | Synthetic demonstration rows only; all mutations disabled |
+| Expanded profile | `features/profile/profile-parity-preview.tsx` | Personal, facility, licensing, application, access, security sections and edit dialogs | Safe session fields only; submissions disabled |
+| Global search, notifications, and pending count | application shell | Mockup-derived local popovers and categorized preview results | No query, notification feed, or authoritative count; preview state only |
+| Navigation badge | application shell | Accounts Preview badge | Static visual label, not an authoritative count |
+| Scanner | `apps/capture-pwa/src/app.tsx` | Mockup-derived mobile header, framed capture area, staged confirmation, offline banner, and device queue | Existing Sprint 04 OCR, fallback, confirmation, privacy, and synchronization behavior remains authoritative; see `CAPTURE_PWA_VISUAL_PARITY.md` |
+| Design preview panel | `components/layout/design-preview-panel.tsx` | Local theme, accent, and density controls | Component state only; no persistence or host protocol |
 
 The Accounts link is composed for `ROLE-05` and `ROLE-06` in the browser to
 match the administrative mockup audience. That visibility rule is usability
 only and is not backend authorization.
+
+The User accounts and Roles & capabilities tabs visually represent `ROLE-01`
+through `ROLE-06`, their synthetic institution scope, and the least-privilege
+boundaries approved in `REQUIREMENTS.md` Section 2. The separate local review
+accounts already provisioned for those roles remain outside Git; this page does
+not read their credential file or duplicate passwords. These rows and cards are
+a presentation reference, not evidence that account-management APIs or backend
+authorization have been implemented.
+
+## Remaining exclusions
+
+All approved product surfaces are now visually represented across `apps/web`
+and the separately owned Capture PWA. The scanner adaptation is documented in
+`CAPTURE_PWA_VISUAL_PARITY.md`; it does not duplicate scanning in `apps/web`.
+The mockup's fixture/session architecture, plaintext credentials,
+real-person-like records, fabricated hashes or network topology, runtime
+CDN/Babel loading, global `window.*` collections, duplicate source tree, and
+host messaging/persistence behavior remain rejected. Visual parity does not
+authorize reconstructing those implementation patterns.
 
 ## Deferred dependency register
 
@@ -50,6 +69,7 @@ only and is not backend authorization.
 | Password recovery/change | Recovery and change endpoints | Revocable recovery challenge/session state | Identity proofing and recovery policy | Enumeration resistance, expiry, replay prevention, throttling, session revocation | Security, expiry, replay, throttling, revocation, and browser tests |
 | Global search | Permission-scoped search endpoint | Search index or safe query contracts | Entity/field visibility per role and institution | Query limits, redaction, injection and enumeration protection | Scope isolation, redaction, performance, abuse, and accessibility tests |
 | Navigation badges | Aggregate/count endpoints | Optional derived count projection | Same visibility rules as destination feature | Freshness, stale-state and information leakage controls | Scope, freshness, empty/error, and browser tests |
+| Notifications | Permission-scoped notification endpoint | Notification delivery/read-state projection | Recipient, role, institution, and message-content visibility | Redaction, rate limits, acknowledgement integrity, and leakage controls | Scope, redaction, unread-state, failure, and browser tests |
 | Administration activity | Permission-scoped audit endpoint | Durable administration event projection | Auditor/reviewer scope and retention policy | Redaction and tamper-evident linkage | Scope, redaction, ordering, retention, and failure tests |
 
 ## Activation rule

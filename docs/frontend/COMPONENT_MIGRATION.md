@@ -10,9 +10,9 @@
 | Table and matrix patterns | feature components plus shared UI | FR-03, FR-04 | Implemented; automated validation passed | scoped data, empty, stale, and unauthorized tests |
 | Modal and confirmation | `apps/web/src/components/ui/` | NFR-02 | Implemented; automated validation passed | keyboard and non-destructive recovery tests |
 | Toast/status feedback | `apps/web/src/components/ui/` | NFR-06 | Implemented; automated validation passed | outcome text and reduced-motion styles |
-| Global search field and navigation badge | application shell | post-Sprint-05 visual parity extension | Visual preview implemented; search/count APIs deferred | read-only search and explicit Preview badge |
+| Global search, notifications, pending count, and navigation badge | application shell | post-Sprint-05 visual parity extension | Local visual previews implemented; APIs deferred | local-only popovers and explicit Preview labels |
 | Onboarding, administration, and expanded-profile layouts | feature components | post-Sprint-05 visual parity extension | Visual preview implemented; activation dependencies deferred | `FRONTEND_ONLY_EXTENSION.md` |
-| Tweaks panel and runtime themes | none | Sprint 5 exclusion | Deferred | not shipped |
+| Design preview panel | `apps/web/src/components/layout/design-preview-panel.tsx` | post-Sprint-05 visual parity extension | Local-only visual preview implemented; host protocol and persistence rejected | browser assertions and `FRONTEND_ONLY_EXTENSION.md` |
 | Global `window.*` collections | none | official architecture | Rejected | prohibited-pattern scan |
 | Runtime CDN/Babel scripts | none | official packaging | Rejected | production build and network inspection |
 
