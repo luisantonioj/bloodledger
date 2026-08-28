@@ -26,7 +26,7 @@ Only synthetic information may be entered during review.
 | Four-step application | `features/auth/access-page.tsx` | Facility, qualification, primary account, documents | Values are not submitted or persisted |
 | Document cards | `features/auth/access-page.tsx` | Mockup-derived upload areas | Controls are disabled; no files are read or stored |
 | Completion state | `features/auth/access-page.tsx` | Reviewable end state | Explicitly says no application was submitted |
-| Administration workspace | `features/accounts/accounts-parity-preview.tsx` | Overview, applications, institutions, user accounts, activity, and review dialogs | Generic synthetic rows only; all mutations disabled |
+| Administration workspace | `features/accounts/accounts-parity-preview.tsx` | Overview, applications, institutions, all six official user-role compositions, role capability boundaries, activity, and review dialogs | Synthetic demonstration rows only; all mutations disabled |
 | Expanded profile | `features/profile/profile-parity-preview.tsx` | Personal, facility, licensing, application, access, security sections and edit dialogs | Safe session fields only; submissions disabled |
 | Global search, notifications, and pending count | application shell | Mockup-derived local popovers and categorized preview results | No query, notification feed, or authoritative count; preview state only |
 | Navigation badge | application shell | Accounts Preview badge | Static visual label, not an authoritative count |
@@ -36,6 +36,14 @@ Only synthetic information may be entered during review.
 The Accounts link is composed for `ROLE-05` and `ROLE-06` in the browser to
 match the administrative mockup audience. That visibility rule is usability
 only and is not backend authorization.
+
+The User accounts and Roles & capabilities tabs visually represent `ROLE-01`
+through `ROLE-06`, their synthetic institution scope, and the least-privilege
+boundaries approved in `REQUIREMENTS.md` Section 2. The separate local review
+accounts already provisioned for those roles remain outside Git; this page does
+not read their credential file or duplicate passwords. These rows and cards are
+a presentation reference, not evidence that account-management APIs or backend
+authorization have been implemented.
 
 ## Remaining exclusions
 

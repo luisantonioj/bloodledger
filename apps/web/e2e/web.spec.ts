@@ -762,10 +762,18 @@ test("administrators can review the visual-only account workspace without mutati
   await page.getByRole("tab", { name: "User accounts" }).click();
   await expect(page.getByText("Authorized user accounts", { exact: true })).toBeVisible();
   await expect(page.getByText("USR-SYNTH-ROLE01", { exact: true })).toBeVisible();
+  await expect(page.getByText("USR-SYNTH-ROLE06", { exact: true })).toBeVisible();
+  await expect(page.getByText("6 preview rows", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Provision account" }).click();
   await expect(page.getByRole("dialog", { name: "Manage user account" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save account" })).toBeDisabled();
   await page.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("tab", { name: "Roles & capabilities" }).click();
+  await expect(page.getByRole("heading", { name: "Official roles and capabilities" })).toBeVisible();
+  for (const roleId of ["ROLE-01", "ROLE-02", "ROLE-03", "ROLE-04", "ROLE-05", "ROLE-06"]) {
+    await expect(page.getByText(roleId, { exact: true })).toBeVisible();
+  }
+  await expect(page.getByText("Boundary: No clinical, custody, or transfer authority by default.", { exact: true })).toBeVisible();
 });
 
 test("visual parity controls remain local previews without connected claims", async ({ page }) => {
