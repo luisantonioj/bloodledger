@@ -5,6 +5,7 @@ import { encryptDonationNumber, type DonationKeyring, validateDonationNumber } f
 import type { WebPrincipal } from "./session.js";
 import type { V2CommandStore, V2ResourceType } from "./v2-command.js";
 import type { CensusStore } from "./census-worker.js";
+import type { V2ProjectionReader } from "./database-v2.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
 const CORRELATION_PATTERN = /^CORR_[0-9A-F]{32}$/;
@@ -22,6 +23,7 @@ export interface V2RouteDependencies {
   restore: (request: FastifyRequest) => Promise<{ principal: WebPrincipal }>;
   keyring?: DonationKeyring;
   census?: CensusStore;
+  projection?: V2ProjectionReader;
   webOrigin: string;
   clock: () => Date;
 }
@@ -86,6 +88,23 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     return safeCommand(command, request);
   });
 
+  app.get("/api/v2/components", async (request) => {
+    const { principal } = await restore(request);
+    if (!dependencies.projection) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "The component projection is not available.");
+    if (principal.roleId === "ROLE-04") throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Regulatory readers receive aggregate reports, not component records.");
+    return { scope: "INSTITUTION", components: await dependencies.projection.listComponents(principal.institutionId, principal.roleId), classification: "SIMULATION_ONLY" as const };
+  });
+
+  app.get<{ Params: { componentId: string } }>("/api/v2/components/:componentId", async (request) => {
+    const { principal } = await restore(request);
+    if (!dependencies.projection) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "The component projection is not available.");
+    if (!COMPONENT_ID_PATTERN.test(request.params.componentId)) throw new ApiFailure(400, "V2_COMPONENT_ID_INVALID", "Component ID is invalid.");
+    if (principal.roleId === "ROLE-04") throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Regulatory readers receive aggregate reports, not component records.");
+    const component = await dependencies.projection.getComponent(request.params.componentId, principal.institutionId, principal.roleId);
+    if (!component) throw new ApiFailure(404, "V2_COMPONENT_NOT_FOUND", "The component was not found in the authorized scope.");
+    return component;
+  });
+
   app.post("/api/v2/components", async (request, reply) => {
     sameOrigin(request); const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02"]);
     if (!dependencies.keyring) throw new ApiFailure(503, "V2_KEYS_UNAVAILABLE", "Donation encryption keys are not available.");
@@ -111,6 +130,20 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!(BLOOD_TYPES as readonly string[]).includes(bloodType) || !(COMPONENT_TYPES as readonly string[]).includes(componentType) || !(URGENCIES as readonly string[]).includes(urgency) || !Number.isSafeInteger(body.quantity) || Number(body.quantity) < 1) throw new ApiFailure(400, "V2_INPUT_INVALID", "Transfer request input is invalid.");
     const payload = { transferId, sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: principal.institutionId, bloodType, componentType, quantity: Number(body.quantity), urgency, requestTime: requiredUtc(body, "requestTime"), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN) };
     return enqueue(request, reply, "TRANSFER", transferId, "SUBMIT_TRANSFER", payload, principal);
+  });
+
+  app.post<{ Params: { transferId: string; action: string } }>("/api/v2/transfers/:transferId/:action", async (request, reply) => {
+    sameOrigin(request); const { principal } = await restore(request);
+    if (!TRANSFER_ID_PATTERN.test(request.params.transferId)) throw new ApiFailure(400, "V2_TRANSFER_ID_INVALID", "Transfer ID is invalid.");
+    const action = request.params.action.toLowerCase();
+    const roleMap: Record<string, readonly WebPrincipal["roleId"][]> = { approve: ["ROLE-02"], prepare: ["ROLE-01", "ROLE-02"], dispatch: ["ROLE-01", "ROLE-02"], transit: ["ROLE-01", "ROLE-02"], receipt: ["ROLE-03"], delay: ["ROLE-01", "ROLE-02", "ROLE-03"], compromise: ["ROLE-01", "ROLE-02", "ROLE-03"], cancel: ["ROLE-02", "ROLE-03"], reject: ["ROLE-02"] };
+    const roles = roleMap[action]; if (!roles) throw new ApiFailure(404, "V2_ACTION_NOT_FOUND", "Transfer action is not supported."); authorized(principal, roles);
+    const actionKeys = action === "delay" || action === "compromise" || action === "cancel" || action === "reject" ? ["correlationId", "eventTime", "expectedVersion", "reasonCode"] : ["correlationId", "eventTime", "expectedVersion"];
+    if (!hasKeys(request.body, actionKeys)) throw new ApiFailure(400, "V2_INPUT_INVALID", "Transfer action input is invalid.");
+    const body = request.body as Record<string, unknown>; if (!Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1) throw new ApiFailure(400, "V2_VERSION_INVALID", "Expected version is invalid.");
+    const payload: Record<string, unknown> = { transferId: request.params.transferId, expectedVersion: Number(body.expectedVersion), actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN) };
+    if (body.reasonCode !== undefined) payload.reasonCode = requiredBodyString(body, "reasonCode", /^[A-Z][A-Z0-9_]{2,63}$/);
+    return enqueue(request, reply, "TRANSFER", request.params.transferId, action.toUpperCase(), payload, principal);
   });
 
   app.post("/api/v2/local-releases", async (request, reply) => {
@@ -164,19 +197,19 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const action = request.params.action.toLowerCase();
     const body = request.body;
     const allowedActionKeys: Record<string, readonly string[]> = {
-      prepare: ["correlationId", "expectedVersion", "preparedAt", "preparedEvidenceDigest", "preparedEvidenceId"],
-      compromise: ["correlationId", "expectedVersion", "reasonCode"],
-      cancel: ["correlationId", "expectedVersion"],
-      dispatch: ["correlationId", "expectedVersion"],
-      transit: ["correlationId", "expectedVersion"],
-      receive: ["correlationId", "expectedVersion"],
-      "local-release-complete": ["correlationId", "expectedVersion"],
+      prepare: ["correlationId", "eventTime", "expectedVersion", "preparedAt", "preparedEvidenceDigest", "preparedEvidenceId"],
+      compromise: ["correlationId", "eventTime", "expectedVersion", "reasonCode"],
+      cancel: ["correlationId", "eventTime", "expectedVersion"],
+      dispatch: ["correlationId", "eventTime", "expectedVersion"],
+      transit: ["correlationId", "eventTime", "expectedVersion"],
+      receive: ["correlationId", "eventTime", "expectedVersion"],
+      "local-release-complete": ["correlationId", "eventTime", "expectedVersion"],
     };
     if (!hasKeys(body, allowedActionKeys[action] ?? [])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Reservation action input is invalid.");
     if (!Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1) throw new ApiFailure(400, "V2_VERSION_INVALID", "Expected version is invalid.");
     const roleMap: Record<string, readonly WebPrincipal["roleId"][]> = { prepare: ["ROLE-01", "ROLE-02"], dispatch: ["ROLE-01", "ROLE-02"], transit: ["ROLE-01", "ROLE-02"], receive: ["ROLE-03"], cancel: ["ROLE-01", "ROLE-02", "ROLE-03"], "local-release-complete": ["ROLE-01", "ROLE-02"], compromise: ["ROLE-01", "ROLE-02", "ROLE-03"] };
     const roles = roleMap[action]; if (!roles) throw new ApiFailure(404, "V2_ACTION_NOT_FOUND", "Reservation action is not supported."); authorized(principal, roles);
-    const payload: Record<string, unknown> = { reservationId: request.params.reservationId, expectedVersion: Number(body.expectedVersion), actorUserId: principal.userId, eventTime: dependencies.clock().toISOString(), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN) };
+    const payload: Record<string, unknown> = { reservationId: request.params.reservationId, expectedVersion: Number(body.expectedVersion), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN) };
     for (const key of ["preparedEvidenceDigest", "preparedEvidenceId", "preparedAt", "reasonCode"] as const) if (body[key] !== undefined) payload[key] = body[key];
     return enqueue(request, reply, "TRANSFER", request.params.reservationId, action.toUpperCase(), payload, principal);
   });

@@ -80,6 +80,46 @@
         }
       }
     },
+    "/transfers/{transferId}/{action}": {
+      "post": {
+        "operationId": "transitionTransfer",
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "approve",
+                "prepare",
+                "dispatch",
+                "transit",
+                "receipt",
+                "delay",
+                "compromise",
+                "cancel",
+                "reject"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Command"
+          }
+        }
+      }
+    },
     "/reports/doh-census/{snapshotId}": {
       "get": {
         "operationId": "getCensusSnapshot",
