@@ -320,7 +320,7 @@
         "additionalProperties": false
       },
       "Census": {
-        "$ref": "../contracts/doh-census-v2.schema.json"
+        "$ref": "../../contracts/doh-census-v2.schema.json"
       }
     },
     "responses": {
@@ -341,7 +341,7 @@
             "schema": {
               "type": "array",
               "items": {
-                "$ref": "../contracts/core-v2.schema.json"
+                "$ref": "../../contracts/core-v2.schema.json"
               }
             }
           }
@@ -352,7 +352,7 @@
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "../contracts/doh-census-v2.schema.json"
+              "$ref": "../../contracts/doh-census-v2.schema.json"
             }
           }
         }
