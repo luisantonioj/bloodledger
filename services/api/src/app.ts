@@ -18,6 +18,8 @@ import { captureSyntheticLocationEvidence } from "./location-evidence.js";
 import { registerV2Routes } from "./v2-routes.js";
 import type { DonationKeyring } from "./donation-crypto.js";
 import type { V2CommandStore } from "./v2-command.js";
+import type { CensusStore } from "./census-worker.js";
+import type { V2ProjectionReader } from "./database-v2.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
 const EVENT_PATTERN = /^SCAN_[0-9A-F]{32}$/;
@@ -113,7 +115,7 @@ export async function buildApp(
   sessions?: SessionRepository,
   applicationReads?: ApplicationReadRepository,
   applicationWrites?: ApplicationWriteRepository,
-  v2?: { store: V2CommandStore; keyring?: DonationKeyring },
+  v2?: { store: V2CommandStore; keyring?: DonationKeyring; census?: CensusStore; projection?: V2ProjectionReader },
 ): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {

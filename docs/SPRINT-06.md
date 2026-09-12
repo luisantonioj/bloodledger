@@ -1,13 +1,17 @@
 # Sprint 6 — Interview-Aligned Core V2
 
-**Status:** Authorized 2026-09-12 by Jopia  
-**Accountable owner:** Jopia  
-**Technical implementation and validation:** Jopia (self-validation disclosed)  
-**Frontend owner:** Lat, separate branch and schedule  
-**Forecasting owner:** Buno, separate branch and schedule  
-**Base:** `main` at `4af7cac`  
-**Implementation branch:** `codex/mediatrix-interview-core-v2`  
+**Status:** Authorized 2026-09-12 by Jopia
+**Accountable owner:** Jopia
+**Technical implementation and validation:** Jopia (self-validation disclosed)
+**Frontend owner:** Lat, separate branch and schedule
+**Forecasting owner:** Buno, separate branch and schedule
+**Base:** `main` at `4af7cac`
+**Implementation branch:** `codex/mediatrix-interview-core-v2`
 **Classification:** `SIMULATION_ONLY`
+
+**Authorization evidence:** Jopia authorized this branch on 2026-09-12 after
+MMMC ethics and quality-management approval. Approval documents and identifiers
+are intentionally not stored in Git; this is a sanitized scope record.
 
 ## 1. Purpose
 
@@ -81,6 +85,18 @@ Before Sprint 6 is marked complete, Jopia reviews test evidence, migration and
 recovery results, open `RQ-*` decisions, deferred Lat/Buno work, security
 limitations, and the self-validation disclosure.
 
+### Recorded gate outcomes
+
+- Sprint authorization was answered by Jopia on 2026-09-12; Jopia is the
+  acceptance authority and accountable implementer.
+- Contract choices were answered. Exact issuer character/length rules, key
+  custody/rotation/recovery, local-release/reconciliation code lists, and the
+  official report column order remain external inputs; dependent behavior stays
+  disabled.
+- Policy activation was not approved. Near-expiry alerts, operational RPS/BROA
+  eligibility, and DOH copy mode remain disabled pending approved thresholds,
+  report policy, and institutional scoring approval.
+
 ## 4. Commit groups
 
 1. `docs(sprint-6): authorize interview-aligned core v2`
@@ -99,7 +115,20 @@ limitations, and the self-validation disclosure.
 Each commit must pass the relevant focused checks and must not modify
 `apps/web`, `apps/capture-pwa`, or `services/forecasting`.
 
-## 5. Acceptance boundary
+## 5. Handoffs
+
+LAT receives `services/api/openapi-v2.json`, including the command envelope,
+role-scoped component reads, transfer actions, local-release and reconciliation
+routes, and versioned census TSV behavior. Frontend work is outside this branch.
+
+Buno receives `contracts/source-surplus-evidence-v2.schema.json` and the
+simulation-only freshness/classification gate in `services/coordination`.
+Forecasting code and model training remain outside this branch.
+
+The accountable owner performed the validation recorded here; additional-host
+and stakeholder validation remain optional or separately gated evidence.
+
+## 6. Acceptance boundary
 
 Sprint 6 does not establish clinical validity, real ISBT compatibility,
 operational forecast accuracy, regulatory filing status, production readiness,
