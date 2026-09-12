@@ -1,6 +1,6 @@
 import { sha256 } from "./hash.js";
 import { fail } from "./errors.js";
-import { INTERVIEW_V2_BLOOD_TYPES, INTERVIEW_V2_COMPONENT_TYPES, INTERVIEW_V2_CLASSIFICATION, INTERVIEW_V2_POLICY_VERSION, INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY, type InterviewV2BloodType, type InterviewV2ComponentType, type SourceSurplusEvidenceV2 } from "./v2-contracts.js";
+import { INTERVIEW_V2_BLOOD_TYPES, INTERVIEW_V2_COMPONENT_TYPES, INTERVIEW_V2_CLASSIFICATION, INTERVIEW_V2_POLICY_VERSION, INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY, type InterviewV2BloodType, type InterviewV2ComponentType, type SourceSurplusEvidenceV2, validateSourceSurplusEvidenceV2 } from "./v2-contracts.js";
 import policy from "../policy/interview-derived-optimization-v2.json" with { type: "json" };
 
 export interface BroaV2Candidate { destinationInstitutionId: string; sourceInstitutionId: string; bloodType: InterviewV2BloodType; componentType: InterviewV2ComponentType; urgency: number; stockShortage: number; distanceKm: number; eligible: boolean; context: { relationshipClass: "PARTNER" | "NON_PARTNER" | "UNKNOWN"; scheduledDonationWindow: { startDate: string; endDate: string } | null }; }
@@ -12,7 +12,9 @@ export function recommendBroaV2(input: BroaV2Input) {
   if (!input || !Array.isArray(input.candidates) || input.candidates.length === 0 || !Number.isSafeInteger(input.requiredQuantity) || input.requiredQuantity < 1) fail("COORD_BROA_V2_INPUT_INVALID");
   const evaluationMs = Date.parse(input.evaluationTime);
   if (!Number.isFinite(evaluationMs) || new Date(evaluationMs).toISOString() !== input.evaluationTime) fail("COORD_BROA_V2_TIME_INVALID");
+  try { validateSourceSurplusEvidenceV2(input.sourceSurplus); } catch { fail("COORD_BROA_V2_SURPLUS_NOT_ELIGIBLE"); }
   if (input.sourceSurplus.forecastStatus !== "AVAILABLE" || input.sourceSurplus.classification !== INTERVIEW_V2_CLASSIFICATION || input.sourceSurplus.recommendationEligibility !== INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY || input.sourceSurplus.sourceInstitutionId === "" || input.sourceSurplus.surplusQuantity < input.requiredQuantity || Date.parse(input.sourceSurplus.asOf) > evaluationMs) fail("COORD_BROA_V2_SURPLUS_NOT_ELIGIBLE");
+  if (input.sourceSurplus.inventorySnapshotId === undefined || input.sourceSurplus.sourceProjectionDigest === undefined) fail("COORD_BROA_V2_COMMITTED_INVENTORY_REQUIRED");
   if (!INTERVIEW_V2_BLOOD_TYPES.includes(input.sourceSurplus.bloodType) || !INTERVIEW_V2_COMPONENT_TYPES.includes(input.sourceSurplus.componentType)) fail("COORD_BROA_V2_SURPLUS_INVALID");
   const keys = new Set<string>();
   for (const candidate of input.candidates) {
