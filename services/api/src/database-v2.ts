@@ -44,6 +44,7 @@ export class PostgresV2ProjectionReader implements V2ProjectionReader {
 export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
   constructor(private readonly pool: Pool) {}
   async project(command: V2Command): Promise<void> {
+    if (command.operation === "SUBMIT_TRANSFER") return;
     if (command.operation !== "REGISTER_COMPONENT") throw new Error("V2_PROJECTION_OPERATION_UNSUPPORTED");
     const payload = command.payload;
     const client = await this.pool.connect();

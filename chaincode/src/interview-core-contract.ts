@@ -100,6 +100,25 @@ interface ReconciliationCaseAsset {
   lastTransactionId: string;
 }
 interface IdempotencyRecord { operation: string; requestDigest: string; response: string; }
+interface TransferAssetV2 {
+  schemaVersion: "TRANSFER_ASSET_V2";
+  transferId: string;
+  sourceInstitutionId: string;
+  destinationInstitutionId: string;
+  bloodType: BloodType;
+  componentType: ComponentType;
+  quantity: number;
+  urgency: "ROUTINE" | "URGENT" | "CRITICAL";
+  requestTime: string;
+  status: "PENDING";
+  version: number;
+  actorUserId: string;
+  policyVersion: typeof POLICY_VERSION;
+  createdAt: string;
+  updatedAt: string;
+  correlationId: string;
+  lastTransactionId: string;
+}
 
 const policy = policyJson as {
   classification: "SIMULATION_ONLY";
@@ -117,6 +136,30 @@ const policy = policyJson as {
 })
 export class InterviewCoreContract extends Contract {
   public constructor() { super("InterviewCoreContract"); }
+
+  @Transaction()
+  @Returns("string")
+  public async SubmitTransferRequest(ctx: Context, inputJson: string): Promise<string> {
+    const input = this.parseExactObject<Record<string, unknown>>(inputJson, ["actorUserId", "bloodType", "componentType", "correlationId", "destinationInstitutionId", "eventTime", "idempotencyKey", "policyVersion", "quantity", "requestTime", "sourceInstitutionId", "transferId", "urgency"]);
+    this.assertGateway(ctx); this.assertCommon(input);
+    this.assertId(String(input.transferId), /^TRF_[A-Z0-9_-]{1,56}$/, "TRANSFER_INPUT_INVALID");
+    this.assertActor(input.actorUserId);
+    const actor = this.assertActor(input.actorUserId);
+    if (actor.role !== "ROLE_03" || actor.institutionId !== String(input.destinationInstitutionId) || input.sourceInstitutionId !== "INST_MEDIATRIX") this.fail("TRANSFER_NOT_AUTHORIZED");
+    if (!policy.bloodTypes.includes(input.bloodType as BloodType) || !policy.componentTypes.includes(input.componentType as ComponentType)) this.fail("TRANSFER_INPUT_INVALID");
+    if (!Number.isSafeInteger(input.quantity) || Number(input.quantity) < 1 || !["ROUTINE", "URGENT", "CRITICAL"].includes(String(input.urgency))) this.fail("TRANSFER_INPUT_INVALID");
+    this.parseUtc(input.requestTime); this.parseUtc(input.eventTime);
+    const requestDigest = this.digest(input); const prior = await this.readIdempotent(ctx, String(input.idempotencyKey), "SUBMIT_TRANSFER", requestDigest); if (prior !== undefined) return prior;
+    const key = this.transferKey(String(input.transferId)); if ((await ctx.stub.getState(key)).length > 0) this.fail("TRANSFER_DUPLICATE");
+    const transfer: TransferAssetV2 = { schemaVersion: "TRANSFER_ASSET_V2", transferId: String(input.transferId), sourceInstitutionId: String(input.sourceInstitutionId), destinationInstitutionId: String(input.destinationInstitutionId), bloodType: input.bloodType as BloodType, componentType: input.componentType as ComponentType, quantity: Number(input.quantity), urgency: input.urgency as TransferAssetV2["urgency"], requestTime: String(input.requestTime), status: "PENDING", version: 1, actorUserId: String(input.actorUserId), policyVersion: POLICY_VERSION, createdAt: String(input.eventTime), updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID() };
+    const response = this.serialize(transfer); await ctx.stub.putState(key, Buffer.from(response, "utf8")); await this.writeIdempotent(ctx, String(input.idempotencyKey), "SUBMIT_TRANSFER", requestDigest, response); this.emit(ctx, "TransferRequested", { transferId: transfer.transferId, status: transfer.status, version: transfer.version, eventTime: transfer.createdAt, correlationId: transfer.correlationId }); return response;
+  }
+
+  @Transaction(false)
+  @Returns("string")
+  public async ReadTransferRequest(ctx: Context, transferId: string): Promise<string> {
+    this.assertGateway(ctx); this.assertId(transferId, /^TRF_[A-Z0-9_-]{1,56}$/, "TRANSFER_INPUT_INVALID"); const stored = await ctx.stub.getState(this.transferKey(transferId)); if (stored.length === 0) this.fail("TRANSFER_NOT_FOUND"); return Buffer.from(stored).toString("utf8");
+  }
 
   @Transaction()
   @Returns("string")
@@ -545,6 +588,7 @@ export class InterviewCoreContract extends Contract {
   private digest(value: object): string { return createHash("sha256").update(this.serialize(value), "utf8").digest("hex"); }
   private serialize(value: object): string { return JSON.stringify(value); }
   private componentKey(id: string): string { return `component:asset:${id}`; }
+  private transferKey(id: string): string { return `transfer:v2:asset:${id}`; }
   private reservationKey(id: string): string { return `reservation:asset:${id}`; }
   private caseKey(id: string): string { return `reconciliation:case:${id}`; }
   private identityKey(issuer: string, digest: string, componentType: string): string { return `component:identity:${issuer}:${digest}:${componentType}`; }

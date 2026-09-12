@@ -156,3 +156,13 @@ test("marks only label-expired components expired and rejects wrong institution 
   await contract.EvaluateComponentExpiry(asContext(context), JSON.stringify({ componentId: "COMP_CORE_041", expectedVersion: 1, evaluationTime: "2026-09-06T00:00:00.000Z", actorUserId: "USR_MEDIATRIX_TECH", eventTime: "2026-09-06T00:01:00.000Z", correlationId: "CORR_EXP_042", idempotencyKey: "IDEM_EXP_042", policyVersion }));
   assert.equal((await read(context, "component:asset:COMP_CORE_041")).status, "EXPIRED");
 });
+
+test("accepts a recipient transfer request without putting Donation No. on Fabric", async () => {
+  const context = new MockContext();
+  const contract = new InterviewCoreContract();
+  const request = { transferId: "TRF_CORE_051", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_METRO_LIPA", bloodType: "O_NEGATIVE", componentType: "PLATELETS", quantity: 1, urgency: "URGENT", requestTime: "2026-09-02T00:00:00.000Z", actorUserId: "USR_METRO_LIPA", eventTime: "2026-09-02T00:01:00.000Z", correlationId: "CORR_TRANSFER_CORE_051", idempotencyKey: "IDEM_TRANSFER_CORE_051", policyVersion };
+  const result = JSON.parse(await contract.SubmitTransferRequest(asContext(context), JSON.stringify(request))) as Record<string, unknown>;
+  assert.equal(result.status, "PENDING");
+  assert.equal("donationNumber" in result, false);
+  assert.equal(JSON.parse((context.state.get("transfer:v2:asset:TRF_CORE_051") ?? Buffer.alloc(0)).toString("utf8")).status, "PENDING");
+});

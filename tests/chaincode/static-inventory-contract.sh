@@ -7,7 +7,7 @@ cd "${repository_root}"
 [[ -f chaincode/policy/synthetic-transfer-v1.json ]]
 [[ -f chaincode/policy/interview-core-v2.json ]]
 rg -q 'super\("InterviewCoreContract"\)' chaincode/src/interview-core-contract.ts
-for transaction in RegisterComponent ReadComponent ReserveComponents PrepareReservation DispatchReservation \
+for transaction in RegisterComponent ReadComponent SubmitTransferRequest ReadTransferRequest ReserveComponents PrepareReservation DispatchReservation \
   StartReservationTransit RecordReservationReceipt CompleteLocalRelease CancelReservation \
   PlaceReconciliationHold ResolveReconciliationHold EvaluateComponentExpiry MarkReservationCompromised; do
   rg -q "${transaction}" chaincode/src/interview-core-contract.ts
