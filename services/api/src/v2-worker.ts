@@ -15,15 +15,22 @@ export class V2CommandWorker {
   async runOnce(now = new Date()): Promise<V2WorkerResult> {
     const command = await this.store.claim(this.workerId, now);
     if (!command) return { commandId: null, status: "IDLE" };
+    let ledgerCommitted = false;
     try {
       const committed = await this.ledger.submit(command);
       await this.store.markLedgerCommitted(command.commandId, committed.transactionId, now);
+      ledgerCommitted = true;
       await this.ledger.project(command);
       await this.store.markCommitted(command.commandId, now);
       return { commandId: command.commandId, status: "COMMITTED" };
     } catch (error) {
       const candidate = error as { retryable?: boolean; code?: string };
       const safeErrorCode = typeof candidate.code === "string" && /^[A-Z][A-Z0-9_]{2,63}$/.test(candidate.code) ? candidate.code : "V2_COMMAND_FAILED";
+      if (ledgerCommitted) {
+        await this.store.markRetry(command.commandId, "PROJECTION_RECONCILIATION_FAILED", new Date(now.getTime() + retryDelay(command.attemptCount)), now);
+        await this.store.markInboundCapture?.(command.commandId, "QUEUED", "PROJECTION_RECONCILIATION_FAILED", now);
+        return { commandId: command.commandId, status: "RETRY_WAIT" };
+      }
       if (candidate.retryable === true) {
         await this.store.markRetry(command.commandId, safeErrorCode, new Date(now.getTime() + retryDelay(command.attemptCount)), now);
         await this.store.markInboundCapture?.(command.commandId, "QUEUED", safeErrorCode, now);
