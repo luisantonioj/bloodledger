@@ -29,7 +29,7 @@
         }
       }
     },
-    "/inventory/components": {
+    "/components": {
       "post": {
         "operationId": "registerComponent",
         "responses": {
@@ -80,9 +80,14 @@
         }
       }
     },
-    "/reports/census": {
+    "/reports/doh-census/{snapshotId}": {
       "get": {
-        "operationId": "listCensusSnapshots",
+        "operationId": "getCensusSnapshot",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SnapshotId"
+          }
+        ],
         "responses": {
           "200": {
             "$ref": "#/components/responses/Census"
@@ -90,7 +95,7 @@
         }
       }
     },
-    "/reports/census/{snapshotId}/copy-row": {
+    "/reports/doh-census/{snapshotId}/{componentType}.tsv": {
       "get": {
         "operationId": "copyCensusRow",
         "parameters": [
@@ -99,7 +104,7 @@
           },
           {
             "name": "componentType",
-            "in": "query",
+            "in": "path",
             "required": true,
             "schema": {
               "$ref": "#/components/schemas/ComponentType"
@@ -119,6 +124,36 @@
           },
           "409": {
             "$ref": "#/components/responses/PolicyDisabled"
+          }
+        }
+      }
+    },
+    "/local-releases": {
+      "post": {
+        "operationId": "reserveLocalRelease",
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Command"
+          }
+        }
+      }
+    },
+    "/reconciliation": {
+      "post": {
+        "operationId": "placeReconciliationHold",
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Command"
+          }
+        }
+      }
+    },
+    "/reservations/{reservationId}/{action}": {
+      "post": {
+        "operationId": "transitionReservation",
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Command"
           }
         }
       }
@@ -172,6 +207,7 @@
         "type": "object",
         "required": [
           "issuerInstitutionId",
+          "donationId",
           "donationNumber",
           "componentType",
           "bloodType",
@@ -183,6 +219,10 @@
         "properties": {
           "issuerInstitutionId": {
             "type": "string"
+          },
+          "donationId": {
+            "type": "string",
+            "pattern": "^DON_[A-Z0-9_-]{1,56}$"
           },
           "donationNumber": {
             "type": "string",
@@ -216,6 +256,9 @@
       "TransferRequest": {
         "type": "object",
         "required": [
+          "transferId",
+          "sourceInstitutionId",
+          "destinationInstitutionId",
           "bloodType",
           "componentType",
           "quantity",
@@ -225,6 +268,18 @@
           "correlationId"
         ],
         "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "sourceInstitutionId": {
+            "type": "string",
+            "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+          },
+          "destinationInstitutionId": {
+            "type": "string",
+            "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+          },
           "bloodType": {
             "$ref": "#/components/schemas/BloodType"
           },
