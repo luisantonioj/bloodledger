@@ -534,6 +534,7 @@ time, correlation ID, and safe event name without secrets or prohibited data.
 | ADR-031 | Accepted | Isolate pending institutional domain decisions in immutable, versioned prototype-assumption artifacts; preserve the version on ledger events, datasets, and models and supersede prospectively | Allows implementation with synthetic evidence while data-gathering approval is pending without presenting assumptions as Mediatrix or clinical policy |
 | ADR-032 | Accepted | Use an installable same-origin React PWA, Fastify API, PostgreSQL durable scan queue, and separate reconciliation worker for Sprint 4 | Keeps capture local, returns after durable intake, preserves honest states, and prevents browser/database/Fabric boundary collapse |
 | ADR-033 | Accepted | Use a short-lived locally signed JWT for one opaque synthetic operator under `SYNTHETIC_API_AUTH_V1` | Exercises authentication/authorization without claiming Sprint 5 identity management or committing credentials |
+| ADR-034 | Accepted | Additive Sprint 6 V2 component/custody contracts use encrypted off-chain Donation No. values, keyed lookup evidence, durable command state, and a separate Fabric contract namespace | Preserves V1 reads/history while proving interview-aligned simulation behavior without activating unresolved clinical, issuer, or operational policy |
 
 ## 16. Sprint 1 architecture gates
 
