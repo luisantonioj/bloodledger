@@ -43,6 +43,7 @@
     "test:api": "npm run test --workspace @bloodledger/api",
     "test:api:database": "bash tests/api/postgres-integration.sh",
     "test:sprint-6": "bash tests/sprint-6-integrated-boundary.sh",
+    "test:inbound-ocr": "bash tests/inbound-ocr/static-boundary.sh",
     "package:inventory-contract": "bash network/scripts/package-inventory-contract.sh",
     "deploy:inventory-contract": "bash network/scripts/deploy-inventory-contract.sh",
     "check:fabric-identities": "bash tests/network/static-identities.sh",

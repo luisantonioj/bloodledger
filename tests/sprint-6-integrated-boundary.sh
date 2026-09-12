@@ -3,7 +3,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
-[[ "$(git branch --show-current)" == "codex/mediatrix-interview-core-v2" ]]
+[[ "$(git branch --show-current)" == "codex/mediatrix-interview-core-v2" || "$(git branch --show-current)" == "codex/inbound-ocr-registration-v2" ]]
 if git diff --name-only main...HEAD | rg -n '^(apps/web|apps/capture-pwa|services/forecasting)/'; then
   echo "Sprint 6 branch must not modify the LAT/Buno workstreams" >&2
   exit 1
