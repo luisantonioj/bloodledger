@@ -30,8 +30,10 @@ institutional production data.
 - Full API compile/test execution is not reproducible in this host because the
   existing workspace install lacks Fastify and related API runtime packages;
   no dependency installation was performed.
-- PostgreSQL/Fabric live integration, worker-to-ledger submission, and
-  cross-host validation remain unexecuted evidence.
+- PostgreSQL/Fabric live integration, opt-in worker execution, and cross-host
+  validation remain unexecuted evidence. The adapter is present but disabled by
+  default; the current projector proves component registration and intentionally
+  rejects unvalidated non-registration projection mappings.
 - Near-expiry thresholds, issuer-specific Donation No. rules, reason-code
   vocabularies, encryption-key custody/rotation/recovery, official DOH column
   order, receipt verification, real location policy, and operational RPS/BROA
