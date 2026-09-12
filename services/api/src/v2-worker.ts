@@ -26,10 +26,12 @@ export class V2CommandWorker {
       const safeErrorCode = typeof candidate.code === "string" && /^[A-Z][A-Z0-9_]{2,63}$/.test(candidate.code) ? candidate.code : "V2_COMMAND_FAILED";
       if (candidate.retryable === true) {
         await this.store.markRetry(command.commandId, safeErrorCode, new Date(now.getTime() + retryDelay(command.attemptCount)), now);
+        await this.store.markInboundCapture?.(command.commandId, "QUEUED", safeErrorCode, now);
         return { commandId: command.commandId, status: "RETRY_WAIT" };
       }
       const terminal = safeErrorCode.includes("CONFLICT") ? "CONFLICT" : "FAILED";
       await this.store.markTerminal(command.commandId, terminal, safeErrorCode, now);
+      await this.store.markInboundCapture?.(command.commandId, terminal, safeErrorCode, now);
       return { commandId: command.commandId, status: terminal };
     }
   }

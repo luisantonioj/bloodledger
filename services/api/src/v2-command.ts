@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { ApiFailure } from "./errors.js";
 
 export type V2CommandStatus = "QUEUED" | "SUBMITTING" | "LEDGER_COMMITTED_PROJECTION_PENDING" | "COMMITTED" | "RETRY_WAIT" | "FAILED" | "CONFLICT";
-export type V2ResourceType = "COMPONENT" | "TRANSFER" | "LOCAL_RELEASE" | "RECONCILIATION";
+export type V2ResourceType = "COMPONENT" | "INBOUND_CAPTURE" | "TRANSFER" | "LOCAL_RELEASE" | "RECONCILIATION";
 
 export interface V2CommandInput {
   commandId: string;
@@ -37,6 +37,7 @@ export interface V2CommandStore {
   markCommitted(commandId: string, now: Date): Promise<void>;
   markRetry(commandId: string, safeErrorCode: string, nextAttemptAt: Date, now: Date): Promise<void>;
   markTerminal(commandId: string, status: "FAILED" | "CONFLICT", safeErrorCode: string, now: Date): Promise<void>;
+  markInboundCapture?(commandId: string, status: "QUEUED" | "FAILED" | "CONFLICT", safeErrorCode: string | null, now: Date): Promise<void>;
 }
 
 function payloadDigest(payload: Record<string, unknown>): string {
@@ -86,6 +87,7 @@ export class InMemoryV2CommandStore implements V2CommandStore {
   async markRetry(commandId: string, safeErrorCode: string, nextAttemptAt: Date, now: Date): Promise<void> { const command = this.must(commandId); command.status = "RETRY_WAIT"; command.safeErrorCode = safeErrorCode; command.nextAttemptAt = nextAttemptAt.toISOString(); command.updatedAt = now.toISOString(); }
   async markTerminal(commandId: string, status: "FAILED" | "CONFLICT", safeErrorCode: string, now: Date): Promise<void> { const command = this.must(commandId); command.status = status; command.safeErrorCode = safeErrorCode; command.updatedAt = now.toISOString(); }
   private must(commandId: string): V2Command { const command = this.commands.get(commandId); if (!command) throw new Error("V2_COMMAND_NOT_FOUND"); return command; }
+  async markInboundCapture(_commandId: string, _status: "QUEUED" | "FAILED" | "CONFLICT", _safeErrorCode: string | null, _now: Date): Promise<void> { return; }
 }
 
 export class PostgresV2CommandStore implements V2CommandStore {
@@ -132,4 +134,5 @@ export class PostgresV2CommandStore implements V2CommandStore {
   async markCommitted(commandId: string, now: Date): Promise<void> { await this.pool.query("UPDATE app.v2_commands SET status='COMMITTED',lease_owner=NULL,lease_expires_at=NULL,updated_at=$2,version=version+1 WHERE command_id=$1", [commandId, now.toISOString()]); }
   async markRetry(commandId: string, safeErrorCode: string, nextAttemptAt: Date, now: Date): Promise<void> { await this.pool.query("UPDATE app.v2_commands SET status='RETRY_WAIT',safe_error_code=$2,next_attempt_at=$3,lease_owner=NULL,lease_expires_at=NULL,updated_at=$4,version=version+1 WHERE command_id=$1", [commandId, safeErrorCode, nextAttemptAt.toISOString(), now.toISOString()]); }
   async markTerminal(commandId: string, status: "FAILED" | "CONFLICT", safeErrorCode: string, now: Date): Promise<void> { await this.pool.query("UPDATE app.v2_commands SET status=$2,safe_error_code=$3,lease_owner=NULL,lease_expires_at=NULL,updated_at=$4,version=version+1 WHERE command_id=$1", [commandId, status, safeErrorCode, now.toISOString()]); }
+  async markInboundCapture(commandId: string, status: "QUEUED" | "FAILED" | "CONFLICT", safeErrorCode: string | null, now: Date): Promise<void> { await this.pool.query("UPDATE app.v2_inbound_captures SET status=$2,resolution=CASE WHEN $2='CONFLICT' THEN 'CONFLICT' WHEN $2='FAILED' THEN 'REJECTED' ELSE resolution END,safe_error_code=$3,updated_at=$4 WHERE command_id=$1 OR capture_id=(SELECT resource_id FROM app.v2_commands WHERE command_id=$1)", [commandId, status, safeErrorCode, now.toISOString()]); }
 }
