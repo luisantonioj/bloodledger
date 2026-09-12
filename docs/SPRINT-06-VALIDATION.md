@@ -11,7 +11,7 @@ institutional production data.
 
 ## Evidence recorded
 
-- Fabric V2 build/typecheck and test suite: 27 passing tests.
+- Fabric V2 build/typecheck and test suite: 28 passing tests.
 - Coordination V2 build/typecheck and test suite: 11 passing tests.
 - PostgreSQL migration static baseline: passed; V2 migration is forward-only and
   includes encrypted donation storage, component projections, command queue,
