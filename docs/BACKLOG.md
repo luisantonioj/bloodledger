@@ -1,7 +1,7 @@
 # BloodLedger Product Backlog
 
-**Status:** Sprints 1–5 accepted; formal Testing-phase planning authorized
-**Baseline date:** 2026-08-26
+**Status:** Sprints 1–5 accepted; Sprint 6 core V2 authorized 2026-09-12
+**Baseline date:** 2026-09-12
 **Prioritization:** MoSCoW, then dependency order
 
 ## 1. Backlog rules
@@ -26,6 +26,7 @@
 | EPIC-06 | Web dashboard, access control, alerts, and reporting | Sprint 5 | Must |
 | EPIC-07 | System validation, UAT, and research evidence | Testing phase | Must |
 | EPIC-08 | Pilot deployment and future consortium expansion | Later gate | Should/Deferred |
+| EPIC-09 | Interview-aligned component custody, FEFO, release, reconciliation, and reporting V2 | Sprint 6 | Must |
 
 ## 3. EPIC-01 — Infrastructure
 

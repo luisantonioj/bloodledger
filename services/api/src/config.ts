@@ -9,6 +9,8 @@ export interface ApiConfig {
   workerConfigured: boolean;
   webOrigin?: string;
   webCookieSecure?: boolean;
+  activeWriteApiVersion?: "v1" | "v2";
+  v2EncryptionKeysConfigured?: boolean;
 }
 
 export function readApiConfig(environment: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -29,5 +31,7 @@ export function readApiConfig(environment: NodeJS.ProcessEnv = process.env): Api
     workerConfigured: environment.FABRIC_SYNC_ENABLED === "true",
     webOrigin: environment.WEB_ORIGIN ?? "http://127.0.0.1:5174",
     webCookieSecure: environment.WEB_COOKIE_SECURE === undefined ? undefined : environment.WEB_COOKIE_SECURE === "true",
+    activeWriteApiVersion: environment.BLOODLEDGER_ACTIVE_WRITE_API_VERSION === "v2" ? "v2" : "v1",
+    v2EncryptionKeysConfigured: Boolean(environment.BLOODLEDGER_DONATION_ENCRYPTION_KEY && environment.BLOODLEDGER_DONATION_LOOKUP_KEY),
   };
 }

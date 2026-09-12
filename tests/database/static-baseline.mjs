@@ -2,7 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 
 const root = new URL("../../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
-const [compose, bootstrap, migration, forecastMigration, coordinationMigration, scanMigration, webAccessMigration, transferAlertMigration, alertAckMigration, sharedInventoryTransactionMigration, databasePackage] = await Promise.all([
+const [compose, bootstrap, migration, forecastMigration, coordinationMigration, scanMigration, webAccessMigration, transferAlertMigration, alertAckMigration, sharedInventoryTransactionMigration, v2Migration, databasePackage] = await Promise.all([
   read("compose.yaml"),
   read("database/bootstrap/001-create-development-roles.sh"),
   read("database/migrations/20260715000000000_bootstrap-app-schema.js"),
@@ -13,6 +13,7 @@ const [compose, bootstrap, migration, forecastMigration, coordinationMigration, 
   read("database/migrations/20260820010000000_create-transfer-alert-projections.js"),
   read("database/migrations/20260820020000000_add-alert-acknowledgement-idempotency.js"),
   read("database/migrations/20260823010000000_allow-shared-inventory-ledger-transactions.js"),
+  read("database/migrations/20260912000000000_create-interview-core-v2-tables.js"),
   read("database/package.json").then(JSON.parse)
 ]);
 
@@ -74,6 +75,12 @@ const assertions = [
   [sharedInventoryTransactionMigration.includes("DROP CONSTRAINT inventory_projection_ledger_transaction_id_key"), "shared inventory transaction correction"],
   [sharedInventoryTransactionMigration.includes("CREATE INDEX inventory_projection_ledger_transaction_idx"), "shared inventory transaction lookup"],
   [sharedInventoryTransactionMigration.includes("exports.down = false"), "shared inventory transaction forward-only migration"],
+  [v2Migration.includes("CREATE TABLE app.v2_donations"), "V2 encrypted donation table"],
+  [v2Migration.includes("CREATE TABLE app.v2_components"), "V2 component table"],
+  [v2Migration.includes("CREATE TABLE app.v2_commands"), "V2 durable command table"],
+  [v2Migration.includes("CREATE TABLE app.v2_census_snapshots"), "V2 census snapshot table"],
+  [v2Migration.includes("CREATE TRIGGER v2_components_shape_trigger"), "V2 donation component shape guard"],
+  [v2Migration.includes("exports.down = false"), "V2 forward-only migration"],
   [databasePackage.scripts["migrate:up"] === "node scripts/migrate.mjs", "apply command"],
   [databasePackage.scripts["migrate:status"] === "node scripts/migration-status.mjs", "status command"]
 ];
@@ -84,8 +91,8 @@ for (const [passed, label] of assertions) {
 
 const migrationFiles = (await readdir(new URL("database/migrations", root)))
   .filter((name) => /\.(?:js|cjs|mjs|sql)$/.test(name));
-if (migrationFiles.length !== 8) {
-  throw new Error(`Expected eight approved bootstrap through shared-inventory-transaction migrations, received ${migrationFiles.length}`);
+if (migrationFiles.length !== 9) {
+  throw new Error(`Expected nine approved bootstrap through interview-core-v2 migrations, received ${migrationFiles.length}`);
 }
 
 const prohibited = /blood_units|transfers|users|institutions|forecasts|notifications|audit_logs|sync(?:hronization)?_queues/i;

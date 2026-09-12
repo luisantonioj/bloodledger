@@ -371,6 +371,7 @@ export class TransferContract extends Contract {
     return this.withIdempotency(ctx, "COMPROMISE", input, async () => {
       const transfer = await this.readTransfer(ctx, input.transferId);
       this.assertTransition(transfer, input.expectedVersion, ["DISPATCHED", "IN_TRANSIT", "DELAYED", "RECEIVED"], input.eventTime);
+      this.assertActorScope(actor, transfer);
       const expectedUnitStatus: InventoryStatus = transfer.status === "RECEIVED" ? "RECEIVED" : transfer.status === "DISPATCHED" ? "DISPATCHED" : "IN_TRANSIT";
       await this.updateSelectedUnits(ctx, transfer, expectedUnitStatus, "COMPROMISED", input);
       const updated = this.changeTransfer(ctx, transfer, "COMPROMISED", input, { reasonCode: input.reasonCode });

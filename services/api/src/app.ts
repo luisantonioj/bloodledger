@@ -15,6 +15,11 @@ import type { ApplicationWriteRepository } from "./application-write.js";
 import { sha256 } from "./hash.js";
 import { csvCell } from "./csv.js";
 import { captureSyntheticLocationEvidence } from "./location-evidence.js";
+import { registerV2Routes } from "./v2-routes.js";
+import type { DonationKeyring } from "./donation-crypto.js";
+import type { V2CommandStore } from "./v2-command.js";
+import type { CensusStore } from "./census-worker.js";
+import type { V2ProjectionReader } from "./database-v2.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
 const EVENT_PATTERN = /^SCAN_[0-9A-F]{32}$/;
@@ -110,8 +115,20 @@ export async function buildApp(
   sessions?: SessionRepository,
   applicationReads?: ApplicationReadRepository,
   applicationWrites?: ApplicationWriteRepository,
+  v2?: { store: V2CommandStore; keyring?: DonationKeyring; census?: CensusStore; projection?: V2ProjectionReader },
 ): Promise<FastifyInstance> {
-  const app = Fastify({ logger: false, bodyLimit: 32 * 1024 });
+  const app = Fastify({
+    logger: {
+      level: "info",
+      redact: ["req.headers.authorization", "req.headers.cookie", "req.headers.set-cookie", "req.body", "password", "credential", "donationNumber", "donationNo", "ciphertext", "authTag", "lookupHmac", "latitude", "longitude"],
+    },
+    bodyLimit: 32 * 1024,
+  });
+  app.addHook("onRequest", async (request) => {
+    if (config.activeWriteApiVersion !== "v2" || !request.url.startsWith("/api/v1/") || ["GET", "HEAD", "OPTIONS"].includes(request.method)) return;
+    if (request.url.startsWith("/api/v1/auth/session") || request.url.startsWith("/api/v1/simulation/session")) return;
+    throw new ApiFailure(409, "API_VERSION_READ_ONLY", "V1 mutations are read-only while V2 writes are active.");
+  });
   await app.register(fastifyJwt, { secret: config.jwtSecret, sign: { expiresIn: "15m" } });
 
   app.setErrorHandler((error, request, reply) => {
@@ -492,6 +509,9 @@ export async function buildApp(
         return result;
       });
     }
+    if (v2) {
+      registerV2Routes(app, { ...v2, restore, webOrigin, clock });
+    }
   }
 
   app.post("/api/v1/scan-events", { preHandler: authenticate }, async (request, reply) => {
@@ -563,6 +583,10 @@ export async function buildApp(
       database: database ? "READY" : "UNAVAILABLE",
       workerFabric: config.workerConfigured ? "CONFIGURED" : "DISABLED",
       forecastReadiness,
+      v2CommandQueue: v2 ? "CONFIGURED" : "DISABLED",
+      v2EncryptionKeys: config.v2EncryptionKeysConfigured ? "CONFIGURED" : "UNAVAILABLE",
+      v2ProjectionReconciliation: v2 ? "CONFIGURED" : "DISABLED",
+      censusWorkerFreshness: v2 ? "CONFIGURED" : "DISABLED",
       classification: "SIMULATION_ONLY",
     });
   });

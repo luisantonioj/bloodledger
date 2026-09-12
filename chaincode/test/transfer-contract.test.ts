@@ -334,6 +334,13 @@ test("S3-07 enforces actor scope and marks in-transit custody compromised", asyn
     ))),
     /TRF_NOT_AUTHORIZED/,
   );
+  await assert.rejects(
+    transfer.MarkTransferCompromised(asContext(context), JSON.stringify(basic(
+      "USR_DIVINE_LOVE", 4, "COMPROMISE_WRONG_DEST", "2026-08-13T00:40:00.000Z",
+      { reasonCode: "CUSTODY_EXCEPTION" },
+    ))),
+    /TRF_NOT_AUTHORIZED/,
+  );
   const compromised = JSON.parse(await transfer.MarkTransferCompromised(
     asContext(context),
     JSON.stringify(basic(

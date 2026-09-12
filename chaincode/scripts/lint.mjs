@@ -4,8 +4,10 @@ const files = [
   "scripts/prepare-package.mjs",
   "scripts/validate-network.ts",
   "src/index.ts",
+  "src/interview-core-contract.ts",
   "src/inventory-contract.ts",
   "src/transfer-contract.ts",
+  "test/interview-core-contract.test.ts",
   "test/inventory-contract.test.ts",
   "test/transfer-contract.test.ts",
 ];
