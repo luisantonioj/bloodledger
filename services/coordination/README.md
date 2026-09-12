@@ -40,6 +40,12 @@ outputs include input/config/result hashes, normalized contributions,
 `SIMULATION_ONLY`, and `DISABLED_UNAPPROVED_POLICY`; no command submits or
 approves a transfer.
 
+Interview Core V2 source-surplus evidence must identify a committed inventory
+census (`inventorySnapshotId`) and its projection digest. Queued, failed, or
+conflicted OCR intake is not eligible stock. This evidence gate does not change
+the 70/30 RPS or 0.5000/0.3125/0.1875 BROA weights, and automatic approval
+remains disabled. Forecasting code is owned by BUNO and is outside this branch.
+
 ## Verification
 
 ```bash
