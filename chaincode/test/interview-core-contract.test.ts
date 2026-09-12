@@ -112,6 +112,16 @@ test("registers opaque components, supports all eight blood groups, and rejects 
   assert.equal((await read(context, "component:asset:COMP_CORE_003")).bloodType, "O_NEGATIVE");
 });
 
+test("registers OCR inbound stock with separate issuer/custody and no raw Donation No.", async () => {
+  const context = new MockContext();
+  const contract = new InterviewCoreContract();
+  const input = { actorInstitutionId: "INST_MEDIATRIX", actorUserId: "USR_MEDIATRIX_TECH", bloodType: "AB_NEGATIVE", bloodTypeEvidenceSource: "OCR_LABEL", captureEvidenceDigest: digest("z"), captureMethod: "OCR", capturedAt: "2026-09-12T00:00:00.000Z", componentEvidenceSource: "BAG_TYPE", componentId: "COMP_INBOUND_001", componentType: "FRESH_FROZEN_PLASMA", correlationId: "CORR_INBOUND_000000000000000000000001", custodyInstitutionId: "INST_MEDIATRIX", donationId: "DON_INBOUND_001", donationNoDigest: digest("y"), eventTime: "2026-09-12T00:01:00.000Z", expiresAt: "2027-09-12T00:00:00.000Z", idempotencyKey: "IDEM_INBOUND_001", issuerInstitutionId: "INST_MEDIATRIX", policyVersion, collectedAt: "2026-09-11T00:00:00.000Z" };
+  await contract.RegisterInboundComponent(asContext(context), JSON.stringify(input));
+  const state = await read(context, "component:asset:COMP_INBOUND_001");
+  assert.equal(state.status, "AVAILABLE"); assert.equal(state.custodyInstitutionId, "INST_MEDIATRIX"); assert.equal(state.captureMethod, "OCR"); assert.equal("donationNumber" in state, false);
+  await assert.rejects(contract.RegisterInboundComponent(asContext(context), JSON.stringify({ ...input, componentId: "COMP_INBOUND_002", idempotencyKey: "IDEM_INBOUND_002" })), /COMPONENT_DUPLICATE_DONATION_TYPE/);
+});
+
 test("reserves exact FEFO components atomically and requires preparation before dispatch", async () => {
   const context = new MockContext();
   const contract = new InterviewCoreContract();
