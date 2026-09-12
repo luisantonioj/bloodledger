@@ -16,6 +16,9 @@ fi
 
 rg -q 'DISABLED_UNAPPROVED_POLICY' "$root/services/coordination/policy/synthetic-optimization-v1.json"
 rg -q 'automaticApprovalEnabled.*false' "$root/services/coordination/policy/synthetic-optimization-v1.json"
+rg -q 'INTERVIEW_DERIVED_OPTIMIZATION_V2' "$root/services/coordination/policy/interview-derived-optimization-v2.json" "$root/services/coordination/src"
+rg -q 'sourceSurplusIsEligibilityGate.*true' "$root/services/coordination/policy/interview-derived-optimization-v2.json"
+rg -q 'contextUsedForScoring.*false' "$root/services/coordination/src/broa-v2.ts"
 rg -q 'retentionDays.*30' "$root/services/coordination/policy/synthetic-location-v1.json"
 
 echo "Static coordination boundary checks passed"

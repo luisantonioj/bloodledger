@@ -41,4 +41,13 @@ export class PostgresCensusStore implements CensusStore {
 export class CensusWorker {
   constructor(private readonly store: CensusStore, private readonly institutionIds: readonly string[]) {}
   async runSlot(scheduledFor: Date, now = new Date()): Promise<CensusSnapshot[]> { const snapshots: CensusSnapshot[] = []; for (const institutionId of this.institutionIds) snapshots.push(await this.store.capture(institutionId, scheduledFor, "SCHEDULED", now)); return snapshots; }
+  async runDueSlots(now = new Date()): Promise<CensusSnapshot[]> {
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+    const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+    const slots = [9, 16].map((hour) => new Date(`${values.year}-${values.month}-${values.day}T${String(hour).padStart(2, "0")}:00:00.000+08:00`));
+    const due = slots.filter((slot) => now.getTime() >= slot.getTime());
+    const snapshots: CensusSnapshot[] = [];
+    for (const slot of due) snapshots.push(...await this.runSlot(slot, now));
+    return snapshots;
+  }
 }
