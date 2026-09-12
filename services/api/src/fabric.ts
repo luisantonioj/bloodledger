@@ -5,6 +5,8 @@ import * as grpc from "@grpc/grpc-js";
 import { connect, hash, type Identity, signers, StatusCode } from "@hyperledger/fabric-gateway";
 import { WorkerFailure } from "./errors.js";
 import type { ScanEvent } from "./types.js";
+import type { V2Command } from "./v2-command.js";
+import type { V2LedgerSubmitter } from "./v2-worker.js";
 
 export interface FabricCommit {
   transactionId: string;
@@ -194,7 +196,7 @@ export function safeFabricError(error: unknown): WorkerFailure {
       }
     }
   }
-  const code = details.join(" ").match(/\b(?:INV|TRF)_[A-Z_]+\b/)?.[0];
+  const code = details.join(" ").match(/\b(?:INV|TRF|CORE|COMPONENT|RESERVATION|RECONCILIATION)_[A-Z_]+\b/)?.[0];
   if (code) return new WorkerFailure(code, false);
   return new WorkerFailure("FABRIC_GATEWAY_UNAVAILABLE", true);
 }
@@ -621,5 +623,39 @@ export class FabricGatewayInventory implements InventoryLedger {
       gateway?.close();
       client?.close();
     }
+  }
+}
+
+export class FabricGatewayInterviewCore implements V2LedgerSubmitter {
+  constructor(private readonly environment: NodeJS.ProcessEnv = process.env) {}
+
+  async submit(command: V2Command): Promise<{ transactionId: string }> {
+    const repositoryRoot = resolve(this.environment.BLOODLEDGER_REPOSITORY_ROOT ?? process.cwd());
+    const organizationRoot = this.environment.FABRIC_ORGANIZATION_ROOT ?? join(repositoryRoot, "network/generated/organizations/peerOrganizations/mediatrix.bloodledger.local");
+    const mspRoot = this.environment.FABRIC_API_MSP_ROOT ?? join(organizationRoot, "users/ApiGateway@mediatrix.bloodledger.local/msp");
+    const tlsRootPath = this.environment.FABRIC_TLS_ROOT ?? join(organizationRoot, "peers/peer0.mediatrix.bloodledger.local/tls/ca.crt");
+    let client: grpc.Client | undefined; let gateway: ReturnType<typeof connect> | undefined;
+    try {
+      const certificate = await readFile(await exactlyOneFile(join(mspRoot, "signcerts")));
+      const privateKey = createPrivateKey(await readFile(await exactlyOneFile(join(mspRoot, "keystore"))));
+      const tlsRoot = await readFile(tlsRootPath);
+      client = new grpc.Client(this.environment.FABRIC_PEER_ENDPOINT ?? "127.0.0.1:7051", grpc.credentials.createSsl(tlsRoot), { "grpc.ssl_target_name_override": this.environment.FABRIC_PEER_HOST_ALIAS ?? "peer0.mediatrix.bloodledger.local" });
+      gateway = connect({ client, identity: { mspId: "MediatrixMSP", credentials: certificate }, signer: signers.newPrivateKeySigner(privateKey), hash: hash.sha256, evaluateOptions: () => ({ deadline: deadline(15) }), endorseOptions: () => ({ deadline: deadline(30) }), submitOptions: () => ({ deadline: deadline(15) }), commitStatusOptions: () => ({ deadline: deadline(30) }) });
+      const transactionByOperation: Record<string, string> = {
+        REGISTER_COMPONENT: "RegisterComponent", RESERVE_COMPONENTS: "ReserveComponents", PREPARE_RESERVATION: "PrepareReservation", DISPATCH_RESERVATION: "DispatchReservation", START_RESERVATION_TRANSIT: "StartReservationTransit", RECEIVE_RESERVATION: "RecordReservationReceipt", COMPLETE_LOCAL_RELEASE: "CompleteLocalRelease", CANCEL_RESERVATION: "CancelReservation", PLACE_RECONCILIATION_HOLD: "PlaceReconciliationHold", RESOLVE_RECONCILIATION_HOLD: "ResolveReconciliationHold", EVALUATE_COMPONENT_EXPIRY: "EvaluateComponentExpiry", COMPROMISE_RESERVATION: "MarkReservationCompromised",
+      };
+      const transaction = transactionByOperation[command.operation];
+      if (!transaction) throw new WorkerFailure("CORE_OPERATION_UNSUPPORTED", false);
+      const payload = { ...command.payload, idempotencyKey: command.idempotencyKey, policyVersion: "INTERVIEW_DERIVED_CORE_V2" };
+      const contract = gateway.getNetwork(this.environment.FABRIC_CHANNEL ?? "bloodledger-dev").getContract(this.environment.FABRIC_CHAINCODE ?? "bloodledger-inventory", "InterviewCoreContract");
+      const submitted = await contract.submitAsync(transaction, { arguments: [JSON.stringify(payload)] });
+      const status = await submitted.getStatus();
+      if (!status.successful || status.code !== StatusCode.VALID) throw new WorkerFailure("FABRIC_COMMIT_INVALID", false);
+      return { transactionId: submitted.getTransactionId() };
+    } catch (error) { if (error instanceof WorkerFailure) throw error; throw safeFabricError(error); } finally { gateway?.close(); client?.close(); }
+  }
+
+  async project(_command: V2Command): Promise<void> {
+    // Projection is performed by PostgresV2Projector in the worker composition.
   }
 }
