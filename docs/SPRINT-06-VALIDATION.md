@@ -3,6 +3,8 @@
 **Branch:** `codex/mediatrix-interview-core-v2`
 **Accountable owner:** Jopia
 **Authorization:** 2026-09-12, with MMMC ethics and quality-management approval
+**Acceptance:** Jopia accepted all Sprint 6 acceptance criteria on 2026-09-12;
+self-validation remains disclosed below.
 **Classification:** `SIMULATION_ONLY`
 
 This is a sanitized technical record. It contains no interview transcript,
@@ -24,6 +26,22 @@ institutional production data.
 - Focused API module typecheck for crypto, queue, worker, census, report policy,
   and projection code: passed using the repository's available TypeScript
   declarations.
+
+## Acceptance decision
+
+Jopia accepted all Sprint 6 acceptance criteria on 2026-09-12:
+
+- Fabric and data safety: accepted.
+- API command queue and workflows: accepted.
+- RPS/BROA behavior: accepted within the simulation-only policy boundary.
+- Census and reporting: accepted within the configured, non-official report
+  boundary.
+- Privacy and observability controls: accepted.
+- Documentation and LAT/Buno handoffs: accepted.
+
+This acceptance applies to the implementation and evidence recorded on this
+branch. It does not waive unresolved clinical, operational, privacy, security,
+regulatory, live-integration, or independent-validation gates.
 
 ## Limitations and unresolved items
 
