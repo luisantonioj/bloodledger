@@ -32,12 +32,11 @@
     "/components": {
       "post": {
         "operationId": "registerComponent",
+        "deprecated": true,
+        "description": "Legacy mutation retained only to return V2_OCR_REQUIRED. Use OCR-only inbound-captures.",
         "responses": {
-          "202": {
-            "$ref": "#/components/responses/Command"
-          },
-          "400": {
-            "$ref": "#/components/responses/Invalid"
+          "410": {
+            "description": "Legacy component mutation is disabled; confirmed OCR is required"
           }
         },
         "requestBody": {
@@ -56,6 +55,33 @@
         "responses": {
           "200": {
             "$ref": "#/components/responses/Components"
+          }
+        }
+      }
+    },
+    "/inbound-captures": {
+      "post": {
+        "operationId": "acceptInboundOcrCapture",
+        "description": "Accept a confirmed OCR capture. The receiving custody institution is derived from the authenticated session; raw OCR text and images are not accepted.",
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Command"
+          },
+          "200": {
+            "description": "Already registered in the same custody scope"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InboundOcrCapture"
+              }
+            }
           }
         }
       }
@@ -131,6 +157,20 @@
         "responses": {
           "200": {
             "$ref": "#/components/responses/Census"
+          }
+        }
+      }
+    },
+    "/reports/inbound-intake": {
+      "get": {
+        "operationId": "getInboundIntakeStatus",
+        "description": "Aggregate OCR intake states. Raw Donation Nos. are never returned.",
+        "responses": {
+          "200": {
+            "description": "Inbound intake status metrics"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
@@ -293,6 +333,166 @@
         },
         "additionalProperties": false
       },
+      "InboundOcrCapture": {
+        "type": "object",
+        "required": [
+          "captureMethod",
+          "capturePolicyVersion",
+          "issuerInstitutionId",
+          "donationNumber",
+          "bloodType",
+          "bloodTypeEvidence",
+          "componentType",
+          "componentEvidence",
+          "collectedAt",
+          "expiresAt",
+          "capturedAt",
+          "confirmedAt",
+          "eventTime",
+          "correlationId",
+          "ocrEvidence"
+        ],
+        "properties": {
+          "captureMethod": {
+            "const": "OCR"
+          },
+          "capturePolicyVersion": {
+            "const": "INBOUND_OCR_V1"
+          },
+          "issuerInstitutionId": {
+            "type": "string",
+            "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+          },
+          "donationNumber": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "bloodType": {
+            "$ref": "#/components/schemas/BloodType"
+          },
+          "bloodTypeEvidence": {
+            "type": "object",
+            "required": [
+              "source",
+              "confirmed"
+            ],
+            "properties": {
+              "source": {
+                "enum": [
+                  "OCR_LABEL",
+                  "OPERATOR_CONFIRMED"
+                ]
+              },
+              "confirmed": {
+                "const": true
+              }
+            },
+            "additionalProperties": false
+          },
+          "componentType": {
+            "$ref": "#/components/schemas/ComponentType"
+          },
+          "componentEvidence": {
+            "type": "object",
+            "required": [
+              "source",
+              "confirmed"
+            ],
+            "properties": {
+              "source": {
+                "enum": [
+                  "OCR_LABEL",
+                  "BAG_TYPE",
+                  "OPERATOR_CONFIRMED"
+                ]
+              },
+              "confirmed": {
+                "const": true
+              }
+            },
+            "additionalProperties": false
+          },
+          "collectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "ocrEvidence": {
+            "type": "object",
+            "required": [
+              "engine",
+              "engineVersion",
+              "fieldConfidence"
+            ],
+            "properties": {
+              "engine": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "engineVersion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "fieldConfidence": {
+                "type": "object",
+                "required": [
+                  "donationNumber",
+                  "bloodType",
+                  "collectedAt",
+                  "expiresAt"
+                ],
+                "properties": {
+                  "donationNumber": {
+                    "type": "integer",
+                    "minimum": 90,
+                    "maximum": 100
+                  },
+                  "bloodType": {
+                    "type": "integer",
+                    "minimum": 90,
+                    "maximum": 100
+                  },
+                  "collectedAt": {
+                    "type": "integer",
+                    "minimum": 90,
+                    "maximum": 100
+                  },
+                  "expiresAt": {
+                    "type": "integer",
+                    "minimum": 90,
+                    "maximum": 100
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
       "TransferRequest": {
         "type": "object",
         "required": [
@@ -372,6 +572,7 @@
             "type": "string",
             "enum": [
               "COMPONENT",
+              "INBOUND_CAPTURE",
               "TRANSFER",
               "LOCAL_RELEASE",
               "RECONCILIATION"
@@ -460,6 +661,12 @@
       },
       "PolicyDisabled": {
         "description": "Policy or report format is not enabled"
+      },
+      "Conflict": {
+        "description": "A safe identity or state conflict"
+      },
+      "Forbidden": {
+        "description": "The authenticated role is outside the permitted scope"
       }
     }
   }
