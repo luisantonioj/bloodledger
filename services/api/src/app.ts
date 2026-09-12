@@ -581,6 +581,10 @@ export async function buildApp(
       database: database ? "READY" : "UNAVAILABLE",
       workerFabric: config.workerConfigured ? "CONFIGURED" : "DISABLED",
       forecastReadiness,
+      v2CommandQueue: v2 ? "CONFIGURED" : "DISABLED",
+      v2EncryptionKeys: config.v2EncryptionKeysConfigured ? "CONFIGURED" : "UNAVAILABLE",
+      v2ProjectionReconciliation: v2 ? "CONFIGURED" : "DISABLED",
+      censusWorkerFreshness: v2 ? "CONFIGURED" : "DISABLED",
       classification: "SIMULATION_ONLY",
     });
   });

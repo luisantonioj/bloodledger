@@ -8,6 +8,15 @@ test -f services/api/openapi.json
 node -e 'JSON.parse(require("node:fs").readFileSync("services/api/openapi.json", "utf8"))'
 rg -q 'SIMULATION_ONLY' services/api/openapi.json services/api/src apps/capture-pwa/src
 rg -q 'DISABLED_UNAPPROVED_POLICY' services/api/openapi.json services/api/src
+rg -q '/api/v2/components' services/api/src/v2-routes.ts services/api/openapi-v2.json
+rg -q 'API_VERSION_READ_ONLY' services/api/src/app.ts
+rg -q 'V2_KEYS_UNAVAILABLE' services/api/src/donation-crypto.ts services/api/src/v2-routes.ts
+rg -q 'LEDGER_COMMITTED_PROJECTION_PENDING' services/api/src/v2-command.ts database/migrations/20260912000000000_create-interview-core-v2-tables.js
+rg -q 'DONATION_NUMBER_INVALID' services/api/src/donation-crypto.ts
+if rg -n 'console\.log\(|donationNumber.*logger|request\.log\..*(body|headers)' services/api/src; then
+  echo "V2 API source may leak raw Donation No. or request payloads" >&2
+  exit 1
+fi
 rg -q 'LEDGER_COMMITTED_PROJECTION_PENDING' services/api/src database/migrations/20260817000000000_create-synthetic-scan-sync-tables.js
 rg -q 'pg_advisory_xact_lock' services/api/src/database.ts
 rg -q 'FOR UPDATE SKIP LOCKED' services/api/src/database.ts
