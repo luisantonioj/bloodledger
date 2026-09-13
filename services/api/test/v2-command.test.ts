@@ -23,3 +23,11 @@ test("keeps retryable failures queued and makes conflicts visible", async () => 
   const conflictWorker = new V2CommandWorker(conflictStore, { submit: async () => { throw Object.assign(new Error("stale"), { retryable: false, code: "V2_VERSION_CONFLICT" }); }, project: async () => undefined }, "WORKER_03");
   assert.equal((await conflictWorker.runOnce(new Date("2026-09-12T00:01:00.000Z"))).status, "CONFLICT");
 });
+
+test("retries projection reconciliation without losing the committed command", async () => {
+  const store = new InMemoryV2CommandStore(); await store.enqueue({ ...base, commandId: "CMD_CORE_004", idempotencyKey: "IDEM_CORE_004", resourceId: "COMP_CORE_004" });
+  let projections = 0;
+  const worker = new V2CommandWorker(store, { submit: async () => ({ transactionId: "TX_CORE_004" }), project: async () => { projections += 1; if (projections === 1) throw new Error("projection unavailable"); } }, "WORKER_04");
+  assert.equal((await worker.runOnce(new Date("2026-09-12T00:01:00.000Z"))).status, "RETRY_WAIT");
+  assert.equal((await worker.runOnce(new Date("2026-09-12T00:02:00.000Z"))).status, "COMMITTED");
+});

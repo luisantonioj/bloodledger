@@ -448,6 +448,17 @@ approved data and `RQ-05`–`07`.
 | BL-SPEC-01 | Feature-level Spec Kit folders | Introduce only when a later feature needs separate spec/plan/tasks |
 | BL-SKL-01 | Custom agent skills | Deferred until a stable workflow repeats and can be tested |
 
+### BL-CORE-INTAKE-01 — OCR-only inbound registration
+
+**Priority:** Must | **Status:** Implemented in `codex/inbound-ocr-registration-v2`
+**Target:** Sprint 6 follow-up
+
+Replace the former source-system import assumption with confirmed OCR intake at
+each receiving blood bank. Deliver the versioned capture contract, encrypted
+provenance, custody-scoped Fabric registration/receipt, FEFO-ready projection,
+committed-inventory coordination evidence, and aggregate intake reporting.
+Frontend and forecasting changes are explicitly separate LAT/BUNO work.
+
 ## 11. Explicitly not in this study
 
 - Patient/donor/clinical record management.

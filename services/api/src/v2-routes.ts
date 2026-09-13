@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { ApiFailure } from "./errors.js";
-import { encryptDonationNumber, type DonationKeyring, validateDonationNumber } from "./donation-crypto.js";
+import { encryptDonationNumber, type DonationKeyring } from "./donation-crypto.js";
 import type { WebPrincipal } from "./session.js";
 import type { V2CommandStore, V2ResourceType } from "./v2-command.js";
 import type { CensusStore } from "./census-worker.js";
 import type { V2ProjectionReader } from "./database-v2.js";
+import { validateInboundOcrInput } from "./inbound-ocr-policy.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
 const CORRELATION_PATTERN = /^CORR_[0-9A-F]{32}$/;
@@ -26,6 +27,7 @@ export interface V2RouteDependencies {
   projection?: V2ProjectionReader;
   webOrigin: string;
   clock: () => Date;
+  enabledIssuerInstitutionIds?: readonly string[];
 }
 
 function hash(value: string): string { return createHash("sha256").update(value, "utf8").digest("hex").toUpperCase(); }
@@ -72,11 +74,11 @@ function safeCommand(command: Awaited<ReturnType<V2CommandStore["enqueue"]>>["co
 export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDependencies): void {
   const restore = dependencies.restore;
   const sameOrigin = (request: FastifyRequest) => { if (request.headers.origin !== dependencies.webOrigin) throw new ApiFailure(403, "ORIGIN_FORBIDDEN", "Request origin is not permitted."); };
-  const enqueue = async (request: FastifyRequest, reply: FastifyReply, resourceType: V2ResourceType, resourceId: string, operation: string, payload: Record<string, unknown>, principal: WebPrincipal) => {
+  const enqueue = async (request: FastifyRequest, reply: FastifyReply, resourceType: V2ResourceType, resourceId: string, operation: string, payload: Record<string, unknown>, principal: WebPrincipal, payloadSha256?: string) => {
     const idempotencyKey = requiredHeader(request);
     const correlationId = requiredBodyString(payload, "correlationId", CORRELATION_PATTERN);
     const acceptedAt = dependencies.clock().toISOString();
-    const result = await dependencies.store.enqueue({ commandId: generatedId("CMD_", idempotencyKey), idempotencyKey, resourceType, resourceId, operation, payload, correlationId, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, acceptedAt });
+    const result = await dependencies.store.enqueue({ commandId: generatedId("CMD_", idempotencyKey), idempotencyKey, resourceType, resourceId, operation, payload, payloadSha256, correlationId, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, acceptedAt });
     (request as FastifyRequest & { v2Replayed?: boolean }).v2Replayed = result.replayed;
     return reply.status(202).send(safeCommand(result.command, request));
   };
@@ -106,19 +108,43 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
   });
 
   app.post("/api/v2/components", async (request, reply) => {
+    sameOrigin(request); await restore(request);
+    throw new ApiFailure(410, "V2_OCR_REQUIRED", "Inbound components must be registered through confirmed OCR capture.");
+  });
+
+  app.post("/api/v2/inbound-captures", async (request, reply) => {
     sameOrigin(request); const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02"]);
     if (!dependencies.keyring) throw new ApiFailure(503, "V2_KEYS_UNAVAILABLE", "Donation encryption keys are not available.");
-    const body = request.body;
-    if (!hasKeys(body, ["bloodType", "collectedAt", "componentType", "correlationId", "donationId", "donationNumber", "eventTime", "expiresAt", "issuerInstitutionId"])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Component registration input is invalid.");
-    const donationNumber = requiredBodyString(body, "donationNumber"); validateDonationNumber(donationNumber);
-    const issuer = requiredBodyString(body, "issuerInstitutionId", INSTITUTION_PATTERN);
-    if (issuer !== principal.institutionId) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Component registration is restricted to the custody institution.");
-    const componentType = requiredBodyString(body, "componentType"); if (!(COMPONENT_TYPES as readonly string[]).includes(componentType)) throw new ApiFailure(400, "V2_COMPONENT_TYPE_INVALID", "Component type is not supported.");
-    const bloodType = requiredBodyString(body, "bloodType"); if (!(BLOOD_TYPES as readonly string[]).includes(bloodType)) throw new ApiFailure(400, "V2_BLOOD_TYPE_INVALID", "Blood type is not supported.");
-    const encrypted = encryptDonationNumber(donationNumber, dependencies.keyring);
-    const componentId = generatedId("COMP_", requiredHeader(request));
-    const payload = { componentId, donationId: requiredBodyString(body, "donationId", /^DON_[A-Z0-9_-]{1,56}$/), issuerInstitutionId: issuer, donationNoCiphertext: encrypted.ciphertext, donationNoNonce: encrypted.nonce, donationNoAuthTag: encrypted.authTag, donationNoEncryptionKeyVersion: encrypted.encryptionKeyVersion, donationNoLookupHmac: encrypted.lookupHmac, componentType, bloodType, collectedAt: requiredUtc(body, "collectedAt"), expiresAt: requiredUtc(body, "expiresAt"), custodyInstitutionId: principal.institutionId, actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN) };
-    return enqueue(request, reply, "COMPONENT", componentId, "REGISTER_COMPONENT", payload, principal);
+    const idempotencyKey = requiredHeader(request);
+    const capture = validateInboundOcrInput(request.body, dependencies.enabledIssuerInstitutionIds ?? ["INST_MEDIATRIX"]);
+    if (!dependencies.projection) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Inbound identity reconciliation is not available.");
+    const encrypted = encryptDonationNumber(capture.donationNumber, dependencies.keyring);
+    const existing = await dependencies.projection.findComponentByIdentity(capture.issuerInstitutionId, encrypted.lookupHmac, capture.componentType);
+    const captureId = generatedId("INCAP_", idempotencyKey);
+    if (existing) {
+      if (existing.institutionId !== principal.institutionId) throw new ApiFailure(409, "INBOUND_COMPONENT_CONFLICT", "The component is already held by another custody institution.");
+      if (existing.inventoryStatus === "IN_TRANSIT" && existing.reservationId && existing.reservationVersion) {
+        const payload = { reservationId: existing.reservationId, expectedVersion: existing.reservationVersion, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: capture.eventTime, correlationId: capture.correlationId, captureId, captureEvidenceDigest: encrypted.lookupHmac };
+        return enqueue(request, reply, "INBOUND_CAPTURE", captureId, "RECEIVE_INBOUND_COMPONENT", payload, principal);
+      }
+      if (existing.inventoryStatus === "IN_TRANSIT") throw new ApiFailure(409, "INBOUND_RECEIPT_REQUIRED", "The matching in-transit component requires its transfer receipt workflow before intake can continue.");
+      return reply.status(200).send({ captureId, resolution: "ALREADY_REGISTERED", componentId: existing.componentId, status: existing.inventoryStatus, classification: "SIMULATION_ONLY" as const });
+    }
+    const componentId = generatedId("COMP_", idempotencyKey);
+    const donationId = `DON_${hash(`${capture.issuerInstitutionId}:${encrypted.lookupHmac}`).slice(0, 40)}`;
+    const payload = { captureId, componentId, donationId, issuerInstitutionId: capture.issuerInstitutionId, donationNoCiphertext: encrypted.ciphertext, donationNoNonce: encrypted.nonce, donationNoAuthTag: encrypted.authTag, donationNoEncryptionKeyVersion: encrypted.encryptionKeyVersion, donationNoLookupHmac: encrypted.lookupHmac, componentType: capture.componentType, bloodType: capture.bloodType, collectedAt: capture.collectedAt, expiresAt: capture.expiresAt, custodyInstitutionId: principal.institutionId, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: capture.eventTime, correlationId: capture.correlationId, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt, bloodTypeEvidenceSource: capture.bloodTypeEvidence.source, componentEvidenceSource: capture.componentEvidence.source, ocrEngine: capture.ocrEvidence.engine, ocrEngineVersion: capture.ocrEvidence.engineVersion, donationNumberConfidence: capture.ocrEvidence.fieldConfidence.donationNumber, bloodTypeConfidence: capture.ocrEvidence.fieldConfidence.bloodType };
+    await dependencies.projection.recordInboundCapture?.(captureId, payload, dependencies.clock().toISOString());
+    const payloadSha256 = createHash("sha256").update(JSON.stringify({ capture, captureId, componentId, donationId, custodyInstitutionId: principal.institutionId }), "utf8").digest("hex");
+    return enqueue(request, reply, "INBOUND_CAPTURE", captureId, "REGISTER_INBOUND_COMPONENT", payload, principal, payloadSha256);
+  });
+
+  app.get("/api/v2/reports/inbound-intake", async (request) => {
+    const { principal } = await restore(request);
+    const projection = dependencies.projection;
+    if (!projection?.listInboundIntake) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Inbound intake reporting is not available.");
+    const scope = principal.roleId === "ROLE-04" ? undefined : principal.institutionId;
+    if (principal.roleId !== "ROLE-04" && !["ROLE-01", "ROLE-02"].includes(principal.roleId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Inbound intake reporting is not permitted for this role.");
+    return { scope: scope ?? "PERMITTED_INSTITUTIONS", statuses: await projection.listInboundIntake(scope), includedInventoryStatuses: ["AVAILABLE", "RESERVED"], excludedFromInventory: ["QUEUED", "FAILED", "CONFLICT"], classification: "SIMULATION_ONLY" as const };
   });
 
   app.post("/api/v2/transfers", async (request, reply) => {

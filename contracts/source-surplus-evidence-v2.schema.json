@@ -13,6 +13,8 @@
     "horizonDate",
     "forecastStatus",
     "modelVersion",
+    "inventorySnapshotId",
+    "sourceProjectionDigest",
     "classification",
     "recommendationEligibility"
   ],
@@ -68,6 +70,14 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 64
+    },
+    "inventorySnapshotId": {
+      "type": "string",
+      "pattern": "^CENSUS_[A-Z0-9_-]{1,56}$"
+    },
+    "sourceProjectionDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
     },
     "classification": {
       "const": "SIMULATION_ONLY"
