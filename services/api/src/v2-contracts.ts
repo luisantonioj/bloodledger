@@ -48,7 +48,7 @@ export interface V2ComponentView {
 
 export interface V2LedgerCommandView {
   commandId: string;
-  resourceType: "COMPONENT" | "TRANSFER" | "LOCAL_RELEASE" | "RECONCILIATION";
+  resourceType: "COMPONENT" | "INBOUND_CAPTURE" | "TRANSFER" | "LOCAL_RELEASE" | "RECONCILIATION";
   resourceId: string;
   status: V2CommandStatus;
   statusUrl: string;
@@ -68,6 +68,8 @@ export interface V2SourceSurplusEvidence {
   horizonDate: string;
   forecastStatus: "AVAILABLE" | "STALE" | "UNAVAILABLE";
   modelVersion: string;
+  inventorySnapshotId?: string;
+  sourceProjectionDigest?: string;
   classification: typeof V2_CLASSIFICATION;
   recommendationEligibility: typeof V2_RECOMMENDATION_ELIGIBILITY;
 }

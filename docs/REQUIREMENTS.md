@@ -81,6 +81,13 @@ Acceptance:
   explicit confirmation rules must pass.
 - No donor or patient field is persisted.
 
+For the interview-aligned V2 inbound workflow (`PA-S6-02`), the source-system
+import assumption is removed: every inbound at every blood bank uses confirmed
+OCR through `INBOUND_OCR_V1`. The V2 mutation path accepts no barcode-only,
+manual-only, client-generated donation/component IDs, or raw OCR text/images;
+the receiving institution is derived from authenticated custody and the
+printed label expiry is authoritative.
+
 ### FR-02 — Enforce FEFO at dispatch
 
 The system shall reject dispatch of a later-expiring available unit when an
@@ -557,6 +564,7 @@ withdrawal creates a new `SUBMITTED` application linked to the prior record.
 | PA-S4-01 | Accepted prototype assumption | `SYNTHETIC_CAPTURE_V1` | Jopia / 2026-08-17 | Mobile on-device Tesseract.js OCR is primary for synthetic fixtures; Code 128/Data Matrix and synthetic QR are fallback. Five exact allowlisted fields, per-field confidence at least 90, authenticated confirmation, no manual repair, and volatile-only image/raw-text handling are mandatory. Outputs remain `SIMULATION_ONLY`. | Approved Mediatrix label structures/fixtures, capture validation, privacy review, and `RQ-02` resolution |
 | PA-S4-02 | Accepted prototype assumption | `SYNTHETIC_API_AUTH_V1` | Jopia / 2026-08-17 | A single opaque synthetic `ROLE-01` operator at `INST_MEDIATRIX` may obtain a short-lived locally signed JWT using untracked credentials. This exists only to validate API authorization and is not production identity management. | Approved user/session/identity design in the activating authentication sprint |
 | PA-S6-01 | Accepted prototype assumption | `INTERVIEW_DERIVED_CORE_V2` | Jopia / 2026-09-12 | V2 models all eight ABO/Rh groups, four component types, opaque component IDs, encrypted off-chain Donation No. references, hard FEFO, local release, reconciliation holds, durable commands, and versioned census output. Near-expiry, operational RPS/BROA, issuer rules, and official reporting order remain disabled until approved. | Approved issuer/clinical/operational/reporting decisions recorded against the applicable `RQ-*` |
+| PA-S6-02 | Accepted prototype assumption | `INBOUND_OCR_V1` | Jopia / 2026-09-12 | Mediatrix inbound inventory is captured from the printed label through confirmed OCR; no source-system import is assumed. Fields require at least 90% OCR confidence, explicit operator confirmation, issuer-specific Donation No. validation, and label expiry authority. Exact values remain encrypted off-chain and all outputs are `SIMULATION_ONLY`. | Approved label fixtures, issuer policies, privacy review, and `RQ-02`/`RQ-03` resolution |
 
 Prototype-assumption versions are immutable. A replacement adds a new version,
 marks the earlier one superseded for new operations, preserves historical

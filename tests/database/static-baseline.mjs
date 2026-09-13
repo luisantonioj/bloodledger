@@ -2,7 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 
 const root = new URL("../../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
-const [compose, bootstrap, migration, forecastMigration, coordinationMigration, scanMigration, webAccessMigration, transferAlertMigration, alertAckMigration, sharedInventoryTransactionMigration, v2Migration, databasePackage] = await Promise.all([
+const [compose, bootstrap, migration, forecastMigration, coordinationMigration, scanMigration, webAccessMigration, transferAlertMigration, alertAckMigration, sharedInventoryTransactionMigration, v2Migration, inboundMigration, databasePackage] = await Promise.all([
   read("compose.yaml"),
   read("database/bootstrap/001-create-development-roles.sh"),
   read("database/migrations/20260715000000000_bootstrap-app-schema.js"),
@@ -14,6 +14,7 @@ const [compose, bootstrap, migration, forecastMigration, coordinationMigration, 
   read("database/migrations/20260820020000000_add-alert-acknowledgement-idempotency.js"),
   read("database/migrations/20260823010000000_allow-shared-inventory-ledger-transactions.js"),
   read("database/migrations/20260912000000000_create-interview-core-v2-tables.js"),
+  read("database/migrations/20260912010000000_add-inbound-ocr-capture-v2.js"),
   read("database/package.json").then(JSON.parse)
 ]);
 
@@ -81,6 +82,11 @@ const assertions = [
   [v2Migration.includes("CREATE TABLE app.v2_census_snapshots"), "V2 census snapshot table"],
   [v2Migration.includes("CREATE TRIGGER v2_components_shape_trigger"), "V2 donation component shape guard"],
   [v2Migration.includes("exports.down = false"), "V2 forward-only migration"],
+  [inboundMigration.includes("CREATE TABLE app.v2_inbound_captures"), "OCR inbound capture table"],
+  [inboundMigration.includes("CREATE TABLE app.v2_issuer_policies"), "issuer policy table"],
+  [inboundMigration.includes("capture_method = 'OCR'"), "OCR-only database constraint"],
+  [inboundMigration.includes("INBOUND_CAPTURE"), "inbound command resource type"],
+  [inboundMigration.includes("exports.down = false"), "inbound forward-only migration"],
   [databasePackage.scripts["migrate:up"] === "node scripts/migrate.mjs", "apply command"],
   [databasePackage.scripts["migrate:status"] === "node scripts/migration-status.mjs", "status command"]
 ];
@@ -91,8 +97,8 @@ for (const [passed, label] of assertions) {
 
 const migrationFiles = (await readdir(new URL("database/migrations", root)))
   .filter((name) => /\.(?:js|cjs|mjs|sql)$/.test(name));
-if (migrationFiles.length !== 9) {
-  throw new Error(`Expected nine approved bootstrap through interview-core-v2 migrations, received ${migrationFiles.length}`);
+if (migrationFiles.length !== 10) {
+  throw new Error(`Expected ten approved bootstrap through inbound OCR migrations, received ${migrationFiles.length}`);
 }
 
 const prohibited = /blood_units|transfers|users|institutions|forecasts|notifications|audit_logs|sync(?:hronization)?_queues/i;

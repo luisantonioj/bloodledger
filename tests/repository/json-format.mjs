@@ -14,6 +14,7 @@ const files = [
   "services/api/openapi-v2.json",
   "contracts/core-v2.schema.json",
   "contracts/source-surplus-evidence-v2.schema.json",
+  "contracts/inbound-ocr-v1.schema.json",
   "contracts/doh-census-v2.schema.json",
 ];
 

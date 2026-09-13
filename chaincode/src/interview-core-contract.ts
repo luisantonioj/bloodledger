@@ -58,6 +58,9 @@ interface ComponentAsset {
   updatedAt: string;
   correlationId: string;
   lastTransactionId: string;
+  captureMethod?: "OCR";
+  bloodTypeEvidenceSource?: string;
+  componentEvidenceSource?: string;
 }
 interface ReservationAsset {
   schemaVersion: typeof RESERVATION_SCHEMA;
@@ -213,6 +216,61 @@ export class InterviewCoreContract extends Contract {
     await this.writeIdempotent(ctx, String(input.idempotencyKey), "REGISTER_COMPONENT", requestDigest, response);
     this.emit(ctx, "ComponentRegistered", { componentId: asset.componentId, status: asset.status, version: asset.version, eventTime: asset.createdAt, correlationId: asset.correlationId });
     return response;
+  }
+
+  /** OCR-only inbound registration. Issuer and receiving custody are intentionally independent. */
+  @Transaction()
+  @Returns("string")
+  public async RegisterInboundComponent(ctx: Context, inputJson: string): Promise<string> {
+    const input = this.parseExactObject<Record<string, unknown>>(inputJson, [
+      "actorInstitutionId", "actorUserId", "bloodType", "bloodTypeEvidenceSource", "captureEvidenceDigest", "captureMethod", "componentEvidenceSource", "componentId", "componentType", "correlationId", "custodyInstitutionId", "donationId", "donationNoDigest", "eventTime", "expiresAt", "idempotencyKey", "issuerInstitutionId", "policyVersion", "collectedAt",
+    ]);
+    this.assertGateway(ctx);
+    this.assertCommon(input);
+    this.assertId(String(input.componentId), COMPONENT_ID_PATTERN, "COMPONENT_INPUT_INVALID");
+    this.assertId(String(input.donationId), DONATION_ID_PATTERN, "COMPONENT_INPUT_INVALID");
+    this.assertHash(input.donationNoDigest, "COMPONENT_DONATION_REFERENCE_INVALID");
+    this.assertHash(input.captureEvidenceDigest, "COMPONENT_CAPTURE_EVIDENCE_INVALID");
+    this.assertActorForInstitution(input.actorUserId, input.custodyInstitutionId, ["ROLE_01", "ROLE_02"]);
+    if (input.actorInstitutionId !== input.custodyInstitutionId || input.captureMethod !== "OCR") this.fail("INBOUND_CAPTURE_INVALID");
+    if (!policy.allowedIssuerInstitutionIds.includes(String(input.issuerInstitutionId))) this.fail("COMPONENT_ISSUER_UNAPPROVED");
+    if (!policy.bloodTypes.includes(input.bloodType as BloodType)) this.fail("COMPONENT_BLOOD_TYPE_UNSUPPORTED");
+    if (!policy.componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
+    if (!["OCR_LABEL", "OPERATOR_CONFIRMED"].includes(String(input.bloodTypeEvidenceSource)) || !["OCR_LABEL", "BAG_TYPE", "OPERATOR_CONFIRMED"].includes(String(input.componentEvidenceSource))) this.fail("INBOUND_CAPTURE_EVIDENCE_INVALID");
+    const collectedMs = this.parseUtc(input.collectedAt); const expiryMs = this.parseUtc(input.expiresAt); this.parseUtc(input.eventTime);
+    if (expiryMs <= collectedMs) this.fail("COMPONENT_TIME_INVALID");
+    const requestDigest = this.digest(input); const prior = await this.readIdempotent(ctx, String(input.idempotencyKey), "REGISTER_INBOUND_COMPONENT", requestDigest); if (prior !== undefined) return prior;
+    if ((await ctx.stub.getState(this.componentKey(String(input.componentId)))).length > 0) this.fail("COMPONENT_DUPLICATE");
+    const identityKey = this.identityKey(String(input.issuerInstitutionId), String(input.donationNoDigest), String(input.componentType));
+    if ((await ctx.stub.getState(identityKey)).length > 0) this.fail("COMPONENT_DUPLICATE_DONATION_TYPE");
+    const donationPrefix = `component:identity:${String(input.issuerInstitutionId)}:${String(input.donationNoDigest)}:`;
+    const existingTypes = await this.listIdentityTypes(ctx, donationPrefix);
+    if ((input.componentType === "WHOLE_BLOOD" && existingTypes.length > 0) || (input.componentType !== "WHOLE_BLOOD" && existingTypes.includes("WHOLE_BLOOD"))) this.fail("COMPONENT_WHOLE_BLOOD_EXCLUSIVE");
+    const asset: ComponentAsset = { schemaVersion: COMPONENT_SCHEMA, componentId: String(input.componentId), donationId: String(input.donationId), issuerInstitutionId: String(input.issuerInstitutionId), donationNoDigest: String(input.donationNoDigest), componentType: input.componentType as ComponentType, bloodType: input.bloodType as BloodType, collectedAt: String(input.collectedAt), labelExpiry: String(input.expiresAt), custodyInstitutionId: String(input.custodyInstitutionId), status: "AVAILABLE", version: 1, actorUserId: String(input.actorUserId), policyVersion: POLICY_VERSION, createdAt: String(input.eventTime), updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID(), captureMethod: "OCR", bloodTypeEvidenceSource: String(input.bloodTypeEvidenceSource), componentEvidenceSource: String(input.componentEvidenceSource) };
+    const response = this.serialize(asset); await ctx.stub.putState(this.componentKey(asset.componentId), Buffer.from(response, "utf8")); await ctx.stub.putState(identityKey, Buffer.from(asset.componentId, "utf8")); await this.writeIdempotent(ctx, String(input.idempotencyKey), "REGISTER_INBOUND_COMPONENT", requestDigest, response); this.emit(ctx, "InboundComponentRegistered", { componentId: asset.componentId, issuerInstitutionId: asset.issuerInstitutionId, custodyInstitutionId: asset.custodyInstitutionId, status: asset.status, version: asset.version, eventTime: asset.createdAt, correlationId: asset.correlationId }); return response;
+  }
+
+  @Transaction(false)
+  @Returns("string")
+  public async ReadComponentByIdentity(ctx: Context, inputJson: string): Promise<string> {
+    const input = this.parseExactObject<Record<string, unknown>>(inputJson, ["actorUserId", "componentType", "donationNoDigest", "issuerInstitutionId"]);
+    this.assertGateway(ctx); this.assertActor(input.actorUserId); this.assertHash(input.donationNoDigest, "COMPONENT_DONATION_REFERENCE_INVALID"); if (!policy.componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
+    const key = this.identityKey(String(input.issuerInstitutionId), String(input.donationNoDigest), String(input.componentType)); const stored = await ctx.stub.getState(key); return stored.length === 0 ? "" : Buffer.from(stored).toString("utf8");
+  }
+
+  @Transaction()
+  @Returns("string")
+  public async RecordInboundReceipt(ctx: Context, inputJson: string): Promise<string> {
+    const input = this.parseExactObject<Record<string, unknown>>(inputJson, ["actorInstitutionId", "actorUserId", "captureEvidenceDigest", "correlationId", "eventTime", "expectedVersion", "idempotencyKey", "policyVersion", "reservationId"]);
+    this.assertCommon(input); this.assertGateway(ctx); this.assertId(String(input.reservationId), RESERVATION_ID_PATTERN, "RESERVATION_INPUT_INVALID"); this.assertHash(input.captureEvidenceDigest, "COMPONENT_CAPTURE_EVIDENCE_INVALID");
+    if (!Number.isSafeInteger(input.expectedVersion) || Number(input.expectedVersion) < 1) this.fail("RESERVATION_VERSION_INVALID");
+    const reservation = await this.readReservation(ctx, String(input.reservationId)); const actor = this.assertActor(input.actorUserId);
+    if (!(actor.role === "ROLE_01" || actor.role === "ROLE_02") || actor.institutionId !== reservation.destinationInstitutionId || input.actorInstitutionId !== reservation.destinationInstitutionId || reservation.purpose !== "TRANSFER" || reservation.status !== "IN_TRANSIT") this.fail("RESERVATION_NOT_AUTHORIZED");
+    if (reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
+    const prior = await this.readIdempotent(ctx, String(input.idempotencyKey), "RECEIVE_INBOUND_COMPONENT", this.digest(input)); if (prior !== undefined) return prior;
+    for (const id of reservation.selectedComponentIds) { const component = await this.readComponent(ctx, id); if (component.status !== "IN_TRANSIT" || component.reservationId !== reservation.reservationId) this.fail("COMPONENT_STATE_CONFLICT"); await ctx.stub.putState(this.componentKey(id), Buffer.from(this.serialize({ ...component, status: "RECEIVED", version: component.version + 1, actorUserId: String(input.actorUserId), updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID() } satisfies ComponentAsset), "utf8")); }
+    const updated = { ...reservation, status: "RECEIVED" as const, version: reservation.version + 1, actorUserId: String(input.actorUserId), updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID() };
+    const response = this.serialize(updated); await ctx.stub.putState(this.reservationKey(reservation.reservationId), Buffer.from(response, "utf8")); await this.writeIdempotent(ctx, String(input.idempotencyKey), "RECEIVE_INBOUND_COMPONENT", this.digest(input), response); this.emit(ctx, "InboundReceiptRecorded", { reservationId: reservation.reservationId, status: updated.status, version: updated.version, eventTime: updated.updatedAt, correlationId: updated.correlationId }); return response;
   }
 
   @Transaction(false)

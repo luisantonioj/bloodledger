@@ -292,3 +292,15 @@ lookup index. One accepted transfer approval can reserve several FEFO units in
 one Fabric transaction, so every affected projection must be allowed to retain
 the same authoritative transaction reference. Unit IDs and source event IDs
 remain unique, and the migration grants no additional runtime privilege.
+
+## 14. Sprint 6 OCR-only inbound schema
+
+Migration `20260912010000000_add-inbound-ocr-capture-v2.js` adds versioned
+issuer-format policy, encrypted-capture provenance, the `INBOUND_CAPTURE`
+command resource, and safe capture provenance columns on V2 components. It
+stores no raw Donation No., OCR text, label image, patient, donor, or clinical
+data. Captures are constrained to `OCR`/`INBOUND_OCR_V1`, confidence 90–100,
+and printed expiry later than collection. Intake rows can be counted by
+`QUEUED`, `COMMITTED`, `ALREADY_REGISTERED`, `CONFLICT`, or `FAILED` without
+including non-committed rows in census inventory totals. Issuer policies are
+disabled unless explicitly enabled, and the migration is forward-only.

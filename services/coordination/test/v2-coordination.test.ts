@@ -4,7 +4,7 @@ import { rankRpsV2 } from "../src/rps-v2.js";
 import { recommendBroaV2 } from "../src/broa-v2.js";
 
 const evaluationTime = "2026-09-12T00:00:00.000Z";
-const surplus = { evidenceId: "EVD_SURPLUS_001", sourceInstitutionId: "INST_MEDIATRIX", bloodType: "A_POSITIVE" as const, componentType: "PACKED_RED_BLOOD_CELLS" as const, surplusQuantity: 5, asOf: "2026-09-11T23:00:00.000Z", horizonDate: "2026-09-13", forecastStatus: "AVAILABLE" as const, modelVersion: "SYNTHETIC_FORECAST_V2", classification: "SIMULATION_ONLY" as const, recommendationEligibility: "DISABLED_UNAPPROVED_POLICY" as const };
+const surplus = { evidenceId: "SURP_V2_001", sourceInstitutionId: "INST_MEDIATRIX", bloodType: "A_POSITIVE" as const, componentType: "PACKED_RED_BLOOD_CELLS" as const, surplusQuantity: 5, asOf: "2026-09-11T23:00:00.000Z", horizonDate: "2026-09-13", forecastStatus: "AVAILABLE" as const, modelVersion: "SYNTHETIC_FORECAST_V2", inventorySnapshotId: "CENSUS_V2_001", sourceProjectionDigest: "a".repeat(64), classification: "SIMULATION_ONLY" as const, recommendationEligibility: "DISABLED_UNAPPROVED_POLICY" as const };
 
 test("RPS V2 keeps 70/30 ordering and rejects mixed competition keys", () => {
   const result = rankRpsV2({ evaluationTime, requests: [
