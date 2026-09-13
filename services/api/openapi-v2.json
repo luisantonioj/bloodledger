@@ -1,0 +1,673 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "BloodLedger Interview Core V2 API",
+    "version": "0.1.0",
+    "description": "Simulation-only additive contracts for the interview-aligned core. Frontend and forecasting implementations are separate workstreams."
+  },
+  "servers": [
+    {
+      "url": "/api/v2"
+    }
+  ],
+  "paths": {
+    "/commands/{commandId}": {
+      "get": {
+        "operationId": "getCommand",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CommandId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Command"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/components": {
+      "post": {
+        "operationId": "registerComponent",
+        "deprecated": true,
+        "description": "Legacy mutation retained only to return V2_OCR_REQUIRED. Use OCR-only inbound-captures.",
+        "responses": {
+          "410": {
+            "description": "Legacy component mutation is disabled; confirmed OCR is required"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComponentRegistration"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listComponents",
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Components"
+          }
+        }
+      }
+    },
+    "/inbound-captures": {
+      "post": {
+        "operationId": "acceptInboundOcrCapture",
+        "description": "Accept a confirmed OCR capture. The receiving custody institution is derived from the authenticated session; raw OCR text and images are not accepted.",
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Command"
+          },
+          "200": {
+            "description": "Already registered in the same custody scope"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InboundOcrCapture"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transfers": {
+      "post": {
+        "operationId": "submitTransfer",
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Command"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transfers/{transferId}/{action}": {
+      "post": {
+        "operationId": "transitionTransfer",
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "approve",
+                "prepare",
+                "dispatch",
+                "transit",
+                "receipt",
+                "delay",
+                "compromise",
+                "cancel",
+                "reject"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Command"
+          }
+        }
+      }
+    },
+    "/reports/doh-census/{snapshotId}": {
+      "get": {
+        "operationId": "getCensusSnapshot",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SnapshotId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Census"
+          }
+        }
+      }
+    },
+    "/reports/inbound-intake": {
+      "get": {
+        "operationId": "getInboundIntakeStatus",
+        "description": "Aggregate OCR intake states. Raw Donation Nos. are never returned.",
+        "responses": {
+          "200": {
+            "description": "Inbound intake status metrics"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/reports/doh-census/{snapshotId}/{componentType}.tsv": {
+      "get": {
+        "operationId": "copyCensusRow",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SnapshotId"
+          },
+          {
+            "name": "componentType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ComponentType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Versioned TSV row",
+            "content": {
+              "text/tab-separated-values": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/PolicyDisabled"
+          }
+        }
+      }
+    },
+    "/local-releases": {
+      "post": {
+        "operationId": "reserveLocalRelease",
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Command"
+          }
+        }
+      }
+    },
+    "/reconciliation": {
+      "post": {
+        "operationId": "placeReconciliationHold",
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Command"
+          }
+        }
+      }
+    },
+    "/reservations/{reservationId}/{action}": {
+      "post": {
+        "operationId": "transitionReservation",
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Command"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "CommandId": {
+        "name": "commandId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^CMD_[A-Z0-9_-]{1,56}$"
+        }
+      },
+      "SnapshotId": {
+        "name": "snapshotId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^CENSUS_[A-Z0-9_-]{1,56}$"
+        }
+      }
+    },
+    "schemas": {
+      "BloodType": {
+        "type": "string",
+        "enum": [
+          "A_POSITIVE",
+          "A_NEGATIVE",
+          "B_POSITIVE",
+          "B_NEGATIVE",
+          "AB_POSITIVE",
+          "AB_NEGATIVE",
+          "O_POSITIVE",
+          "O_NEGATIVE"
+        ]
+      },
+      "ComponentType": {
+        "type": "string",
+        "enum": [
+          "WHOLE_BLOOD",
+          "PACKED_RED_BLOOD_CELLS",
+          "FRESH_FROZEN_PLASMA",
+          "PLATELETS"
+        ]
+      },
+      "ComponentRegistration": {
+        "type": "object",
+        "required": [
+          "issuerInstitutionId",
+          "donationId",
+          "donationNumber",
+          "componentType",
+          "bloodType",
+          "collectedAt",
+          "expiresAt",
+          "eventTime",
+          "correlationId"
+        ],
+        "properties": {
+          "issuerInstitutionId": {
+            "type": "string"
+          },
+          "donationId": {
+            "type": "string",
+            "pattern": "^DON_[A-Z0-9_-]{1,56}$"
+          },
+          "donationNumber": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "componentType": {
+            "$ref": "#/components/schemas/ComponentType"
+          },
+          "bloodType": {
+            "$ref": "#/components/schemas/BloodType"
+          },
+          "collectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InboundOcrCapture": {
+        "type": "object",
+        "required": [
+          "captureMethod",
+          "capturePolicyVersion",
+          "issuerInstitutionId",
+          "donationNumber",
+          "bloodType",
+          "bloodTypeEvidence",
+          "componentType",
+          "componentEvidence",
+          "collectedAt",
+          "expiresAt",
+          "capturedAt",
+          "confirmedAt",
+          "eventTime",
+          "correlationId",
+          "ocrEvidence"
+        ],
+        "properties": {
+          "captureMethod": {
+            "const": "OCR"
+          },
+          "capturePolicyVersion": {
+            "const": "INBOUND_OCR_V1"
+          },
+          "issuerInstitutionId": {
+            "type": "string",
+            "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+          },
+          "donationNumber": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "bloodType": {
+            "$ref": "#/components/schemas/BloodType"
+          },
+          "bloodTypeEvidence": {
+            "type": "object",
+            "required": [
+              "source",
+              "confirmed"
+            ],
+            "properties": {
+              "source": {
+                "enum": [
+                  "OCR_LABEL",
+                  "OPERATOR_CONFIRMED"
+                ]
+              },
+              "confirmed": {
+                "const": true
+              }
+            },
+            "additionalProperties": false
+          },
+          "componentType": {
+            "$ref": "#/components/schemas/ComponentType"
+          },
+          "componentEvidence": {
+            "type": "object",
+            "required": [
+              "source",
+              "confirmed"
+            ],
+            "properties": {
+              "source": {
+                "enum": [
+                  "OCR_LABEL",
+                  "BAG_TYPE",
+                  "OPERATOR_CONFIRMED"
+                ]
+              },
+              "confirmed": {
+                "const": true
+              }
+            },
+            "additionalProperties": false
+          },
+          "collectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "ocrEvidence": {
+            "type": "object",
+            "required": [
+              "engine",
+              "engineVersion",
+              "fieldConfidence"
+            ],
+            "properties": {
+              "engine": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "engineVersion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "fieldConfidence": {
+                "type": "object",
+                "required": [
+                  "donationNumber",
+                  "bloodType",
+                  "collectedAt",
+                  "expiresAt"
+                ],
+                "properties": {
+                  "donationNumber": {
+                    "type": "integer",
+                    "minimum": 90,
+                    "maximum": 100
+                  },
+                  "bloodType": {
+                    "type": "integer",
+                    "minimum": 90,
+                    "maximum": 100
+                  },
+                  "collectedAt": {
+                    "type": "integer",
+                    "minimum": 90,
+                    "maximum": 100
+                  },
+                  "expiresAt": {
+                    "type": "integer",
+                    "minimum": 90,
+                    "maximum": 100
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "TransferRequest": {
+        "type": "object",
+        "required": [
+          "transferId",
+          "sourceInstitutionId",
+          "destinationInstitutionId",
+          "bloodType",
+          "componentType",
+          "quantity",
+          "urgency",
+          "requestTime",
+          "eventTime",
+          "correlationId"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+          },
+          "sourceInstitutionId": {
+            "type": "string",
+            "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+          },
+          "destinationInstitutionId": {
+            "type": "string",
+            "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+          },
+          "bloodType": {
+            "$ref": "#/components/schemas/BloodType"
+          },
+          "componentType": {
+            "$ref": "#/components/schemas/ComponentType"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "urgency": {
+            "type": "string",
+            "enum": [
+              "ROUTINE",
+              "URGENT",
+              "CRITICAL"
+            ]
+          },
+          "requestTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Command": {
+        "type": "object",
+        "required": [
+          "commandId",
+          "resourceType",
+          "resourceId",
+          "status",
+          "statusUrl",
+          "acceptedAt",
+          "correlationId",
+          "classification"
+        ],
+        "properties": {
+          "commandId": {
+            "type": "string"
+          },
+          "resourceType": {
+            "type": "string",
+            "enum": [
+              "COMPONENT",
+              "INBOUND_CAPTURE",
+              "TRANSFER",
+              "LOCAL_RELEASE",
+              "RECONCILIATION"
+            ]
+          },
+          "resourceId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "SUBMITTING",
+              "LEDGER_COMMITTED_PROJECTION_PENDING",
+              "COMMITTED",
+              "RETRY_WAIT",
+              "FAILED",
+              "CONFLICT"
+            ]
+          },
+          "statusUrl": {
+            "type": "string"
+          },
+          "acceptedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string"
+          },
+          "safeErrorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Census": {
+        "$ref": "../../contracts/doh-census-v2.schema.json"
+      }
+    },
+    "responses": {
+      "Command": {
+        "description": "Durably accepted command",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Command"
+            }
+          }
+        }
+      },
+      "Components": {
+        "description": "Scoped component projection",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "../../contracts/core-v2.schema.json"
+              }
+            }
+          }
+        }
+      },
+      "Census": {
+        "description": "Scoped census snapshots",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../contracts/doh-census-v2.schema.json"
+            }
+          }
+        }
+      },
+      "Invalid": {
+        "description": "Safe validation failure"
+      },
+      "NotFound": {
+        "description": "Not found in authorized scope"
+      },
+      "PolicyDisabled": {
+        "description": "Policy or report format is not enabled"
+      },
+      "Conflict": {
+        "description": "A safe identity or state conflict"
+      },
+      "Forbidden": {
+        "description": "The authenticated role is outside the permitted scope"
+      }
+    }
+  }
+}

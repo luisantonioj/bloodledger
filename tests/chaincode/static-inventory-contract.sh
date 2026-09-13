@@ -5,6 +5,21 @@ cd "${repository_root}"
 
 [[ -f chaincode/policy/synthetic-inventory-v1.json ]]
 [[ -f chaincode/policy/synthetic-transfer-v1.json ]]
+[[ -f chaincode/policy/interview-core-v2.json ]]
+rg -q 'super\("InterviewCoreContract"\)' chaincode/src/interview-core-contract.ts
+for transaction in RegisterComponent ReadComponent SubmitTransferRequest ReadTransferRequest ReserveComponents PrepareReservation DispatchReservation \
+  StartReservationTransit RecordReservationReceipt CompleteLocalRelease CancelReservation \
+  PlaceReconciliationHold ResolveReconciliationHold EvaluateComponentExpiry MarkReservationCompromised; do
+  rg -q "${transaction}" chaincode/src/interview-core-contract.ts
+done
+rg -q 'COMPONENT_WHOLE_BLOOD_EXCLUSIVE' chaincode/src/interview-core-contract.ts
+rg -q 'RESERVATION_FEFO_VIOLATION' chaincode/src/interview-core-contract.ts
+rg -q 'RELEASE_PREPARATION_REQUIRED' chaincode/src/interview-core-contract.ts
+rg -q 'INTERVIEW_DERIVED_CORE_V2' chaincode/policy/interview-core-v2.json chaincode/src/interview-core-contract.ts
+if rg -n 'donationNumber|donationNo[^A-Za-z]' chaincode/src/interview-core-contract.ts; then
+  echo "V2 chaincode must not store or accept raw Donation No. values" >&2
+  exit 1
+fi
 jq -e '
   .classification == "PROTOTYPE_ASSUMPTION_NON_CLINICAL" and
   .policyVersion == "SYNTHETIC_INVENTORY_V1" and

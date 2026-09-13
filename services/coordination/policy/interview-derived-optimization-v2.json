@@ -1,0 +1,25 @@
+{
+  "classification": "SIMULATION_ONLY",
+  "policyVersion": "INTERVIEW_DERIVED_OPTIMIZATION_V2",
+  "recommendationEligibility": "DISABLED_UNAPPROVED_POLICY",
+  "automaticApprovalEnabled": false,
+  "rps": {
+    "urgencyWeight": 0.7,
+    "waitWeight": 0.3,
+    "waitCapHours": 24,
+    "tieBreak": [
+      "oldest_request_time",
+      "stable_request_id"
+    ]
+  },
+  "broa": {
+    "weights": {
+      "urgency": 0.5,
+      "stockShortage": 0.3125,
+      "distancePenalty": 0.1875
+    },
+    "normalization": "MIN_MAX",
+    "sourceSurplusIsEligibilityGate": true,
+    "contextIsExplanatoryOnly": true
+  }
+}

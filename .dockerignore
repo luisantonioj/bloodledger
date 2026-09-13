@@ -1,0 +1,12 @@
+.git
+.env
+**/node_modules
+**/build
+**/dist
+**/.pytest_cache
+**/__pycache__
+**/.venv
+**/coverage
+network/generated
+services/forecasting/artifacts
+services/forecasting/data/generated

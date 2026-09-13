@@ -22,8 +22,33 @@ location, FEFO/RPS, and BROA using `SYNTHETIC_TRANSFER_V1`,
 final evidence and accepted the simulation-only Sprint 3 scope on 2026-08-16.
 All outputs and named institution fixtures remain simulation-only; unresolved
 `RQ-*` decisions still block operational interpretation and autonomous
-recommendations. Sprint 4 requires its own authorized specification before
-implementation.
+recommendations.
+
+Sprint 4 was authorized on 2026-08-17 from the accepted Sprint 3 merge/tag.
+Jopia accepted its simulation-only scope on 2026-08-20 in tag
+`sprint-04-accepted-2026-08-20`, with physical Android OCR evidence explicitly
+deferred. That deferral remains incomplete evidence and blocks real-device,
+real-label, clinical-accuracy, and production-readiness claims.
+
+Jopia authorized Sprint 5 for 2026-08-20 through 2026-08-26 using
+`SYNTHETIC_WEB_ACCESS_V1` and visual snapshot
+`MOCKUP_VISUAL_2026-08-20`. Lat accepted the simulation-only Sprint 5 scope
+on 2026-08-24 after Buno validated the web workspace and Jopia validated the
+API/database/Fabric boundary with self-validation disclosed. The implementation
+is recorded on `codex/sprint-05-implementation`; the mockup remains a visual
+reference, while `docs/DESIGN.md`, official requirements, architecture, and
+machine-readable contracts control the implementation. Physical Android OCR
+evidence and full end-to-end NFR-06 latency evidence remain deferred. This
+acceptance does not establish clinical, regulatory, or production readiness.
+
+Lat authorized formal Testing-phase planning on 2026-08-26 from the merged
+Sprint 5 baseline. The authoritative plan is `docs/TESTING-PHASE.md` on
+`codex/testing-phase-planning`. Technical preparation may proceed, but UAT
+execution remains gated by approved participants, consent, instrument/scoring,
+and external research-data custody. `BL-TST-02` remains blocked by onboarding
+dependencies and `RQ-14`; operational forecast-accuracy claims remain blocked
+by `RQ-07`. Testing does not authorize deployment or relax any deferred
+clinical, privacy, regulatory, or production gate.
 
 The project is a research prototype. Never describe it as production-ready,
 clinically validated, regulator-approved, or a deployed multi-organization
@@ -37,9 +62,10 @@ Use one home for each type of truth:
 |---|---|
 | What is BloodLedger and what is in scope? | `docs/PROJECT.md` |
 | What behavior and rules are required? | `docs/REQUIREMENTS.md` |
+| What visual and interaction language applies? | `docs/DESIGN.md` |
 | How is it structured and why? | `docs/ARCHITECTURE.md` |
 | What is planned overall? | `docs/BACKLOG.md` |
-| What is selected for the current sprint? | `docs/SPRINT-01.md` or its successor |
+| What is selected for the current sprint or phase? | Its current `docs/SPRINT-*.md` or `docs/TESTING-PHASE.md` |
 | How should local setup and reset behave? | `docs/LOCAL-DEVELOPMENT.md` |
 | What Fabric names, identities, ports, and health contract apply? | `network/README.md` |
 | What PostgreSQL and migration rules apply? | `database/README.md` |
@@ -55,7 +81,7 @@ repository documents are the implementation baseline after proponent review.
 
 ## 3. Task-based reading map
 
-For every task, read this file and the current sprint document.
+For every task, read this file and the current sprint or phase document.
 
 Then read only what the task requires:
 
@@ -63,6 +89,7 @@ Then read only what the task requires:
 |---|---|
 | Scope, terminology, stakeholder question | Relevant `PROJECT.md` section |
 | Feature or business-rule work | Linked `FR-*`, `BR-*`, state model, and NFRs in `REQUIREMENTS.md` |
+| Frontend visual, layout, or component work | `docs/DESIGN.md` plus the selected sprint task and migration register |
 | Infrastructure, data, API, blockchain, ML, security, or repository boundary | Relevant `ARCHITECTURE.md` section and ADRs |
 | Fabric network or CA work | `network/README.md` plus linked ADRs and sprint task |
 | PostgreSQL or migration work | `database/README.md` plus linked ADRs and sprint task |
@@ -161,9 +188,11 @@ or reference an `RQ-*` and stop the affected behavior until a decision exists.
 - Stop preserves data. Fabric reset and full development reset must follow the
   scoped, confirmation-based policy in `docs/LOCAL-DEVELOPMENT.md`; global
   Docker prune and deletion outside project-owned paths are forbidden.
-- Barcode/QR scanning remains the accepted capture baseline. OCR is proposed for
-  later feasibility evaluation; do not implement or assume OCR behavior without
-  resolving `RQ-11` and ADR-019.
+- Sprint 4 uses mobile on-device OCR as the primary synthetic capture path under
+  `SYNTHETIC_CAPTURE_V1`, with Code 128/Data Matrix and synthetic QR fallback.
+  Do not accept low-confidence or unconfirmed OCR, persist raw label images or
+  unrestricted OCR text, or claim real ISBT compatibility while `RQ-02` remains
+  unresolved.
 - Avoid duplicating machine-readable contracts in prose once schemas,
   migrations, or OpenAPI become authoritative.
 

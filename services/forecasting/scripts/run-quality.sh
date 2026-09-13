@@ -6,6 +6,10 @@ forecasting_root="${repository_root}/services/forecasting"
 venv="${forecasting_root}/.venv"
 mode="${1:-}"
 
+# Create bind-mount targets as the host user. If Docker creates absent host
+# directories first, user-namespace remapping can leave them unwritable.
+mkdir -p "${forecasting_root}/data" "${forecasting_root}/artifacts"
+
 case "${mode}" in
   check|test) ;;
   *) echo "Usage: $0 check|test" >&2; exit 2 ;;

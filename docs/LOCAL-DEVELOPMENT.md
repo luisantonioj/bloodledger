@@ -96,6 +96,112 @@ contain development secrets and remain outside Git; their protection is proved
 by ignore-path tests and tracked-file inspection rather than by committing or
 printing their contents for a directory scan.
 
+### 3.1 Sprint 4 mobile capture profile
+
+Sprint 4 adds an opt-in Compose profile; it does not change the established
+five-service `bootstrap`, `start`, `status`, `logs`, or `stop` behavior. In the
+Sprint 4 worktree, add values only to the untracked `.env` for:
+
+- `SPRINT4_OPERATOR_CREDENTIAL` with at least 12 characters; and
+- `SPRINT4_JWT_SECRET` with at least 32 characters.
+
+After the normal Fabric/PostgreSQL bootstrap and migration, validate and start
+the profile with:
+
+```bash
+npm ci --ignore-scripts
+npm run check:capture
+npm run test:capture
+npm run check:api
+npm run test:api
+npm run test:api:database
+docker compose --profile sprint4 up --detach --build api sync-worker
+curl --fail --silent --show-error http://127.0.0.1:${API_HOST_PORT:-3000}/healthz
+```
+
+### 3.2 Sprint 5 web session profile
+
+The Sprint 5 Vite development server uses `http://127.0.0.1:5174`. The tracked
+safe template sets `WEB_ORIGIN` to that exact origin and permits an insecure
+cookie only for this isolated loopback case. Keep `WEB_COOKIE_SECURE=true` for
+any HTTPS or non-loopback origin; the API refuses an insecure non-loopback
+configuration. Application credentials are provisioned separately from
+untracked values and are never added to `.env.example`, fixtures, Git, logs, or
+screenshots.
+
+On a new Ubuntu/WSL development host, install the lockfile-pinned Playwright
+browser and its Chromium system libraries once before running browser checks:
+
+```bash
+npx playwright install chromium
+npx playwright install-deps chromium
+```
+
+The second command may request the Ubuntu `sudo` password. Browser binaries and
+system libraries are host prerequisites; neither command adds generated browser
+artifacts to the repository.
+
+Run the focused non-database checks with:
+
+```bash
+npm run check:web
+npm run test:web
+npm run test:web:e2e
+npm run check:api
+npm run test:api
+```
+
+Start the standalone dashboard development server with:
+
+```bash
+npm run dev --workspace @bloodledger/web
+```
+
+Open `http://127.0.0.1:5174`; Vite proxies `/api` to the loopback API on port
+`3000`. For the containerized same-origin layout, the API image builds both
+frontends and serves the dashboard at `http://127.0.0.1:3000/`, capture at
+`http://127.0.0.1:3000/capture/`, and the API below `/api/v1`. The Compose API
+service sets its accepted web origin to its configured loopback host port.
+
+Live session validation additionally requires applying all database migrations
+and provisioning opaque synthetic accounts without committing their salts,
+verifiers, or source credentials.
+
+Provision exactly one development account at a time by setting these values only
+in the untracked shell environment or local `.env`:
+
+- `SPRINT5_DEV_INSTITUTION_ID`, `SPRINT5_DEV_INSTITUTION_DISPLAY_NAME`, and
+  `SPRINT5_DEV_INSTITUTION_CATEGORY`;
+- `SPRINT5_DEV_USER_ID`, `SPRINT5_DEV_USERNAME`, and
+  `SPRINT5_DEV_USER_DISPLAY_NAME`; and
+- `SPRINT5_DEV_ROLE_ID` and `SPRINT5_DEV_PASSWORD`.
+
+Do not add these variables or their values to `.env.example`, Git, screenshots,
+logs, or Sprint evidence. After migrations are current, run:
+
+```bash
+npm run provision:web-account
+```
+
+The command accepts only synthetic identifiers and display names, enforces the
+accepted role/category scope, generates a unique `SCRYPT_V1` salt and verifier,
+and prints only non-secret metadata. Exact replay is safe; conflicting metadata,
+role, username, or credential fails without replacing the existing account.
+
+The API serves the built dashboard and capture PWA and listens only on host loopback by default. For
+the required physical Android Chrome evidence, USB debugging may expose that
+same loopback origin without opening a LAN port:
+
+```bash
+adb reverse tcp:3000 tcp:3000
+```
+
+The operator then opens `http://localhost:3000` on the connected phone. `adb`
+is optional host tooling and is not installed or invoked by repository scripts.
+Record the phone/Chrome versions and pass/fail result, never the credential,
+JWT, image, raw OCR text, Fabric identity, or database contents. If a supported
+phone is unavailable, leave the physical-device acceptance gate pending.
+
 ## 4. Reset-safety policy
 
 ### Level 0 — Stop

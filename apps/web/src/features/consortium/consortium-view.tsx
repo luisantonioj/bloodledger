@@ -1,0 +1,10 @@
+import { AggregateTable, AlertAggregateTable, TransferSummaryTable } from "../../components/ui/aggregate-tables";
+import type { Consortium } from "../../services/api/types";
+
+export function ConsortiumView({data}:{data:Consortium}) {
+  const confirmed=data.inventory.reduce((sum,item)=>sum+item.confirmedCount,0);
+  const alerts=data.alerts.reduce((sum,item)=>sum+item.count,0);
+  const transfers=data.transferSummary.reduce((sum,item)=>sum+item.transferCount,0);
+  const institutions=new Set(data.inventory.map(item=>item.institutionId)).size;
+  return <><div className="regulatory-disclosure"><span aria-hidden="true">i</span><p><strong>Application-level city aggregate</strong>PRC and secondary hospitals are not represented as Fabric peer organizations. This view contains approved synthetic summaries only.</p></div><div className="stats regulatory-stats"><article><span>Institutions represented</span><strong>{institutions}</strong><small>approved aggregate records</small></article><article><span>Ledger-confirmed units</span><strong>{confirmed}</strong><small>committed projection only</small></article><article className={alerts?"accent-warning":""}><span>Aggregate alerts</span><strong>{alerts}</strong><small>authorized summary count</small></article><article><span>Transfers</span><strong>{transfers}</strong><small>ledger-confirmed lifecycle records</small></article></div><section className="evidence-section"><header><div><h3>Inventory by institution</h3><p>Committed blood-product totals grouped by approved institution display scope.</p></div><span>Aggregate only</span></header><AggregateTable items={data.inventory}/></section><section className="evidence-section"><header><div><h3>Alert summary</h3><p>Versioned synthetic alert counts without restricted unit-level detail.</p></div><span>Read only</span></header><AlertAggregateTable items={data.alerts}/></section><section className="evidence-section"><header><div><h3>Transfer summary</h3><p>Lifecycle totals from the permitted city-wide projection.</p></div><span>Read only</span></header><TransferSummaryTable items={data.transferSummary}/></section></>;
+}

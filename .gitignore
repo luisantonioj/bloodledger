@@ -5,6 +5,7 @@
 
 # Node.js dependencies and package-manager diagnostics
 node_modules/
+apps/capture-pwa/public/ocr-assets/
 npm-debug.log*
 
 # Build, test, coverage, and runtime output
@@ -13,6 +14,8 @@ dist/
 coverage/
 logs/
 *.log
+test-results/
+*.tsbuildinfo
 
 # Sprint 3 forecasting outputs (reproducible, local-only artifacts)
 services/forecasting/artifacts/

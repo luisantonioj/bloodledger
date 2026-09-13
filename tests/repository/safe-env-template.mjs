@@ -21,7 +21,13 @@ const expected = new Map([
   ["POSTGRES_MIGRATOR_PASSWORD", ""],
   ["POSTGRES_APP_USER", "bloodledger_app"],
   ["POSTGRES_APP_PASSWORD", ""],
-  ["POSTGRES_HOST_PORT", "5432"]
+  ["POSTGRES_HOST_PORT", "5432"],
+  ["API_HOST_PORT", "3000"],
+  ["SPRINT4_OPERATOR_ID", "USR_SYNTH_CAPTURE"],
+  ["SPRINT4_OPERATOR_CREDENTIAL", ""],
+  ["SPRINT4_JWT_SECRET", ""],
+  ["WEB_ORIGIN", "http://127.0.0.1:5174"],
+  ["WEB_COOKIE_SECURE", "false"]
 ]);
 
 const source = await readFile(new URL("../../.env.example", import.meta.url), "utf8");

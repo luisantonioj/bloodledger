@@ -222,3 +222,85 @@ replay, conflicting replay, disabled algorithm results, and the exact 30-day
 purge boundary. The forecasting database integration creates and removes only
 its own fixed isolated test database, applies all three migrations from empty,
 and refuses to overwrite a pre-existing database with that name.
+
+## 11. Sprint 4 synthetic scan synchronization schema
+
+The Sprint 4 forward migration defined in `docs/SPRINT-04.md` adds
+`app.scan_events`, `app.scan_event_attempts`, and `app.inventory_projection`.
+The first table is the durable queue and status record, the second is append-only
+safe retry evidence, and the third is a query projection of committed Fabric
+inventory. Fabric remains authoritative for accepted inventory history.
+
+The runtime role receives table-specific `SELECT`/`INSERT`, only the column-level
+`UPDATE` needed for queue leases/status and projection reconciliation, and no
+DDL or table deletion. Raw images, unrestricted OCR text, credentials, JWTs,
+PHI/PII, and arbitrary payload JSON are prohibited. All rows are synthetic and
+simulation-only until a forward migration and approved policy supersede them.
+
+## 12. Sprint 5 synthetic web-access schema
+
+Migration `20260820000000000_create-synthetic-web-access-tables.js` adds the
+minimum identity boundary selected by Sprint 5: synthetic institutions, opaque
+application users, one explicit six-role assignment per user, and revocable
+15-minute sessions. It does not add applications, invitations, onboarding,
+verification documents, or real institutional/person records.
+
+Passwords are represented only by a unique salt and a fixed `SCRYPT_V1`
+verifier; session rows contain a SHA-256 token digest rather than the signed JWT.
+No credential, hash, salt, token, or identity fixture is seeded by the migration.
+The runtime role may read the minimum authentication rows, create sessions, and
+update only revocation columns. It receives no identity DDL, delete, onboarding,
+or user-management privilege.
+
+The development-only `npm run provision:web-account` command uses the migrator
+role to create one explicitly supplied synthetic institution, user, and role
+assignment. It reads the password only from the untracked environment, reuses
+the API's parameterized `SCRYPT_V1` implementation, and refuses replacement or
+conflicting replay. This is local validation provisioning, not the deferred
+institutional onboarding or user-management workflow.
+
+## 13. Sprint 5 transfer, alert, and audit projections
+
+Migration `20260820010000000_create-transfer-alert-projections.js` adds the
+minimum selected read/projection schema for ledger-backed transfer requests and
+events, FEFO-selected unit references, versioned synthetic stock thresholds,
+derived alerts, per-user acknowledgements, and redacted application audit
+events. It reuses `inventory_projection`, `location_evidence`, institutions,
+users, and algorithm evidence rather than duplicating their authoritative data.
+
+The migration seeds no thresholds, alerts, transfers, people, institutions, or
+credentials. Transfer statuses and the quantity ceiling match
+`SYNTHETIC_TRANSFER_V1`; threshold versions remain inert until an approved
+synthetic configuration is inserted. BROA/RPS recommendation digests remain
+disabled evidence and cannot approve a transfer. Runtime grants allow only the
+selected reads, inserts, projection-column updates, acknowledgement inserts,
+and redacted audit inserts; no runtime delete or DDL privilege is granted.
+
+Migration `20260820020000000_add-alert-acknowledgement-idempotency.js`
+adds durable command evidence for the selected alert-acknowledgement mutation.
+Each idempotency key is bound to a canonical payload digest and the resulting
+per-user acknowledgement. Matching retries return the persisted result;
+different payloads using the same key fail safely. The API locks the scoped open
+alert during acknowledgement and writes a redacted audit event in the same
+transaction. Runtime access remains limited to `SELECT` and `INSERT`; no delete,
+DDL, or broad update privilege is added.
+
+Migration `20260823010000000_allow-shared-inventory-ledger-transactions.js`
+removes the accidental uniqueness constraint on
+`inventory_projection.ledger_transaction_id` and replaces it with a non-unique
+lookup index. One accepted transfer approval can reserve several FEFO units in
+one Fabric transaction, so every affected projection must be allowed to retain
+the same authoritative transaction reference. Unit IDs and source event IDs
+remain unique, and the migration grants no additional runtime privilege.
+
+## 14. Sprint 6 OCR-only inbound schema
+
+Migration `20260912010000000_add-inbound-ocr-capture-v2.js` adds versioned
+issuer-format policy, encrypted-capture provenance, the `INBOUND_CAPTURE`
+command resource, and safe capture provenance columns on V2 components. It
+stores no raw Donation No., OCR text, label image, patient, donor, or clinical
+data. Captures are constrained to `OCR`/`INBOUND_OCR_V1`, confidence 90–100,
+and printed expiry later than collection. Intake rows can be counted by
+`QUEUED`, `COMMITTED`, `ALREADY_REGISTERED`, `CONFLICT`, or `FAILED` without
+including non-committed rows in census inventory totals. Issuer policies are
+disabled unless explicitly enabled, and the migration is forward-only.

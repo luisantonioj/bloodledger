@@ -10,6 +10,12 @@ const files = [
   "services/coordination/policy/synthetic-location-v1.json",
   "services/coordination/policy/synthetic-optimization-v1.json",
   "services/coordination/tsconfig.json",
+  "services/api/openapi.json",
+  "services/api/openapi-v2.json",
+  "contracts/core-v2.schema.json",
+  "contracts/source-surplus-evidence-v2.schema.json",
+  "contracts/inbound-ocr-v1.schema.json",
+  "contracts/doh-census-v2.schema.json",
 ];
 
 for (const file of files) {

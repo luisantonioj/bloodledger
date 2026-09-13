@@ -1,0 +1,12 @@
+import type { Pool } from "pg";
+import type { CredentialRecord, SessionRepository } from "./session.js";
+type Row=Record<string,unknown>;
+const credential=(row:Row):CredentialRecord=>({userId:String(row.user_id),username:String(row.username),displayName:String(row.display_name),institutionId:String(row.institution_id),institutionDisplayName:String(row.institution_display_name),institutionCategory:String(row.institution_category) as CredentialRecord["institutionCategory"],roleId:String(row.role_id) as CredentialRecord["roleId"],saltHex:String(row.password_salt),verifierHex:String(row.password_verifier)});
+const selectCredential=`SELECT u.user_id,u.username,u.display_name,u.institution_id,u.password_salt,u.password_verifier,i.display_name AS institution_display_name,i.category AS institution_category,r.role_id FROM app.application_users u JOIN app.institutions i ON i.institution_id=u.institution_id JOIN app.user_role_assignments r ON r.user_id=u.user_id`;
+export class PostgresSessionRepository implements SessionRepository{
+  constructor(private readonly pool:Pool){}
+  async findCredential(username:string){const result=await this.pool.query<Row>(`${selectCredential} WHERE u.status='ACTIVE' AND i.status='ACTIVE' AND u.username=$1`,[username]);return result.rows[0]?credential(result.rows[0]):null}
+  async createSession(input:{sessionId:string;userId:string;tokenDigest:string;issuedAt:Date;expiresAt:Date}){await this.pool.query(`INSERT INTO app.application_sessions(session_id,user_id,token_digest,policy_version,issued_at,expires_at) VALUES($1,$2,$3,'SYNTHETIC_WEB_ACCESS_V1',$4,$5)`,[input.sessionId,input.userId,input.tokenDigest,input.issuedAt.toISOString(),input.expiresAt.toISOString()])}
+  async restoreSession(sessionId:string,tokenDigest:string,now:Date){const result=await this.pool.query<Row>(`${selectCredential} JOIN app.application_sessions s ON s.user_id=u.user_id WHERE u.status='ACTIVE' AND i.status='ACTIVE' AND s.session_id=$1 AND s.token_digest=$2 AND s.policy_version='SYNTHETIC_WEB_ACCESS_V1' AND s.revoked_at IS NULL AND s.expires_at>$3`,[sessionId,tokenDigest,now.toISOString()]);return result.rows[0]?credential(result.rows[0]):null}
+  async revokeSession(sessionId:string,now:Date){await this.pool.query(`UPDATE app.application_sessions SET revoked_at=COALESCE(revoked_at,$2),safe_revocation_reason=COALESCE(safe_revocation_reason,'USER_LOGOUT') WHERE session_id=$1`,[sessionId,now.toISOString()])}
+}

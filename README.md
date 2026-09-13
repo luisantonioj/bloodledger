@@ -2,7 +2,7 @@
 
 BloodLedger is a research prototype for real-time blood inventory coordination
 and traceable inter-hospital redistribution in Lipa City. The planned system
-combines barcode/QR scanning, an on-premise PostgreSQL application store, a
+combines mobile OCR with barcode/2D-code fallback, an on-premise PostgreSQL application store, a
 permissioned Hyperledger Fabric ledger, demand forecasting, explainable
 redistribution recommendations, and a web dashboard.
 
@@ -23,10 +23,19 @@ governed by immutable synthetic policies. Forecasts and algorithm results remain
 `SIMULATION_ONLY` with operational recommendation eligibility disabled. This is
 a research prototype, not a production or clinically validated system.
 
-The roadmap now includes invitation-based institutional application and
-administrator activation for later API/web sprints. Application approval is
-separate from Fabric membership and does not change the one-organization
-prototype topology.
+Sprint 4 was accepted on 2026-08-20 with physical Android OCR evidence deferred.
+Sprint 5 was accepted by Lat on 2026-08-24 after Buno validated the web
+workspace and Jopia validated the API/database/Fabric boundary with
+self-validation disclosed. Its controlled frontend migration, six-role
+application access, same-origin API, and selected dashboard workflows were
+merged into `main` through PR #3.
+
+Lat authorized formal Testing-phase planning on 2026-08-26. The plan selects
+requirements-traceable system tests, gated UAT preparation, and synthetic
+BROA/RPS scenario validation. It does not authorize participant UAT,
+institutional onboarding, operational forecast claims, deployment, or
+production use. Physical Android OCR and full end-to-end NFR-06 evidence remain
+open.
 
 Sprint 2 was completed under the versioned `SYNTHETIC_INVENTORY_V1` prototype
 assumptions while Mediatrix data-gathering approval is pending. The values are
@@ -47,9 +56,9 @@ entry gate in `docs/SPRINT-01.md`.
 - The system stores operational blood-unit and custody metadata only.
 - Patient records, donor names, PHI, blood disposal, continuous GPS tracking,
   cold-chain sensing, and autonomous transfer approval are out of scope.
-- OCR is under consideration as a later alternative or supplement to barcode/QR
-  label capture. It is not part of Sprint 1 and is not yet an approved
-  replacement for ISBT 128-compatible scanning.
+- Sprint 4 accepts on-device OCR as the primary synthetic-label flow, with
+  Code 128/Data Matrix and synthetic QR fallback. This does not establish full
+  ISBT 128 compatibility or authorize real institutional label capture.
 - The topology is designed for future expansion but is not a deployed
   multi-organization consortium.
 
@@ -60,8 +69,8 @@ entry gate in `docs/SPRINT-01.md`.
 - Hyperledger Fabric LTS with Fabric CA
 - Node.js with npm workspaces and one root lockfile
 - PostgreSQL
-- Python 3.13 for the active Sprint 3 forecasting experiment
-- React for the later Sprint 5 web application
+- Python 3.13 for the Sprint 3 forecasting experiment
+- React for the Sprint 4 capture PWA and later Sprint 5 web application
 
 DBeaver is optional database-inspection tooling. It is not needed by the
 runtime or repository-foundation checks.
@@ -81,6 +90,9 @@ deviations separately.
 | [Sprint 1 plan](docs/SPRINT-01.md) | Infrastructure sprint entry gate, tasks, decisions, validation, and exit criteria |
 | [Sprint 2 record](docs/SPRINT-02.md) | Accepted deterministic inventory-ledger scope, evidence, and review |
 | [Sprint 3 continuation](docs/SPRINT-03.md) | Transfer, location, optimization, forecasting, gates, and exit obligations |
+| [Sprint 4 plan](docs/SPRINT-04.md) | Mobile OCR, durable scan synchronization, API/forecast interfaces, validation, and acceptance gates |
+| [Sprint 5 record](docs/SPRINT-05.md) | Accepted controlled frontend migration, API, validation, and review |
+| [Formal Testing phase](docs/TESTING-PHASE.md) | System validation, traceability, UAT gates, algorithm scenarios, defects, and exit criteria |
 | [Local development](docs/LOCAL-DEVELOPMENT.md) | Planned WSL2 workflow, version evidence, reset safety, and troubleshooting |
 | [Fabric network](network/README.md) | Network identifiers, ports, CA identities, generated material, and health contract |
 | [Development database](database/README.md) | PostgreSQL roles, migrations, forecast/location/algorithm simulation schema, and persistence |
@@ -94,7 +106,7 @@ Each fact should have one authoritative home:
 - required behavior → `docs/REQUIREMENTS.md`;
 - structural decisions → `docs/ARCHITECTURE.md`;
 - future work → `docs/BACKLOG.md`; and
-- selected work → the current sprint document.
+- selected work → the current sprint or phase document.
 
 When documents disagree, do not choose silently. Record the contradiction and
 obtain the required decision.
@@ -106,8 +118,9 @@ bloodledger/
 ├── README.md
 ├── AGENTS.md
 ├── docs/
+├── apps/capture-pwa/       # Sprint 4 mobile capture
 ├── apps/web/               # Sprint 5
-├── services/api/           # Sprint 4/5
+├── services/api/           # Sprint 4 scan/sync/forecast slice; expanded later
 ├── services/forecasting/   # Sprint 3
 ├── services/coordination/  # Sprint 3 location/RPS/BROA worker
 ├── chaincode/              # Sprint 2 inventory + Sprint 3 transfer contracts
@@ -153,6 +166,43 @@ Normal start and stop preserve state. Reset confirmation tokens, dry-run
 procedures, service-specific logs, and troubleshooting are documented in
 `docs/LOCAL-DEVELOPMENT.md`. Fabric identifiers and database rules remain
 authoritative in `network/README.md` and `database/README.md`.
+
+Sprint 4 remains isolated in its own worktree. After the normal bootstrap,
+populate the additional empty `SPRINT4_OPERATOR_CREDENTIAL` and
+`SPRINT4_JWT_SECRET` entries in that worktree's untracked `.env`, then use the
+focused commands:
+
+```bash
+npm run check:capture
+npm run test:capture
+npm run check:api
+npm run test:api
+npm run test:api:database
+docker compose --profile sprint4 up --detach --build api sync-worker
+```
+
+Sprint 5 adds a focused dashboard development server:
+
+```bash
+npm run check:web
+npm run test:web
+npm run test:web:e2e
+npm run dev --workspace @bloodledger/web
+```
+
+The development dashboard is available at `http://127.0.0.1:5174`. The built
+API image uses one loopback origin instead: dashboard at `/`, capture at
+`/capture/`, and the versioned API at `/api/v1` on port `3000` by default.
+Live login still requires migrated PostgreSQL state and separately provisioned
+opaque synthetic accounts.
+
+The one-time Chromium host prerequisites for `test:web:e2e`, including the
+Ubuntu `sudo` step, are documented in
+[`docs/LOCAL-DEVELOPMENT.md`](docs/LOCAL-DEVELOPMENT.md#32-sprint-5-web-session-profile).
+
+The JWT secret must contain at least 32 characters and the synthetic operator
+credential at least 12. Neither value belongs in Git, logs, screenshots, or
+Sprint evidence. The API is host-loopback-bound by default.
 
 ## Security and research-data notice
 

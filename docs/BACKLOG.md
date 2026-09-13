@@ -1,15 +1,15 @@
 # BloodLedger Product Backlog
 
-**Status:** Sprints 1–3 accepted; Sprint 4 planning is the next gate
-**Baseline date:** 2026-08-16
+**Status:** Sprints 1–5 accepted; Sprint 6 core V2 authorized 2026-09-12
+**Baseline date:** 2026-09-12
 **Prioritization:** MoSCoW, then dependency order
 
 ## 1. Backlog rules
 
 - An item is **Ready** only when linked requirements, acceptance criteria,
   dependencies, test approach, and required decisions are known.
-- The backlog describes outcomes. The current sprint document contains the
-  actionable implementation plan.
+- The backlog describes outcomes. The current sprint or phase document contains
+  the actionable implementation plan.
 - Status values: `Proposed`, `Ready`, `Selected`, `In Progress`, `Done`,
   `Blocked`, and `Deferred`.
 - `Done` requires evidence; a manuscript test case is not proof of completion.
@@ -26,6 +26,7 @@
 | EPIC-06 | Web dashboard, access control, alerts, and reporting | Sprint 5 | Must |
 | EPIC-07 | System validation, UAT, and research evidence | Testing phase | Must |
 | EPIC-08 | Pilot deployment and future consortium expansion | Later gate | Should/Deferred |
+| EPIC-09 | Interview-aligned component custody, FEFO, release, reconciliation, and reporting V2 | Sprint 6 | Must |
 
 ## 3. EPIC-01 — Infrastructure
 
@@ -249,9 +250,9 @@ fail safely.
 
 ### BL-SCN-02 — OCR label-capture feasibility
 
-**Priority:** Could | **Status:** Proposed | **Target:** Before/Sprint 4
+**Priority:** Must | **Status:** Selected | **Target:** Sprint 4
 
-**Dependencies:** RQ-02, RQ-11, ADR-019
+**Dependencies:** PA-S4-01, ADR-019; RQ-02 remains a real-label replacement gate
 **Requirements:** FR-01, NFR-01, NFR-04
 
 Acceptance: representative synthetic label fixtures are evaluated for field
@@ -261,7 +262,7 @@ supplement, accepts it as a replacement, or rejects it for this prototype.
 
 ### BL-SYNC-01 — Durable offline queue
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 4  
+**Priority:** Must | **Status:** Selected | **Target:** Sprint 4
 **Dependencies:** BL-INF-03  
 **Requirements:** FR-13, NFR-05
 
@@ -270,11 +271,15 @@ visible pending/conflict states.
 
 ### BL-API-01 — Application orchestration API
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 4/5  
+**Priority:** Must | **Status:** Done | **Target:** Sprint 4/5
 **Dependencies:** inventory and transfer contracts
 
 Acceptance: versioned OpenAPI contract covers authentication, inventory,
 requests, transfers, alerts, transaction status, and consistent errors.
+
+**Evidence:** The Sprint 5 OpenAPI, isolated PostgreSQL integration, 76 API
+tests, and same-origin route checks passed on 2026-08-24. Lat accepted the
+simulation-only Sprint Review on 2026-08-24; see `docs/SPRINT-05.md`.
 
 ### BL-API-02 — Institutional onboarding domain and API
 
@@ -291,39 +296,70 @@ resubmission, separate activation, initial `ROLE-06` handling, suspension,
 reactivation, audit, idempotency, concurrency, and stable errors without
 granting Fabric membership.
 
+### BL-API-03 — Synthetic scan synchronization and forecast middleware slice
+
+**Priority:** Must | **Status:** Selected | **Target:** Sprint 4
+
+**Requirements:** FR-01, FR-12–14, BR-SEC-01–05, NFR-01, NFR-05, NFR-09–10
+
+**Dependencies:** BL-SCN-02, BL-SYNC-01, PA-S4-01, PA-S4-02, accepted Sprint 3
+inventory contract and simulation forecast schema
+
+Acceptance: a versioned authenticated API durably accepts an exact confirmed
+synthetic scan, exposes honest status, reconciles it exactly once with Fabric,
+updates an idempotent PostgreSQL projection, and returns current/stale/missing
+Sprint 3 forecasts read-only with recommendation eligibility disabled.
+
 ## 8. EPIC-06 — Dashboard and access
 
 ### BL-WEB-01 — Authentication and institutional RBAC
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 5  
+**Priority:** Must | **Status:** Done | **Target:** Sprint 5
 **Requirements:** FR-12, NFR-01
 
 Acceptance: unauthenticated, cross-role, and cross-institution access tests fail
 safely at server and ledger boundaries.
 
+**Evidence:** Six-role browser/API allow/deny, session restoration/revocation,
+and multi-institution isolation checks passed on 2026-08-24. Lat accepted the
+simulation-only Sprint Review on 2026-08-24; see `docs/SPRINT-05.md`.
+
 ### BL-WEB-02 — Inventory and alert views
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 5  
+**Priority:** Must | **Status:** Done | **Target:** Sprint 5
 **Requirements:** FR-03, FR-04, FR-09, NFR-06, NFR-11
 
 Acceptance: stock, shortage, expiry, forecast freshness, and synchronization
 state are accessible and update within the defined test condition.
 
+**Evidence:** Scoped inventory/alert state, resilient polling, acknowledgement,
+and the controlled frontend NFR-06 scenario passed on 2026-08-24. The scenario
+boundary remains disclosed in `docs/frontend/VALIDATION.md`.
+
 ### BL-WEB-03 — Request and transfer views
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 5  
+**Priority:** Must | **Status:** Done | **Target:** Sprint 5
 **Requirements:** FR-05–07, FR-10–11
 
 Acceptance: users complete permitted workflows and can inspect ranking and
 custody evidence without exposure of prohibited data.
 
+**Evidence:** Request, approval/rejection, FEFO, cancellation, dispatch,
+transit, delay/resume, receipt, conflict, replay, and scoped evidence checks
+passed on 2026-08-24. Lat accepted the simulation-only Sprint Review that day.
+
 ### BL-WEB-04 — Regulatory reports
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 5  
+**Priority:** Must | **Status:** Done | **Target:** Sprint 5
 **Requirements:** FR-03, FR-12
 
 Acceptance: DOH/PRC users can view/export approved aggregate information but
 cannot mutate operational state.
+
+**Evidence:** Regulatory composition, aggregate-only API reads, no-mutation
+browser assertions, and safe simulation CSV export passed on 2026-08-24.
+Yuri Lat approved the visual result and accepted the simulation-only Sprint
+Review on 2026-08-24.
 
 ### BL-WEB-05 — Institutional application and status UI
 
@@ -354,10 +390,13 @@ application approval does not grant Fabric membership.
 
 ### BL-TST-01 — Requirements-traceable system tests
 
-**Priority:** Must | **Status:** Proposed | **Target:** Testing phase
+**Priority:** Must | **Status:** Selected | **Target:** Testing phase
 
 Acceptance: each requirement has passing/failing evidence, environment/version,
 fixture provenance, defect record, and rerun result where applicable.
+
+**Selection evidence:** Lat authorized formal Testing-phase planning on
+2026-08-26; results remain unexecuted.
 
 ### BL-TST-02 — Onboarding authorization, audit, and boundary tests
 
@@ -376,18 +415,26 @@ endorsement, single-organization regression, and prohibited-data/secret scans.
 
 ### BL-UAT-01 — User acceptance testing
 
-**Priority:** Must | **Status:** Proposed | **Target:** Testing phase
+**Priority:** Must | **Status:** Selected | **Target:** Testing phase
 
 Acceptance: approved participants complete guided workflows and the anonymized
 survey; quantitative and qualitative analysis follows the proposal protocol.
 
+**Selection evidence:** Preparation is selected under `docs/TESTING-PHASE.md`;
+participant execution remains gated by research authorization, consent,
+instrument/scoring approval, and external raw-data custody.
+
 ### BL-ALG-VAL-01 — BROA/RPS scenario validation
 
-**Priority:** Must | **Status:** Proposed | **Target:** Sprint 3/testing
+**Priority:** Must | **Status:** Selected | **Target:** Sprint 3/testing
 
 Acceptance: simulated and, where approved, historical scenarios test urgency,
 expiry, scarcity, distance, ties, constraints, and failure cases against
 documented expected rankings.
+
+**Selection evidence:** Synthetic scenario validation is selected for the
+formal Testing phase. Historical/operational interpretation remains gated by
+approved data and `RQ-05`–`07`.
 
 ## 10. EPIC-08 — Later/deferred work
 
@@ -400,6 +447,17 @@ documented expected rankings.
 | BL-DES-01 | Formal `DESIGN.md` extracted from the existing frontend mock | Before Sprint 5, not a Sprint 1 blocker |
 | BL-SPEC-01 | Feature-level Spec Kit folders | Introduce only when a later feature needs separate spec/plan/tasks |
 | BL-SKL-01 | Custom agent skills | Deferred until a stable workflow repeats and can be tested |
+
+### BL-CORE-INTAKE-01 — OCR-only inbound registration
+
+**Priority:** Must | **Status:** Implemented in `codex/inbound-ocr-registration-v2`
+**Target:** Sprint 6 follow-up
+
+Replace the former source-system import assumption with confirmed OCR intake at
+each receiving blood bank. Deliver the versioned capture contract, encrypted
+provenance, custody-scoped Fabric registration/receipt, FEFO-ready projection,
+committed-inventory coordination evidence, and aggregate intake reporting.
+Frontend and forecasting changes are explicitly separate LAT/BUNO work.
 
 ## 11. Explicitly not in this study
 
