@@ -223,7 +223,7 @@ export class InterviewCoreContract extends Contract {
   @Returns("string")
   public async RegisterInboundComponent(ctx: Context, inputJson: string): Promise<string> {
     const input = this.parseExactObject<Record<string, unknown>>(inputJson, [
-      "actorInstitutionId", "actorUserId", "bloodType", "bloodTypeEvidenceSource", "captureEvidenceDigest", "captureMethod", "capturedAt", "componentEvidenceSource", "componentId", "componentType", "correlationId", "custodyInstitutionId", "donationId", "donationNoDigest", "eventTime", "expiresAt", "idempotencyKey", "issuerInstitutionId", "policyVersion", "collectedAt",
+      "actorInstitutionId", "actorUserId", "bloodType", "bloodTypeEvidenceSource", "captureEvidenceDigest", "captureMethod", "componentEvidenceSource", "componentId", "componentType", "correlationId", "custodyInstitutionId", "donationId", "donationNoDigest", "eventTime", "expiresAt", "idempotencyKey", "issuerInstitutionId", "policyVersion", "collectedAt",
     ]);
     this.assertGateway(ctx);
     this.assertCommon(input);
@@ -237,7 +237,7 @@ export class InterviewCoreContract extends Contract {
     if (!policy.bloodTypes.includes(input.bloodType as BloodType)) this.fail("COMPONENT_BLOOD_TYPE_UNSUPPORTED");
     if (!policy.componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
     if (!["OCR_LABEL", "OPERATOR_CONFIRMED"].includes(String(input.bloodTypeEvidenceSource)) || !["OCR_LABEL", "BAG_TYPE", "OPERATOR_CONFIRMED"].includes(String(input.componentEvidenceSource))) this.fail("INBOUND_CAPTURE_EVIDENCE_INVALID");
-    const collectedMs = this.parseUtc(input.collectedAt); const expiryMs = this.parseUtc(input.expiresAt); this.parseUtc(input.capturedAt); this.parseUtc(input.eventTime);
+    const collectedMs = this.parseUtc(input.collectedAt); const expiryMs = this.parseUtc(input.expiresAt); this.parseUtc(input.eventTime);
     if (expiryMs <= collectedMs) this.fail("COMPONENT_TIME_INVALID");
     const requestDigest = this.digest(input); const prior = await this.readIdempotent(ctx, String(input.idempotencyKey), "REGISTER_INBOUND_COMPONENT", requestDigest); if (prior !== undefined) return prior;
     if ((await ctx.stub.getState(this.componentKey(String(input.componentId)))).length > 0) this.fail("COMPONENT_DUPLICATE");
