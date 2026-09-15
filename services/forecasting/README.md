@@ -72,3 +72,31 @@ explicit. Generated data and model artifacts are ignored by Git.
 JupyterLab is optional analysis tooling. Any notebook must import this package
 instead of reimplementing generation, validation, or modeling behavior. Kaggle
 and scheduled execution are outside Sprint 3.
+
+## Existing-data thesis exploration
+
+The isolated offline experiment is specified in
+[`docs/ML-THESIS-EXPLORATION.md`](../../docs/ML-THESIS-EXPLORATION.md).
+It does not replace the accepted four-series runtime model or persistence schema.
+From this directory, using the pinned environment:
+
+```bash
+PYTHONPATH=src python -m bloodledger_forecasting.exploration \
+  --output /absolute/external/new-experiment-directory
+```
+
+The default runs all five fixed seeds and three scenarios with invented neutral
+rates. For the provided institutional sample, append `--workbook /absolute/input.xlsx`
+to produce a local descriptive audit. Append `--use-sample-scale` only to explicitly
+use the partial sample as a scenario scale, or `--audit-only` to skip modeling.
+Inputs mount read-only; outputs must be a new external or ignored artifacts
+folder. These examples use the same module command executed in the pinned
+container during the exploration; use `PYTHONPATH=src` from this directory.
+
+Outputs include safe observed aggregates and row-reason audit (if a source is
+supplied), coverage, SVG figures, generated data, validation/test predictions,
+selection evidence, a model artifact, demo forecasts, report and SHA-256 manifest.
+Do not commit these source-derived research files. Source free text is never
+copied; cached formula values are not silently trusted. Observed missing days
+stay unknown. Real forecasting accuracy remains unavailable while coverage is
+unverified. The optional 14-day extension is not selected for runtime delivery.
