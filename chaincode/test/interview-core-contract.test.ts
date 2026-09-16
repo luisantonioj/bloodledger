@@ -112,6 +112,16 @@ test("registers opaque components, supports all eight blood groups, and rejects 
   assert.equal((await read(context, "component:asset:COMP_CORE_003")).bloodType, "O_NEGATIVE");
 });
 
+test("accepts cryoprecipitate only under the additive V2.1 policy", async () => {
+  const context = new MockContext();
+  const contract = new InterviewCoreContract();
+  const input = { ...component("COMP_CORE_V21_001", "DON_CORE_V21_001", digest("v"), "2026-09-10T00:00:00.000Z", "CRYOPRECIPITATE"), policyVersion: "INTERVIEW_DERIVED_CORE_V2_1" };
+  await register(contract, context, input);
+  const state = await read(context, "component:asset:COMP_CORE_V21_001");
+  assert.equal(state.componentType, "CRYOPRECIPITATE");
+  assert.equal(state.policyVersion, "INTERVIEW_DERIVED_CORE_V2_1");
+});
+
 test("registers OCR inbound stock with separate issuer/custody and no raw Donation No.", async () => {
   const context = new MockContext();
   const contract = new InterviewCoreContract();
