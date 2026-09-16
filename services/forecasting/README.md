@@ -100,3 +100,20 @@ Do not commit these source-derived research files. Source free text is never
 copied; cached formula values are not silently trusted. Observed missing days
 stay unknown. Real forecasting accuracy remains unavailable while coverage is
 unverified. The optional 14-day extension is not selected for runtime delivery.
+
+### Frozen workbook v4 handoff
+
+Use `python -m bloodledger_forecasting.thesis_release --workbook /source.xlsx
+--release /final-v1 --output /outputs/new-handoff` (arguments on one command
+line, with `PYTHONPATH=src`). This verifies the frozen release and exports all
+metrics, descriptive summaries, figures, a model card and historical replay.
+The mixed v4 workbook must not be supplied to the original request-file audit.
+No training is repeated and no study model is promoted to the application.
+
+From the repository root, `bash tests/forecasting/v4-runtime-integration.sh`
+checks the accepted runtime with a new disposable PostgreSQL container, no
+published ports, generated test credentials, all current migrations, and the
+API database mapper. It requires Docker, the built `bloodledger-forecasting`
+image and locked npm dependencies installed in `node_modules`. It tests insert,
+replay, conflict, current/stale/unavailable results and exactly four persisted
+rows. Its trap removes only the container and temporary directory it created.

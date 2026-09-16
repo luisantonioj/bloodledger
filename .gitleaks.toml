@@ -1,0 +1,11 @@
+title = "BloodLedger secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Reviewed synthetic reconciliation idempotency IDs; not authentication credentials"
+condition = "AND"
+paths = ['''(^|/)chaincode/test/interview-core-contract\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^IDEM_RESOLVE_03[12]$''']

@@ -169,7 +169,9 @@ export class PostgresScanRepository implements ScanRepository {
 
   async listForecasts(institutionId: string, manilaDate: string): Promise<ForecastRecord[]> {
     const result = await this.pool.query<Row>(`
-      SELECT fr.run_key, df.*
+      SELECT fr.run_key, df.*,
+        to_char(df.horizon_date, 'YYYY-MM-DD') AS horizon_date,
+        to_char(df.stale_after, 'YYYY-MM-DD') AS stale_after
       FROM app.forecast_runs fr
       JOIN app.demand_forecasts df ON df.run_id = fr.run_id
       WHERE fr.run_status = 'COMPLETED'
