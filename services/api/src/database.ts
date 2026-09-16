@@ -183,7 +183,7 @@ export class PostgresScanRepository implements ScanRepository {
           FROM app.forecast_runs fr2
           JOIN app.demand_forecasts df2 ON df2.run_id = fr2.run_id
           WHERE fr2.run_status = 'COMPLETED' AND fr2.dataset_version = $2 AND df2.institution_id = $1
-          ORDER BY (df2.horizon_date = $2::date) DESC, fr2.generated_at DESC
+          ORDER BY (df2.horizon_date = $3::date) DESC, fr2.generated_at DESC
           LIMIT 1
         )
       ORDER BY df.blood_type, df.component
