@@ -47,8 +47,8 @@ export interface SourceSurplusEvidenceV2 {
   horizonDate: string;
   forecastStatus: "AVAILABLE" | "STALE" | "UNAVAILABLE";
   modelVersion: string;
-  inventorySnapshotId?: string;
-  sourceProjectionDigest?: string;
+  inventorySnapshotId: string;
+  sourceProjectionDigest: string;
   classification: typeof INTERVIEW_V2_CLASSIFICATION;
   recommendationEligibility: typeof INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY;
 }
@@ -63,8 +63,8 @@ export function validateSourceSurplusEvidenceV2(input: SourceSurplusEvidenceV2):
       input.recommendationEligibility !== INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY ||
       input.surplusQuantity < 0 || !Number.isSafeInteger(input.surplusQuantity) ||
       input.forecastStatus !== "AVAILABLE" ||
-      (input.inventorySnapshotId !== undefined && !/^CENSUS_[A-Z0-9_-]{1,56}$/.test(input.inventorySnapshotId)) ||
-      (input.sourceProjectionDigest !== undefined && !/^[0-9a-f]{64}$/.test(input.sourceProjectionDigest))) {
+      !/^CENSUS_[A-Z0-9_-]{1,56}$/.test(input.inventorySnapshotId) ||
+      !/^[0-9a-f]{64}$/.test(input.sourceProjectionDigest)) {
     throw new Error("COORD_V2_SURPLUS_NOT_ELIGIBLE");
   }
 }

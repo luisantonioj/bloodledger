@@ -1,0 +1,22 @@
+import { sha256 } from "./hash.js";
+import { fail } from "./errors.js";
+import { INTERVIEW_V2_1_COMPONENT_TYPES, INTERVIEW_V2_1_POLICY_VERSION, INTERVIEW_V2_BLOOD_TYPES, INTERVIEW_V2_CLASSIFICATION, INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY, type InterviewV2_1ComponentType, type InterviewV2BloodType, type SourceSurplusEvidenceV2_1, validateSourceSurplusEvidenceV2_1 } from "./v2-contracts.js";
+import policy from "../policy/interview-derived-optimization-v2-1.json" with { type: "json" };
+
+export interface BroaV21Candidate { destinationInstitutionId: string; sourceInstitutionId: string; bloodType: InterviewV2BloodType; componentType: InterviewV2_1ComponentType; urgency: number; stockShortage: number; distanceKm: number; eligible: boolean; }
+export interface BroaV21Input { evaluationTime: string; requiredQuantity: number; sourceSurplus: SourceSurplusEvidenceV2_1; candidates: BroaV21Candidate[]; }
+function normalize(values: number[], value: number): number { const min = Math.min(...values); const max = Math.max(...values); return max === min ? 1 : (value - min) / (max - min); }
+
+export function recommendBroaV2_1(input: BroaV21Input) {
+  if (!input || !Array.isArray(input.candidates) || input.candidates.length === 0 || !Number.isSafeInteger(input.requiredQuantity) || input.requiredQuantity < 1) fail("COORD_BROA_V2_1_INPUT_INVALID");
+  const evaluationMs = Date.parse(input.evaluationTime); const asOfMs = Date.parse(input.sourceSurplus.asOf); const horizonMs = Date.parse(`${input.sourceSurplus.horizonDate}T00:00:00.000Z`);
+  if (!Number.isFinite(evaluationMs) || new Date(evaluationMs).toISOString() !== input.evaluationTime || !Number.isFinite(asOfMs) || new Date(asOfMs).toISOString() !== input.sourceSurplus.asOf || asOfMs > evaluationMs || !Number.isFinite(horizonMs) || horizonMs < Date.parse(`${input.evaluationTime.slice(0, 10)}T00:00:00.000Z`)) fail("COORD_BROA_V2_1_FRESHNESS_INVALID");
+  try { validateSourceSurplusEvidenceV2_1(input.sourceSurplus); } catch { fail("COORD_BROA_V2_1_SURPLUS_NOT_ELIGIBLE"); }
+  if (input.sourceSurplus.surplusQuantity < input.requiredQuantity || !INTERVIEW_V2_BLOOD_TYPES.includes(input.sourceSurplus.bloodType) || !INTERVIEW_V2_1_COMPONENT_TYPES.includes(input.sourceSurplus.componentType)) fail("COORD_BROA_V2_1_SURPLUS_NOT_ELIGIBLE");
+  const eligible = input.candidates.filter((candidate) => candidate.eligible);
+  if (!eligible.length || eligible.some((candidate) => candidate.sourceInstitutionId !== input.sourceSurplus.sourceInstitutionId || candidate.bloodType !== input.sourceSurplus.bloodType || candidate.componentType !== input.sourceSurplus.componentType || !/^INST_[A-Z0-9_-]{1,59}$/.test(candidate.destinationInstitutionId) || [candidate.urgency, candidate.stockShortage, candidate.distanceKm].some((value) => !Number.isFinite(value) || value < 0))) fail("COORD_BROA_V2_1_CANDIDATE_INVALID");
+  const values = { urgency: eligible.map((candidate) => candidate.urgency), stockShortage: eligible.map((candidate) => candidate.stockShortage), distanceKm: eligible.map((candidate) => candidate.distanceKm) };
+  const ranked = eligible.map((candidate) => { const normalized = { urgency: normalize(values.urgency, candidate.urgency), stockShortage: normalize(values.stockShortage, candidate.stockShortage), distancePenalty: normalize(values.distanceKm, candidate.distanceKm) }; const contributions = { urgency: normalized.urgency * policy.broa.weights.urgency, stockShortage: normalized.stockShortage * policy.broa.weights.stockShortage, distancePenalty: normalized.distancePenalty * policy.broa.weights.distancePenalty }; return { ...candidate, normalized, contributions, score: Number((contributions.urgency + contributions.stockShortage - contributions.distancePenalty).toFixed(12)) }; }).sort((left, right) => right.score - left.score || left.destinationInstitutionId.localeCompare(right.destinationInstitutionId));
+  const evidence = { input, policy, ranked, selectedDestinationInstitutionId: ranked[0]?.destinationInstitutionId ?? null };
+  return { schemaVersion: "BROA_RUN_V2_1", runId: `ARUN_${sha256(evidence).slice(0, 32).toUpperCase()}`, algorithm: "BROA" as const, algorithmVersion: INTERVIEW_V2_1_POLICY_VERSION, classification: INTERVIEW_V2_CLASSIFICATION, recommendationEligibility: INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY, automaticApproval: false as const, inputSha256: sha256(input), configSha256: sha256(policy.broa), recommendationDigest: sha256(evidence), evaluationTime: input.evaluationTime, sourceSurplusEligibility: "ELIGIBLE_GATE", ranked };
+}
