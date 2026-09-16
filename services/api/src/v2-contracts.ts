@@ -31,7 +31,6 @@ export interface V2ComponentView {
   componentId: string;
   donationId: string;
   issuerInstitutionId: string;
-  donationNumber?: string;
   donationNumberDigest: string;
   componentType: V2ComponentType;
   bloodType: V2BloodType;

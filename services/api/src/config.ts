@@ -11,6 +11,7 @@ export interface ApiConfig {
   webCookieSecure?: boolean;
   activeWriteApiVersion?: "v1" | "v2";
   v2EncryptionKeysConfigured?: boolean;
+  activeForecastDatasetVersion?: string;
 }
 
 export function readApiConfig(environment: NodeJS.ProcessEnv = process.env): ApiConfig {
@@ -33,5 +34,6 @@ export function readApiConfig(environment: NodeJS.ProcessEnv = process.env): Api
     webCookieSecure: environment.WEB_COOKIE_SECURE === undefined ? undefined : environment.WEB_COOKIE_SECURE === "true",
     activeWriteApiVersion: environment.BLOODLEDGER_ACTIVE_WRITE_API_VERSION === "v2" ? "v2" : "v1",
     v2EncryptionKeysConfigured: Boolean(environment.BLOODLEDGER_DONATION_ENCRYPTION_KEY && environment.BLOODLEDGER_DONATION_LOOKUP_KEY),
+    activeForecastDatasetVersion: environment.BLOODLEDGER_ACTIVE_FORECAST_DATASET_VERSION ?? "SYNTHETIC_FORECAST_V4_RUNTIME_V1",
   };
 }

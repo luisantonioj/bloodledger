@@ -9,6 +9,10 @@ export const CAPTURE_METHODS = [
 
 export type BloodType = (typeof BLOOD_TYPES)[number];
 export type Component = (typeof COMPONENTS)[number];
+export const FORECAST_BLOOD_TYPES = ["A_POSITIVE", "B_POSITIVE", "AB_POSITIVE", "O_POSITIVE"] as const;
+export const FORECAST_COMPONENTS = ["RED_BLOOD_CELLS", "PACKED_RED_BLOOD_CELLS", "PLATELETS", "FRESH_FROZEN_PLASMA", "CRYOPRECIPITATE", "WHOLE_BLOOD"] as const;
+export type ForecastBloodType = (typeof FORECAST_BLOOD_TYPES)[number];
+export type ForecastComponent = (typeof FORECAST_COMPONENTS)[number];
 export type CaptureMethod = (typeof CAPTURE_METHODS)[number];
 export type ScanStatus =
   | "QUEUED"
@@ -76,12 +80,18 @@ export interface ScanEvent extends CaptureInput {
 export interface ForecastRecord {
   runKey: string;
   institutionId: string;
-  bloodType: BloodType;
-  component: Component;
+  bloodType: ForecastBloodType;
+  component: ForecastComponent;
   horizonDate: string;
+  asOfDate: string;
   pointForecast: number;
-  lowerForecast: number;
-  upperForecast: number;
+  lowerForecast: number | null;
+  upperForecast: number | null;
+  uncertaintyStatus: "CALIBRATED" | "UNCERTAINTY_UNAVAILABLE";
+  uncertaintyNote: string | null;
+  datasetVersion: string;
+  modelVersion: string;
+  forecastStatus: "AVAILABLE" | "STALE" | "UNAVAILABLE";
   classification: "SIMULATION_ONLY";
   recommendationEligibility: "DISABLED_UNAPPROVED_POLICY";
   generatedAt: string;

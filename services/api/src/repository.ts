@@ -9,7 +9,7 @@ export interface ScanRepository {
     receivedAt: Date,
   ): Promise<AcceptedScan>;
   findScan(eventId: string, institutionId: string): Promise<ScanEvent | null>;
-  listForecasts(institutionId: string, manilaDate: string): Promise<ForecastRecord[]>;
+  listForecasts(institutionId: string, manilaDate: string, datasetVersion?: string): Promise<ForecastRecord[]>;
   recoverExpiredLeases(now: Date): Promise<number>;
   claimProjection(now: Date): Promise<ScanEvent | null>;
   claimLedger(workerId: string, now: Date): Promise<ScanEvent | null>;

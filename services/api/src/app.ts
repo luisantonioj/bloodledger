@@ -563,7 +563,7 @@ export async function buildApp(
       throw new ApiFailure(400, "INVALID_BUSINESS_DATE", "businessDate must be YYYY-MM-DD.");
     }
     const principal = principalFrom(request, config.operatorId);
-    const forecasts = await repository.listForecasts(principal.institutionId, requestedDate);
+    const forecasts = await repository.listForecasts(principal.institutionId, requestedDate, config.activeForecastDatasetVersion);
     const status = forecasts.length === 0 ? "UNAVAILABLE" : forecasts.some((item) => item.stale) ? "STALE" : "CURRENT";
     return { businessDate: requestedDate, status, forecasts };
   });
@@ -571,7 +571,7 @@ export async function buildApp(
   app.get("/healthz", async (_request, reply) => {
     const database = await repository.health().catch(() => false);
     const forecasts = database
-      ? await repository.listForecasts("INST_MEDIATRIX", manilaDate(clock())).catch(() => [])
+      ? await repository.listForecasts("INST_MEDIATRIX", manilaDate(clock()), config.activeForecastDatasetVersion).catch(() => [])
       : [];
     const forecastReadiness = forecasts.length === 0
       ? "UNAVAILABLE"

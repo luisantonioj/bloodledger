@@ -167,38 +167,46 @@ export class PostgresScanRepository implements ScanRepository {
     return result.rows[0] ? mapScan(result.rows[0]) : null;
   }
 
-  async listForecasts(institutionId: string, manilaDate: string): Promise<ForecastRecord[]> {
+  async listForecasts(institutionId: string, manilaDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1"): Promise<ForecastRecord[]> {
     const result = await this.pool.query<Row>(`
-      SELECT fr.run_key, df.*,
+      SELECT fr.run_key, fr.dataset_version, fr.model_version, fr.input_end_date AS as_of_date, df.*,
         to_char(df.horizon_date, 'YYYY-MM-DD') AS horizon_date,
-        to_char(df.stale_after, 'YYYY-MM-DD') AS stale_after
+        to_char(df.stale_after, 'YYYY-MM-DD') AS stale_after,
+        to_char(fr.input_end_date, 'YYYY-MM-DD') AS as_of_date_text
       FROM app.forecast_runs fr
       JOIN app.demand_forecasts df ON df.run_id = fr.run_id
       WHERE fr.run_status = 'COMPLETED'
+        AND fr.dataset_version = $2
         AND df.institution_id = $1
         AND fr.run_id = (
           SELECT fr2.run_id
           FROM app.forecast_runs fr2
           JOIN app.demand_forecasts df2 ON df2.run_id = fr2.run_id
-          WHERE fr2.run_status = 'COMPLETED' AND df2.institution_id = $1
+          WHERE fr2.run_status = 'COMPLETED' AND fr2.dataset_version = $2 AND df2.institution_id = $1
           ORDER BY (df2.horizon_date = $2::date) DESC, fr2.generated_at DESC
           LIMIT 1
         )
       ORDER BY df.blood_type, df.component
-    `, [institutionId, manilaDate]);
+    `, [institutionId, datasetVersion, manilaDate]);
     return result.rows.map((row) => ({
       runKey: String(row.run_key),
       institutionId: String(row.institution_id),
       bloodType: String(row.blood_type) as ForecastRecord["bloodType"],
       component: String(row.component) as ForecastRecord["component"],
       horizonDate: String(row.horizon_date).slice(0, 10),
+      asOfDate: String(row.as_of_date_text).slice(0, 10),
       pointForecast: Number(row.point_forecast),
-      lowerForecast: Number(row.lower_forecast),
-      upperForecast: Number(row.upper_forecast),
+      lowerForecast: row.lower_forecast === null ? null : Number(row.lower_forecast),
+      upperForecast: row.upper_forecast === null ? null : Number(row.upper_forecast),
+      uncertaintyStatus: String(row.uncertainty_status ?? "CALIBRATED") as ForecastRecord["uncertaintyStatus"],
+      uncertaintyNote: nullableString(row.uncertainty_note),
+      datasetVersion: String(row.dataset_version),
+      modelVersion: String(row.model_version),
+      forecastStatus: String(row.forecast_status) as ForecastRecord["forecastStatus"],
       classification: "SIMULATION_ONLY",
       recommendationEligibility: "DISABLED_UNAPPROVED_POLICY",
       generatedAt: iso(row.generated_at),
-      stale: String(row.horizon_date).slice(0, 10) !== manilaDate || String(row.forecast_status) !== "AVAILABLE" || String(row.stale_after).slice(0, 10) < manilaDate,
+      stale: String(row.horizon_date) !== manilaDate || String(row.forecast_status) !== "AVAILABLE" || String(row.stale_after) < manilaDate,
     }));
   }
 

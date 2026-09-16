@@ -635,10 +635,17 @@
         "content": {
           "application/json": {
             "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "../../contracts/core-v2.schema.json"
-              }
+              "type": "object",
+              "required": ["scope", "components", "classification"],
+              "properties": {
+                "scope": { "const": "INSTITUTION" },
+                "components": {
+                  "type": "array",
+                  "items": { "$ref": "../../contracts/core-v2.schema.json" }
+                },
+                "classification": { "const": "SIMULATION_ONLY" }
+              },
+              "additionalProperties": false
             }
           }
         }
