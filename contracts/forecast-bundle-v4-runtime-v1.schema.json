@@ -20,6 +20,7 @@
       "classification": { "const": "SIMULATION_ONLY" },
       "recommendationEligibility": { "const": "DISABLED_UNAPPROVED_POLICY" },
       "runStatus": { "enum": ["COMPLETED", "UNAVAILABLE", "FAILED"] },
+      "unavailableReason": { "type": "string", "maxLength": 64 },
       "lineage": { "type": "object", "required": ["datasetSha256", "codeSha256", "configurationSha256", "modelSha256", "inputSha256", "payloadSha256"], "additionalProperties": { "type": "string" } }
     }, "additionalProperties": false },
     "forecasts": { "type": "array", "items": { "type": "object", "required": ["forecastId", "institutionId", "bloodType", "component", "horizonDate", "pointForecast", "lowerForecast", "upperForecast", "uncertaintyStatus", "uncertaintyNote", "forecastStatus", "staleAfter", "classification", "recommendationEligibility"], "properties": {

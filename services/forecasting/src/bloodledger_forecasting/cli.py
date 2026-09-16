@@ -26,6 +26,7 @@ from .persistence import (
     app_database_config_from_environment,
     connect_as_runtime,
     persist_forecast_bundle,
+    persist_v4_runtime_bundle,
 )
 from .scenario import evaluate_surplus_scenario
 from .runtime_v4 import (
@@ -203,6 +204,13 @@ def _forecast_v4(args: argparse.Namespace) -> dict[str, Any]:
         generated_at=_utc_timestamp(args.generated_at),
     )
     _write_json(Path(args.output), bundle)
+    persistence_status = "NOT_REQUESTED"
+    if args.persist:
+        connection = connect_as_runtime(app_database_config_from_environment())
+        try:
+            persistence_status = persist_v4_runtime_bundle(connection, bundle)
+        finally:
+            connection.close()
     return {
         "status": "FORECASTED_V4" if bundle["run"]["runStatus"] == "COMPLETED" else "UNAVAILABLE_V4",
         "classification": V4_CLASSIFICATION,
@@ -212,6 +220,7 @@ def _forecast_v4(args: argparse.Namespace) -> dict[str, Any]:
         "dataset_version": bundle["run"]["datasetVersion"],
         "model_version": bundle["run"]["modelVersion"],
         "recommendation_eligibility": V4_RECOMMENDATION_ELIGIBILITY,
+        "persistence": persistence_status,
     }
 
 
@@ -277,6 +286,7 @@ def build_parser() -> argparse.ArgumentParser:
     forecast_v4.add_argument("--data", required=True)
     forecast_v4.add_argument("--output", required=True)
     forecast_v4.add_argument("--generated-at")
+    forecast_v4.add_argument("--persist", action="store_true")
     forecast_v4.set_defaults(handler=_forecast_v4)
 
     scenario = subparsers.add_parser("evaluate-surplus-scenario")
