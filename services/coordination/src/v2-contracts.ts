@@ -2,6 +2,9 @@ export const INTERVIEW_V2_POLICY_VERSION = "INTERVIEW_DERIVED_OPTIMIZATION_V2" a
 export const INTERVIEW_V2_CLASSIFICATION = "SIMULATION_ONLY" as const;
 export const INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY = "DISABLED_UNAPPROVED_POLICY" as const;
 
+export const INTERVIEW_V2_1_POLICY_VERSION = "INTERVIEW_DERIVED_OPTIMIZATION_V2_1" as const;
+export const INTERVIEW_CORE_V2_1_POLICY_VERSION = "INTERVIEW_DERIVED_CORE_V2_1" as const;
+
 export const INTERVIEW_V2_BLOOD_TYPES = [
   "A_POSITIVE", "A_NEGATIVE", "B_POSITIVE", "B_NEGATIVE",
   "AB_POSITIVE", "AB_NEGATIVE", "O_POSITIVE", "O_NEGATIVE",
@@ -12,6 +15,27 @@ export const INTERVIEW_V2_COMPONENT_TYPES = [
   "WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_PLASMA", "PLATELETS",
 ] as const;
 export type InterviewV2ComponentType = (typeof INTERVIEW_V2_COMPONENT_TYPES)[number];
+
+export const INTERVIEW_V2_1_COMPONENT_TYPES = [
+  "WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_PLASMA", "PLATELETS", "CRYOPRECIPITATE",
+] as const;
+export type InterviewV2_1ComponentType = (typeof INTERVIEW_V2_1_COMPONENT_TYPES)[number];
+
+export interface SourceSurplusEvidenceV2_1 {
+  evidenceId: string;
+  sourceInstitutionId: string;
+  bloodType: InterviewV2BloodType;
+  componentType: InterviewV2_1ComponentType;
+  surplusQuantity: number;
+  asOf: string;
+  horizonDate: string;
+  forecastStatus: "AVAILABLE" | "STALE" | "UNAVAILABLE";
+  modelVersion: string;
+  inventorySnapshotId: string;
+  sourceProjectionDigest: string;
+  classification: typeof INTERVIEW_V2_CLASSIFICATION;
+  recommendationEligibility: typeof INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY;
+}
 
 export interface SourceSurplusEvidenceV2 {
   evidenceId: string;
@@ -42,5 +66,17 @@ export function validateSourceSurplusEvidenceV2(input: SourceSurplusEvidenceV2):
       (input.inventorySnapshotId !== undefined && !/^CENSUS_[A-Z0-9_-]{1,56}$/.test(input.inventorySnapshotId)) ||
       (input.sourceProjectionDigest !== undefined && !/^[0-9a-f]{64}$/.test(input.sourceProjectionDigest))) {
     throw new Error("COORD_V2_SURPLUS_NOT_ELIGIBLE");
+  }
+}
+
+export function validateSourceSurplusEvidenceV2_1(input: SourceSurplusEvidenceV2_1): void {
+  if (input.classification !== INTERVIEW_V2_CLASSIFICATION ||
+      input.recommendationEligibility !== INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY ||
+      !INTERVIEW_V2_1_COMPONENT_TYPES.includes(input.componentType) ||
+      input.surplusQuantity < 0 || !Number.isSafeInteger(input.surplusQuantity) ||
+      input.forecastStatus !== "AVAILABLE" ||
+      !/^CENSUS_[A-Z0-9_-]{1,56}$/.test(input.inventorySnapshotId) ||
+      !/^[0-9a-f]{64}$/.test(input.sourceProjectionDigest)) {
+    throw new Error("COORD_V2_1_SURPLUS_NOT_ELIGIBLE");
   }
 }

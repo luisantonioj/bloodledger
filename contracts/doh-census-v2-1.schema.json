@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bloodledger.local/contracts/doh-census-v2-1.schema.json",
+  "title": "BloodLedger DOH Census Snapshot V2.1",
+  "type": "object",
+  "required": ["snapshotId", "scheduledFor", "capturedAt", "timezone", "reportPolicyVersion", "sourceProjectionDigest", "groups", "classification"],
+  "properties": {
+    "snapshotId": { "type": "string", "pattern": "^CENSUS_[A-Z0-9_-]{1,56}$" },
+    "scheduledFor": { "type": "string", "format": "date-time" },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "timezone": { "const": "Asia/Manila" },
+    "reportPolicyVersion": { "const": "INTERVIEW_REPORT_V2_1" },
+    "sourceProjectionDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "groups": { "type": "array", "items": { "type": "object", "required": ["componentType", "bloodTypes"], "properties": {
+      "componentType": { "enum": ["WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_PLASMA", "PLATELETS", "CRYOPRECIPITATE"] },
+      "bloodTypes": { "type": "array", "items": { "type": "object", "required": ["bloodType", "availableCount", "reservedCount", "forecastEligibleAvailableCount", "reportableCount"], "properties": {
+        "bloodType": { "enum": ["A_POSITIVE", "A_NEGATIVE", "B_POSITIVE", "B_NEGATIVE", "AB_POSITIVE", "AB_NEGATIVE", "O_POSITIVE", "O_NEGATIVE"] },
+        "availableCount": { "type": "integer", "minimum": 0 },
+        "reservedCount": { "type": "integer", "minimum": 0 },
+        "forecastEligibleAvailableCount": { "type": "integer", "minimum": 0 },
+        "reportableCount": { "type": "integer", "minimum": 0 }
+      }, "additionalProperties": false } }
+    }, "additionalProperties": false } },
+    "classification": { "const": "SIMULATION_ONLY" }
+  },
+  "additionalProperties": false
+}
