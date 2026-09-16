@@ -652,7 +652,10 @@ export class FabricGatewayInterviewCore implements V2LedgerSubmitter {
           return { ...safe, donationNoDigest: donationNoLookupHmac };
         })()
         : command.payload;
-      const payload = { ...rawPayload, idempotencyKey: command.idempotencyKey, policyVersion: "INTERVIEW_DERIVED_CORE_V2" };
+      const policyVersion = (rawPayload as Record<string, unknown>).policyVersion === "INTERVIEW_DERIVED_CORE_V2_1"
+        ? "INTERVIEW_DERIVED_CORE_V2_1"
+        : "INTERVIEW_DERIVED_CORE_V2";
+      const payload = { ...rawPayload, idempotencyKey: command.idempotencyKey, policyVersion };
       const contract = gateway.getNetwork(this.environment.FABRIC_CHANNEL ?? "bloodledger-dev").getContract(this.environment.FABRIC_CHAINCODE ?? "bloodledger-inventory", "InterviewCoreContract");
       const submitted = await contract.submitAsync(transaction, { arguments: [JSON.stringify(payload)] });
       const status = await submitted.getStatus();

@@ -74,16 +74,40 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
         const marker = await client.query("SELECT 1 FROM app.v2_reservations WHERE reservation_id=$1 AND last_projection_command_id=$2", [reservationId, command.commandId]);
         if (marker.rowCount) { await client.query("COMMIT"); return; }
       }
-      if (command.operation === "REGISTER_INBOUND_COMPONENT") {
-        await client.query(`INSERT INTO app.v2_inbound_captures(capture_id,issuer_institution_id,custody_institution_id,donation_number_lookup_hmac,component_type,blood_type,capture_method,capture_policy_version,blood_type_evidence_source,component_evidence_source,ocr_engine,ocr_engine_version,donation_number_confidence,blood_type_confidence,collected_at,expires_at,captured_at,confirmed_at,event_time,status,resolution,correlation_id,classification,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,'OCR','INBOUND_OCR_V1',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'COMMITTED','REGISTERED',$18,'SIMULATION_ONLY',$19,$19) ON CONFLICT(capture_id) DO NOTHING`, [payload.captureId, payload.issuerInstitutionId, payload.custodyInstitutionId, payload.donationNoLookupHmac, payload.componentType, payload.bloodType, payload.bloodTypeEvidenceSource, payload.componentEvidenceSource, payload.ocrEngine, payload.ocrEngineVersion, payload.donationNumberConfidence, payload.bloodTypeConfidence, payload.collectedAt, payload.expiresAt, payload.capturedAt, payload.confirmedAt, payload.eventTime, command.correlationId, command.acceptedAt]);
+      if (["REGISTER_COMPONENT", "REGISTER_INBOUND_COMPONENT"].includes(command.operation)) {
+        if (command.operation === "REGISTER_INBOUND_COMPONENT") {
+          await client.query(`INSERT INTO app.v2_inbound_captures(capture_id,issuer_institution_id,custody_institution_id,donation_number_lookup_hmac,component_type,blood_type,capture_method,capture_policy_version,blood_type_evidence_source,component_evidence_source,ocr_engine,ocr_engine_version,donation_number_confidence,blood_type_confidence,collected_at,expires_at,captured_at,confirmed_at,event_time,status,resolution,correlation_id,classification,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,'OCR','INBOUND_OCR_V1',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'COMMITTED','REGISTERED',$18,'SIMULATION_ONLY',$19,$19) ON CONFLICT(capture_id) DO NOTHING`, [payload.captureId, payload.issuerInstitutionId, payload.custodyInstitutionId, payload.donationNoLookupHmac, payload.componentType, payload.bloodType, payload.bloodTypeEvidenceSource, payload.componentEvidenceSource, payload.ocrEngine, payload.ocrEngineVersion, payload.donationNumberConfidence, payload.bloodTypeConfidence, payload.collectedAt, payload.expiresAt, payload.capturedAt, payload.confirmedAt, payload.eventTime, command.correlationId, command.acceptedAt]);
+        }
+        await client.query(`INSERT INTO app.v2_donations(donation_id,issuer_institution_id,donation_number_ciphertext,donation_number_nonce,donation_number_auth_tag,donation_number_key_version,donation_number_lookup_hmac,created_by_user_id,created_at,updated_at,classification) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,'SIMULATION_ONLY') ON CONFLICT(donation_id) DO UPDATE SET updated_at=EXCLUDED.updated_at`, [payload.donationId, payload.issuerInstitutionId, payload.donationNoCiphertext, payload.donationNoNonce, payload.donationNoAuthTag, payload.donationNoEncryptionKeyVersion, payload.donationNoLookupHmac, command.actorUserId, command.acceptedAt]);
+        await client.query(`INSERT INTO app.v2_components(component_id,donation_id,issuer_institution_id,donation_number_lookup_hmac,component_type,blood_type,collected_at,expires_at,institution_id,inventory_status,ledger_version,ledger_transaction_id,correlation_id,policy_version,created_at,updated_at,classification,inbound_capture_id,capture_method,blood_type_evidence_source,component_evidence_source,last_projection_command_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'AVAILABLE',1,$10,$11,$12,$13,$13,'SIMULATION_ONLY',$14,'OCR',$15,$16,$17) ON CONFLICT(component_id) DO UPDATE SET last_projection_command_id=EXCLUDED.last_projection_command_id`, [payload.componentId, payload.donationId, payload.issuerInstitutionId, payload.donationNoLookupHmac, payload.componentType, payload.bloodType, payload.collectedAt, payload.expiresAt, payload.custodyInstitutionId ?? payload.issuerInstitutionId, command.ledgerTransactionId, command.correlationId, payload.policyVersion ?? "INTERVIEW_DERIVED_CORE_V2", command.acceptedAt, payload.captureId ?? null, payload.bloodTypeEvidenceSource ?? null, payload.componentEvidenceSource ?? null, command.commandId]);
+        if (command.operation === "REGISTER_INBOUND_COMPONENT" && payload.captureId) await client.query("UPDATE app.v2_inbound_captures SET component_id=$2,command_id=$3,status='COMMITTED',resolution='REGISTERED',updated_at=$4 WHERE capture_id=$1", [payload.captureId, payload.componentId, command.commandId, command.acceptedAt]);
+        await client.query("COMMIT");
+        return;
       }
-      await client.query(`INSERT INTO app.v2_donations(donation_id,issuer_institution_id,donation_number_ciphertext,donation_number_nonce,donation_number_auth_tag,donation_number_key_version,donation_number_lookup_hmac,created_by_user_id,created_at,updated_at,classification) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,'SIMULATION_ONLY') ON CONFLICT(donation_id) DO UPDATE SET updated_at=EXCLUDED.updated_at`, [payload.donationId, payload.issuerInstitutionId, payload.donationNoCiphertext, payload.donationNoNonce, payload.donationNoAuthTag, payload.donationNoEncryptionKeyVersion, payload.donationNoLookupHmac, command.actorUserId, command.acceptedAt]);
-      await client.query(`INSERT INTO app.v2_components(component_id,donation_id,issuer_institution_id,donation_number_lookup_hmac,component_type,blood_type,collected_at,expires_at,institution_id,inventory_status,ledger_version,ledger_transaction_id,correlation_id,policy_version,created_at,updated_at,classification,inbound_capture_id,capture_method,blood_type_evidence_source,component_evidence_source,last_projection_command_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'AVAILABLE',1,$10,$11,$12,$13,$13,'SIMULATION_ONLY',$14,'OCR',$15,$16,$17) ON CONFLICT(component_id) DO UPDATE SET last_projection_command_id=EXCLUDED.last_projection_command_id`, [payload.componentId, payload.donationId, payload.issuerInstitutionId, payload.donationNoLookupHmac, payload.componentType, payload.bloodType, payload.collectedAt, payload.expiresAt, payload.custodyInstitutionId ?? payload.issuerInstitutionId, command.ledgerTransactionId, command.correlationId, payload.policyVersion ?? "INTERVIEW_DERIVED_CORE_V2", command.acceptedAt, payload.captureId ?? null, payload.bloodTypeEvidenceSource ?? null, payload.componentEvidenceSource ?? null, command.commandId]);
-      if (command.operation === "REGISTER_INBOUND_COMPONENT" && payload.captureId) await client.query("UPDATE app.v2_inbound_captures SET component_id=$2,command_id=$3,status='COMMITTED',resolution='REGISTERED',updated_at=$4 WHERE capture_id=$1", [payload.captureId, payload.componentId, command.commandId, command.acceptedAt]);
-      if (["REGISTER_COMPONENT", "REGISTER_INBOUND_COMPONENT"].includes(command.operation)) { await client.query("COMMIT"); return; }
       if (command.operation === "RECEIVE_INBOUND_COMPONENT") {
-        await client.query("UPDATE app.v2_components SET inventory_status='RECEIVED',institution_id=$2,ledger_transaction_id=$3,last_projection_command_id=$4,updated_at=$5,ledger_version=ledger_version+1 WHERE reservation_id=$1 AND inventory_status='IN_TRANSIT'", [reservationId, command.actorInstitutionId, command.ledgerTransactionId, command.commandId, command.acceptedAt]);
-        await client.query("UPDATE app.v2_reservations SET status='RECEIVED',last_projection_command_id=$2,updated_at=$3,version=version+1 WHERE reservation_id=$1 AND status='IN_TRANSIT'", [reservationId, command.commandId, command.acceptedAt]);
+        const received = await client.query("UPDATE app.v2_components SET inventory_status='RECEIVED',institution_id=$2,ledger_transaction_id=$3,last_projection_command_id=$4,updated_at=$5,ledger_version=ledger_version+1 WHERE reservation_id=$1 AND inventory_status='IN_TRANSIT'", [reservationId, command.actorInstitutionId, command.ledgerTransactionId, command.commandId, command.acceptedAt]);
+        if (!received.rowCount) throw new Error("V2_PROJECTION_STATE_CONFLICT");
+        const reservation = await client.query("UPDATE app.v2_reservations SET status='RECEIVED',last_projection_command_id=$2,updated_at=$3,version=version+1 WHERE reservation_id=$1 AND status='IN_TRANSIT'", [reservationId, command.commandId, command.acceptedAt]);
+        if (!reservation.rowCount) throw new Error("V2_PROJECTION_STATE_CONFLICT");
+        await client.query("COMMIT"); return;
+      }
+      if (["RESERVE_COMPONENTS", "RESERVE_LOCAL_RELEASE"].includes(command.operation)) {
+        const selected = Array.isArray(payload.selectedComponentIds) ? payload.selectedComponentIds.filter((value): value is string => typeof value === "string") : [];
+        if (!reservationId || selected.length === 0) throw new Error("V2_PROJECTION_INPUT_INVALID");
+        const purpose = command.operation === "RESERVE_LOCAL_RELEASE" ? "LOCAL_RELEASE" : String(payload.purpose ?? "TRANSFER");
+        if (purpose !== "TRANSFER" && purpose !== "LOCAL_RELEASE") throw new Error("V2_PROJECTION_INPUT_INVALID");
+        const transferId = purpose === "TRANSFER" ? String(payload.transferId ?? command.resourceId) : null;
+        const localReleaseId = purpose === "LOCAL_RELEASE" ? String(payload.localReleaseId ?? command.resourceId) : null;
+        await client.query("INSERT INTO app.v2_reservations(reservation_id,purpose,transfer_id,local_release_id,institution_id,status,correlation_id,version,classification,last_projection_command_id) VALUES($1,$2,$3,$4,$5,'RESERVED',$6,1,'SIMULATION_ONLY',$7) ON CONFLICT(reservation_id) DO NOTHING", [reservationId, purpose, transferId, localReleaseId, command.actorInstitutionId, command.correlationId, command.commandId]);
+        const expectedVersions = Array.isArray(payload.expectedComponentVersions) ? payload.expectedComponentVersions : [];
+        for (const [index, selectedId] of selected.entries()) {
+          const expected = Number(expectedVersions[index]);
+          const versionClause = Number.isSafeInteger(expected) ? " AND ledger_version=$7" : "";
+          const params: unknown[] = [selectedId, purpose, reservationId, command.ledgerTransactionId, command.commandId, command.acceptedAt];
+          if (Number.isSafeInteger(expected)) params.push(expected);
+          const updated = await client.query(`UPDATE app.v2_components SET inventory_status='RESERVED',reservation_purpose=$2,reservation_id=$3,ledger_transaction_id=$4,last_projection_command_id=$5,updated_at=$6,ledger_version=ledger_version+1 WHERE component_id=$1 AND inventory_status='AVAILABLE'${versionClause}`, params);
+          if (!updated.rowCount) throw new Error("V2_PROJECTION_STATE_CONFLICT");
+        }
         await client.query("COMMIT"); return;
       }
       const componentState: Record<string, { status: string; clearReservation?: boolean }> = {
@@ -102,13 +126,20 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
       };
       const state = componentState[command.operation];
       if (!state) throw new Error("V2_PROJECTION_OPERATION_UNSUPPORTED");
-      const clear = state.clearReservation ? ",reservation_id=NULL,reservation_purpose=NULL" : "";
+      const clear = state.clearReservation ? ",reservation_id=NULL,reservation_purpose=NULL,release_prepared_at=NULL,release_prepared_by=NULL" : "";
       const where = componentId ? "component_id=$1" : "reservation_id=$1";
       const version = payload.expectedVersion === undefined ? null : Number(payload.expectedVersion);
-      const versionClause = version === null || !Number.isSafeInteger(version) ? "" : " AND ledger_version=$6";
       const params: unknown[] = [componentId ?? reservationId, state.status, command.ledgerTransactionId, command.commandId, command.acceptedAt];
-      if (version !== null && Number.isSafeInteger(version)) params.push(version);
-      const updated = await client.query(`UPDATE app.v2_components SET inventory_status=$2${clear},ledger_transaction_id=$3,last_projection_command_id=$4,updated_at=$5,ledger_version=ledger_version+1 WHERE ${where}${versionClause}`, params);
+      const preparing = command.operation === "PREPARE_RESERVATION" || command.operation === "PREPARE";
+      const preparation = preparing ? ",release_prepared_at=$6,release_prepared_by=$7" : "";
+      if (preparing) params.push(payload.preparedAt ?? command.acceptedAt, command.actorUserId);
+      const componentVersionClause = componentId && version !== null && Number.isSafeInteger(version) ? ` AND ledger_version=$${params.length + 1}` : "";
+      if (componentVersionClause) params.push(version);
+      if (reservationId && version !== null && Number.isSafeInteger(version)) {
+        const reservation = await client.query("SELECT version FROM app.v2_reservations WHERE reservation_id=$1 FOR UPDATE", [reservationId]);
+        if (!reservation.rows[0] || Number(reservation.rows[0].version) !== version) throw new Error("V2_PROJECTION_STATE_CONFLICT");
+      }
+      const updated = await client.query(`UPDATE app.v2_components SET inventory_status=$2${clear}${preparation},ledger_transaction_id=$3,last_projection_command_id=$4,updated_at=$5 WHERE ${where}${componentVersionClause}`, params);
       if (updated.rowCount === 0) throw new Error("V2_PROJECTION_STATE_CONFLICT");
       if (reservationId) {
         const reservationStatus: Record<string, string> = { PREPARE_RESERVATION: "PREPARED", PREPARE: "PREPARED", DISPATCH_RESERVATION: "DISPATCHED", DISPATCH: "DISPATCHED", START_RESERVATION_TRANSIT: "IN_TRANSIT", TRANSIT: "IN_TRANSIT", RECEIVE_RESERVATION: "RECEIVED", RECEIPT: "RECEIVED", COMPLETE_LOCAL_RELEASE: "RELEASED", CANCEL_RESERVATION: "CANCELLED", CANCEL: "CANCELLED", REJECT: "CANCELLED", COMPROMISE_RESERVATION: "COMPROMISED", COMPROMISE: "COMPROMISED", RESERVE_COMPONENTS: "RESERVED", RESERVE_LOCAL_RELEASE: "RESERVED", APPROVE: "RESERVED", DELAY: "IN_TRANSIT" };
