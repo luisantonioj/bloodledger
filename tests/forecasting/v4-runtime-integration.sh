@@ -49,12 +49,29 @@ for hour in 00 01; do
     --artifact /outputs/model.pkl --manifest /outputs/model.json --output /outputs/bundle.json \
     --generated-at "2026-01-01T${hour}:00:00Z" --persist > "$probe_root/persist-$hour.json"
 done
+python3 - "$probe_root/v4.csv" <<'PY'
+import csv, sys
+from datetime import date, timedelta
+blood_types = ('A_POSITIVE', 'B_POSITIVE', 'AB_POSITIVE', 'O_POSITIVE')
+components = ('PACKED_RED_BLOOD_CELLS', 'PLATELETS', 'FRESH_FROZEN_PLASMA', 'CRYOPRECIPITATE', 'WHOLE_BLOOD')
+with open(sys.argv[1], 'w', newline='') as stream:
+    writer = csv.DictWriter(stream, fieldnames=('business_date','blood_type','component','requested_units'))
+    writer.writeheader()
+    for offset in range(7):
+        for blood_index, blood_type in enumerate(blood_types):
+            for component_index, component in enumerate(components):
+                writer.writerow({'business_date': date(2026, 1, 1) + timedelta(days=offset), 'blood_type': blood_type, 'component': component, 'requested_units': offset + blood_index + component_index})
+PY
+"${forecast_run[@]}" -m bloodledger_forecasting.cli forecast-v4-runtime --data /outputs/v4.csv \
+  --output /outputs/v4-bundle.json --generated-at 2026-01-08T00:00:00Z --persist > "$probe_root/v4-persist.json"
 python3 - "$probe_root" <<'PY'
 import json, pathlib, sys
 p=pathlib.Path(sys.argv[1])
 assert json.loads((p/'persist-00.json').read_text())['persistence']=='INSERTED'
 assert json.loads((p/'persist-01.json').read_text())['persistence']=='EXISTING'
+assert json.loads((p/'v4-persist.json').read_text())['persistence']=='INSERTED'
 print('Runtime persistence: INSERTED then EXISTING')
 PY
 "${forecast_run[@]}" tests/postgres_conflict_probe.py /outputs/bundle.json
+"${node_run[@]}" npm run build --workspace @bloodledger/coordination
 "${node_run[@]}" node tests/forecasting/v4-api-probe.mjs

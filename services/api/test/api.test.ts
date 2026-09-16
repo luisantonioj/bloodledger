@@ -192,7 +192,10 @@ test("FR-14 exposes forecast evidence as read-only CURRENT, STALE, or UNAVAILABL
   repository.forecasts = [{
     runKey: "a".repeat(64), institutionId: "INST_MEDIATRIX", bloodType: "A_POSITIVE",
     component: "RED_BLOOD_CELLS", horizonDate: "2026-01-01", pointForecast: 4,
-    lowerForecast: 2, upperForecast: 6, classification: "SIMULATION_ONLY",
+    asOfDate: "2025-12-31", lowerForecast: 2, upperForecast: 6,
+    uncertaintyStatus: "CALIBRATED", uncertaintyNote: "synthetic-test",
+    datasetVersion: "SYNTHETIC_FORECAST_V1", modelVersion: "synthetic-test-model",
+    forecastStatus: "AVAILABLE", classification: "SIMULATION_ONLY",
     recommendationEligibility: "DISABLED_UNAPPROVED_POLICY", generatedAt: fixedNow.toISOString(), stale: false,
   }];
   const current = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-01-01", headers });
