@@ -70,7 +70,13 @@ V4_EXPECTED_SERIES = frozenset(
     {
         (blood_type, component)
         for blood_type in ("A_POSITIVE", "B_POSITIVE", "AB_POSITIVE", "O_POSITIVE")
-        for component in ("PACKED_RED_BLOOD_CELLS", "PLATELETS", "FRESH_FROZEN_PLASMA", "CRYOPRECIPITATE", "WHOLE_BLOOD")
+        for component in (
+            "PACKED_RED_BLOOD_CELLS",
+            "PLATELETS",
+            "FRESH_FROZEN_PLASMA",
+            "CRYOPRECIPITATE",
+            "WHOLE_BLOOD",
+        )
     }
 )
 
@@ -292,17 +298,42 @@ def persist_v4_runtime_bundle(connection: Connection[Any], bundle: dict[str, Any
     forecasts = bundle.get("forecasts")
     if not isinstance(run, dict) or not isinstance(forecasts, list):
         raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 bundle shape is invalid")
-    if run.get("datasetVersion") != V4_DATASET_VERSION or run.get("modelVersion") != V4_MODEL_VERSION:
+    if (
+        run.get("datasetVersion") != V4_DATASET_VERSION
+        or run.get("modelVersion") != V4_MODEL_VERSION
+    ):
         raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 lineage is invalid")
     lineage = run.get("lineage")
-    if not isinstance(lineage, dict) or not all(isinstance(lineage.get(key), str) for key in ("datasetSha256", "codeSha256", "configurationSha256", "modelSha256", "inputSha256", "payloadSha256")):
+    if not isinstance(lineage, dict) or not all(
+        isinstance(lineage.get(key), str)
+        for key in (
+            "datasetSha256",
+            "codeSha256",
+            "configurationSha256",
+            "modelSha256",
+            "inputSha256",
+            "payloadSha256",
+        )
+    ):
         raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 lineage hashes are incomplete")
     completed = run.get("runStatus") == "COMPLETED"
     if completed and len(forecasts) != 20:
-        raise ForecastingError("FORECAST_BUNDLE_INVALID", "A completed V4 bundle must contain twenty forecasts")
+        raise ForecastingError(
+            "FORECAST_BUNDLE_INVALID", "A completed V4 bundle must contain twenty forecasts"
+        )
     if not completed and forecasts:
-        raise ForecastingError("FORECAST_BUNDLE_INVALID", "Unavailable V4 bundles cannot contain forecast rows")
-    if completed and {(row.get("bloodType"), row.get("component")) for row in forecasts if isinstance(row, dict)} != V4_EXPECTED_SERIES:
+        raise ForecastingError(
+            "FORECAST_BUNDLE_INVALID", "Unavailable V4 bundles cannot contain forecast rows"
+        )
+    if (
+        completed
+        and {
+            (row.get("bloodType"), row.get("component"))
+            for row in forecasts
+            if isinstance(row, dict)
+        }
+        != V4_EXPECTED_SERIES
+    ):
         raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 forecast series are incomplete")
 
     db_run = {
@@ -324,7 +355,9 @@ def persist_v4_runtime_bundle(connection: Connection[Any], bundle: dict[str, Any
         "generated_at": run["generatedAt"],
         "classification": run["classification"],
         "run_status": run["runStatus"],
-        "safe_error_code": None if completed else run.get("unavailableReason", "V4_HISTORY_UNAVAILABLE"),
+        "safe_error_code": None
+        if completed
+        else run.get("unavailableReason", "V4_HISTORY_UNAVAILABLE"),
         "lineage": lineage,
         "selection_evidence": V4_CONFIGURATION,
     }
@@ -348,12 +381,21 @@ def persist_v4_runtime_bundle(connection: Connection[Any], bundle: dict[str, Any
                   %(selection_evidence)s::jsonb
                 ) ON CONFLICT (run_key) DO NOTHING RETURNING run_id
                 """,
-                {**db_run, "lineage": json.dumps(lineage, sort_keys=True), "selection_evidence": json.dumps(V4_CONFIGURATION, sort_keys=True)},
+                {
+                    **db_run,
+                    "lineage": json.dumps(lineage, sort_keys=True),
+                    "selection_evidence": json.dumps(V4_CONFIGURATION, sort_keys=True),
+                },
             ).fetchone()
             if inserted is None:
-                existing = connection.execute("SELECT payload_sha256 FROM app.forecast_runs WHERE run_key = %s", (db_run["run_key"],)).fetchone()
+                existing = connection.execute(
+                    "SELECT payload_sha256 FROM app.forecast_runs WHERE run_key = %s",
+                    (db_run["run_key"],),
+                ).fetchone()
                 if existing is None or existing[0] != db_run["payload_sha256"]:
-                    raise ForecastingError("FORECAST_RUN_CONFLICT", "V4 run key already has different content")
+                    raise ForecastingError(
+                        "FORECAST_RUN_CONFLICT", "V4 run key already has different content"
+                    )
                 return "EXISTING"
             if completed:
                 with connection.cursor() as cursor:
@@ -372,13 +414,22 @@ def persist_v4_runtime_bundle(connection: Connection[Any], bundle: dict[str, Any
                           %(classification)s, %(recommendationEligibility)s, %(generated_at)s
                         )
                         """,
-                        [{**forecast, "run_id": db_run["run_id"], "generated_at": db_run["generated_at"]} for forecast in forecasts],
+                        [
+                            {
+                                **forecast,
+                                "run_id": db_run["run_id"],
+                                "generated_at": db_run["generated_at"],
+                            }
+                            for forecast in forecasts
+                        ],
                     )
         return "INSERTED"
     except ForecastingError:
         raise
     except psycopg.Error as error:
-        raise ForecastingError("FORECAST_PERSISTENCE_FAILED", "V4 forecast transaction was not committed") from error
+        raise ForecastingError(
+            "FORECAST_PERSISTENCE_FAILED", "V4 forecast transaction was not committed"
+        ) from error
 
 
 def persist_failed_run(

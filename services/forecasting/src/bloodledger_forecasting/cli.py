@@ -28,12 +28,12 @@ from .persistence import (
     persist_forecast_bundle,
     persist_v4_runtime_bundle,
 )
-from .scenario import evaluate_surplus_scenario
 from .runtime_v4 import (
     V4_CLASSIFICATION,
     V4_RECOMMENDATION_ELIGIBILITY,
     create_v4_runtime_bundle,
 )
+from .scenario import evaluate_surplus_scenario
 from .synthetic import SyntheticConfig, generate_synthetic_data, write_synthetic_csv
 from .validation import load_and_validate_csv, sha256_file, validate_dataset
 
@@ -212,7 +212,9 @@ def _forecast_v4(args: argparse.Namespace) -> dict[str, Any]:
         finally:
             connection.close()
     return {
-        "status": "FORECASTED_V4" if bundle["run"]["runStatus"] == "COMPLETED" else "UNAVAILABLE_V4",
+        "status": "FORECASTED_V4"
+        if bundle["run"]["runStatus"] == "COMPLETED"
+        else "UNAVAILABLE_V4",
         "classification": V4_CLASSIFICATION,
         "output": str(args.output),
         "run_id": bundle["run"]["runId"],

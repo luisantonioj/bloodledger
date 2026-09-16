@@ -17,12 +17,14 @@ def runtime_history(days: int = 7) -> pd.DataFrame:
     for day in range(days):
         for blood_index, blood_type in enumerate(V4_BLOOD_TYPES):
             for component_index, component in enumerate(V4_COMPONENTS):
-                rows.append({
-                    "business_date": start + timedelta(days=day),
-                    "blood_type": blood_type,
-                    "component": component,
-                    "requested_units": day + blood_index + component_index,
-                })
+                rows.append(
+                    {
+                        "business_date": start + timedelta(days=day),
+                        "blood_type": blood_type,
+                        "component": component,
+                        "requested_units": day + blood_index + component_index,
+                    }
+                )
     return pd.DataFrame(rows)
 
 
@@ -31,7 +33,10 @@ def test_v4_weighted_average_and_all_twenty_series() -> None:
     assert bundle["run"]["runStatus"] == "COMPLETED"
     assert len(bundle["forecasts"]) == 20
     first = bundle["forecasts"][0]
-    expected = sum(weight * (day + 0 + 0) for weight, day in zip(V4_WEIGHTS, range(7), strict=True)) / V4_WEIGHT_DENOMINATOR
+    expected = (
+        sum(weight * (day + 0 + 0) for weight, day in zip(V4_WEIGHTS, range(7), strict=True))
+        / V4_WEIGHT_DENOMINATOR
+    )
     assert first["pointForecast"] == expected
     assert first["lowerForecast"] is None
     assert first["upperForecast"] is None
@@ -39,7 +44,8 @@ def test_v4_weighted_average_and_all_twenty_series() -> None:
 
 
 def test_v4_missing_day_is_unavailable_and_not_zero_filled() -> None:
-    data = runtime_history().query("business_date != '2026-01-04'")
+    data = runtime_history()
+    data = data[data["business_date"] != date(2026, 1, 4)]
     bundle = create_v4_runtime_bundle(data, generated_at="2026-01-08T00:00:00.000Z")
     assert bundle["run"]["runStatus"] == "UNAVAILABLE"
     assert bundle["run"]["unavailableReason"] == "V4_HISTORY_UNAVAILABLE"
