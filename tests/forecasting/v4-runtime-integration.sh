@@ -75,3 +75,4 @@ PY
 "${forecast_run[@]}" tests/postgres_conflict_probe.py /outputs/bundle.json
 "${node_run[@]}" npm run build --workspace @bloodledger/coordination
 "${node_run[@]}" node tests/forecasting/v4-api-probe.mjs
+"${node_run[@]}" node tests/forecasting/v4-coordination-probe.mjs
