@@ -111,3 +111,26 @@ def test_lineage_tampering_is_rejected(
     with pytest.raises(ForecastingError) as captured:
         _forecast(synthetic_data, dataset_path, changed)
     assert captured.value.code == "MODEL_LINEAGE_MISMATCH"
+
+
+def test_weighted_runtime_features_match_thesis_weight_direction(
+    synthetic_data: pd.DataFrame,
+) -> None:
+    """BL-ML-05: same weighted algorithm, independently versioned data contracts."""
+    from bloodledger_forecasting.forecasting import _next_day_features
+
+    horizon = _next_day_features(synthetic_data, pd.Timestamp("2026-01-01"))
+    for _, row in horizon.iterrows():
+        history = (
+            synthetic_data.loc[
+                (synthetic_data.blood_type == row.blood_type)
+                & (synthetic_data.component == row.component)
+            ]
+            .sort_values("business_date")
+            .tail(7)
+        )
+        expected = (
+            sum(float(v) * w for v, w in zip(history.requested_units, range(1, 8), strict=True))
+            / 28
+        )
+        assert row.weighted_7 == pytest.approx(expected)

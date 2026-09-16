@@ -273,3 +273,22 @@ columns are not evidence.
 - Jopia validation and self-validation disclosure:
 - Lat accountable decision:
 - Incomplete-item disposition and retrospective:
+
+## ML thesis follow-up — 2026-09-15
+
+The user authorized [BL-ML-05 exploration](ML-THESIS-EXPLORATION.md) on
+`codex/sprint-03-ml-exploration`, using only already supplied data. This permits
+local data auditing, descriptive analysis and isolated synthetic model
+comparisons. It does not constitute accountable-owner review, UAT execution,
+TP-G05 closure or operational model promotion. The follow-up specification owns
+its protocol and evidence; the accepted runtime remains the comparison baseline.
+
+
+### Workbook v4 verification follow-up — 2026-09-16
+
+BL-ML-05 now has frozen-release verification, external thesis tables/model card,
+and an isolated accepted-runtime PostgreSQL/API replay. The evidence and two
+small application compatibility fixes are recorded in
+[ML thesis exploration](ML-THESIS-EXPLORATION.md#v4-verification-evidence).
+The 20-series study remains offline; no operational forecast gate, UAT gate or
+accountable review is closed by these checks.
