@@ -102,3 +102,54 @@ the `CURRENT`/`STALE`/`UNAVAILABLE` fields, dataset/model identity, dates, and
 nullable uncertainty fields. LAT implements frontend and browser UAT. No
 production, clinical, accuracy, regulatory, or autonomous-transfer claim is
 closed by these results; `RQ-07` remains open.
+
+## BUNO review reconciliation — 2026-09-17
+
+BUNO reviewed PR 11 commit `f732fcb8504abe0198180b0ecaeebb72f1b724a5` with
+research-method and lineage scope. The review confirmed the weighted-average
+calculation and requested four forecasting-owner changes. It is a
+`CHANGES_REQUESTED` research review, not frontend/UAT, technical-owner,
+Drive-account, production, or merge approval. The earlier focused tests remain
+historical evidence and do not close these findings.
+
+| BUNO finding | Owner | Current disposition |
+|---|---|---|
+| Forecast IDs must include complete institution and run lineage | BUNO | Open; producer change and cross-institution persistence rerun required |
+| Dataset digest must identify actual source evidence | BUNO | Open; supplied-path and in-memory input semantics require producer change |
+| Null observations must persist an unavailable attempt | BUNO | Open; producer persistence and successful-to-unavailable API rerun required |
+| Unavailable results must retain the requested horizon | BUNO | Open; producer date-resolution change and rerun required |
+
+## Issue 9 backend finding reconciliation
+
+The attached Issue 9 handoff was reconstructed on 2026-09-17 from a review of
+the September 13 baseline. It is review evidence rather than an implementation
+instruction, and its findings were not automatically revalidated against every
+subsequent change.
+
+| Issue 9 backend finding | Current branch evidence | Remaining owner/action |
+|---|---|---|
+| Projection omitted lifecycle mutations | `PostgresV2Projector` covers registration, receipt, reservation, preparation, dispatch, transit, release, cancellation, reconciliation, expiry, compromise, and transfer persistence; PostgreSQL lifecycle replay is recorded above | Rerun against the current database/Fabric boundary; real Fabric restart evidence remains separate |
+| Freshness accepted expired or malformed evidence | V2.1 `validateForecastFreshness` requires strict UTC, evaluation ordering, and the next Asia/Manila date; coordination tests cover the boundary | Preserve version-specific behavior and add malformed/future/stale regression cases |
+| Snapshot/digest provenance was syntactic only | Internal ML snapshots are persisted atomically, read back by institution, digest-checked, and resolved by `TrustedCensusSnapshotReader` before surplus production | Harden cross-institution pending-command detection and rerun tamper/mismatch cases |
+| Census snapshots could be rewritten | Immutable database triggers plus idempotent insert/replay and digest conflict checks are present | Keep scheduled/report-policy gate disabled until approved order is supplied |
+| Exact Donation No. could cross the read boundary | ADR-034 allows encrypted off-chain storage; component projections omit ciphertext and plaintext, and API responses are redacted | Continue testing privileged reads and keep exact values out of forecasting inputs |
+| OpenAPI component response shape differed from implementation | V2 route returns `{ scope, components, classification }`, matching the corrected contract | Re-run contract/static checks after any schema edits |
+
+The Issue 9 wording that broadly prohibited Donation No. persistence conflicts
+with accepted ADR-034. The implementation boundary is encrypted off-chain
+storage with keyed equality evidence; plaintext, ciphertext, unrestricted OCR
+text, images, and exact values remain excluded from component API responses,
+forecasting reads, logs, and evidence.
+
+The internal ML snapshot digest covers the snapshot identifier, scheduled time,
+timezone, policy version, and all normalized component/blood-type counts. Its
+projection watermark is the maximum projected component ledger version included
+in that institution-scoped snapshot; it is not a global Fabric checkpoint.
+
+## Rerun dependencies and claim limits
+
+Backend and coordination checks can run against this branch now. Producer-to-
+database-to-API scenarios depending on BUNO's four forecasting changes remain
+`BLOCKED` until BUNO supplies the producer fix and records a re-review. No
+simulation result closes `RQ-07`, clinical or operational policy gates, UAT,
+real-Fabric restart evidence, or production readiness.
