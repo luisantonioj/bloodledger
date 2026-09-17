@@ -14,7 +14,16 @@ from psycopg import Connection
 
 from .constants import EVALUATION_CLASSIFICATION, RECOMMENDATION_ELIGIBILITY
 from .errors import ForecastingError
-from .runtime_v4 import V4_BUNDLE_SCHEMA, V4_CONFIGURATION, V4_DATASET_VERSION, V4_MODEL_VERSION
+from .runtime_v4 import (
+    V4_BUNDLE_SCHEMA,
+    V4_CONFIGURATION,
+    V4_CONFIGURATION_SHA256,
+    V4_CODE_SHA256,
+    V4_DATASET_VERSION,
+    V4_MODEL_VERSION,
+    V4_MODEL_SHA256,
+    payload_sha256,
+)
 
 RUN_FIELDS = frozenset(
     {
@@ -316,6 +325,17 @@ def persist_v4_runtime_bundle(connection: Connection[Any], bundle: dict[str, Any
         )
     ):
         raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 lineage hashes are incomplete")
+    if (
+        lineage["codeSha256"] != V4_CODE_SHA256
+        or lineage["configurationSha256"] != V4_CONFIGURATION_SHA256
+        or lineage["modelSha256"] != V4_MODEL_SHA256
+        or lineage["payloadSha256"] != payload_sha256(bundle)
+    ):
+        raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 lineage content does not verify")
+    if run.get("runStatus") not in {"COMPLETED", "UNAVAILABLE"}:
+        raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 run status is invalid")
+    if run.get("originDate") != run.get("inputEndDate"):
+        raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 origin date is invalid")
     completed = run.get("runStatus") == "COMPLETED"
     if completed and len(forecasts) != 20:
         raise ForecastingError(
@@ -335,6 +355,19 @@ def persist_v4_runtime_bundle(connection: Connection[Any], bundle: dict[str, Any
         != V4_EXPECTED_SERIES
     ):
         raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 forecast series are incomplete")
+    if completed and any(
+        not isinstance(row, dict)
+        or row.get("asOfDate") != run.get("originDate")
+        or row.get("horizonDate") != run.get("horizonDate")
+        or row.get("uncertaintyStatus") != "UNCERTAINTY_UNAVAILABLE"
+        or row.get("lowerForecast") is not None
+        or row.get("upperForecast") is not None
+        or not isinstance(row.get("pointForecast"), (int, float))
+        or not math.isfinite(float(row["pointForecast"]))
+        or float(row["pointForecast"]) < 0
+        for row in forecasts
+    ):
+        raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 forecast row content is invalid")
 
     db_run = {
         "run_id": run["runId"],

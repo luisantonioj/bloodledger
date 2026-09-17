@@ -56,6 +56,12 @@ V4_CONFIGURATION = {
     "horizon_days": 1,
     "uncertainty": "unavailable",
 }
+V4_MODEL_DEFINITION = {
+    "name": V4_MODEL_NAME,
+    "version": V4_MODEL_VERSION,
+    "weights_oldest_to_newest": list(V4_WEIGHTS),
+    "denominator": V4_WEIGHT_DENOMINATOR,
+}
 
 
 def _sha256(value: object) -> str:
@@ -63,6 +69,13 @@ def _sha256(value: object) -> str:
         value, sort_keys=True, separators=(",", ":"), ensure_ascii=True, default=str
     )
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+# Hash the implementation and model definition, rather than using a release
+# label as a substitute for the bytes that generated a run.
+V4_CODE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+V4_CONFIGURATION_SHA256 = _sha256(V4_CONFIGURATION)
+V4_MODEL_SHA256 = _sha256(V4_MODEL_DEFINITION)
 
 
 def _iso_date(value: object) -> str:
@@ -101,6 +114,27 @@ def _canonical_rows(data: pd.DataFrame) -> list[dict[str, object]]:
     )
 
 
+def _payload_material(bundle: dict[str, Any]) -> dict[str, Any]:
+    """Return semantic bundle content, excluding execution-time timestamps."""
+
+    run = dict(bundle["run"])
+    lineage = dict(run.get("lineage", {}))
+    lineage.pop("payloadSha256", None)
+    run["lineage"] = lineage
+    run.pop("generatedAt", None)
+    return {
+        "schemaVersion": bundle["schemaVersion"],
+        "run": run,
+        "forecasts": bundle["forecasts"],
+    }
+
+
+def payload_sha256(bundle: dict[str, Any]) -> str:
+    """Hash content that defines replay identity, not when execution occurred."""
+
+    return _sha256(_payload_material(bundle))
+
+
 def _unavailable_bundle(
     *,
     data: pd.DataFrame,
@@ -115,13 +149,21 @@ def _unavailable_bundle(
     input_hash = _sha256(_canonical_rows(data))
     lineage = {
         "datasetSha256": dataset_sha256,
-        "codeSha256": _sha256({"module": "runtime_v4", "version": "1.0.0"}),
-        "configurationSha256": _sha256(V4_CONFIGURATION),
-        "modelSha256": _sha256(V4_MODEL_VERSION),
+        "codeSha256": V4_CODE_SHA256,
+        "configurationSha256": V4_CONFIGURATION_SHA256,
+        "modelSha256": V4_MODEL_SHA256,
         "inputSha256": input_hash,
     }
     run_identity = _sha256(
-        {"dataset": V4_DATASET_VERSION, "input": input_hash, "horizon": horizon, "reason": reason}
+        {
+            "dataset": V4_DATASET_VERSION,
+            "institution": "INST_MEDIATRIX",
+            "input": input_hash,
+            "model": V4_MODEL_VERSION,
+            "configuration": V4_CONFIGURATION_SHA256,
+            "horizon": horizon,
+            "reason": reason,
+        }
     )
     run = {
         "runId": f"RUN_{run_identity[:32].upper()}",
@@ -132,6 +174,7 @@ def _unavailable_bundle(
         "target": V4_TARGET,
         "inputStartDate": input_start,
         "inputEndDate": input_end,
+        "originDate": input_end,
         "horizonDate": horizon,
         "generatedAt": generated_at,
         "classification": V4_CLASSIFICATION,
@@ -140,14 +183,18 @@ def _unavailable_bundle(
         "unavailableReason": reason,
         "lineage": lineage,
     }
-    lineage["payloadSha256"] = _sha256(
-        {"schemaVersion": V4_BUNDLE_SCHEMA, "run": run, "forecasts": []}
-    )
-    return {"schemaVersion": V4_BUNDLE_SCHEMA, "run": run, "forecasts": []}
+    bundle = {"schemaVersion": V4_BUNDLE_SCHEMA, "run": run, "forecasts": []}
+    lineage["payloadSha256"] = payload_sha256(bundle)
+    return bundle
 
 
 def _validate_input(data: pd.DataFrame) -> tuple[pd.DataFrame, str]:
     required = {"business_date", "blood_type", "component", "requested_units"}
+    unexpected = set(data.columns) - required
+    if unexpected:
+        raise ForecastingError(
+            "V4_INPUT_SCHEMA_INVALID", f"Unexpected V4 input fields: {sorted(unexpected)}"
+        )
     missing = required - set(data.columns)
     if missing:
         raise ForecastingError(
@@ -189,6 +236,9 @@ def create_v4_runtime_bundle(
     *,
     dataset_path: Path | None = None,
     generated_at: str,
+    institution_id: str = "INST_MEDIATRIX",
+    origin_date: str | None = None,
+    horizon_date: str | None = None,
 ) -> dict[str, Any]:
     """Create a one-day V4 bundle from aggregate requested-unit history.
 
@@ -208,6 +258,13 @@ def create_v4_runtime_bundle(
         ) from error
     if generated.tzinfo != UTC:
         raise ForecastingError("V4_GENERATED_AT_INVALID", "generated_at must be UTC")
+    if not institution_id.startswith("INST_"):
+        raise ForecastingError("V4_INSTITUTION_INVALID", "institution_id is invalid")
+    dataset_sha256 = (
+        hashlib.sha256(dataset_path.read_bytes()).hexdigest()
+        if dataset_path and dataset_path.is_file()
+        else _sha256(V4_DATASET_VERSION)
+    )
 
     try:
         normalized, input_hash = _validate_input(data)
@@ -217,14 +274,9 @@ def create_v4_runtime_bundle(
                 data=data,
                 generated_at=generated_at,
                 reason=error.code,
-                dataset_sha256=_sha256(str(dataset_path) if dataset_path else "in-memory"),
+                dataset_sha256=dataset_sha256,
             )
         raise
-    dataset_sha256 = (
-        hashlib.sha256(dataset_path.read_bytes()).hexdigest()
-        if dataset_path and dataset_path.is_file()
-        else _sha256(V4_DATASET_VERSION)
-    )
     dates = sorted(normalized["business_date"].unique())
     if len(dates) < 7:
         return _unavailable_bundle(
@@ -244,6 +296,13 @@ def create_v4_runtime_bundle(
             reason="V4_HISTORY_UNAVAILABLE",
             dataset_sha256=dataset_sha256,
         )
+    if prior_dates[-1] >= generated.date():
+        return _unavailable_bundle(
+            data=normalized,
+            generated_at=generated_at,
+            reason="V4_HISTORY_FUTURE_OBSERVATION",
+            dataset_sha256=dataset_sha256,
+        )
     expected = {(value, component) for value in V4_BLOOD_TYPES for component in V4_COMPONENTS}
     actual = {
         (str(row.blood_type), str(row.component))
@@ -261,6 +320,17 @@ def create_v4_runtime_bundle(
     input_start = prior_dates[0].isoformat()
     input_end = prior_dates[-1].isoformat()
     horizon = (prior_dates[-1] + timedelta(days=1)).isoformat()
+    if origin_date is not None and origin_date != input_end:
+        raise ForecastingError(
+            "V4_ORIGIN_INVALID", "origin_date must be the latest prior history date"
+        )
+    if horizon_date is not None:
+        try:
+            requested_horizon = date.fromisoformat(horizon_date)
+        except ValueError as error:
+            raise ForecastingError("V4_HORIZON_INVALID", "horizon_date must be YYYY-MM-DD") from error
+        if requested_horizon.isoformat() != horizon:
+            raise ForecastingError("V4_HORIZON_INVALID", "V4 supports exactly one day after origin_date")
     records: list[dict[str, Any]] = []
     for blood_type, component in V4_SERIES:
         series = normalized[
@@ -288,9 +358,10 @@ def create_v4_runtime_bundle(
         records.append(
             {
                 "forecastId": f"FC_{identity[:40].upper()}",
-                "institutionId": "INST_MEDIATRIX",
+                "institutionId": institution_id,
                 "bloodType": blood_type,
                 "component": component,
+                "asOfDate": input_end,
                 "horizonDate": horizon,
                 "pointForecast": point,
                 "lowerForecast": None,
@@ -305,16 +376,18 @@ def create_v4_runtime_bundle(
         )
     lineage = {
         "datasetSha256": dataset_sha256,
-        "codeSha256": _sha256({"module": "runtime_v4", "version": "1.0.0"}),
-        "configurationSha256": _sha256(V4_CONFIGURATION),
-        "modelSha256": _sha256(V4_MODEL_VERSION),
+        "codeSha256": V4_CODE_SHA256,
+        "configurationSha256": V4_CONFIGURATION_SHA256,
+        "modelSha256": V4_MODEL_SHA256,
         "inputSha256": input_hash,
     }
     identity = _sha256(
         {
             "dataset": V4_DATASET_VERSION,
+            "institution": institution_id,
             "input": input_hash,
             "model": V4_MODEL_VERSION,
+            "configuration": V4_CONFIGURATION_SHA256,
             "horizon": horizon,
         }
     )
@@ -327,6 +400,7 @@ def create_v4_runtime_bundle(
         "target": V4_TARGET,
         "inputStartDate": input_start,
         "inputEndDate": input_end,
+        "originDate": input_end,
         "horizonDate": horizon,
         "generatedAt": generated_at,
         "classification": V4_CLASSIFICATION,
@@ -334,7 +408,6 @@ def create_v4_runtime_bundle(
         "runStatus": "COMPLETED",
         "lineage": lineage,
     }
-    lineage["payloadSha256"] = _sha256(
-        {"schemaVersion": V4_BUNDLE_SCHEMA, "run": run, "forecasts": records}
-    )
-    return {"schemaVersion": V4_BUNDLE_SCHEMA, "run": run, "forecasts": records}
+    bundle = {"schemaVersion": V4_BUNDLE_SCHEMA, "run": run, "forecasts": records}
+    lineage["payloadSha256"] = payload_sha256(bundle)
+    return bundle
