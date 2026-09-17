@@ -13,10 +13,12 @@ compatibility, and BROA/RPS integration evidence. LAT retains frontend and
 browser UAT.
 
 The backend verification is recorded in
-`docs/ML-V4-INDEPENDENT-VERIFICATION.md`. I will rerun the producer-to-database-
-to-API scenarios after your four fixes. Earlier passing tests and technical
-self-validation do not close your research findings, `RQ-07`, or operational
-use.
+`docs/ML-V4-INDEPENDENT-VERIFICATION.md`. The grouped commits are `c8ba10a`
+(projection/contract tests), `12d2d80` (cross-institution snapshot provenance),
+and `8ee8800` (API, coordination, privacy, and integration boundaries). I will
+rerun the producer-to-database-to-API scenarios after your four fixes. Earlier
+passing tests and technical self-validation do not close your research
+findings, `RQ-07`, or operational use.
 
 ## Issue 9 reply
 
@@ -34,4 +36,6 @@ unavailable attempts for null observations, and requested-horizon preservation
 for unavailable results. Producer-dependent integration reruns are blocked
 until those changes are available. All outputs remain simulation-only; no
 clinical, operational, regulatory, production, or autonomous-transfer claim is
-made.
+made. The evidence/documentation reconciliation is in the final
+`docs(review): record reruns and prepare owner responses` commit; no comment is
+posted automatically by this repository change.

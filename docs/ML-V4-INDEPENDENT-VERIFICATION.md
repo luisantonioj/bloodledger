@@ -1,7 +1,7 @@
 # ML V4 independent verification and remediation
 
 **Status:** Implemented remediation with executable evidence recorded; human research and operational gates remain open
-**Accountable owner:** JOPIA  
+**Accountable owner:** JOPIA
 **Scope:** forecasting worker, PostgreSQL, API, committed projection, chaincode
 compatibility, internal ML inventory snapshots, coordination, and evidence. The
 web and capture-PWA workspaces are intentionally excluded for LAT.
@@ -86,7 +86,8 @@ plus the preceding documentation and remediation groups.
 | Secret scan | PASS | `scripts/scan-secrets.sh`; Gitleaks 8.30.1 resolved digest recorded by command output |
 | External workbook bytes and documented SHA-256 | PASS | Read-only temporary download; workbook was not used as live application input |
 | Real Fabric network restart/commit-count evidence | NOT RUN | Requires the authorized Fabric runtime/network; test-double and PostgreSQL receipt evidence are separate |
-| BUNO research review, LAT browser UAT, JOPIA PR/merge approval | NOT RUN | Human owner gates, outside this branch execution |
+| BUNO research review | CHANGES_REQUESTED | BUNO reviewed `f732fcb`; four forecasting-owner findings remain open |
+| LAT browser UAT and JOPIA PR/merge approval | NOT RUN | Human owner gates, outside this branch execution |
 
 The verification was agent-assisted self-validation by the current reviewing
 model (GPT-5; deployment identifier not exposed). This is engineering evidence,
@@ -153,3 +154,31 @@ database-to-API scenarios depending on BUNO's four forecasting changes remain
 `BLOCKED` until BUNO supplies the producer fix and records a re-review. No
 simulation result closes `RQ-07`, clinical or operational policy gates, UAT,
 real-Fabric restart evidence, or production readiness.
+
+## Validation rerun — 2026-09-17
+
+The backend changes and regression tests were rerun in the pinned
+`node:24.17.0-bookworm` environment with npm `11.13.0`. Results are reproducible
+from the current HEAD and remain simulation-only. The grouped implementation
+commits are `6f55076` (review register), `c8ba10a` (backend projection and
+contract tests), `12d2d80` (snapshot provenance), and `8ee8800` (integration
+boundaries), followed by the final rerun-evidence and response-documentation
+commit.
+
+| Command or evidence | Result |
+|---|---|
+| `npm run test --workspace @bloodledger/api` | PASS — 91 tests, including V2 envelope/privacy and schema-boundary tests |
+| `npm run test --workspace @bloodledger/coordination` | PASS — 16 tests, including freshness rejection and Asia/Manila midnight boundaries |
+| `bash tests/api/static-boundary.sh` | PASS |
+| `bash tests/coordination/static-boundary.sh` | PASS |
+| `bash tests/forecasting/static-boundary.sh` | PASS |
+| `bash tests/forecasting/v4-runtime-integration.sh` | PASS — fresh/upgrade migrations, persisted V1/V4 replay, PostgreSQL projection lifecycle, snapshot provenance, surplus, and BROA integration |
+| `bash scripts/scan-secrets.sh` | PASS — Gitleaks 8.30.1, image digest `sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f` |
+
+The first coordination run exposed an incorrect test fixture at the exact
+Asia/Manila midnight transition; the fixture was corrected and the rerun passed.
+The API and coordination checks execute the existing producer-independent
+boundaries. Producer-to-database-to-API verification of BUNO's four requested
+forecasting changes is `BLOCKED` until BUNO supplies the producer fix and
+records her research re-review. Real Fabric network restart and submission-count
+evidence remain `NOT_RUN`.
