@@ -20,9 +20,10 @@ contracts remain authoritative:
 - [ML V4 runtime contract](./ML-RUNTIME-INTEGRATION-V4.md)
 
 The exact currently pushed frontend baseline is
-`19aa11cd19127ea9846b6697f1f302c4603933a5`. It contains implementation commit
-`3b890f0` and the handoff/verification follow-up. LAT should pin this revision
-until PR #11 is merged; the main merge commit replaces it after merge.
+`3b890f0` is the exact combined backend implementation revision for frontend
+development. The branch also carries documentation-only follow-ups for this
+handoff; LAT should pin `3b890f0` (or a later branch revision containing it)
+until PR #11 is merged. The main merge commit replaces it after merge.
 
 ## Contract and version headers
 
@@ -157,7 +158,8 @@ re-review.
 
 ## Readiness and remaining gates
 
-Verified locally on the pushed baseline `19aa11c` (implementation `3b890f0`): BUNO's four producer corrections,
+Verified locally on implementation commit `3b890f0` and its documentation
+follow-ups: BUNO's four producer corrections,
 fresh/upgrade migrations, cross-institution scope, replay/conflict behavior,
 null and requested-date handling, API/coordination/chaincode tests, static
 boundaries, JSON formatting, and secret scanning. The exact pushed frontend
