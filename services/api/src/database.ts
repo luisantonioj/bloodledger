@@ -179,7 +179,7 @@ export class PostgresScanRepository implements ScanRepository {
         ORDER BY (fr.horizon_date = $3::date) DESC, fr.horizon_date DESC, fr.generated_at DESC, fr.run_id DESC
         LIMIT 1
       )
-      SELECT latest.run_key, latest.dataset_version, latest.model_version,
+      SELECT latest.run_key, latest.run_id, latest.dataset_version, latest.model_version,
         latest.input_end_date, latest.horizon_date AS run_horizon_date,
         latest.generated_at AS run_generated_at, latest.run_status,
         latest.safe_error_code, df.*,
@@ -195,6 +195,7 @@ export class PostgresScanRepository implements ScanRepository {
     const first = result.rows[0];
     const forecasts = result.rows.filter((row) => row.forecast_id !== null && row.forecast_id !== undefined).map((row) => ({
       runKey: String(row.run_key),
+      runId: String(row.run_id),
       institutionId: String(row.institution_id),
       bloodType: String(row.blood_type) as ForecastRecord["bloodType"],
       component: String(row.component) as ForecastRecord["component"],
@@ -208,8 +209,8 @@ export class PostgresScanRepository implements ScanRepository {
       datasetVersion: String(row.dataset_version),
       modelVersion: String(row.model_version),
       forecastStatus: String(row.forecast_status) as ForecastRecord["forecastStatus"],
-      classification: "SIMULATION_ONLY",
-      recommendationEligibility: "DISABLED_UNAPPROVED_POLICY",
+      classification: "SIMULATION_ONLY" as const,
+      recommendationEligibility: "DISABLED_UNAPPROVED_POLICY" as const,
       generatedAt: iso(row.generated_at),
       stale: String(row.forecast_horizon_date ?? row.horizon_date) !== manilaDate || String(row.forecast_status) !== "AVAILABLE" || String(row.stale_after_text ?? row.stale_after) < manilaDate,
     }));

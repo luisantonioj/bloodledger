@@ -1,6 +1,7 @@
 import { sha256 } from "./hash.js";
 import { fail } from "./errors.js";
 import { INTERVIEW_V2_1_COMPONENT_TYPES, INTERVIEW_V2_1_POLICY_VERSION, INTERVIEW_V2_BLOOD_TYPES, INTERVIEW_V2_CLASSIFICATION, INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY, type InterviewV2_1ComponentType, type InterviewV2BloodType, type SourceSurplusEvidenceV2_1, validateSourceSurplusEvidenceV2_1 } from "./v2-contracts.js";
+import { validateForecastFreshness, type TrustedCensusSnapshotReader, produceSourceSurplusEvidenceV2_1FromStore, type ForecastV4Evidence } from "./surplus-v21.js";
 import policy from "../policy/interview-derived-optimization-v2-1.json" with { type: "json" };
 
 export interface BroaV21Candidate { destinationInstitutionId: string; sourceInstitutionId: string; bloodType: InterviewV2BloodType; componentType: InterviewV2_1ComponentType; urgency: number; stockShortage: number; distanceKm: number; eligible: boolean; }
@@ -9,8 +10,7 @@ function normalize(values: number[], value: number): number { const min = Math.m
 
 export function recommendBroaV2_1(input: BroaV21Input) {
   if (!input || !Array.isArray(input.candidates) || input.candidates.length === 0 || !Number.isSafeInteger(input.requiredQuantity) || input.requiredQuantity < 1) fail("COORD_BROA_V2_1_INPUT_INVALID");
-  const evaluationMs = Date.parse(input.evaluationTime); const asOfMs = Date.parse(input.sourceSurplus.asOf); const horizonMs = Date.parse(`${input.sourceSurplus.horizonDate}T00:00:00.000Z`);
-  if (!Number.isFinite(evaluationMs) || new Date(evaluationMs).toISOString() !== input.evaluationTime || !Number.isFinite(asOfMs) || new Date(asOfMs).toISOString() !== input.sourceSurplus.asOf || asOfMs > evaluationMs || !Number.isFinite(horizonMs) || horizonMs < Date.parse(`${input.evaluationTime.slice(0, 10)}T00:00:00.000Z`)) fail("COORD_BROA_V2_1_FRESHNESS_INVALID");
+  try { validateForecastFreshness({ evaluationTime: input.evaluationTime, asOf: input.sourceSurplus.asOf, horizonDate: input.sourceSurplus.horizonDate }); } catch { fail("COORD_BROA_V2_1_FRESHNESS_INVALID"); }
   try { validateSourceSurplusEvidenceV2_1(input.sourceSurplus); } catch { fail("COORD_BROA_V2_1_SURPLUS_NOT_ELIGIBLE"); }
   if (input.sourceSurplus.surplusQuantity < input.requiredQuantity || !INTERVIEW_V2_BLOOD_TYPES.includes(input.sourceSurplus.bloodType) || !INTERVIEW_V2_1_COMPONENT_TYPES.includes(input.sourceSurplus.componentType)) fail("COORD_BROA_V2_1_SURPLUS_NOT_ELIGIBLE");
   const eligible = input.candidates.filter((candidate) => candidate.eligible);
@@ -19,4 +19,9 @@ export function recommendBroaV2_1(input: BroaV21Input) {
   const ranked = eligible.map((candidate) => { const normalized = { urgency: normalize(values.urgency, candidate.urgency), stockShortage: normalize(values.stockShortage, candidate.stockShortage), distancePenalty: normalize(values.distanceKm, candidate.distanceKm) }; const contributions = { urgency: normalized.urgency * policy.broa.weights.urgency, stockShortage: normalized.stockShortage * policy.broa.weights.stockShortage, distancePenalty: normalized.distancePenalty * policy.broa.weights.distancePenalty }; return { ...candidate, normalized, contributions, score: Number((contributions.urgency + contributions.stockShortage - contributions.distancePenalty).toFixed(12)) }; }).sort((left, right) => right.score - left.score || left.destinationInstitutionId.localeCompare(right.destinationInstitutionId));
   const evidence = { input, policy, ranked, selectedDestinationInstitutionId: ranked[0]?.destinationInstitutionId ?? null };
   return { schemaVersion: "BROA_RUN_V2_1", runId: `ARUN_${sha256(evidence).slice(0, 32).toUpperCase()}`, algorithm: "BROA" as const, algorithmVersion: INTERVIEW_V2_1_POLICY_VERSION, classification: INTERVIEW_V2_CLASSIFICATION, recommendationEligibility: INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY, automaticApproval: false as const, inputSha256: sha256(input), configSha256: sha256(policy.broa), recommendationDigest: sha256(evidence), evaluationTime: input.evaluationTime, sourceSurplusEligibility: "ELIGIBLE_GATE", ranked };
+}
+
+export async function recommendBroaV2_1FromStore(input: Omit<BroaV21Input, "sourceSurplus"> & { sourceInstitutionId: string; inventorySnapshotId: string; sourceProjectionDigest: string; snapshotReader: TrustedCensusSnapshotReader; forecast: ForecastV4Evidence }): Promise<ReturnType<typeof recommendBroaV2_1>> {
+  const sourceSurplus = await produceSourceSurplusEvidenceV2_1FromStore({ sourceInstitutionId: input.sourceInstitutionId, evaluationTime: input.evaluationTime, inventorySnapshotId: input.inventorySnapshotId, sourceProjectionDigest: input.sourceProjectionDigest, snapshotReader: input.snapshotReader, forecast: input.forecast });
+  return recommendBroaV2_1({ evaluationTime: input.evaluationTime, requiredQuantity: input.requiredQuantity, sourceSurplus, candidates: input.candidates });
 }

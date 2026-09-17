@@ -30,7 +30,11 @@ export interface SourceSurplusEvidenceV2_1 {
   asOf: string;
   horizonDate: string;
   forecastStatus: "AVAILABLE" | "STALE" | "UNAVAILABLE";
+  datasetVersion: "SYNTHETIC_FORECAST_V4_RUNTIME_V1";
+  forecastRunId: string;
   modelVersion: string;
+  optimizationPolicyVersion: typeof INTERVIEW_V2_1_POLICY_VERSION;
+  configurationSha256: string;
   inventorySnapshotId: string;
   sourceProjectionDigest: string;
   classification: typeof INTERVIEW_V2_CLASSIFICATION;
@@ -75,6 +79,10 @@ export function validateSourceSurplusEvidenceV2_1(input: SourceSurplusEvidenceV2
       !INTERVIEW_V2_1_COMPONENT_TYPES.includes(input.componentType) ||
       input.surplusQuantity < 0 || !Number.isSafeInteger(input.surplusQuantity) ||
       input.forecastStatus !== "AVAILABLE" ||
+      input.datasetVersion !== "SYNTHETIC_FORECAST_V4_RUNTIME_V1" ||
+      !/^(RUN|FRUN)_[A-Z0-9_-]{1,56}$/.test(input.forecastRunId) ||
+      input.optimizationPolicyVersion !== INTERVIEW_V2_1_POLICY_VERSION ||
+      !/^[0-9a-f]{64}$/.test(input.configurationSha256) ||
       !/^CENSUS_[A-Z0-9_-]{1,56}$/.test(input.inventorySnapshotId) ||
       !/^[0-9a-f]{64}$/.test(input.sourceProjectionDigest)) {
     throw new Error("COORD_V2_1_SURPLUS_NOT_ELIGIBLE");

@@ -79,6 +79,7 @@ export interface ScanEvent extends CaptureInput {
 
 export interface ForecastRecord {
   runKey: string;
+  runId: string;
   institutionId: string;
   bloodType: ForecastBloodType;
   component: ForecastComponent;

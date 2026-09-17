@@ -1757,6 +1757,7 @@
         "additionalProperties": false,
         "required": [
           "runKey",
+          "runId",
           "institutionId",
           "bloodType",
           "component",
@@ -1777,6 +1778,7 @@
         ],
         "properties": {
           "runKey": { "type": "string" },
+          "runId": { "type": "string", "pattern": "^(RUN|FRUN)_[A-Z0-9_-]{1,56}$" },
           "institutionId": { "type": "string", "pattern": "^INST_[A-Z0-9_-]{1,59}$" },
           "bloodType": { "type": "string", "enum": ["A_POSITIVE", "B_POSITIVE", "AB_POSITIVE", "O_POSITIVE"] },
           "component": { "type": "string", "enum": ["RED_BLOOD_CELLS", "PACKED_RED_BLOOD_CELLS", "PLATELETS", "FRESH_FROZEN_PLASMA", "CRYOPRECIPITATE", "WHOLE_BLOOD"] },
