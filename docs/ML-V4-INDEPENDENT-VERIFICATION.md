@@ -182,3 +182,48 @@ boundaries. Producer-to-database-to-API verification of BUNO's four requested
 forecasting changes is `BLOCKED` until BUNO supplies the producer fix and
 records her research re-review. Real Fabric network restart and submission-count
 evidence remain `NOT_RUN`.
+
+
+## Local BUNO producer corrections — 2026-09-17
+
+User-authorized implementation on `codex/ml-v4-forecast-corrections`, based on
+JOPIA verification revision `0729179`. This section records agent-assisted local
+engineering verification, not BUNO/JOPIA acceptance, a posted research re-review,
+or permission to push. The earlier open findings above describe the reviewed
+baseline; these corrections are local pending handoff.
+
+| Finding | Implemented correction | Regression evidence |
+| --- | --- | --- |
+| Institution and immutable lineage missing from forecast identity | Common immutable run identity includes institution, all lineage digests, versions, dates and status/reason; per-series IDs derive from that identity; persistence verifies IDs and scope | Cross-institution/file-revision persistence, independent code/config/model hash changes, timestamp-only replay, altered-payload rejection |
+| Dataset digest did not identify actual evidence | Readable file bytes hashed when supplied; missing/directory paths rejected; canonical allowlisted memory rows hashed otherwise | Changed observations change digest; CRLF/LF file evidence differs while normalized input stays identical |
+| Null quantities bypassed unavailable persistence | Canonical JSON null preserved; valid nulls produce an empty UNAVAILABLE bundle through the normal CLI persistence path | None/NaN/pd.NA, shuffled replay, null versus zero, successful-to-unavailable authenticated API read |
+| Early returns lost requested origin/horizon | Resolve and validate the requested one-day window before availability; every result uses that window | Empty/short/unsupported/missing/future/null inputs with both dates or either date; malformed date rejection and Manila fallback |
+
+The first cross-institution database test found the inherited
+`demand_forecasts_institution` constraint still restricted all forecast rows to
+Mediatrix. New forward migration `20260917100000000` binds forecast institution
+to its parent run with a composite foreign key, permits scoped V4 forecasts, and
+retains V1's Mediatrix-only rule. Applied migrations and historical rows are
+unchanged. The contract schema now declares the already-emitted institution,
+origin and per-series as-of fields instead of rejecting them as extra fields.
+
+Validation: forecasting formatting/lint/strict typing and **89 tests passed**.
+Forecasting, API and coordination static boundaries and PostgreSQL static checks
+passed. Full history/index/candidate secret scanning passed locally. Fresh and
+upgrade-path producer-to-database-to-API verification passed: 21 fresh migrations
+and the 10+11 upgrade path; cross-institution and changed-file insertion/replay;
+conflict rejection; direct composite-foreign-key enforcement; persisted null and
+short-history attempts; authenticated UNAVAILABLE results retaining requested
+dates; V1 history; committed projection lifecycle; snapshots, surplus and BROA. Frozen workbooks/models were neither read nor
+modified for these corrections. V4's 1..7 / 28 method is unchanged.
+
+The repository-wide JSON-format gate reports an existing formatting failure in
+`services/api/openapi.json`, which is unchanged from JOPIA's base revision.
+The edited forecast bundle schema is valid, two-space JSON. No unrelated OpenAPI
+reformatting was included, and this repository-wide gate is not reported passed.
+
+Human research re-review, JOPIA acceptance, LAT frontend/browser UAT and real
+Fabric restart/submission-count evidence remain separate. ADR-034 permits
+controlled encrypted off-chain storage; no plaintext or encrypted donation
+identifiers enter this forecasting producer. RQ-07 and operational gates remain
+open. No comments, pushes, PR updates or merges were performed for this task.

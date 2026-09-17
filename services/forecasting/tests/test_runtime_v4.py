@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import date, timedelta
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -105,3 +106,174 @@ def test_v4_uses_manila_business_date_for_future_history_validation() -> None:
     )
     assert bundle["run"]["runStatus"] == "COMPLETED"
     assert bundle["run"]["institutionId"] == "INST_SYNTHETIC_DESTINATION"
+
+
+# Issue #9 / FR-14: immutable producer lineage and unavailable-attempt fidelity.
+def test_v4_forecast_ids_are_institution_scoped() -> None:
+    first = create_v4_runtime_bundle(runtime_history(), generated_at="2026-01-08T00:00:00Z")
+    other = create_v4_runtime_bundle(
+        runtime_history(),
+        generated_at="2026-01-08T00:00:00Z",
+        institution_id="INST_SYNTHETIC_DESTINATION",
+    )
+    assert first["run"]["runKey"] != other["run"]["runKey"]
+    assert {f["forecastId"] for f in first["forecasts"]}.isdisjoint(
+        f["forecastId"] for f in other["forecasts"]
+    )
+
+
+def test_v4_in_memory_dataset_hash_tracks_data() -> None:
+    first = create_v4_runtime_bundle(runtime_history(), generated_at="2026-01-08T00:00:00Z")
+    changed = runtime_history()
+    changed.loc[0, "requested_units"] += 1
+    other = create_v4_runtime_bundle(changed, generated_at="2026-01-08T00:00:00Z")
+    assert first["run"]["lineage"]["datasetSha256"] != other["run"]["lineage"]["datasetSha256"]
+
+
+def test_v4_null_is_unavailable_with_requested_dates() -> None:
+    data = runtime_history().astype({"requested_units": "Float64"})
+    data.loc[0, "requested_units"] = pd.NA
+    bundle = create_v4_runtime_bundle(
+        data,
+        generated_at="2026-01-10T00:00:00Z",
+        origin_date="2026-01-09",
+        horizon_date="2026-01-10",
+    )
+    assert bundle["run"]["runStatus"] == "UNAVAILABLE"
+    assert bundle["run"]["originDate"] == "2026-01-09"
+    assert bundle["run"]["horizonDate"] == "2026-01-10"
+    assert bundle["forecasts"] == []
+
+
+def test_v4_short_history_preserves_requested_window() -> None:
+    bundle = create_v4_runtime_bundle(
+        runtime_history(3),
+        generated_at="2026-01-08T00:00:00Z",
+        origin_date="2026-01-07",
+        horizon_date="2026-01-08",
+    )
+    assert bundle["run"]["originDate"] == "2026-01-07"
+    assert bundle["run"]["horizonDate"] == "2026-01-08"
+
+
+@pytest.mark.parametrize("field", ["V4_CODE_SHA256", "V4_CONFIGURATION_SHA256", "V4_MODEL_SHA256"])
+def test_v4_all_immutable_lineage_changes_identity(
+    field: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import bloodledger_forecasting.runtime_v4 as runtime
+
+    first = create_v4_runtime_bundle(runtime_history(), generated_at="2026-01-08T00:00:00Z")
+    monkeypatch.setattr(runtime, field, "f" * 64)
+    second = create_v4_runtime_bundle(runtime_history(), generated_at="2026-01-08T00:00:00Z")
+    assert first["run"]["runKey"] != second["run"]["runKey"]
+    assert {f["forecastId"] for f in first["forecasts"]}.isdisjoint(
+        f["forecastId"] for f in second["forecasts"]
+    )
+
+
+def test_v4_hashes_file_bytes_and_rejects_nonexistent_path(tmp_path: Path) -> None:
+    import hashlib
+
+    path = tmp_path / "history.csv"
+    data = runtime_history()
+    with pytest.raises(ForecastingError, match="V4_DATASET_READ_FAILED"):
+        create_v4_runtime_bundle(data, dataset_path=path, generated_at="2026-01-08T00:00:00Z")
+    with pytest.raises(ForecastingError, match="V4_DATASET_READ_FAILED"):
+        create_v4_runtime_bundle(data, dataset_path=tmp_path, generated_at="2026-01-08T00:00:00Z")
+    data.to_csv(path, index=False)
+    first = create_v4_runtime_bundle(data, dataset_path=path, generated_at="2026-01-08T00:00:00Z")
+    assert first["run"]["lineage"]["datasetSha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+    second = create_v4_runtime_bundle(data, dataset_path=path, generated_at="2026-01-08T00:00:00Z")
+    assert first["run"]["lineage"]["inputSha256"] == second["run"]["lineage"]["inputSha256"]
+    assert first["run"]["runKey"] != second["run"]["runKey"]
+    assert first["forecasts"][0]["forecastId"] != second["forecasts"][0]["forecastId"]
+
+
+@pytest.mark.parametrize("missing", [None, float("nan"), pd.NA])
+def test_v4_null_evidence_is_json_safe_stable_and_different_from_zero(missing: object) -> None:
+    import json
+
+    data = runtime_history().astype({"requested_units": "object"})
+    data.loc[0, "requested_units"] = missing
+    first = create_v4_runtime_bundle(data, generated_at="2026-01-08T00:00:00Z")
+    replay = create_v4_runtime_bundle(
+        data.sample(frac=1, random_state=42), generated_at="2026-01-08T03:00:00Z"
+    )
+    assert first["run"]["runStatus"] == "UNAVAILABLE"
+    assert first["forecasts"] == []
+    assert first["run"]["runKey"] == replay["run"]["runKey"]
+    assert payload_sha256(first) == payload_sha256(replay)
+    json.dumps(first, allow_nan=False)
+    zero = create_v4_runtime_bundle(runtime_history(), generated_at="2026-01-08T00:00:00Z")
+    assert zero["run"]["runStatus"] == "COMPLETED"
+    assert first["run"]["lineage"]["inputSha256"] != zero["run"]["lineage"]["inputSha256"]
+
+
+@pytest.mark.parametrize(
+    "kind", ["empty", "short", "unsupported", "missing_series", "future", "null"]
+)
+@pytest.mark.parametrize(
+    "dates",
+    [
+        {"origin_date": "2026-01-07", "horizon_date": "2026-01-08"},
+        {"origin_date": "2026-01-07"},
+        {"horizon_date": "2026-01-08"},
+    ],
+)
+def test_v4_all_unavailable_paths_preserve_requested_dates(
+    kind: str, dates: dict[str, str]
+) -> None:
+    data = runtime_history()
+    if kind == "empty":
+        data = data.iloc[:0]
+    elif kind == "short":
+        data = runtime_history(3)
+    elif kind == "unsupported":
+        data = data.assign(blood_type="A_NEGATIVE")
+    elif kind == "missing_series":
+        data = data.iloc[1:]
+    elif kind == "future":
+        data.loc[0, "business_date"] = date(2026, 1, 8)
+    else:
+        data = data.astype({"requested_units": "object"})
+        data.loc[0, "requested_units"] = None
+    bundle = create_v4_runtime_bundle(data, generated_at="2026-01-08T00:00:00Z", **dates)
+    assert bundle["run"]["runStatus"] == "UNAVAILABLE"
+    assert bundle["run"]["inputStartDate"] == "2026-01-01"
+    assert bundle["run"]["inputEndDate"] == bundle["run"]["originDate"] == "2026-01-07"
+    assert bundle["run"]["horizonDate"] == "2026-01-08"
+
+
+@pytest.mark.parametrize(
+    "dates",
+    [
+        {"origin_date": "bad"},
+        {"horizon_date": "2026-02-30"},
+        {"origin_date": "2026-01-07", "horizon_date": "2026-01-09"},
+        {"horizon_date": "20260108"},
+    ],
+)
+def test_v4_invalid_requested_dates_rejected_even_without_history(dates: dict[str, str]) -> None:
+    with pytest.raises(ForecastingError):
+        create_v4_runtime_bundle(
+            runtime_history(0).reindex(columns=runtime_history().columns),
+            generated_at="2026-01-08T00:00:00Z",
+            **dates,
+        )
+
+
+def test_v4_empty_default_uses_previous_manila_day() -> None:
+    bundle = create_v4_runtime_bundle(
+        runtime_history().iloc[:0], generated_at="2026-01-07T16:30:00Z"
+    )
+    assert bundle["run"]["originDate"] == "2026-01-07"
+    assert bundle["run"]["horizonDate"] == "2026-01-08"
+
+
+@pytest.mark.parametrize("quantity", ["not-numeric", float("inf"), -1])
+def test_v4_invalid_quantities_are_not_missing_values(quantity: object) -> None:
+    data = runtime_history().astype({"requested_units": "object"})
+    data.loc[0, "requested_units"] = quantity
+    with pytest.raises(ForecastingError, match="V4_QUANTITY_INVALID"):
+        create_v4_runtime_bundle(data, generated_at="2026-01-08T00:00:00Z")

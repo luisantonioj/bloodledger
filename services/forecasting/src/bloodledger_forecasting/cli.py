@@ -195,13 +195,16 @@ def _forecast(args: argparse.Namespace) -> dict[str, Any]:
 def _forecast_v4(args: argparse.Namespace) -> dict[str, Any]:
     data_path = Path(args.data)
     try:
-        data = pd.read_csv(data_path)
+        data = pd.read_csv(data_path, keep_default_na=False, na_values=[""])
     except (OSError, ValueError) as error:
         raise ForecastingError("V4_INPUT_READ_FAILED", "V4 input could not be read") from error
     bundle = create_v4_runtime_bundle(
         data,
         dataset_path=data_path,
         generated_at=_utc_timestamp(args.generated_at),
+        institution_id=args.institution_id,
+        origin_date=args.origin_date,
+        horizon_date=args.horizon_date,
     )
     _write_json(Path(args.output), bundle)
     persistence_status = "NOT_REQUESTED"
@@ -289,6 +292,9 @@ def build_parser() -> argparse.ArgumentParser:
     forecast_v4.add_argument("--output", required=True)
     forecast_v4.add_argument("--generated-at")
     forecast_v4.add_argument("--persist", action="store_true")
+    forecast_v4.add_argument("--institution-id", default="INST_MEDIATRIX")
+    forecast_v4.add_argument("--origin-date")
+    forecast_v4.add_argument("--horizon-date")
     forecast_v4.set_defaults(handler=_forecast_v4)
 
     scenario = subparsers.add_parser("evaluate-surplus-scenario")

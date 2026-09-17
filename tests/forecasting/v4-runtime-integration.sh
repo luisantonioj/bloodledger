@@ -48,7 +48,7 @@ upgrade_full_run=(docker run --rm --network "container:$probe_container" --env-f
   -v "$root:/workspace" -w /workspace node:24.17.0-bookworm-slim)
 "${upgrade_full_run[@]}" npm run migrate:up
 docker exec "$probe_container" psql -U postgres -d "$upgrade_database" -Atc \
-  "SELECT count(*) FROM public.pgmigrations" | grep --fixed-strings '20' >/dev/null
+  "SELECT count(*) FROM public.pgmigrations" | grep --fixed-strings '21' >/dev/null
 "${node_run[@]}" npm run build --workspace @bloodledger/api
 "${node_run[@]}" npm run build --workspace @bloodledger/coordination
 docker exec --interactive "$probe_container" psql -U postgres -d bloodledger_dev < "$root/tests/forecasting/v4-verification-fixture.sql"
@@ -92,3 +92,26 @@ PY
 "${node_run[@]}" npm run build --workspace @bloodledger/coordination
 "${node_run[@]}" node tests/forecasting/v4-independent-verification.mjs
 "${node_run[@]}" node tests/forecasting/v2-projection-integration.mjs
+
+# BUNO's Issue #9 producer corrections: persist real producer outputs end to end.
+"${forecast_run[@]}" tests/v4_producer_probe.py /outputs/v4.csv
+for hour in 02 03; do
+  "${forecast_run[@]}" -m bloodledger_forecasting.cli forecast-v4-runtime \
+    --data /outputs/v4-null.csv --output /outputs/v4-null-bundle.json \
+    --origin-date 2026-01-07 --horizon-date 2026-01-08 \
+    --generated-at "2026-01-08T${hour}:00:00Z" --persist > "$probe_root/null-$hour.json"
+done
+"${forecast_run[@]}" -m bloodledger_forecasting.cli forecast-v4-runtime \
+  --data /outputs/v4-short.csv --output /outputs/v4-short-bundle.json \
+  --origin-date 2026-01-08 --horizon-date 2026-01-09 \
+  --generated-at 2026-01-09T00:00:00Z --persist > "$probe_root/short.json"
+python3 - "$probe_root" <<'PY'
+import json, pathlib, sys
+p=pathlib.Path(sys.argv[1])
+assert json.loads((p/'null-02.json').read_text())['persistence']=='INSERTED'
+assert json.loads((p/'null-03.json').read_text())['persistence']=='EXISTING'
+assert json.loads((p/'short.json').read_text())['persistence']=='INSERTED'
+assert json.loads((p/'null-02.json').read_text())['status']=='UNAVAILABLE_V4'
+assert json.loads((p/'short.json').read_text())['status']=='UNAVAILABLE_V4'
+PY
+"${node_run[@]}" node tests/forecasting/v4-producer-api-probe.mjs

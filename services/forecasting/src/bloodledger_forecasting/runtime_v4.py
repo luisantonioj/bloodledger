@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -67,7 +68,7 @@ V4_MODEL_DEFINITION = {
 
 def _sha256(value: object) -> str:
     encoded = json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=True, default=str
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False
     )
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
@@ -103,7 +104,9 @@ def _canonical_rows(data: pd.DataFrame) -> list[dict[str, object]]:
                 "business_date": _iso_date(row.business_date),
                 "blood_type": str(row.blood_type),
                 "component": str(row.component),
-                "requested_units": float(row.requested_units),
+                "requested_units": None
+                if pd.isna(row.requested_units)
+                else float(row.requested_units),
             }
         )
     return sorted(
@@ -112,6 +115,7 @@ def _canonical_rows(data: pd.DataFrame) -> list[dict[str, object]]:
             str(item["business_date"]),
             str(item["blood_type"]),
             str(item["component"]),
+            json.dumps(item["requested_units"], allow_nan=False),
         ),
     )
 
@@ -137,75 +141,32 @@ def payload_sha256(bundle: dict[str, Any]) -> str:
     return _sha256(_payload_material(bundle))
 
 
-def _unavailable_bundle(
-    *,
-    data: pd.DataFrame,
-    generated_at: str,
-    reason: str,
-    dataset_sha256: str,
-    institution_id: str,
-) -> dict[str, Any]:
-    dates = [_iso_date(value) for value in data["business_date"].tolist()] if not data.empty else []
-    input_start = min(dates) if dates else generated_at[:10]
-    input_end = max(dates) if dates else generated_at[:10]
-    horizon = (date.fromisoformat(input_end) + timedelta(days=1)).isoformat()
-    input_hash = _sha256(_canonical_rows(data))
-    lineage = {
-        "datasetSha256": dataset_sha256,
-        "codeSha256": V4_CODE_SHA256,
-        "configurationSha256": V4_CONFIGURATION_SHA256,
-        "modelSha256": V4_MODEL_SHA256,
-        "inputSha256": input_hash,
+def run_identity_sha256(run: dict[str, Any]) -> str:
+    """Bind all immutable run metadata; timestamps and derived IDs are not identity."""
+    material = {
+        key: value
+        for key, value in run.items()
+        if key not in {"runId", "runKey", "generatedAt", "lineage"}
     }
-    run_identity = _sha256(
-        {
-            "dataset": V4_DATASET_VERSION,
-            "institution": institution_id,
-            "input": input_hash,
-            "model": V4_MODEL_VERSION,
-            "configuration": V4_CONFIGURATION_SHA256,
-            "horizon": horizon,
-            "reason": reason,
-        }
+    material["lineage"] = {
+        key: value for key, value in run["lineage"].items() if key != "payloadSha256"
+    }
+    return _sha256(material)
+
+
+def forecast_identity(run: dict[str, Any], blood_type: str, component: str) -> str:
+    digest = _sha256(
+        {"run": run_identity_sha256(run), "bloodType": blood_type, "component": component}
     )
-    run = {
-        "runId": f"RUN_{run_identity[:32].upper()}",
-        "runKey": f"RUNKEY_{run_identity[:32].upper()}",
-        "institutionId": institution_id,
-        "datasetVersion": V4_DATASET_VERSION,
-        "modelVersion": V4_MODEL_VERSION,
-        "modelName": V4_MODEL_NAME,
-        "target": V4_TARGET,
-        "inputStartDate": input_start,
-        "inputEndDate": input_end,
-        "originDate": input_end,
-        "horizonDate": horizon,
-        "generatedAt": generated_at,
-        "classification": V4_CLASSIFICATION,
-        "recommendationEligibility": V4_RECOMMENDATION_ELIGIBILITY,
-        "runStatus": "UNAVAILABLE",
-        "unavailableReason": reason,
-        "lineage": lineage,
-    }
-    bundle = {"schemaVersion": V4_BUNDLE_SCHEMA, "run": run, "forecasts": []}
-    lineage["payloadSha256"] = payload_sha256(bundle)
-    return bundle
+    return f"FC_{digest[:40].upper()}"
 
 
-def _validate_input(data: pd.DataFrame) -> tuple[pd.DataFrame, str]:
+def _validate_input(data: pd.DataFrame) -> pd.DataFrame:
     required = {"business_date", "blood_type", "component", "requested_units"}
-    unexpected = set(data.columns) - required
-    if unexpected:
+    if set(data.columns) != required:
         raise ForecastingError(
-            "V4_INPUT_SCHEMA_INVALID", f"Unexpected V4 input fields: {sorted(unexpected)}"
+            "V4_INPUT_SCHEMA_INVALID", "Unexpected V4 input fields or missing required fields"
         )
-    missing = required - set(data.columns)
-    if missing:
-        raise ForecastingError(
-            "V4_INPUT_SCHEMA_INVALID", f"Missing V4 input fields: {sorted(missing)}"
-        )
-    if data.empty:
-        raise ForecastingError("V4_HISTORY_UNAVAILABLE", "V4 requires seven prior days")
     normalized = data.loc[:, ["business_date", "blood_type", "component", "requested_units"]].copy()
     normalized["business_date"] = pd.to_datetime(
         normalized["business_date"], errors="coerce"
@@ -216,23 +177,51 @@ def _validate_input(data: pd.DataFrame) -> tuple[pd.DataFrame, str]:
     normalized["component"] = normalized["component"].map(
         lambda value: V4_COMPONENT_ALIASES.get(str(value), str(value))
     )
-    normalized["requested_units"] = pd.to_numeric(normalized["requested_units"], errors="coerce")
-    if normalized["requested_units"].isna().any():
-        raise ForecastingError("V4_QUANTITY_INVALID", "requested_units must be numeric")
+    quantities = pd.to_numeric(normalized["requested_units"], errors="coerce")
+    if (quantities.isna() & ~normalized["requested_units"].isna()).any():
+        raise ForecastingError("V4_QUANTITY_INVALID", "requested_units must be numeric or null")
+    normalized["requested_units"] = quantities
     if any(
         not math.isfinite(float(value)) or float(value) < 0
-        for value in normalized["requested_units"].tolist()
+        for value in quantities.dropna().tolist()
     ):
         raise ForecastingError(
             "V4_QUANTITY_INVALID", "requested_units must be finite and nonnegative"
         )
-    unsupported_types = set(normalized["blood_type"]) - set(V4_BLOOD_TYPES)
-    unsupported_components = set(normalized["component"]) - set(V4_COMPONENTS)
-    if unsupported_types or unsupported_components:
-        raise ForecastingError("V4_CATEGORY_UNSUPPORTED", "V4 input contains an unsupported series")
-    if normalized.duplicated(["business_date", "blood_type", "component"]).any():
-        raise ForecastingError("V4_HISTORY_DUPLICATE", "V4 history contains a duplicate series day")
-    return normalized, _sha256(_canonical_rows(normalized))
+    return normalized
+
+
+def _requested_date(value: str, code: str) -> date:
+    try:
+        parsed = date.fromisoformat(value)
+    except (ValueError, TypeError) as error:
+        raise ForecastingError(code, "Requested date must be YYYY-MM-DD") from error
+    if parsed.isoformat() != value:
+        raise ForecastingError(code, "Requested date must be YYYY-MM-DD")
+    return parsed
+
+
+def _resolve_dates(
+    data: pd.DataFrame, generated: datetime, origin_date: str | None, horizon_date: str | None
+) -> tuple[date, date]:
+    origin = _requested_date(origin_date, "V4_ORIGIN_INVALID") if origin_date is not None else None
+    horizon = (
+        _requested_date(horizon_date, "V4_HORIZON_INVALID") if horizon_date is not None else None
+    )
+    if origin is None:
+        if horizon is not None:
+            origin = horizon - timedelta(days=1)
+        elif not data.empty:
+            origin = max(data["business_date"].tolist())
+        else:
+            origin = generated.astimezone(MANILA_ZONE).date() - timedelta(days=1)
+    if horizon is None:
+        horizon = origin + timedelta(days=1)
+    if horizon != origin + timedelta(days=1):
+        raise ForecastingError(
+            "V4_HORIZON_INVALID", "V4 supports exactly one day after origin_date"
+        )
+    return origin, horizon
 
 
 def create_v4_runtime_bundle(
@@ -244,12 +233,11 @@ def create_v4_runtime_bundle(
     origin_date: str | None = None,
     horizon_date: str | None = None,
 ) -> dict[str, Any]:
-    """Create a one-day V4 bundle from aggregate requested-unit history.
+    """Create a complete or unavailable attempt for the same resolved target window.
 
-    Incomplete history is a valid, explicit unavailable result. It is never
-    represented by zero-valued forecast rows.
+    Missing/null history never generates zero forecasts. A supplied path identifies
+    file bytes; otherwise canonical allowlisted memory rows identify the dataset.
     """
-
     if not generated_at.endswith("Z"):
         raise ForecastingError(
             "V4_GENERATED_AT_INVALID", "generated_at must be an explicit UTC instant"
@@ -262,166 +250,96 @@ def create_v4_runtime_bundle(
         ) from error
     if generated.tzinfo != UTC:
         raise ForecastingError("V4_GENERATED_AT_INVALID", "generated_at must be UTC")
-    if not institution_id.startswith("INST_"):
+    if re.fullmatch(r"INST_[A-Z0-9_-]{1,59}", institution_id) is None:
         raise ForecastingError("V4_INSTITUTION_INVALID", "institution_id is invalid")
-    dataset_sha256 = (
-        hashlib.sha256(dataset_path.read_bytes()).hexdigest()
-        if dataset_path and dataset_path.is_file()
-        else _sha256(V4_DATASET_VERSION)
-    )
-
-    try:
-        normalized, input_hash = _validate_input(data)
-    except ForecastingError as error:
-        if error.code in {"V4_HISTORY_UNAVAILABLE", "V4_CATEGORY_UNSUPPORTED"}:
-            return _unavailable_bundle(
-                data=data,
-                generated_at=generated_at,
-                reason=error.code,
-                dataset_sha256=dataset_sha256,
-                institution_id=institution_id,
-            )
-        raise
-    dates = sorted(normalized["business_date"].unique())
-    if len(dates) < 7:
-        return _unavailable_bundle(
-            data=normalized,
-            generated_at=generated_at,
-            reason="V4_HISTORY_UNAVAILABLE",
-            dataset_sha256=dataset_sha256,
-            institution_id=institution_id,
-        )
-    prior_dates = dates[-7:]
-    if any(
-        prior_dates[index] - prior_dates[index - 1] != timedelta(days=1)
-        for index in range(1, len(prior_dates))
-    ):
-        return _unavailable_bundle(
-            data=normalized,
-            generated_at=generated_at,
-            reason="V4_HISTORY_UNAVAILABLE",
-            dataset_sha256=dataset_sha256,
-            institution_id=institution_id,
-        )
-    if prior_dates[-1] >= generated.astimezone(MANILA_ZONE).date():
-        return _unavailable_bundle(
-            data=normalized,
-            generated_at=generated_at,
-            reason="V4_HISTORY_FUTURE_OBSERVATION",
-            dataset_sha256=dataset_sha256,
-            institution_id=institution_id,
-        )
-    expected = {(value, component) for value in V4_BLOOD_TYPES for component in V4_COMPONENTS}
-    actual = {
-        (str(row.blood_type), str(row.component))
-        for row in normalized.itertuples()
-        if row.business_date in prior_dates
-    }
-    if actual != expected or len(normalized[normalized["business_date"].isin(prior_dates)]) != 140:
-        return _unavailable_bundle(
-            data=normalized,
-            generated_at=generated_at,
-            reason="V4_HISTORY_UNAVAILABLE",
-            dataset_sha256=dataset_sha256,
-            institution_id=institution_id,
-        )
-
-    input_start = prior_dates[0].isoformat()
-    input_end = prior_dates[-1].isoformat()
-    horizon = (prior_dates[-1] + timedelta(days=1)).isoformat()
-    if origin_date is not None and origin_date != input_end:
-        raise ForecastingError(
-            "V4_ORIGIN_INVALID", "origin_date must be the latest prior history date"
-        )
-    if horizon_date is not None:
+    normalized = _validate_input(data)
+    origin, horizon = _resolve_dates(normalized, generated, origin_date, horizon_date)
+    if dataset_path is not None:
         try:
-            requested_horizon = date.fromisoformat(horizon_date)
-        except ValueError as error:
+            dataset_sha256 = hashlib.sha256(dataset_path.read_bytes()).hexdigest()
+        except OSError as error:
             raise ForecastingError(
-                "V4_HORIZON_INVALID", "horizon_date must be YYYY-MM-DD"
+                "V4_DATASET_READ_FAILED", "Supplied dataset must be a readable file"
             ) from error
-        if requested_horizon.isoformat() != horizon:
-            raise ForecastingError(
-                "V4_HORIZON_INVALID", "V4 supports exactly one day after origin_date"
-            )
-    records: list[dict[str, Any]] = []
-    for blood_type, component in V4_SERIES:
-        series = normalized[
-            (normalized["blood_type"] == blood_type) & (normalized["component"] == component)
-        ].sort_values("business_date")
-        values = [
-            float(value)
-            for value in series[series["business_date"].isin(prior_dates)][
-                "requested_units"
-            ].tolist()
-        ]
-        point = max(
-            0.0,
-            sum(weight * value for weight, value in zip(V4_WEIGHTS, values, strict=True))
-            / V4_WEIGHT_DENOMINATOR,
-        )
-        identity = _sha256(
-            {
-                "bloodType": blood_type,
-                "component": component,
-                "horizon": horizon,
-                "input": input_hash,
-            }
-        )
-        records.append(
-            {
-                "forecastId": f"FC_{identity[:40].upper()}",
-                "institutionId": institution_id,
-                "bloodType": blood_type,
-                "component": component,
-                "asOfDate": input_end,
-                "horizonDate": horizon,
-                "pointForecast": point,
-                "lowerForecast": None,
-                "upperForecast": None,
-                "uncertaintyStatus": V4_UNCERTAINTY_STATUS,
-                "uncertaintyNote": V4_UNCERTAINTY_NOTE,
-                "forecastStatus": "AVAILABLE",
-                "staleAfter": horizon,
-                "classification": V4_CLASSIFICATION,
-                "recommendationEligibility": V4_RECOMMENDATION_ELIGIBILITY,
-            }
-        )
+    else:
+        dataset_sha256 = _sha256(_canonical_rows(data))
     lineage = {
         "datasetSha256": dataset_sha256,
         "codeSha256": V4_CODE_SHA256,
         "configurationSha256": V4_CONFIGURATION_SHA256,
         "modelSha256": V4_MODEL_SHA256,
-        "inputSha256": input_hash,
+        "inputSha256": _sha256(_canonical_rows(normalized)),
     }
-    identity = _sha256(
-        {
-            "dataset": V4_DATASET_VERSION,
-            "institution": institution_id,
-            "input": input_hash,
-            "model": V4_MODEL_VERSION,
-            "configuration": V4_CONFIGURATION_SHA256,
-            "horizon": horizon,
-        }
-    )
+    input_start = origin - timedelta(days=6)
+    window = normalized[normalized["business_date"].between(input_start, origin)]
+    reason = None
+    if set(normalized["blood_type"]) - set(V4_BLOOD_TYPES) or set(normalized["component"]) - set(
+        V4_COMPONENTS
+    ):
+        reason = "V4_CATEGORY_UNSUPPORTED"
+    elif normalized.duplicated(["business_date", "blood_type", "component"]).any():
+        raise ForecastingError("V4_HISTORY_DUPLICATE", "V4 history contains a duplicate series day")
+    elif (
+        any(
+            value > origin or value >= generated.astimezone(MANILA_ZONE).date()
+            for value in normalized["business_date"]
+        )
+        or origin >= generated.astimezone(MANILA_ZONE).date()
+    ):
+        reason = "V4_HISTORY_FUTURE_OBSERVATION"
+    elif len(window) != 140 or normalized["requested_units"].isna().any():
+        reason = "V4_HISTORY_UNAVAILABLE"
     run = {
-        "runId": f"RUN_{identity[:32].upper()}",
-        "runKey": f"RUNKEY_{identity[:32].upper()}",
         "institutionId": institution_id,
         "datasetVersion": V4_DATASET_VERSION,
         "modelVersion": V4_MODEL_VERSION,
         "modelName": V4_MODEL_NAME,
         "target": V4_TARGET,
-        "inputStartDate": input_start,
-        "inputEndDate": input_end,
-        "originDate": input_end,
-        "horizonDate": horizon,
+        "inputStartDate": input_start.isoformat(),
+        "inputEndDate": origin.isoformat(),
+        "originDate": origin.isoformat(),
+        "horizonDate": horizon.isoformat(),
         "generatedAt": generated_at,
         "classification": V4_CLASSIFICATION,
         "recommendationEligibility": V4_RECOMMENDATION_ELIGIBILITY,
-        "runStatus": "COMPLETED",
+        "runStatus": "UNAVAILABLE" if reason else "COMPLETED",
         "lineage": lineage,
     }
+    if reason:
+        run["unavailableReason"] = reason
+    identity = run_identity_sha256(run)
+    run["runId"] = f"RUN_{identity[:32].upper()}"
+    run["runKey"] = f"RUNKEY_{identity[:32].upper()}"
+    records: list[dict[str, Any]] = []
+    if not reason:
+        for blood_type, component in V4_SERIES:
+            series = window[
+                (window["blood_type"] == blood_type) & (window["component"] == component)
+            ].sort_values("business_date")
+            values = [float(value) for value in series["requested_units"].tolist()]
+            point = (
+                sum(weight * value for weight, value in zip(V4_WEIGHTS, values, strict=True))
+                / V4_WEIGHT_DENOMINATOR
+            )
+            records.append(
+                {
+                    "forecastId": forecast_identity(run, blood_type, component),
+                    "institutionId": institution_id,
+                    "bloodType": blood_type,
+                    "component": component,
+                    "asOfDate": origin.isoformat(),
+                    "horizonDate": horizon.isoformat(),
+                    "pointForecast": point,
+                    "lowerForecast": None,
+                    "upperForecast": None,
+                    "uncertaintyStatus": V4_UNCERTAINTY_STATUS,
+                    "uncertaintyNote": V4_UNCERTAINTY_NOTE,
+                    "forecastStatus": "AVAILABLE",
+                    "staleAfter": horizon.isoformat(),
+                    "classification": V4_CLASSIFICATION,
+                    "recommendationEligibility": V4_RECOMMENDATION_ELIGIBILITY,
+                }
+            )
     bundle = {"schemaVersion": V4_BUNDLE_SCHEMA, "run": run, "forecasts": records}
     lineage["payloadSha256"] = payload_sha256(bundle)
     return bundle
