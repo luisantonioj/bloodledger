@@ -290,6 +290,9 @@
         "description": "Queue a local-release reservation. ROLE-01 and ROLE-02 only.",
         "parameters": [
           {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
             "$ref": "#/components/parameters/IdempotencyKey"
           }
         ],
