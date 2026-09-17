@@ -86,8 +86,8 @@ plus the preceding documentation and remediation groups.
 | Secret scan | PASS | `scripts/scan-secrets.sh`; Gitleaks 8.30.1 resolved digest recorded by command output |
 | External workbook bytes and documented SHA-256 | PASS | Read-only temporary download; workbook was not used as live application input |
 | Real Fabric network restart/commit-count evidence | NOT RUN | Requires the authorized Fabric runtime/network; test-double and PostgreSQL receipt evidence are separate |
-| BUNO research review | CHANGES_REQUESTED | BUNO reviewed `f732fcb`; four forecasting-owner findings remain open |
-| LAT browser UAT and JOPIA PR/merge approval | NOT RUN | Human owner gates, outside this branch execution |
+| BUNO research review | REVIEW_PENDING | BUNO's four findings are implemented in `f58b905`; human method/lineage re-review of the combined revision is still required |
+| LAT browser UAT and JOPIA PR/merge approval | NOT RUN | Human owner gates, outside this branch execution; frontend baseline is pending JOPIA's pushed combined revision |
 
 The verification was agent-assisted self-validation by the current reviewing
 model (GPT-5; deployment identifier not exposed). This is engineering evidence,
@@ -96,8 +96,9 @@ not independent institutional, clinical, or research acceptance.
 ## Final handoffs
 
 JOPIA must retain the register and evidence with the PR, confirm the Drive account
-identity, obtain BUNO’s review of method fidelity and lineage, and explicitly
-accept the simulation-only boundary. JOPIA gives LAT the corrected
+identity, obtain BUNO’s human re-review of method fidelity and lineage, and
+explicitly accept the simulation-only boundary. The local combined revision
+includes BUNO commit `f58b905`; after it is committed and pushed, JOPIA gives LAT the corrected
 `services/api/openapi.json` and `services/api/openapi-v2.json` contracts with
 the `CURRENT`/`STALE`/`UNAVAILABLE` fields, dataset/model identity, dates, and
 nullable uncertainty fields. LAT implements frontend and browser UAT. No
@@ -115,10 +116,10 @@ historical evidence and do not close these findings.
 
 | BUNO finding | Owner | Current disposition |
 |---|---|---|
-| Forecast IDs must include complete institution and run lineage | BUNO | Open; producer change and cross-institution persistence rerun required |
-| Dataset digest must identify actual source evidence | BUNO | Open; supplied-path and in-memory input semantics require producer change |
-| Null observations must persist an unavailable attempt | BUNO | Open; producer persistence and successful-to-unavailable API rerun required |
-| Unavailable results must retain the requested horizon | BUNO | Open; producer date-resolution change and rerun required |
+| Forecast IDs must include complete institution and run lineage | BUNO | Implemented in `f58b905`; local cross-institution, lineage-change, replay, and conflict checks pass; BUNO human re-review pending |
+| Dataset digest must identify actual source evidence | BUNO | Implemented in `f58b905`; local file-byte, missing-path, directory, and in-memory evidence checks pass; BUNO human re-review pending |
+| Null observations must persist an unavailable attempt | BUNO | Implemented in `f58b905`; local persisted null/NaN/pd.NA, replay, and success-to-unavailable API checks pass; BUNO human re-review pending |
+| Unavailable results must retain the requested horizon | BUNO | Implemented in `f58b905`; local empty/short/unsupported/missing/future/null and malformed-date checks pass; BUNO human re-review pending |
 
 ## Issue 9 backend finding reconciliation
 
@@ -149,21 +150,24 @@ in that institution-scoped snapshot; it is not a global Fabric checkpoint.
 
 ## Rerun dependencies and claim limits
 
-Backend and coordination checks can run against this branch now. Producer-to-
-database-to-API scenarios depending on BUNO's four forecasting changes remain
-`BLOCKED` until BUNO supplies the producer fix and records a re-review. No
-simulation result closes `RQ-07`, clinical or operational policy gates, UAT,
-real-Fabric restart evidence, or production readiness.
+Backend and coordination checks run against the local combined working tree based
+on `0729179` plus BUNO's `f58b905` correction. The producer-to-database-to-API
+scenarios are locally unblocked and passing; human BUNO re-review, JOPIA
+acceptance, and a pushed commit remain required before the revision is an
+accepted frontend baseline. No simulation result closes `RQ-07`, clinical or
+operational policy gates, UAT, real-Fabric restart evidence, or production
+readiness.
 
 ## Validation rerun — 2026-09-17
 
 The backend changes and regression tests were rerun in the pinned
 `node:24.17.0-bookworm` environment with npm `11.13.0`. Results are reproducible
-from the current HEAD and remain simulation-only. The grouped implementation
-commits are `6f55076` (review register), `c8ba10a` (backend projection and
-contract tests), `12d2d80` (snapshot provenance), and `8ee8800` (integration
-boundaries), followed by the final rerun-evidence and response-documentation
-commit.
+from the local working tree based on `0729179` plus BUNO's `f58b905`; the
+OpenAPI edits are formatting/contract-documentation changes. Results remain
+simulation-only. The historical grouped commits are `6f55076` (review
+register), `c8ba10a` (backend projection and contract tests), `12d2d80`
+(snapshot provenance), and `8ee880` (integration boundaries); BUNO's producer
+correction commit is preserved as `f58b905`.
 
 | Command or evidence | Result |
 |---|---|
@@ -173,12 +177,71 @@ commit.
 | `bash tests/coordination/static-boundary.sh` | PASS |
 | `bash tests/forecasting/static-boundary.sh` | PASS |
 | `bash tests/forecasting/v4-runtime-integration.sh` | PASS — fresh/upgrade migrations, persisted V1/V4 replay, PostgreSQL projection lifecycle, snapshot provenance, surplus, and BROA integration |
+| `bash services/forecasting/scripts/run-quality.sh check` | PASS — 25 files formatted, Ruff checks, and strict mypy |
+| `bash services/forecasting/scripts/run-quality.sh test` | PASS — 89 forecasting tests |
+| Pinned API test container (`npm run test --workspace @bloodledger/api`) | PASS — 91 tests |
+| Pinned coordination test container (`npm run test --workspace @bloodledger/coordination`) | PASS — 16 tests |
+| Pinned chaincode test/check containers | PASS — 30 tests; formatting/lint/typecheck |
+| API, coordination, forecasting, repository static boundaries | PASS — API run in pinned Node container; coordination and forecasting locally |
+| Repository JSON-format gate (`node tests/repository/json-format.mjs`) | PASS — OpenAPI v1/v2 and listed contracts |
+| Repository version, safe-env, and ignore-path checks | PASS |
 | `bash scripts/scan-secrets.sh` | PASS — Gitleaks 8.30.1, image digest `sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f` |
 
-The first coordination run exposed an incorrect test fixture at the exact
-Asia/Manila midnight transition; the fixture was corrected and the rerun passed.
-The API and coordination checks execute the existing producer-independent
-boundaries. Producer-to-database-to-API verification of BUNO's four requested
-forecasting changes is `BLOCKED` until BUNO supplies the producer fix and
-records her research re-review. Real Fabric network restart and submission-count
-evidence remain `NOT_RUN`.
+The full integration probe also passed the producer correction checks: 21 fresh
+migrations, the 10-migration baseline plus 11-migration upgrade path,
+cross-institution and changed-file persistence, exact replay/conflict handling,
+composite-FK scope enforcement, persisted null/short-history attempts, requested
+date preservation, V1 history, projection lifecycle, snapshots, surplus and
+BROA. Real Fabric network restart and submission-count evidence remain
+`NOT_RUN`. The repository foundation aggregate was not run as a single pass
+because the pinned Node image lacks Git; its JSON, version, safe-env, and
+ignore-path checks passed individually.
+
+
+## Local BUNO producer corrections — 2026-09-17
+
+User-authorized implementation on `codex/ml-v4-forecast-corrections`, based on
+JOPIA verification revision `0729179`. This section records agent-assisted local
+engineering verification, not BUNO/JOPIA acceptance, a posted research re-review,
+or permission to push. The earlier open findings above describe the reviewed
+baseline; these corrections are local pending handoff.
+
+| Finding | Implemented correction | Regression evidence |
+| --- | --- | --- |
+| Institution and immutable lineage missing from forecast identity | Common immutable run identity includes institution, all lineage digests, versions, dates and status/reason; per-series IDs derive from that identity; persistence verifies IDs and scope | Cross-institution/file-revision persistence, independent code/config/model hash changes, timestamp-only replay, altered-payload rejection |
+| Dataset digest did not identify actual evidence | Readable file bytes hashed when supplied; missing/directory paths rejected; canonical allowlisted memory rows hashed otherwise | Changed observations change digest; CRLF/LF file evidence differs while normalized input stays identical |
+| Null quantities bypassed unavailable persistence | Canonical JSON null preserved; valid nulls produce an empty UNAVAILABLE bundle through the normal CLI persistence path | None/NaN/pd.NA, shuffled replay, null versus zero, successful-to-unavailable authenticated API read |
+| Early returns lost requested origin/horizon | Resolve and validate the requested one-day window before availability; every result uses that window | Empty/short/unsupported/missing/future/null inputs with both dates or either date; malformed date rejection and Manila fallback |
+
+The first cross-institution database test found the inherited
+`demand_forecasts_institution` constraint still restricted all forecast rows to
+Mediatrix. New forward migration `20260917100000000` binds forecast institution
+to its parent run with a composite foreign key, permits scoped V4 forecasts, and
+retains V1's Mediatrix-only rule. Applied migrations and historical rows are
+unchanged. The contract schema now declares the already-emitted institution,
+origin and per-series as-of fields instead of rejecting them as extra fields.
+
+Validation: forecasting formatting/lint/strict typing and **89 tests passed**.
+Forecasting, API and coordination static boundaries and PostgreSQL static checks
+passed. Full history/index/candidate secret scanning passed locally. Fresh and
+upgrade-path producer-to-database-to-API verification passed: 21 fresh migrations
+and the 10+11 upgrade path; cross-institution and changed-file insertion/replay;
+conflict rejection; direct composite-foreign-key enforcement; persisted null and
+short-history attempts; authenticated UNAVAILABLE results retaining requested
+dates; V1 history; committed projection lifecycle; snapshots, surplus and BROA. Frozen workbooks/models were neither read nor
+modified for these corrections. V4's 1..7 / 28 method is unchanged.
+
+The repository-wide JSON-format gate now passes. `services/api/openapi.json` and
+`services/api/openapi-v2.json` were canonicalized without changing parsed
+content; the V2 contract also documents the canonical reservation workflow,
+mutation idempotency header, exact local-release/reconciliation/action bodies,
+and the disabled legacy transfer aliases.
+
+Human research re-review, JOPIA acceptance, LAT frontend/browser UAT and real
+Fabric restart/submission-count evidence remain separate. ADR-034 permits
+controlled encrypted off-chain storage; no plaintext or encrypted donation
+identifiers enter this forecasting producer. RQ-07 and operational gates remain
+open. No human review decision is inferred from these local results. The
+repository worktree contains the correction and handoff updates; the environment
+cannot write `.git/index`, so the final commit/push and PR/Issue updates require
+a writable Git checkout.

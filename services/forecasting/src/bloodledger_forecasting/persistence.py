@@ -22,7 +22,9 @@ from .runtime_v4 import (
     V4_DATASET_VERSION,
     V4_MODEL_SHA256,
     V4_MODEL_VERSION,
+    forecast_identity,
     payload_sha256,
+    run_identity_sha256,
 )
 
 RUN_FIELDS = frozenset(
@@ -340,6 +342,12 @@ def persist_v4_runtime_bundle(connection: Connection[Any], bundle: dict[str, Any
         "INST_"
     ):
         raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 institution identity is invalid")
+    identity = run_identity_sha256(run)
+    if (
+        run.get("runId") != f"RUN_{identity[:32].upper()}"
+        or run.get("runKey") != f"RUNKEY_{identity[:32].upper()}"
+    ):
+        raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 run identity does not verify")
     completed = run.get("runStatus") == "COMPLETED"
     if completed and len(forecasts) != 20:
         raise ForecastingError(
@@ -361,6 +369,9 @@ def persist_v4_runtime_bundle(connection: Connection[Any], bundle: dict[str, Any
         raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 forecast series are incomplete")
     if completed and any(
         not isinstance(row, dict)
+        or row.get("institutionId") != run["institutionId"]
+        or row.get("forecastId")
+        != forecast_identity(run, str(row.get("bloodType")), str(row.get("component")))
         or row.get("asOfDate") != run.get("originDate")
         or row.get("horizonDate") != run.get("horizonDate")
         or row.get("uncertaintyStatus") != "UNCERTAINTY_UNAVAILABLE"

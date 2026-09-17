@@ -91,3 +91,40 @@ review before merge and records self-validation disclosure.
 
 JOPIA does not retrain the study, acquire hospital data, implement frontend
 code, resolve clinical policy, or claim clinical or production readiness.
+
+## Issue #9 producer correction contract
+
+The four BUNO corrections are authorized locally on `codex/ml-v4-forecast-corrections`,
+based on verification revision `0729179`. The calculation and frozen research
+release remain unchanged. No push or reviewer acceptance is implied.
+
+Run identity binds institution, dataset/model versions, target, requested window,
+origin/horizon, classification, status/reason and all five immutable lineage hashes
+(dataset, code, configuration, model and input). Generation time and the derived
+payload hash are excluded from identity; replay does not create another run.
+Each forecast ID binds this run identity plus its blood type and component.
+
+A supplied dataset path must be a readable file: hash its actual bytes, never a
+release label or a silent fallback. Without a path, hash canonical allowlisted
+in-memory observations (deterministic date/category/count rows, null as JSON null).
+The input hash represents canonical normalized observations. File-byte changes
+may identify a new evidence release even when normalized inputs match.
+
+Resolve and validate origin/horizon before availability checks. An explicit pair
+must be consecutive dates; either date alone determines the other. Otherwise use
+the latest observed date, or the previous Asia/Manila day for empty history.
+Input start/end denote the requested seven-day window ending at origin; the
+input digest preserves the supplied evidence, including missing/null observations.
+Require all 140 observations in that window. Future observations remain unavailable.
+Null quantities produce `V4_HISTORY_UNAVAILABLE` with no forecast rows and are
+persisted through the same producer command; null is never replaced by zero.
+Invalid numeric/date/schema inputs still fail validation. Unavailable results
+retain the resolved dates and cannot fall back to a success from another horizon.
+
+The cross-institution integration check exposed a remaining V1-only constraint
+on `demand_forecasts.institution_id`. Additive migration
+`20260917100000000_bind-v4-forecast-institution-scope.js` aligns V4 storage with
+its scoped producer: a composite foreign key binds each forecast to its run's
+institution, while V1 runs remain restricted to `INST_MEDIATRIX`. Existing
+migrations and historical rows are not rewritten. This is an application data
+scope correction, not a new Fabric organization or an operational permission.
