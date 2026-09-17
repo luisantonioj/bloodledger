@@ -168,6 +168,7 @@ def _unavailable_bundle(
     run = {
         "runId": f"RUN_{run_identity[:32].upper()}",
         "runKey": f"RUNKEY_{run_identity[:32].upper()}",
+        "institutionId": "INST_MEDIATRIX",
         "datasetVersion": V4_DATASET_VERSION,
         "modelVersion": V4_MODEL_VERSION,
         "modelName": V4_MODEL_NAME,
@@ -394,6 +395,7 @@ def create_v4_runtime_bundle(
     run = {
         "runId": f"RUN_{identity[:32].upper()}",
         "runKey": f"RUNKEY_{identity[:32].upper()}",
+        "institutionId": institution_id,
         "datasetVersion": V4_DATASET_VERSION,
         "modelVersion": V4_MODEL_VERSION,
         "modelName": V4_MODEL_NAME,
