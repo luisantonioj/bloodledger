@@ -17,12 +17,14 @@ The Drive file was located by its exact ID in the `Machine Learning` folder:
 `BloodLedger_ML_Research_Dataset_v4.xlsx`, ID
 `17f2qUhTyLGmXbAXSiBOvfPeKVyqbot8R`. The documented release digest is
 `76a188830467d290af26c2d01459e5b3ef470f8b552568cdbe89fe3118002dbd`. The
-connected Drive response confirmed the file identity and parent folder, but did
-not expose the signed-in account identity. An authorized read-only download to a
-temporary path produced `10,780,351` bytes and SHA-256
+connected Drive response confirmed the file identity and parent folder. A
+profile readback on 2026-09-17 confirmed the requested BloodLedger account;
+private account fields are intentionally omitted from this register and all
+external comments. An authorized read-only download to a temporary path
+produced `10,780,351` bytes and SHA-256
 `76a188830467d290af26c2d01459e5b3ef470f8b552568cdbe89fe3118002dbd`, matching
-the documented release digest. Account identity remains unavailable from the
-connector. Workbook bytes and rows remain outside Git and application fixtures.
+the documented release digest. Workbook bytes and rows remain outside Git and
+application fixtures.
 
 ## Requirement-to-evidence register
 
@@ -43,7 +45,7 @@ connector. Workbook bytes and rows remain outside Git and application fixtures.
 | BROA remains human-review simulation only | `FR-05`–`FR-07`, `RQ-05`–`RQ-07` | RETAIN | Disabled approval/submission assertions |
 | Operational accuracy, clinical, regulatory, and production readiness | `RQ-07`, Testing Phase gates | NOT YET DEMONSTRATED | Keep blocked; software checks cannot close this gate |
 | External workbook bytes match documented SHA-256 | handoff release record | RETAIN / PASS | Authorized read-only temporary download; 10,780,351 bytes and exact documented SHA-256 |
-| Signed-in Drive account is the requested account | user request / Drive access | NOT YET DEMONSTRATED | Connector did not expose account identity; JOPIA must confirm it in the Drive UI or account audit |
+| Signed-in Drive account is the requested account | user request / Drive profile | PASS | Profile readback confirmed the requested BloodLedger account; private account fields are omitted |
 
 ## Retained contract
 
@@ -58,7 +60,8 @@ not rewritten.
 
 ## JOPIA owner actions
 
-JOPIA reviews the register and each migration, confirms the workbook digest,
+JOPIA reviews the register and each migration, confirms the workbook digest and
+the connected Drive profile,
 discloses agent-assisted self-validation, obtains BUNO’s method/lineage review,
 hands LAT the corrected OpenAPI contract and display fields, and creates the
 focused PR only after the executable gates pass. LAT owns frontend and browser
@@ -87,7 +90,7 @@ plus the preceding documentation and remediation groups.
 | External workbook bytes and documented SHA-256 | PASS | Read-only temporary download; workbook was not used as live application input |
 | Real Fabric network restart/commit-count evidence | NOT RUN | Requires the authorized Fabric runtime/network; test-double and PostgreSQL receipt evidence are separate |
 | BUNO research review | REVIEW_PENDING | BUNO's four findings are implemented in `f58b905`; human method/lineage re-review of the combined revision is still required |
-| LAT browser UAT and JOPIA PR/merge approval | NOT RUN | Human owner gates, outside this branch execution; frontend baseline is pending JOPIA's pushed combined revision |
+| LAT browser UAT and JOPIA PR/merge approval | NOT RUN | Human owner gates, outside this branch execution; frontend baseline is pinned while approval remains pending |
 
 The verification was agent-assisted self-validation by the current reviewing
 model (GPT-5; deployment identifier not exposed). This is engineering evidence,
@@ -95,8 +98,8 @@ not independent institutional, clinical, or research acceptance.
 
 ## Final handoffs
 
-JOPIA must retain the register and evidence with the PR, confirm the Drive account
-identity, obtain BUNO’s human re-review of method fidelity and lineage, and
+JOPIA must retain the register and evidence with the PR, record the private Drive
+profile confirmation, obtain BUNO’s human re-review of method fidelity and lineage, and
 explicitly accept the simulation-only boundary. Combined implementation commit
 `3b890f0` includes BUNO commit `f58b905`; pushed baseline
 `19aa11cd19127ea9846b6697f1f302c4603933a5` also contains the corrected
@@ -206,7 +209,9 @@ User-authorized implementation on `codex/ml-v4-forecast-corrections`, based on
 JOPIA verification revision `0729179`. This section records agent-assisted
 engineering verification, not BUNO/JOPIA acceptance or a posted research
 re-review. The earlier open findings above describe the reviewed baseline; the
-corrections are included in combined commit `3b890f0` pending external handoff.
+corrections are included in combined commit `3b890f0`; the pushed branch is
+available for external handoff pending BUNO's human re-review and JOPIA's owner
+acceptance.
 
 | Finding | Implemented correction | Regression evidence |
 | --- | --- | --- |
