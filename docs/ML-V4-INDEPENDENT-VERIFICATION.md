@@ -101,8 +101,8 @@ not independent institutional, clinical, or research acceptance.
 JOPIA must retain the register and evidence with the PR, record the private Drive
 profile confirmation, obtain BUNO’s human re-review of method fidelity and lineage, and
 explicitly accept the simulation-only boundary. Combined implementation commit
-`3b890f0` includes BUNO commit `f58b905`; pushed baseline
-`19aa11cd19127ea9846b6697f1f302c4603933a5` also contains the corrected
+`3b890f0` includes BUNO commit `f58b905`; documentation follow-up commit
+`19aa11c` records the corrected
 `services/api/openapi.json` and `services/api/openapi-v2.json` contracts with
 the `CURRENT`/`STALE`/`UNAVAILABLE` fields, dataset/model identity, dates, and
 nullable uncertainty fields. LAT implements frontend and browser UAT. No
@@ -156,7 +156,7 @@ in that institution-scoped snapshot; it is not a global Fabric checkpoint.
 
 Backend and coordination checks run against the combined working tree based on
 implementation commit `3b890f0` (base `0729179` plus BUNO's `f58b905` correction)
-and documented in pushed baseline `19aa11c`.
+and recorded in the handoff documentation.
 The producer-to-database-to-API scenarios are locally unblocked and passing;
 human BUNO re-review and JOPIA acceptance remain required before the revision is
 an accepted frontend baseline. No simulation result

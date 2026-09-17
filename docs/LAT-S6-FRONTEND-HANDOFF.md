@@ -4,8 +4,8 @@
 pushed, while owner acceptance and browser UAT remain pending
 
 **Backend scope:** PR #11 on `codex/ml-v4-verification`; implementation commit
-`3b890f0` incorporates BUNO's correction commit `f58b905`, and documentation
-follow-up commit `19aa11c` pins the currently pushed frontend baseline.
+`3b890f0` incorporates BUNO's correction commit `f58b905`; subsequent
+documentation commits record the handoff and verification register.
 
 **Classification:** `SIMULATION_ONLY`
 
@@ -19,9 +19,8 @@ contracts remain authoritative:
 - [Inbound OCR policy](./INBOUND-OCR-REGISTRATION.md)
 - [ML V4 runtime contract](./ML-RUNTIME-INTEGRATION-V4.md)
 
-The exact currently pushed frontend baseline is
-`3b890f0` is the exact combined backend implementation revision for frontend
-development. The branch also carries documentation-only follow-ups for this
+The exact combined backend implementation revision for frontend development is
+`3b890f0`. The branch also carries documentation-only follow-ups for this
 handoff; LAT should pin `3b890f0` (or a later branch revision containing it)
 until PR #11 is merged. The main merge commit replaces it after merge.
 
@@ -162,8 +161,8 @@ Verified locally on implementation commit `3b890f0` and its documentation
 follow-ups: BUNO's four producer corrections,
 fresh/upgrade migrations, cross-institution scope, replay/conflict behavior,
 null and requested-date handling, API/coordination/chaincode tests, static
-boundaries, JSON formatting, and secret scanning. The exact pushed frontend
-baseline, LAT implementation, browser UAT, approved offline retention rule,
+boundaries, JSON formatting, and secret scanning. LAT implementation, browser
+UAT, approved offline retention rule,
 BUNO human re-review, JOPIA acceptance, and real-Fabric restart/submission-count
 evidence remain pending. All outputs remain simulation-only; `RQ-07` and
 clinical, operational, institutional, UAT, regulatory, and production gates
