@@ -97,8 +97,8 @@ not independent institutional, clinical, or research acceptance.
 
 JOPIA must retain the register and evidence with the PR, confirm the Drive account
 identity, obtain BUNO’s human re-review of method fidelity and lineage, and
-explicitly accept the simulation-only boundary. The local combined revision
-includes BUNO commit `f58b905`; after it is committed and pushed, JOPIA gives LAT the corrected
+explicitly accept the simulation-only boundary. Combined commit `3b890f0`
+includes BUNO commit `f58b905`; after it is pushed, JOPIA gives LAT the corrected
 `services/api/openapi.json` and `services/api/openapi-v2.json` contracts with
 the `CURRENT`/`STALE`/`UNAVAILABLE` fields, dataset/model identity, dates, and
 nullable uncertainty fields. LAT implements frontend and browser UAT. No
@@ -151,18 +151,18 @@ in that institution-scoped snapshot; it is not a global Fabric checkpoint.
 ## Rerun dependencies and claim limits
 
 Backend and coordination checks run against the local combined working tree based
-on `0729179` plus BUNO's `f58b905` correction. The producer-to-database-to-API
-scenarios are locally unblocked and passing; human BUNO re-review, JOPIA
-acceptance, and a pushed commit remain required before the revision is an
-accepted frontend baseline. No simulation result closes `RQ-07`, clinical or
-operational policy gates, UAT, real-Fabric restart evidence, or production
-readiness.
+on commit `3b890f0` (base `0729179` plus BUNO's `f58b905` correction).
+The producer-to-database-to-API scenarios are locally unblocked and passing;
+human BUNO re-review, JOPIA acceptance, and pushing this commit remain required
+before the revision is an accepted frontend baseline. No simulation result
+closes `RQ-07`, clinical or operational policy gates, UAT, real-Fabric restart
+evidence, or production readiness.
 
 ## Validation rerun — 2026-09-17
 
 The backend changes and regression tests were rerun in the pinned
 `node:24.17.0-bookworm` environment with npm `11.13.0`. Results are reproducible
-from the local working tree based on `0729179` plus BUNO's `f58b905`; the
+from commit `3b890f0`, based on `0729179` plus BUNO's `f58b905`; the
 OpenAPI edits are formatting/contract-documentation changes. Results remain
 simulation-only. The historical grouped commits are `6f55076` (review
 register), `c8ba10a` (backend projection and contract tests), `12d2d80`
@@ -201,10 +201,10 @@ ignore-path checks passed individually.
 ## Local BUNO producer corrections — 2026-09-17
 
 User-authorized implementation on `codex/ml-v4-forecast-corrections`, based on
-JOPIA verification revision `0729179`. This section records agent-assisted local
-engineering verification, not BUNO/JOPIA acceptance, a posted research re-review,
-or permission to push. The earlier open findings above describe the reviewed
-baseline; these corrections are local pending handoff.
+JOPIA verification revision `0729179`. This section records agent-assisted
+engineering verification, not BUNO/JOPIA acceptance or a posted research
+re-review. The earlier open findings above describe the reviewed baseline; the
+corrections are included in combined commit `3b890f0` pending external handoff.
 
 | Finding | Implemented correction | Regression evidence |
 | --- | --- | --- |
@@ -241,7 +241,6 @@ Human research re-review, JOPIA acceptance, LAT frontend/browser UAT and real
 Fabric restart/submission-count evidence remain separate. ADR-034 permits
 controlled encrypted off-chain storage; no plaintext or encrypted donation
 identifiers enter this forecasting producer. RQ-07 and operational gates remain
-open. No human review decision is inferred from these local results. The
-repository worktree contains the correction and handoff updates; the environment
-cannot write `.git/index`, so the final commit/push and PR/Issue updates require
-a writable Git checkout.
+open. No human review decision is inferred from these local results. Commit
+`3b890f0` contains the correction and handoff updates; push and PR/Issue
+updates are still required for external review.

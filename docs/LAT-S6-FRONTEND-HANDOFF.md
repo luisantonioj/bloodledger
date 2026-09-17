@@ -3,8 +3,9 @@
 **Status:** Proposed integration handoff; owner acceptance and browser UAT
 remain pending
 
-**Backend scope:** PR #11 on `codex/ml-v4-verification`, based on
-`0729179`, with BUNO's correction commit `f58b905` applied locally
+**Backend scope:** PR #11 on `codex/ml-v4-verification`, candidate combined
+commit `3b890f0`, based on `0729179` with BUNO's correction commit
+`f58b905`
 
 **Classification:** `SIMULATION_ONLY`
 
@@ -18,10 +19,9 @@ contracts remain authoritative:
 - [Inbound OCR policy](./INBOUND-OCR-REGISTRATION.md)
 - [ML V4 runtime contract](./ML-RUNTIME-INTEGRATION-V4.md)
 
-The exact combined commit is not yet published because this checkout cannot
-write `.git/index`. LAT must pin the commit produced after these worktree
-changes are committed and pushed; the current remote PR #11 head is still
-`0729179`.
+The exact combined commit is `3b890f0`. It must be pushed to
+`codex/ml-v4-verification` before LAT begins integration; the current remote
+PR #11 head remains `0729179` until that push.
 
 ## Contract and version headers
 
@@ -156,7 +156,7 @@ re-review.
 
 ## Readiness and remaining gates
 
-Verified locally on the combined worktree: BUNO's four producer corrections,
+Verified locally on commit `3b890f0`: BUNO's four producer corrections,
 fresh/upgrade migrations, cross-institution scope, replay/conflict behavior,
 null and requested-date handling, API/coordination/chaincode tests, static
 boundaries, JSON formatting, and secret scanning. The exact pushed frontend
