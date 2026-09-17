@@ -1,11 +1,11 @@
 # LAT Sprint 6 Frontend Handoff
 
-**Status:** Proposed integration handoff; owner acceptance and browser UAT
-remain pending
+**Status:** Proposed integration handoff; the verified backend revision is
+pushed, while owner acceptance and browser UAT remain pending
 
-**Backend scope:** PR #11 on `codex/ml-v4-verification`, candidate combined
-commit `3b890f0`, based on `0729179` with BUNO's correction commit
-`f58b905`
+**Backend scope:** PR #11 on `codex/ml-v4-verification`; implementation commit
+`3b890f0` incorporates BUNO's correction commit `f58b905`, and documentation
+follow-up commit `19aa11c` pins the currently pushed frontend baseline.
 
 **Classification:** `SIMULATION_ONLY`
 
@@ -19,9 +19,10 @@ contracts remain authoritative:
 - [Inbound OCR policy](./INBOUND-OCR-REGISTRATION.md)
 - [ML V4 runtime contract](./ML-RUNTIME-INTEGRATION-V4.md)
 
-The exact combined commit is `3b890f0`. It must be pushed to
-`codex/ml-v4-verification` before LAT begins integration; the current remote
-PR #11 head remains `0729179` until that push.
+The exact currently pushed frontend baseline is
+`19aa11cd19127ea9846b6697f1f302c4603933a5`. It contains implementation commit
+`3b890f0` and the handoff/verification follow-up. LAT should pin this revision
+until PR #11 is merged; the main merge commit replaces it after merge.
 
 ## Contract and version headers
 
@@ -156,7 +157,7 @@ re-review.
 
 ## Readiness and remaining gates
 
-Verified locally on commit `3b890f0`: BUNO's four producer corrections,
+Verified locally on the pushed baseline `19aa11c` (implementation `3b890f0`): BUNO's four producer corrections,
 fresh/upgrade migrations, cross-institution scope, replay/conflict behavior,
 null and requested-date handling, API/coordination/chaincode tests, static
 boundaries, JSON formatting, and secret scanning. The exact pushed frontend

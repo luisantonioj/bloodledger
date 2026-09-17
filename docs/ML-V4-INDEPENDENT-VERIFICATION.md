@@ -97,8 +97,9 @@ not independent institutional, clinical, or research acceptance.
 
 JOPIA must retain the register and evidence with the PR, confirm the Drive account
 identity, obtain BUNO’s human re-review of method fidelity and lineage, and
-explicitly accept the simulation-only boundary. Combined commit `3b890f0`
-includes BUNO commit `f58b905`; after it is pushed, JOPIA gives LAT the corrected
+explicitly accept the simulation-only boundary. Combined implementation commit
+`3b890f0` includes BUNO commit `f58b905`; pushed baseline
+`19aa11cd19127ea9846b6697f1f302c4603933a5` also contains the corrected
 `services/api/openapi.json` and `services/api/openapi-v2.json` contracts with
 the `CURRENT`/`STALE`/`UNAVAILABLE` fields, dataset/model identity, dates, and
 nullable uncertainty fields. LAT implements frontend and browser UAT. No
@@ -150,11 +151,12 @@ in that institution-scoped snapshot; it is not a global Fabric checkpoint.
 
 ## Rerun dependencies and claim limits
 
-Backend and coordination checks run against the local combined working tree based
-on commit `3b890f0` (base `0729179` plus BUNO's `f58b905` correction).
+Backend and coordination checks run against the combined working tree based on
+implementation commit `3b890f0` (base `0729179` plus BUNO's `f58b905` correction)
+and documented in pushed baseline `19aa11c`.
 The producer-to-database-to-API scenarios are locally unblocked and passing;
-human BUNO re-review, JOPIA acceptance, and pushing this commit remain required
-before the revision is an accepted frontend baseline. No simulation result
+human BUNO re-review and JOPIA acceptance remain required before the revision is
+an accepted frontend baseline. No simulation result
 closes `RQ-07`, clinical or operational policy gates, UAT, real-Fabric restart
 evidence, or production readiness.
 
@@ -242,5 +244,6 @@ Fabric restart/submission-count evidence remain separate. ADR-034 permits
 controlled encrypted off-chain storage; no plaintext or encrypted donation
 identifiers enter this forecasting producer. RQ-07 and operational gates remain
 open. No human review decision is inferred from these local results. Commit
-`3b890f0` contains the correction and handoff updates; push and PR/Issue
-updates are still required for external review.
+`3b890f0` contains the correction and `19aa11c` contains the pinned handoff
+updates; PR/Issue updates and BUNO's updated review are still required for
+external review.
