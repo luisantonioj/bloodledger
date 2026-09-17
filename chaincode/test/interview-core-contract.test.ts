@@ -120,6 +120,7 @@ test("accepts cryoprecipitate only under the additive V2.1 policy", async () => 
   const state = await read(context, "component:asset:COMP_CORE_V21_001");
   assert.equal(state.componentType, "CRYOPRECIPITATE");
   assert.equal(state.policyVersion, "INTERVIEW_DERIVED_CORE_V2_1");
+  await assert.rejects(register(contract, context, { ...component("COMP_CORE_V21_002", "DON_CORE_V21_002", digest("f"), "2026-09-10T00:00:00.000Z", "CRYOPRECIPITATE"), policyVersion }), /COMPONENT_TYPE_UNSUPPORTED/);
 });
 
 test("registers OCR inbound stock with separate issuer/custody and no raw Donation No.", async () => {

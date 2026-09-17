@@ -26,3 +26,9 @@ test("allows explicitly enabled external issuer with bounded opaque number", () 
   const capture = validateInboundOcrInput({ ...valid, issuerInstitutionId: "INST_PRC", donationNumber: "PRC/2026.004046" }, ["INST_MEDIATRIX", "INST_PRC"]);
   assert.equal(capture.issuerInstitutionId, "INST_PRC");
 });
+
+test("keeps CRYOPRECIPITATE behind the explicit V2.1 contract", () => {
+  assert.throws(() => validateInboundOcrInput({ ...valid, componentType: "CRYOPRECIPITATE" }), (error: unknown) => (error as { code?: string }).code === "V2_COMPONENT_TYPE_INVALID");
+  const capture = validateInboundOcrInput({ ...valid, componentType: "CRYOPRECIPITATE" }, ["INST_MEDIATRIX"], "V2.1");
+  assert.equal(capture.componentType, "CRYOPRECIPITATE");
+});

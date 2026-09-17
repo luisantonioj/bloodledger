@@ -201,11 +201,13 @@ test("FR-14 exposes forecast evidence as read-only CURRENT, STALE, or UNAVAILABL
     forecastStatus: "AVAILABLE", classification: "SIMULATION_ONLY",
     recommendationEligibility: "DISABLED_UNAPPROVED_POLICY", generatedAt: fixedNow.toISOString(), stale: false,
   }];
-  const current = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-01-01", headers });
+  const noFallback = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-01-01", headers });
+  assert.equal(noFallback.json().status, "UNAVAILABLE");
+  const current = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-01-01&datasetVersion=SYNTHETIC_FORECAST_V1", headers });
   assert.equal(current.json().status, "CURRENT");
   assert.equal(current.json().forecasts[0].recommendationEligibility, "DISABLED_UNAPPROVED_POLICY");
   repository.forecasts[0].stale = true;
-  const stale = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-01-02", headers });
+  const stale = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-01-02&datasetVersion=SYNTHETIC_FORECAST_V1", headers });
   assert.equal(stale.json().status, "STALE");
   await app.close();
 });

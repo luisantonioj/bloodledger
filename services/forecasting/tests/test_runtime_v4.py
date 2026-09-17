@@ -1,9 +1,10 @@
-from datetime import date, timedelta
 from copy import deepcopy
+from datetime import date, timedelta
 
 import pandas as pd
 import pytest
 
+from bloodledger_forecasting.errors import ForecastingError
 from bloodledger_forecasting.runtime_v4 import (
     V4_BLOOD_TYPES,
     V4_COMPONENTS,
@@ -12,7 +13,6 @@ from bloodledger_forecasting.runtime_v4 import (
     create_v4_runtime_bundle,
     payload_sha256,
 )
-from bloodledger_forecasting.errors import ForecastingError
 
 
 def runtime_history(days: int = 7) -> pd.DataFrame:
@@ -43,10 +43,13 @@ def test_v4_weighted_average_and_all_twenty_series() -> None:
                 for item in bundle["forecasts"]
                 if item["bloodType"] == blood_type and item["component"] == component
             )
-            expected = sum(
-                weight * (day + blood_index + component_index)
-                for weight, day in zip(V4_WEIGHTS, range(7), strict=True)
-            ) / V4_WEIGHT_DENOMINATOR
+            expected = (
+                sum(
+                    weight * (day + blood_index + component_index)
+                    for weight, day in zip(V4_WEIGHTS, range(7), strict=True)
+                )
+                / V4_WEIGHT_DENOMINATOR
+            )
             assert row["pointForecast"] == expected
             assert row["asOfDate"] == "2026-01-07"
             assert row["lowerForecast"] is None
@@ -92,3 +95,13 @@ def test_v4_semantic_payload_hash_excludes_execution_timestamp() -> None:
     changed = deepcopy(second)
     changed["forecasts"][0]["pointForecast"] += 1
     assert payload_sha256(changed) != payload_sha256(first)
+
+
+def test_v4_uses_manila_business_date_for_future_history_validation() -> None:
+    bundle = create_v4_runtime_bundle(
+        runtime_history(),
+        generated_at="2026-01-07T16:30:00.000Z",
+        institution_id="INST_SYNTHETIC_DESTINATION",
+    )
+    assert bundle["run"]["runStatus"] == "COMPLETED"
+    assert bundle["run"]["institutionId"] == "INST_SYNTHETIC_DESTINATION"

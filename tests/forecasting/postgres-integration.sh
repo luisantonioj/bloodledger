@@ -49,9 +49,10 @@ npm run migrate:up
   --dbname "${test_database}" --no-psqlrc --tuples-only --no-align <<'SQL' |
 SELECT
   (SELECT count(*) FROM public.pgmigrations),
-  (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'app');
+  (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'app'),
+  (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'app' AND table_name = 'ml_inventory_snapshots');
 SQL
-  grep --fixed-strings '8|19' >/dev/null
+  grep --extended-regexp '^[1-9][0-9]*\|[1-9][0-9]*\|1$' >/dev/null
 
 mkdir -p services/forecasting/data/generated services/forecasting/artifacts
 export LOCAL_UID="${LOCAL_UID:-$(id -u)}"

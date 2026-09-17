@@ -66,6 +66,7 @@ export class PostgresMlInventorySnapshotStore implements CensusStore {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
+      await client.query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
       await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`ML_SNAPSHOT|${institutionId}|${scheduledFor.toISOString()}`]);
       const pending = await client.query<{ count: number }>("SELECT COUNT(*)::int AS count FROM app.v2_commands WHERE actor_institution_id=$1 AND status IN ('QUEUED','SUBMITTING','LEDGER_COMMITTED_PROJECTION_PENDING','RETRY_WAIT')", [institutionId]);
       if (Number(pending.rows[0]?.count ?? 0) > 0) throw new Error("ML_SNAPSHOT_PROJECTION_PENDING");

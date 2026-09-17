@@ -16,12 +16,12 @@ from .constants import EVALUATION_CLASSIFICATION, RECOMMENDATION_ELIGIBILITY
 from .errors import ForecastingError
 from .runtime_v4 import (
     V4_BUNDLE_SCHEMA,
+    V4_CODE_SHA256,
     V4_CONFIGURATION,
     V4_CONFIGURATION_SHA256,
-    V4_CODE_SHA256,
     V4_DATASET_VERSION,
-    V4_MODEL_VERSION,
     V4_MODEL_SHA256,
+    V4_MODEL_VERSION,
     payload_sha256,
 )
 
@@ -336,7 +336,9 @@ def persist_v4_runtime_bundle(connection: Connection[Any], bundle: dict[str, Any
         raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 run status is invalid")
     if run.get("originDate") != run.get("inputEndDate"):
         raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 origin date is invalid")
-    if not isinstance(run.get("institutionId"), str) or not run["institutionId"].startswith("INST_"):
+    if not isinstance(run.get("institutionId"), str) or not run["institutionId"].startswith(
+        "INST_"
+    ):
         raise ForecastingError("FORECAST_BUNDLE_INVALID", "V4 institution identity is invalid")
     completed = run.get("runStatus") == "COMPLETED"
     if completed and len(forecasts) != 20:
@@ -402,13 +404,15 @@ def persist_v4_runtime_bundle(connection: Connection[Any], bundle: dict[str, Any
             inserted = connection.execute(
                 """
                 INSERT INTO app.forecast_runs (
-                  run_id, institution_id, run_key, payload_sha256, dataset_version, generator_version,
+                  run_id, institution_id, run_key, payload_sha256, dataset_version,
+                  generator_version,
                   dataset_sha256, code_sha256, config_sha256, model_artifact_sha256,
                   model_version, model_name, target_name, input_start_date,
                   input_end_date, horizon_date, generated_at, classification,
                   run_status, safe_error_code, lineage, selection_evidence
                 ) VALUES (
-                  %(run_id)s, %(institution_id)s, %(run_key)s, %(payload_sha256)s, %(dataset_version)s,
+                  %(run_id)s, %(institution_id)s, %(run_key)s, %(payload_sha256)s,
+                  %(dataset_version)s,
                   %(generator_version)s, %(dataset_sha256)s, %(code_sha256)s,
                   %(config_sha256)s, %(model_artifact_sha256)s, %(model_version)s,
                   %(model_name)s, %(target)s, %(input_start_date)s, %(input_end_date)s,

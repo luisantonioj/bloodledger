@@ -13,6 +13,7 @@ import math
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -76,6 +77,7 @@ def _sha256(value: object) -> str:
 V4_CODE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 V4_CONFIGURATION_SHA256 = _sha256(V4_CONFIGURATION)
 V4_MODEL_SHA256 = _sha256(V4_MODEL_DEFINITION)
+MANILA_ZONE = ZoneInfo("Asia/Manila")
 
 
 def _iso_date(value: object) -> str:
@@ -141,6 +143,7 @@ def _unavailable_bundle(
     generated_at: str,
     reason: str,
     dataset_sha256: str,
+    institution_id: str,
 ) -> dict[str, Any]:
     dates = [_iso_date(value) for value in data["business_date"].tolist()] if not data.empty else []
     input_start = min(dates) if dates else generated_at[:10]
@@ -157,7 +160,7 @@ def _unavailable_bundle(
     run_identity = _sha256(
         {
             "dataset": V4_DATASET_VERSION,
-            "institution": "INST_MEDIATRIX",
+            "institution": institution_id,
             "input": input_hash,
             "model": V4_MODEL_VERSION,
             "configuration": V4_CONFIGURATION_SHA256,
@@ -168,7 +171,7 @@ def _unavailable_bundle(
     run = {
         "runId": f"RUN_{run_identity[:32].upper()}",
         "runKey": f"RUNKEY_{run_identity[:32].upper()}",
-        "institutionId": "INST_MEDIATRIX",
+        "institutionId": institution_id,
         "datasetVersion": V4_DATASET_VERSION,
         "modelVersion": V4_MODEL_VERSION,
         "modelName": V4_MODEL_NAME,
@@ -276,6 +279,7 @@ def create_v4_runtime_bundle(
                 generated_at=generated_at,
                 reason=error.code,
                 dataset_sha256=dataset_sha256,
+                institution_id=institution_id,
             )
         raise
     dates = sorted(normalized["business_date"].unique())
@@ -285,6 +289,7 @@ def create_v4_runtime_bundle(
             generated_at=generated_at,
             reason="V4_HISTORY_UNAVAILABLE",
             dataset_sha256=dataset_sha256,
+            institution_id=institution_id,
         )
     prior_dates = dates[-7:]
     if any(
@@ -296,13 +301,15 @@ def create_v4_runtime_bundle(
             generated_at=generated_at,
             reason="V4_HISTORY_UNAVAILABLE",
             dataset_sha256=dataset_sha256,
+            institution_id=institution_id,
         )
-    if prior_dates[-1] >= generated.date():
+    if prior_dates[-1] >= generated.astimezone(MANILA_ZONE).date():
         return _unavailable_bundle(
             data=normalized,
             generated_at=generated_at,
             reason="V4_HISTORY_FUTURE_OBSERVATION",
             dataset_sha256=dataset_sha256,
+            institution_id=institution_id,
         )
     expected = {(value, component) for value in V4_BLOOD_TYPES for component in V4_COMPONENTS}
     actual = {
@@ -316,6 +323,7 @@ def create_v4_runtime_bundle(
             generated_at=generated_at,
             reason="V4_HISTORY_UNAVAILABLE",
             dataset_sha256=dataset_sha256,
+            institution_id=institution_id,
         )
 
     input_start = prior_dates[0].isoformat()
@@ -329,9 +337,13 @@ def create_v4_runtime_bundle(
         try:
             requested_horizon = date.fromisoformat(horizon_date)
         except ValueError as error:
-            raise ForecastingError("V4_HORIZON_INVALID", "horizon_date must be YYYY-MM-DD") from error
+            raise ForecastingError(
+                "V4_HORIZON_INVALID", "horizon_date must be YYYY-MM-DD"
+            ) from error
         if requested_horizon.isoformat() != horizon:
-            raise ForecastingError("V4_HORIZON_INVALID", "V4 supports exactly one day after origin_date")
+            raise ForecastingError(
+                "V4_HORIZON_INVALID", "V4 supports exactly one day after origin_date"
+            )
     records: list[dict[str, Any]] = []
     for blood_type, component in V4_SERIES:
         series = normalized[

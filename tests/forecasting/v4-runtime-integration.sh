@@ -37,10 +37,26 @@ done
 node_run=(docker run --rm --network "container:$probe_container" --env-file "$probe_root/env" \
   --user "$(id -u):$(id -g)" -v "$root:/workspace" -w /workspace node:24.17.0-bookworm-slim)
 "${node_run[@]}" npm run migrate:up
+upgrade_database="bloodledger_v4_upgrade"
+docker exec "$probe_container" psql -U postgres -d postgres -c "CREATE DATABASE $upgrade_database OWNER bloodledger_migrator" >/dev/null
+upgrade_node_run=(docker run --rm --network "container:$probe_container" --env-file "$probe_root/env" \
+  --env "POSTGRES_DB=$upgrade_database" --env BLOODLEDGER_MIGRATION_COUNT=10 \
+  --user "$(id -u):$(id -g)" -v "$root:/workspace" -w /workspace node:24.17.0-bookworm-slim)
+"${upgrade_node_run[@]}" npm run migrate:up
+upgrade_full_run=(docker run --rm --network "container:$probe_container" --env-file "$probe_root/env" \
+  --env "POSTGRES_DB=$upgrade_database" --user "$(id -u):$(id -g)" \
+  -v "$root:/workspace" -w /workspace node:24.17.0-bookworm-slim)
+"${upgrade_full_run[@]}" npm run migrate:up
+docker exec "$probe_container" psql -U postgres -d "$upgrade_database" -Atc \
+  "SELECT count(*) FROM public.pgmigrations" | grep --fixed-strings '20' >/dev/null
 "${node_run[@]}" npm run build --workspace @bloodledger/api
+"${node_run[@]}" npm run build --workspace @bloodledger/coordination
+docker exec --interactive "$probe_container" psql -U postgres -d bloodledger_dev < "$root/tests/forecasting/v4-verification-fixture.sql"
+forecast_image="$probe_container-forecasting"
+docker build --tag "$forecast_image" "$root/services/forecasting" >/dev/null
 forecast_run=(docker run --rm --network "container:$probe_container" --env-file "$probe_root/env" \
   --user "$(id -u):$(id -g)" -v "$root/services/forecasting:/research:ro" \
-  -v "$probe_root:/outputs" -w /research -e PYTHONPATH=src --entrypoint python bloodledger-forecasting)
+  -v "$probe_root:/outputs" -w /research -e PYTHONPATH=src --entrypoint python "$forecast_image")
 "${forecast_run[@]}" -m bloodledger_forecasting.cli generate-synthetic --output /outputs/data.csv >/dev/null
 "${forecast_run[@]}" -m bloodledger_forecasting.cli train --data /outputs/data.csv \
   --artifact /outputs/model.pkl --manifest /outputs/model.json --generated-at 2026-01-01T00:00:00Z
@@ -74,5 +90,5 @@ print('Runtime persistence: INSERTED then EXISTING')
 PY
 "${forecast_run[@]}" tests/postgres_conflict_probe.py /outputs/bundle.json
 "${node_run[@]}" npm run build --workspace @bloodledger/coordination
-"${node_run[@]}" node tests/forecasting/v4-api-probe.mjs
-"${node_run[@]}" node tests/forecasting/v4-coordination-probe.mjs
+"${node_run[@]}" node tests/forecasting/v4-independent-verification.mjs
+"${node_run[@]}" node tests/forecasting/v2-projection-integration.mjs

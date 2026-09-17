@@ -21,12 +21,14 @@ export interface PersistedSourceSurplusEvidenceV21 {
 }
 
 function sameEvidence(row: Record<string, unknown>, evidence: PersistedSourceSurplusEvidenceV21): boolean {
+  const rowAsOf = row.as_of instanceof Date ? row.as_of.toISOString() : new Date(String(row.as_of)).toISOString();
+  const rowHorizonDate = row.horizon_date instanceof Date ? row.horizon_date.toISOString().slice(0, 10) : String(row.horizon_date).slice(0, 10);
   return String(row.source_institution_id) === evidence.sourceInstitutionId &&
     String(row.blood_type) === evidence.bloodType &&
     String(row.component_type) === evidence.componentType &&
     Number(row.surplus_quantity) === evidence.surplusQuantity &&
-    new Date(String(row.as_of)).toISOString() === evidence.asOf &&
-    String(row.horizon_date).slice(0, 10) === evidence.horizonDate &&
+    rowAsOf === evidence.asOf &&
+    rowHorizonDate === evidence.horizonDate &&
     String(row.forecast_status) === evidence.forecastStatus &&
     String(row.dataset_version) === evidence.datasetVersion &&
     String(row.forecast_run_id) === evidence.forecastRunId &&

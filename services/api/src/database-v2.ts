@@ -71,8 +71,9 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [command.commandId]);
       const receipt = await client.query<Record<string, unknown>>(
-        "SELECT ledger_transaction_id,command_payload_sha256 FROM app.v2_projection_receipts WHERE command_id=$1 FOR UPDATE",
+        "SELECT ledger_transaction_id,command_payload_sha256 FROM app.v2_projection_receipts WHERE command_id=$1",
         [command.commandId],
       );
       if (receipt.rows[0]) {
@@ -125,7 +126,7 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
         if (purpose !== "TRANSFER" && purpose !== "LOCAL_RELEASE") throw new Error("V2_PROJECTION_INPUT_INVALID");
         const transferId = purpose === "TRANSFER" ? String(payload.transferId ?? command.resourceId) : null;
         const localReleaseId = purpose === "LOCAL_RELEASE" ? String(payload.localReleaseId ?? command.resourceId) : null;
-        await client.query("INSERT INTO app.v2_reservations(reservation_id,purpose,transfer_id,local_release_id,institution_id,status,correlation_id,version,classification,last_projection_command_id) VALUES($1,$2,$3,$4,$5,'RESERVED',$6,1,'SIMULATION_ONLY',$7) ON CONFLICT(reservation_id) DO NOTHING", [reservationId, purpose, transferId, localReleaseId, command.actorInstitutionId, command.correlationId, command.commandId]);
+        await client.query("INSERT INTO app.v2_reservations(reservation_id,purpose,transfer_id,local_release_id,institution_id,status,correlation_id,version,classification,last_projection_command_id) VALUES($1,$2,$3,$4,$5,'ACTIVE',$6,1,'SIMULATION_ONLY',$7) ON CONFLICT(reservation_id) DO NOTHING", [reservationId, purpose, transferId, localReleaseId, command.actorInstitutionId, command.correlationId, command.commandId]);
         const expectedVersions = Array.isArray(payload.expectedComponentVersions) ? payload.expectedComponentVersions : [];
         for (const [index, selectedId] of selected.entries()) {
           const expected = Number(expectedVersions[index]);
@@ -143,7 +144,7 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
         RECEIVE_RESERVATION: { status: "RECEIVED", expectedComponentStatus: "IN_TRANSIT", expectedReservationStatus: "IN_TRANSIT", reservationStatus: "RECEIVED", incrementComponentVersion: true },
         COMPLETE_LOCAL_RELEASE: { status: "RELEASED", clearReservation: true, expectedComponentStatus: "RESERVED", expectedReservationStatus: "ACTIVE", reservationStatus: "COMPLETED", incrementComponentVersion: true },
         CANCEL_RESERVATION: { status: "AVAILABLE", clearReservation: true, expectedComponentStatus: "RESERVED", expectedReservationStatus: "ACTIVE", reservationStatus: "CANCELLED", incrementComponentVersion: true },
-        COMPROMISE_RESERVATION: { status: "COMPROMISED", clearReservation: true, expectedComponentStatus: ["DISPATCHED", "IN_TRANSIT", "RECEIVED"], expectedReservationStatus: ["DISPATCHED", "IN_TRANSIT", "RECEIVED"], reservationStatus: "COMPROMISED", incrementComponentVersion: true },
+        COMPROMISE_RESERVATION: { status: "COMPROMISED", clearReservation: false, expectedComponentStatus: ["DISPATCHED", "IN_TRANSIT", "RECEIVED"], expectedReservationStatus: ["DISPATCHED", "IN_TRANSIT", "RECEIVED"], reservationStatus: "COMPROMISED", incrementComponentVersion: true },
         EVALUATE_COMPONENT_EXPIRY: { status: "EXPIRED", clearReservation: true, expectedComponentStatus: ["AVAILABLE", "RESERVED"], incrementComponentVersion: true },
         PLACE_RECONCILIATION_HOLD: { status: "RECONCILIATION_HOLD", expectedComponentStatus: ["AVAILABLE", "RESERVED"], incrementComponentVersion: true },
         RESOLVE_RECONCILIATION_HOLD: { status: "AVAILABLE", clearReservation: true, expectedComponentStatus: "RECONCILIATION_HOLD", incrementComponentVersion: true },

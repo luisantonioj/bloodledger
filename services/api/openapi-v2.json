@@ -52,9 +52,41 @@
       },
       "get": {
         "operationId": "listComponents",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
         "responses": {
           "200": {
             "$ref": "#/components/responses/Components"
+          }
+        }
+      }
+    },
+    "/components/{componentId}": {
+      "get": {
+        "operationId": "getComponent",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "name": "componentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^COMP_[A-Z0-9_-]{1,56}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A component in the authorized institution scope"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           }
         }
       }
@@ -63,6 +95,11 @@
       "post": {
         "operationId": "acceptInboundOcrCapture",
         "description": "Accept a confirmed OCR capture. The receiving custody institution is derived from the authenticated session; raw OCR text and images are not accepted.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
         "responses": {
           "202": {
             "$ref": "#/components/responses/Command"
@@ -89,6 +126,11 @@
     "/transfers": {
       "post": {
         "operationId": "submitTransfer",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
         "responses": {
           "202": {
             "$ref": "#/components/responses/Command"
@@ -110,6 +152,9 @@
       "post": {
         "operationId": "transitionTransfer",
         "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
           {
             "name": "transferId",
             "in": "path",
@@ -221,6 +266,11 @@
     "/reconciliation": {
       "post": {
         "operationId": "placeReconciliationHold",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
         "responses": {
           "202": {
             "$ref": "#/components/responses/Command"
@@ -231,6 +281,37 @@
     "/reservations/{reservationId}/{action}": {
       "post": {
         "operationId": "transitionReservation",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "name": "reservationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^RES_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "prepare",
+                "dispatch",
+                "transit",
+                "receive",
+                "cancel",
+                "compromise",
+                "local-release-complete"
+              ]
+            }
+          }
+        ],
         "responses": {
           "202": {
             "$ref": "#/components/responses/Command"
@@ -241,6 +322,20 @@
   },
   "components": {
     "parameters": {
+      "ContractVersion": {
+        "name": "x-bloodledger-contract-version",
+        "in": "header",
+        "required": false,
+        "description": "V2 by default. Set V2.1 to enable the additive CRYOPRECIPITATE contract; V2 behavior remains unchanged.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "V2",
+            "V2.1"
+          ],
+          "default": "V2"
+        }
+      },
       "CommandId": {
         "name": "commandId",
         "in": "path",
@@ -281,6 +376,17 @@
           "PACKED_RED_BLOOD_CELLS",
           "FRESH_FROZEN_PLASMA",
           "PLATELETS"
+        ]
+      },
+      "ComponentTypeV21": {
+        "type": "string",
+        "description": "The additive V2.1 component vocabulary. CRYOPRECIPITATE is rejected by V2.",
+        "enum": [
+          "WHOLE_BLOOD",
+          "PACKED_RED_BLOOD_CELLS",
+          "FRESH_FROZEN_PLASMA",
+          "PLATELETS",
+          "CRYOPRECIPITATE"
         ]
       },
       "ComponentRegistration": {
