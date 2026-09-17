@@ -59,16 +59,31 @@ type PendingCommandRow = { command_id: string; operation: string; actor_institut
 
 const INSTITUTION_ID = /^INST_[A-Z0-9_-]{1,59}$/;
 const PENDING_PROJECTION_STATUSES = ["QUEUED", "SUBMITTING", "LEDGER_COMMITTED_PROJECTION_PENDING", "RETRY_WAIT"] as const;
+const PROJECTION_OPERATIONS = new Set([
+  "REGISTER_COMPONENT", "REGISTER_INBOUND_COMPONENT", "RECEIVE_INBOUND_COMPONENT",
+  "RESERVE_COMPONENTS", "RESERVE_LOCAL_RELEASE", "PREPARE_RESERVATION",
+  "DISPATCH_RESERVATION", "START_RESERVATION_TRANSIT", "RECEIVE_RESERVATION",
+  "COMPLETE_LOCAL_RELEASE", "CANCEL_RESERVATION", "PLACE_RECONCILIATION_HOLD",
+  "RESOLVE_RECONCILIATION_HOLD", "EVALUATE_COMPONENT_EXPIRY", "COMPROMISE_RESERVATION",
+  "SUBMIT_TRANSFER",
+]);
 
 function payloadObject(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
 
 function addInstitution(value: unknown, affected: Set<string>): boolean {
-  if (value === undefined || value === null) return true;
+  if (value === undefined) return true;
   if (typeof value !== "string" || !INSTITUTION_ID.test(value)) return false;
   affected.add(value);
   return true;
+}
+
+function optionalReference(payload: Record<string, unknown>, key: string): string | undefined {
+  if (!(key in payload)) return undefined;
+  const value = payload[key];
+  if (typeof value !== "string" || value.length === 0) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
+  return value;
 }
 
 /**
@@ -78,40 +93,49 @@ function addInstitution(value: unknown, affected: Set<string>): boolean {
  */
 async function pendingCommandAffectsInstitution(client: PoolClient, row: PendingCommandRow, institutionId: string): Promise<boolean> {
   const payload = payloadObject(row.payload);
-  if (!payload || !INSTITUTION_ID.test(row.actor_institution_id)) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
+  if (!payload || !INSTITUTION_ID.test(row.actor_institution_id) || !PROJECTION_OPERATIONS.has(row.operation)) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
   const affected = new Set<string>([row.actor_institution_id]);
   for (const key of ["sourceInstitutionId", "destinationInstitutionId", "custodyInstitutionId", "institutionId"]) {
     if (!addInstitution(payload[key], affected)) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
   }
 
   const componentIds = new Set<string>();
-  if (typeof payload.componentId === "string") componentIds.add(payload.componentId);
+  const componentId = optionalReference(payload, "componentId");
+  if (componentId) componentIds.add(componentId);
   if (Array.isArray(payload.selectedComponentIds)) {
     for (const value of payload.selectedComponentIds) {
       if (typeof value !== "string") throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
       componentIds.add(value);
     }
-  } else if (payload.selectedComponentIds !== undefined && payload.selectedComponentIds !== null) {
+  } else if (payload.selectedComponentIds !== undefined) {
     throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
   }
   for (const componentId of componentIds) {
     const result = await client.query<{ institution_id: string }>("SELECT institution_id FROM app.v2_components WHERE component_id=$1", [componentId]);
-    if (!result.rows[0] || !addInstitution(result.rows[0].institution_id, affected)) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
+    if (!result.rows[0]) {
+      // Registration commands reference a component that has not projected yet;
+      // their explicit custody/source scope is the authoritative impact.
+      if (!["REGISTER_COMPONENT", "REGISTER_INBOUND_COMPONENT"].includes(row.operation) || !["custodyInstitutionId", "sourceInstitutionId", "institutionId"].some((key) => affected.has(String(payload[key])))) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
+      continue;
+    }
+    if (!addInstitution(result.rows[0].institution_id, affected)) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
   }
 
-  if (typeof payload.reservationId === "string") {
-    const reservation = await client.query<{ institution_id: string }>("SELECT institution_id FROM app.v2_reservations WHERE reservation_id=$1", [payload.reservationId]);
+  const reservationId = optionalReference(payload, "reservationId");
+  if (reservationId) {
+    const reservation = await client.query<{ institution_id: string }>("SELECT institution_id FROM app.v2_reservations WHERE reservation_id=$1", [reservationId]);
     if (reservation.rows[0]) {
       if (!addInstitution(reservation.rows[0].institution_id, affected)) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
-      const reservedComponents = await client.query<{ institution_id: string }>("SELECT DISTINCT institution_id FROM app.v2_components WHERE reservation_id=$1", [payload.reservationId]);
+      const reservedComponents = await client.query<{ institution_id: string }>("SELECT DISTINCT institution_id FROM app.v2_components WHERE reservation_id=$1", [reservationId]);
       for (const component of reservedComponents.rows) if (!addInstitution(component.institution_id, affected)) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
     } else if (!payload.sourceInstitutionId && componentIds.size === 0) {
       throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
     }
   }
 
-  if (typeof payload.transferId === "string") {
-    const transfer = await client.query<{ source_institution_id: string; destination_institution_id: string }>("SELECT source_institution_id,destination_institution_id FROM app.v2_transfer_requests WHERE transfer_id=$1", [payload.transferId]);
+  const transferId = optionalReference(payload, "transferId");
+  if (transferId) {
+    const transfer = await client.query<{ source_institution_id: string; destination_institution_id: string }>("SELECT source_institution_id,destination_institution_id FROM app.v2_transfer_requests WHERE transfer_id=$1", [transferId]);
     if (transfer.rows[0]) {
       if (!addInstitution(transfer.rows[0].source_institution_id, affected) || !addInstitution(transfer.rows[0].destination_institution_id, affected)) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
     } else if (!payload.sourceInstitutionId || !payload.destinationInstitutionId) {

@@ -110,6 +110,29 @@ try {
   assert.equal(destinationSnapshot.institutionId, "INST_METRO_LIPA");
   assert.equal(await snapshotStore.get(destinationSnapshot.snapshotId, institutionId), null);
 
+  await pool.query(
+    `INSERT INTO app.v2_commands(
+      command_id,idempotency_key,payload_sha256,resource_type,resource_id,operation,payload,status,
+      attempt_count,next_attempt_at,correlation_id,actor_user_id,actor_institution_id,accepted_at,updated_at,version,classification
+    ) VALUES($1,$2,$3,'TRANSFER',$4,'SUBMIT_TRANSFER',$5,'QUEUED',0,$6,$7,$8,$9,$6,$6,1,'SIMULATION_ONLY')`,
+    [
+      "CMD_SNAPSHOT_SCOPE_002",
+      "IDEM_SNAPSHOT_SCOPE_002",
+      "b".repeat(64),
+      "TRF_SNAPSHOT_SCOPE_002",
+      { sourceInstitutionId: institutionId, destinationInstitutionId: null },
+      evaluationTime,
+      "CORR_0000000000000000000000000000000A",
+      "USR_SYNTH_VERIFY",
+      institutionId,
+    ],
+  );
+  await assert.rejects(
+    snapshotStore.capture(institutionId, new Date("2026-01-08T00:00:00.000Z"), "MANUAL", new Date(evaluationTime)),
+    /ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED/,
+  );
+  await pool.query("UPDATE app.v2_commands SET status='FAILED',safe_error_code='TEST_COMPLETE',updated_at=$2 WHERE command_id=$1", ["CMD_SNAPSHOT_SCOPE_002", evaluationTime]);
+
   const forecastEvidence = {
     bloodType: forecast.bloodType,
     componentType: forecast.component,
