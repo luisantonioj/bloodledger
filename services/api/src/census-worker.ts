@@ -8,6 +8,16 @@ export interface CensusStore {
   copyRow(snapshotId: string, componentType: V2ComponentType, institutionId?: string): Promise<string | null>;
 }
 
+export const INTERNAL_ML_SNAPSHOT_POLICY_VERSION = "INTERVIEW_ML_INVENTORY_SNAPSHOT_V1";
+export const INTERNAL_ML_SNAPSHOT_SCHEMA_VERSION = "BLOODLEDGER_ML_INVENTORY_SNAPSHOT_V1";
+
+export interface MlInventorySnapshot extends CensusSnapshot {
+  institutionId: string;
+  snapshotKind: "INTERNAL_ML";
+  schemaVersion: typeof INTERNAL_ML_SNAPSHOT_SCHEMA_VERSION;
+  projectionWatermark: number;
+}
+
 function snapshotId(institutionId: string, scheduledFor: Date, policyVersion: string): string { return `CENSUS_${createHash("sha256").update(`${institutionId}|${scheduledFor.toISOString()}|${policyVersion}`, "utf8").digest("hex").toUpperCase().slice(0, 40)}`; }
 
 export class PostgresCensusStore implements CensusStore {
@@ -19,13 +29,17 @@ export class PostgresCensusStore implements CensusStore {
     try {
       await client.query("BEGIN");
       await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`CENSUS|${institutionId}|${scheduledFor.toISOString()}|${this.reportPolicyVersion}`]);
-      const inserted = await client.query(`INSERT INTO app.v2_census_snapshots(snapshot_id,institution_id,scheduled_for,captured_at,timezone,report_policy_version,trigger_type,classification) VALUES($1,$2,$3,$4,'Asia/Manila',$5,$6,'SIMULATION_ONLY') ON CONFLICT(institution_id,scheduled_for,report_policy_version) DO NOTHING RETURNING snapshot_id`, [id, institutionId, scheduledFor.toISOString(), now.toISOString(), this.reportPolicyVersion, triggerType]);
-      if (inserted.rowCount === 0) { await client.query("COMMIT"); return (await this.get(id, institutionId)) as CensusSnapshot; }
       const rows = await client.query<Record<string, unknown>>(`SELECT component_type,blood_type,inventory_status,COUNT(*)::int AS count,COUNT(*) FILTER (WHERE expires_at > $2)::int AS forecast_eligible_count FROM app.v2_components WHERE institution_id=$1 AND inventory_status IN ('AVAILABLE','RESERVED') GROUP BY component_type,blood_type,inventory_status`, [institutionId, now.toISOString()]);
       const useV21 = this.reportPolicyVersion.endsWith("V2_1");
       const snapshot = buildCensusSnapshot({ snapshotId: id, scheduledFor: scheduledFor.toISOString(), capturedAt: now.toISOString(), reportPolicyVersion: this.reportPolicyVersion, componentTypes: useV21 ? V2_1_COMPONENT_TYPES : V2_COMPONENT_TYPES, bloodTypeOrder: this.bloodTypeOrder, rows: rows.rows.map((row) => ({ componentType: String(row.component_type) as CensusInventoryRow["componentType"], bloodType: String(row.blood_type) as CensusInventoryRow["bloodType"], inventoryStatus: String(row.inventory_status), count: Number(row.count), forecastEligibleCount: Number(row.forecast_eligible_count) })) });
+      const inserted = await client.query(`INSERT INTO app.v2_census_snapshots(snapshot_id,institution_id,scheduled_for,captured_at,timezone,report_policy_version,trigger_type,classification,source_projection_digest) VALUES($1,$2,$3,$4,'Asia/Manila',$5,$6,'SIMULATION_ONLY',$7) ON CONFLICT(institution_id,scheduled_for,report_policy_version) DO NOTHING RETURNING snapshot_id`, [id, institutionId, scheduledFor.toISOString(), now.toISOString(), this.reportPolicyVersion, triggerType, snapshot.sourceProjectionDigest]);
+      if (inserted.rowCount === 0) {
+        const existing = await client.query<Record<string, unknown>>("SELECT source_projection_digest FROM app.v2_census_snapshots WHERE snapshot_id=$1 AND institution_id=$2", [id, institutionId]);
+        if (!existing.rows[0] || String(existing.rows[0].source_projection_digest) !== snapshot.sourceProjectionDigest) throw new Error("CENSUS_SNAPSHOT_CONFLICT");
+        await client.query("COMMIT");
+        return (await this.get(id, institutionId)) as CensusSnapshot;
+      }
       for (const group of snapshot.groups) for (const bloodType of group.bloodTypes) await client.query("INSERT INTO app.v2_census_counts(snapshot_id,component_type,blood_type,available_count,reserved_count,forecast_eligible_available_count) VALUES($1,$2,$3,$4,$5,$6)", [id, group.componentType, bloodType.bloodType, bloodType.availableCount, bloodType.reservedCount, bloodType.forecastEligibleAvailableCount]);
-      await client.query("UPDATE app.v2_census_snapshots SET source_projection_digest=$2 WHERE snapshot_id=$1", [id, snapshot.sourceProjectionDigest]);
       await client.query("COMMIT"); return snapshot;
     } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
   }
@@ -38,6 +52,57 @@ export class PostgresCensusStore implements CensusStore {
     return buildCensusSnapshot({ snapshotId: String(row.snapshot_id), scheduledFor: new Date(String(row.scheduled_for)).toISOString(), capturedAt: new Date(String(row.captured_at)).toISOString(), reportPolicyVersion: String(row.report_policy_version), sourceProjectionDigest: row.source_projection_digest ? String(row.source_projection_digest) : undefined, componentTypes: String(row.report_policy_version).endsWith("V2_1") ? V2_1_COMPONENT_TYPES : V2_COMPONENT_TYPES, bloodTypeOrder: this.bloodTypeOrder, rows });
   }
   async copyRow(snapshotIdValue: string, componentType: V2ComponentType, institutionId?: string): Promise<string | null> { const snapshot = await this.get(snapshotIdValue, institutionId); return snapshot ? censusTsv(snapshot, componentType) : null; }
+}
+
+/** Internal ML evidence is deliberately separate from the DOH report policy. */
+export class PostgresMlInventorySnapshotStore implements CensusStore {
+  constructor(private readonly pool: Pool, private readonly bloodTypeOrder: readonly V2BloodType[] = [
+    "A_POSITIVE", "A_NEGATIVE", "B_POSITIVE", "B_NEGATIVE",
+    "AB_POSITIVE", "AB_NEGATIVE", "O_POSITIVE", "O_NEGATIVE",
+  ]) {}
+
+  async capture(institutionId: string, scheduledFor: Date, _triggerType: "SCHEDULED" | "MANUAL", now: Date): Promise<MlInventorySnapshot> {
+    const id = snapshotId(institutionId, scheduledFor, INTERNAL_ML_SNAPSHOT_POLICY_VERSION);
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`ML_SNAPSHOT|${institutionId}|${scheduledFor.toISOString()}`]);
+      const pending = await client.query<{ count: number }>("SELECT COUNT(*)::int AS count FROM app.v2_commands WHERE actor_institution_id=$1 AND status IN ('QUEUED','SUBMITTING','LEDGER_COMMITTED_PROJECTION_PENDING','RETRY_WAIT')", [institutionId]);
+      if (Number(pending.rows[0]?.count ?? 0) > 0) throw new Error("ML_SNAPSHOT_PROJECTION_PENDING");
+      const rows = await client.query<Record<string, unknown>>(`SELECT component_type,blood_type,inventory_status,COUNT(*)::int AS count,COUNT(*) FILTER (WHERE expires_at > $2)::int AS forecast_eligible_count,MAX(ledger_version)::bigint AS ledger_version FROM app.v2_components WHERE institution_id=$1 AND inventory_status IN ('AVAILABLE','RESERVED') GROUP BY component_type,blood_type,inventory_status`, [institutionId, now.toISOString()]);
+      const watermark = rows.rows.reduce((max, row) => Math.max(max, Number(row.ledger_version ?? 0)), 0);
+      const snapshot = buildCensusSnapshot({ snapshotId: id, scheduledFor: scheduledFor.toISOString(), capturedAt: now.toISOString(), reportPolicyVersion: INTERNAL_ML_SNAPSHOT_POLICY_VERSION, componentTypes: V2_1_COMPONENT_TYPES, bloodTypeOrder: this.bloodTypeOrder, rows: rows.rows.map((row) => ({ componentType: String(row.component_type) as CensusInventoryRow["componentType"], bloodType: String(row.blood_type) as CensusInventoryRow["bloodType"], inventoryStatus: String(row.inventory_status), count: Number(row.count), forecastEligibleCount: Number(row.forecast_eligible_count) })) });
+      const existing = await client.query<Record<string, unknown>>("SELECT source_projection_digest FROM app.ml_inventory_snapshots WHERE snapshot_id=$1 AND institution_id=$2", [id, institutionId]);
+      if (existing.rows[0]) {
+        if (String(existing.rows[0].source_projection_digest) !== snapshot.sourceProjectionDigest) throw new Error("ML_SNAPSHOT_CONFLICT");
+        await client.query("COMMIT");
+        return (await this.get(id, institutionId)) as MlInventorySnapshot;
+      }
+      await client.query("INSERT INTO app.ml_inventory_snapshots(snapshot_id,institution_id,scheduled_for,captured_at,timezone,snapshot_kind,policy_version,schema_version,projection_watermark,source_projection_digest,classification) VALUES($1,$2,$3,$4,'Asia/Manila','INTERNAL_ML',$5,$6,$7,$8,'SIMULATION_ONLY')", [id, institutionId, scheduledFor.toISOString(), now.toISOString(), INTERNAL_ML_SNAPSHOT_POLICY_VERSION, INTERNAL_ML_SNAPSHOT_SCHEMA_VERSION, watermark, snapshot.sourceProjectionDigest]);
+      for (const group of snapshot.groups) for (const bloodType of group.bloodTypes) await client.query("INSERT INTO app.ml_inventory_snapshot_counts(snapshot_id,component_type,blood_type,available_count,reserved_count,forecast_eligible_available_count,reportable_count) VALUES($1,$2,$3,$4,$5,$6,$7)", [id, group.componentType, bloodType.bloodType, bloodType.availableCount, bloodType.reservedCount, bloodType.forecastEligibleAvailableCount, bloodType.reportableCount]);
+      await client.query("COMMIT");
+      return { ...snapshot, institutionId, snapshotKind: "INTERNAL_ML", schemaVersion: INTERNAL_ML_SNAPSHOT_SCHEMA_VERSION, projectionWatermark: watermark };
+    } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
+  }
+
+  async get(snapshotIdValue: string, institutionId?: string): Promise<MlInventorySnapshot | null> {
+    const result = await this.pool.query<Record<string, unknown>>("SELECT snapshot_id,institution_id,scheduled_for,captured_at,policy_version,schema_version,projection_watermark,source_projection_digest FROM app.ml_inventory_snapshots WHERE snapshot_id=$1 AND ($2::text IS NULL OR institution_id=$2)", [snapshotIdValue, institutionId ?? null]);
+    const row = result.rows[0];
+    if (!row) return null;
+    const counts = await this.pool.query<Record<string, unknown>>("SELECT component_type,blood_type,available_count,reserved_count,forecast_eligible_available_count FROM app.ml_inventory_snapshot_counts WHERE snapshot_id=$1 ORDER BY component_type,blood_type", [snapshotIdValue]);
+    const rows: CensusInventoryRow[] = counts.rows.map((item) => ({ componentType: String(item.component_type) as CensusInventoryRow["componentType"], bloodType: String(item.blood_type) as CensusInventoryRow["bloodType"], inventoryStatus: "AVAILABLE", count: Number(item.available_count), forecastEligibleCount: Number(item.forecast_eligible_available_count) }));
+    for (const item of counts.rows) rows.push({ componentType: String(item.component_type) as CensusInventoryRow["componentType"], bloodType: String(item.blood_type) as CensusInventoryRow["bloodType"], inventoryStatus: "RESERVED", count: Number(item.reserved_count) });
+    const storedDigest = String(row.source_projection_digest);
+    const snapshotInput = { snapshotId: String(row.snapshot_id), scheduledFor: new Date(String(row.scheduled_for)).toISOString(), capturedAt: new Date(String(row.captured_at)).toISOString(), reportPolicyVersion: String(row.policy_version), componentTypes: V2_1_COMPONENT_TYPES, bloodTypeOrder: this.bloodTypeOrder, rows };
+    const recomputed = buildCensusSnapshot(snapshotInput);
+    if (recomputed.sourceProjectionDigest !== storedDigest) throw new Error("ML_SNAPSHOT_DIGEST_MISMATCH");
+    return { ...recomputed, sourceProjectionDigest: storedDigest, institutionId: String(row.institution_id), snapshotKind: "INTERNAL_ML", schemaVersion: String(row.schema_version) as typeof INTERNAL_ML_SNAPSHOT_SCHEMA_VERSION, projectionWatermark: Number(row.projection_watermark) };
+  }
+
+  async copyRow(snapshotIdValue: string, componentType: V2ComponentType, institutionId?: string): Promise<string | null> {
+    const snapshot = await this.get(snapshotIdValue, institutionId);
+    return snapshot ? censusTsv(snapshot, componentType) : null;
+  }
 }
 
 export class CensusWorker {
