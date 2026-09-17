@@ -119,7 +119,7 @@ The request and custody sequence is:
    `preparedEvidenceId`; `compromise` requires `reasonCode`; all actions
    require `expectedVersion`, `eventTime`, and `correlationId`.
 4. Roles are: prepare/dispatch/transit/local-release-complete
-   `ROLE-01` or `ROLE-02); receive `ROLE-03`; cancel any of
+   `ROLE-01` or `ROLE-02`; receive `ROLE-03`; cancel any of
    `ROLE-01`, `ROLE-02`, or `ROLE-03`; compromise any of those three
    roles.
 
