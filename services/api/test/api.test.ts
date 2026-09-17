@@ -189,6 +189,9 @@ test("FR-14 exposes forecast evidence as read-only CURRENT, STALE, or UNAVAILABL
   const invalidDate = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-02-30", headers });
   assert.equal(invalidDate.statusCode, 400);
   assert.equal(invalidDate.json().error.code, "INVALID_BUSINESS_DATE");
+  const unknownVersion = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-01-01&datasetVersion=UNKNOWN", headers });
+  assert.equal(unknownVersion.statusCode, 400);
+  assert.equal(unknownVersion.json().error.code, "UNKNOWN_FORECAST_DATASET_VERSION");
   repository.forecasts = [{
     runKey: "a".repeat(64), institutionId: "INST_MEDIATRIX", bloodType: "A_POSITIVE",
     component: "RED_BLOOD_CELLS", horizonDate: "2026-01-01", pointForecast: 4,

@@ -5,6 +5,7 @@ import type { ScanRepository } from "./repository.js";
 import type {
   AcceptedScan,
   CaptureInput,
+  ForecastRead,
   ForecastRecord,
   Principal,
   ScanEvent,
@@ -167,33 +168,37 @@ export class PostgresScanRepository implements ScanRepository {
     return result.rows[0] ? mapScan(result.rows[0]) : null;
   }
 
-  async listForecasts(institutionId: string, manilaDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1"): Promise<ForecastRecord[]> {
+  async readForecasts(institutionId: string, manilaDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1"): Promise<ForecastRead> {
     const result = await this.pool.query<Row>(`
-      SELECT fr.run_key, fr.dataset_version, fr.model_version, fr.input_end_date AS as_of_date, df.*,
-        to_char(df.horizon_date, 'YYYY-MM-DD') AS horizon_date,
-        to_char(df.stale_after, 'YYYY-MM-DD') AS stale_after,
-        to_char(fr.input_end_date, 'YYYY-MM-DD') AS as_of_date_text
-      FROM app.forecast_runs fr
-      JOIN app.demand_forecasts df ON df.run_id = fr.run_id
-      WHERE fr.run_status = 'COMPLETED'
-        AND fr.dataset_version = $2
-        AND df.institution_id = $1
-        AND fr.run_id = (
-          SELECT fr2.run_id
-          FROM app.forecast_runs fr2
-          JOIN app.demand_forecasts df2 ON df2.run_id = fr2.run_id
-          WHERE fr2.run_status = 'COMPLETED' AND fr2.dataset_version = $2 AND df2.institution_id = $1
-          ORDER BY (df2.horizon_date = $3::date) DESC, fr2.generated_at DESC
-          LIMIT 1
-        )
+      WITH latest AS (
+        SELECT fr.*
+        FROM app.forecast_runs fr
+        WHERE fr.institution_id = $1
+          AND fr.dataset_version = $2
+          AND fr.horizon_date <= $3::date
+        ORDER BY (fr.horizon_date = $3::date) DESC, fr.horizon_date DESC, fr.generated_at DESC, fr.run_id DESC
+        LIMIT 1
+      )
+      SELECT latest.run_key, latest.dataset_version, latest.model_version,
+        latest.input_end_date, latest.horizon_date AS run_horizon_date,
+        latest.generated_at AS run_generated_at, latest.run_status,
+        latest.safe_error_code, df.*,
+        to_char(df.horizon_date, 'YYYY-MM-DD') AS forecast_horizon_date,
+        to_char(df.stale_after, 'YYYY-MM-DD') AS stale_after_text,
+        to_char(latest.input_end_date, 'YYYY-MM-DD') AS as_of_date_text,
+        to_char(latest.horizon_date, 'YYYY-MM-DD') AS run_horizon_date_text
+      FROM latest
+      LEFT JOIN app.demand_forecasts df
+        ON df.run_id = latest.run_id AND df.institution_id = $1
       ORDER BY df.blood_type, df.component
     `, [institutionId, datasetVersion, manilaDate]);
-    return result.rows.map((row) => ({
+    const first = result.rows[0];
+    const forecasts = result.rows.filter((row) => row.forecast_id !== null && row.forecast_id !== undefined).map((row) => ({
       runKey: String(row.run_key),
       institutionId: String(row.institution_id),
       bloodType: String(row.blood_type) as ForecastRecord["bloodType"],
       component: String(row.component) as ForecastRecord["component"],
-      horizonDate: String(row.horizon_date).slice(0, 10),
+      horizonDate: String(row.forecast_horizon_date ?? row.horizon_date).slice(0, 10),
       asOfDate: String(row.as_of_date_text).slice(0, 10),
       pointForecast: Number(row.point_forecast),
       lowerForecast: row.lower_forecast === null ? null : Number(row.lower_forecast),
@@ -206,8 +211,25 @@ export class PostgresScanRepository implements ScanRepository {
       classification: "SIMULATION_ONLY",
       recommendationEligibility: "DISABLED_UNAPPROVED_POLICY",
       generatedAt: iso(row.generated_at),
-      stale: String(row.horizon_date) !== manilaDate || String(row.forecast_status) !== "AVAILABLE" || String(row.stale_after) < manilaDate,
+      stale: String(row.forecast_horizon_date ?? row.horizon_date) !== manilaDate || String(row.forecast_status) !== "AVAILABLE" || String(row.stale_after_text ?? row.stale_after) < manilaDate,
     }));
+    const runAvailable = first && String(first.run_status) === "COMPLETED" && forecasts.length > 0;
+    const stale = forecasts.some((item) => item.stale);
+    return {
+      businessDate: manilaDate,
+      status: !runAvailable ? "UNAVAILABLE" : stale ? "STALE" : "CURRENT",
+      datasetVersion: first ? String(first.dataset_version) : datasetVersion,
+      modelVersion: first ? String(first.model_version) : null,
+      asOfDate: first ? String(first.as_of_date_text).slice(0, 10) : null,
+      horizonDate: first ? String(first.run_horizon_date_text).slice(0, 10) : null,
+      forecastStatus: !runAvailable ? "UNAVAILABLE" : stale ? "STALE" : "AVAILABLE",
+      unavailableReason: first && String(first.run_status) !== "COMPLETED" ? nullableString(first.safe_error_code) : null,
+      forecasts,
+    };
+  }
+
+  async listForecasts(institutionId: string, manilaDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1"): Promise<ForecastRecord[]> {
+    return (await this.readForecasts(institutionId, manilaDate, datasetVersion)).forecasts;
   }
 
   async recoverExpiredLeases(now: Date): Promise<number> {

@@ -5,7 +5,7 @@ import fastifyJwt from "@fastify/jwt";
 import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify";
 import { ApiFailure } from "./errors.js";
 import { validateCaptureInput } from "./capture-policy.js";
-import type { ApiConfig } from "./config.js";
+import { FORECAST_DATASET_VERSIONS, type ApiConfig } from "./config.js";
 import type { ScanRepository } from "./repository.js";
 import type { Principal } from "./types.js";
 import { bindingDigest, deriveVerifier, randomBinding, randomSessionId, verifyPassword, type CredentialRecord, type SessionClaims, type SessionRepository, type WebPrincipal } from "./session.js";
@@ -557,15 +557,33 @@ export async function buildApp(
     };
   });
 
-  app.get<{ Querystring: { businessDate?: string } }>("/api/v1/demand-forecasts", { preHandler: authenticate }, async (request) => {
+  app.get<{ Querystring: { businessDate?: string; datasetVersion?: string } }>("/api/v1/demand-forecasts", { preHandler: authenticate }, async (request) => {
     const requestedDate = request.query.businessDate;
     if (typeof requestedDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate) || !validBusinessDate(requestedDate)) {
       throw new ApiFailure(400, "INVALID_BUSINESS_DATE", "businessDate must be YYYY-MM-DD.");
     }
+    const requestedDataset = request.query.datasetVersion ?? config.activeForecastDatasetVersion ?? "SYNTHETIC_FORECAST_V4_RUNTIME_V1";
+    if (!(FORECAST_DATASET_VERSIONS as readonly string[]).includes(requestedDataset)) {
+      throw new ApiFailure(400, "UNKNOWN_FORECAST_DATASET_VERSION", "datasetVersion is not supported.");
+    }
     const principal = principalFrom(request, config.operatorId);
-    const forecasts = await repository.listForecasts(principal.institutionId, requestedDate, config.activeForecastDatasetVersion);
+    if (repository.readForecasts) {
+      return repository.readForecasts(principal.institutionId, requestedDate, requestedDataset);
+    }
+    const forecasts = await repository.listForecasts(principal.institutionId, requestedDate, requestedDataset);
     const status = forecasts.length === 0 ? "UNAVAILABLE" : forecasts.some((item) => item.stale) ? "STALE" : "CURRENT";
-    return { businessDate: requestedDate, status, forecasts };
+    const first = forecasts[0];
+    return {
+      businessDate: requestedDate,
+      status,
+      datasetVersion: first?.datasetVersion ?? requestedDataset,
+      modelVersion: first?.modelVersion ?? null,
+      asOfDate: first?.asOfDate ?? null,
+      horizonDate: first?.horizonDate ?? null,
+      forecastStatus: first?.forecastStatus ?? "UNAVAILABLE",
+      unavailableReason: null,
+      forecasts,
+    };
   });
 
   app.get("/healthz", async (_request, reply) => {

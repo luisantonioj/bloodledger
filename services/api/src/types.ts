@@ -98,6 +98,18 @@ export interface ForecastRecord {
   stale: boolean;
 }
 
+export interface ForecastRead {
+  businessDate: string;
+  status: "CURRENT" | "STALE" | "UNAVAILABLE";
+  datasetVersion: string;
+  modelVersion: string | null;
+  asOfDate: string | null;
+  horizonDate: string | null;
+  forecastStatus: "AVAILABLE" | "STALE" | "UNAVAILABLE";
+  unavailableReason: string | null;
+  forecasts: ForecastRecord[];
+}
+
 export interface AcceptedScan {
   event: ScanEvent;
   replayed: boolean;
