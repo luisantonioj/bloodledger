@@ -69,6 +69,47 @@ try {
   const persistedSnapshot = await snapshotStore.get(snapshot.snapshotId, institutionId);
   assert.equal(persistedSnapshot.sourceProjectionDigest, snapshot.sourceProjectionDigest);
 
+  // A queued transfer can change both source and destination stock. Snapshot
+  // capture must fail closed for either institution until projection commits.
+  const pendingPayload = {
+    transferId: "TRF_SNAPSHOT_SCOPE_001",
+    sourceInstitutionId: institutionId,
+    destinationInstitutionId: "INST_METRO_LIPA",
+    componentType: "CRYOPRECIPITATE",
+    bloodType: "A_POSITIVE",
+    quantity: 1,
+  };
+  await pool.query(
+    `INSERT INTO app.v2_commands(
+      command_id,idempotency_key,payload_sha256,resource_type,resource_id,operation,payload,status,
+      attempt_count,next_attempt_at,correlation_id,actor_user_id,actor_institution_id,accepted_at,updated_at,version,classification
+    ) VALUES($1,$2,$3,'TRANSFER',$4,'RESERVE_COMPONENTS',$5,'QUEUED',0,$6,$7,$8,$9,$6,$6,1,'SIMULATION_ONLY')
+    ON CONFLICT(command_id) DO UPDATE SET status='QUEUED',payload=EXCLUDED.payload,next_attempt_at=EXCLUDED.next_attempt_at,updated_at=EXCLUDED.updated_at`,
+    [
+      "CMD_SNAPSHOT_SCOPE_001",
+      "IDEM_SNAPSHOT_SCOPE_001",
+      "a".repeat(64),
+      pendingPayload.transferId,
+      pendingPayload,
+      evaluationTime,
+      "CORR_00000000000000000000000000000009",
+      "USR_SYNTH_VERIFY",
+      institutionId,
+    ],
+  );
+  await assert.rejects(
+    snapshotStore.capture("INST_METRO_LIPA", new Date("2026-01-07T00:00:00.000Z"), "MANUAL", new Date(evaluationTime)),
+    /ML_SNAPSHOT_PROJECTION_PENDING/,
+  );
+  await assert.rejects(
+    snapshotStore.capture(institutionId, new Date("2026-01-07T00:00:00.000Z"), "MANUAL", new Date(evaluationTime)),
+    /ML_SNAPSHOT_PROJECTION_PENDING/,
+  );
+  await pool.query("UPDATE app.v2_commands SET status='FAILED',safe_error_code='TEST_COMPLETE',updated_at=$2 WHERE command_id=$1", ["CMD_SNAPSHOT_SCOPE_001", evaluationTime]);
+  const destinationSnapshot = await snapshotStore.capture("INST_METRO_LIPA", new Date("2026-01-07T00:00:00.000Z"), "MANUAL", new Date(evaluationTime));
+  assert.equal(destinationSnapshot.institutionId, "INST_METRO_LIPA");
+  assert.equal(await snapshotStore.get(destinationSnapshot.snapshotId, institutionId), null);
+
   const forecastEvidence = {
     bloodType: forecast.bloodType,
     componentType: forecast.component,

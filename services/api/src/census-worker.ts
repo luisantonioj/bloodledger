@@ -1,4 +1,4 @@
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { createHash } from "node:crypto";
 import { V2_1_COMPONENT_TYPES, V2_COMPONENT_TYPES, buildCensusSnapshot, censusTsv, type CensusInventoryRow, type CensusSnapshot, type V2BloodType, type V2ComponentType } from "./census.js";
 
@@ -55,7 +55,73 @@ export class PostgresCensusStore implements CensusStore {
 }
 
 /** Internal ML evidence is deliberately separate from the DOH report policy. */
-export class PostgresMlInventorySnapshotStore implements CensusStore {
+type PendingCommandRow = { command_id: string; operation: string; actor_institution_id: string; payload: unknown };
+
+const INSTITUTION_ID = /^INST_[A-Z0-9_-]{1,59}$/;
+const PENDING_PROJECTION_STATUSES = ["QUEUED", "SUBMITTING", "LEDGER_COMMITTED_PROJECTION_PENDING", "RETRY_WAIT"] as const;
+
+function payloadObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function addInstitution(value: unknown, affected: Set<string>): boolean {
+  if (value === undefined || value === null) return true;
+  if (typeof value !== "string" || !INSTITUTION_ID.test(value)) return false;
+  affected.add(value);
+  return true;
+}
+
+/**
+ * Return all institutions a pending command can change. The actor is always
+ * included, while source/destination and persisted custody records widen the
+ * scope for cross-institution commands. Unknown references fail closed.
+ */
+async function pendingCommandAffectsInstitution(client: PoolClient, row: PendingCommandRow, institutionId: string): Promise<boolean> {
+  const payload = payloadObject(row.payload);
+  if (!payload || !INSTITUTION_ID.test(row.actor_institution_id)) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
+  const affected = new Set<string>([row.actor_institution_id]);
+  for (const key of ["sourceInstitutionId", "destinationInstitutionId", "custodyInstitutionId", "institutionId"]) {
+    if (!addInstitution(payload[key], affected)) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
+  }
+
+  const componentIds = new Set<string>();
+  if (typeof payload.componentId === "string") componentIds.add(payload.componentId);
+  if (Array.isArray(payload.selectedComponentIds)) {
+    for (const value of payload.selectedComponentIds) {
+      if (typeof value !== "string") throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
+      componentIds.add(value);
+    }
+  } else if (payload.selectedComponentIds !== undefined && payload.selectedComponentIds !== null) {
+    throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
+  }
+  for (const componentId of componentIds) {
+    const result = await client.query<{ institution_id: string }>("SELECT institution_id FROM app.v2_components WHERE component_id=$1", [componentId]);
+    if (!result.rows[0] || !addInstitution(result.rows[0].institution_id, affected)) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
+  }
+
+  if (typeof payload.reservationId === "string") {
+    const reservation = await client.query<{ institution_id: string }>("SELECT institution_id FROM app.v2_reservations WHERE reservation_id=$1", [payload.reservationId]);
+    if (reservation.rows[0]) {
+      if (!addInstitution(reservation.rows[0].institution_id, affected)) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
+      const reservedComponents = await client.query<{ institution_id: string }>("SELECT DISTINCT institution_id FROM app.v2_components WHERE reservation_id=$1", [payload.reservationId]);
+      for (const component of reservedComponents.rows) if (!addInstitution(component.institution_id, affected)) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
+    } else if (!payload.sourceInstitutionId && componentIds.size === 0) {
+      throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
+    }
+  }
+
+  if (typeof payload.transferId === "string") {
+    const transfer = await client.query<{ source_institution_id: string; destination_institution_id: string }>("SELECT source_institution_id,destination_institution_id FROM app.v2_transfer_requests WHERE transfer_id=$1", [payload.transferId]);
+    if (transfer.rows[0]) {
+      if (!addInstitution(transfer.rows[0].source_institution_id, affected) || !addInstitution(transfer.rows[0].destination_institution_id, affected)) throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
+    } else if (!payload.sourceInstitutionId || !payload.destinationInstitutionId) {
+      throw new Error("ML_SNAPSHOT_PROJECTION_SCOPE_UNRESOLVED");
+    }
+  }
+  return affected.has(institutionId);
+}
+
+export class PostgresMlInventorySnapshotStore {
   constructor(private readonly pool: Pool, private readonly bloodTypeOrder: readonly V2BloodType[] = [
     "A_POSITIVE", "A_NEGATIVE", "B_POSITIVE", "B_NEGATIVE",
     "AB_POSITIVE", "AB_NEGATIVE", "O_POSITIVE", "O_NEGATIVE",
@@ -68,8 +134,10 @@ export class PostgresMlInventorySnapshotStore implements CensusStore {
       await client.query("BEGIN");
       await client.query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
       await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`ML_SNAPSHOT|${institutionId}|${scheduledFor.toISOString()}`]);
-      const pending = await client.query<{ count: number }>("SELECT COUNT(*)::int AS count FROM app.v2_commands WHERE actor_institution_id=$1 AND status IN ('QUEUED','SUBMITTING','LEDGER_COMMITTED_PROJECTION_PENDING','RETRY_WAIT')", [institutionId]);
-      if (Number(pending.rows[0]?.count ?? 0) > 0) throw new Error("ML_SNAPSHOT_PROJECTION_PENDING");
+      const pending = await client.query<PendingCommandRow>("SELECT command_id,operation,actor_institution_id,payload FROM app.v2_commands WHERE status = ANY($1::text[])", [PENDING_PROJECTION_STATUSES]);
+      for (const command of pending.rows) {
+        if (await pendingCommandAffectsInstitution(client, command, institutionId)) throw new Error("ML_SNAPSHOT_PROJECTION_PENDING");
+      }
       const rows = await client.query<Record<string, unknown>>(`SELECT component_type,blood_type,inventory_status,COUNT(*)::int AS count,COUNT(*) FILTER (WHERE expires_at > $2)::int AS forecast_eligible_count,MAX(ledger_version)::bigint AS ledger_version FROM app.v2_components WHERE institution_id=$1 AND inventory_status IN ('AVAILABLE','RESERVED') GROUP BY component_type,blood_type,inventory_status`, [institutionId, now.toISOString()]);
       const watermark = rows.rows.reduce((max, row) => Math.max(max, Number(row.ledger_version ?? 0)), 0);
       const snapshot = buildCensusSnapshot({ snapshotId: id, scheduledFor: scheduledFor.toISOString(), capturedAt: now.toISOString(), reportPolicyVersion: INTERNAL_ML_SNAPSHOT_POLICY_VERSION, componentTypes: V2_1_COMPONENT_TYPES, bloodTypeOrder: this.bloodTypeOrder, rows: rows.rows.map((row) => ({ componentType: String(row.component_type) as CensusInventoryRow["componentType"], bloodType: String(row.blood_type) as CensusInventoryRow["bloodType"], inventoryStatus: String(row.inventory_status), count: Number(row.count), forecastEligibleCount: Number(row.forecast_eligible_count) })) });
@@ -86,8 +154,9 @@ export class PostgresMlInventorySnapshotStore implements CensusStore {
     } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
   }
 
-  async get(snapshotIdValue: string, institutionId?: string): Promise<MlInventorySnapshot | null> {
-    const result = await this.pool.query<Record<string, unknown>>("SELECT snapshot_id,institution_id,scheduled_for,captured_at,policy_version,schema_version,projection_watermark,source_projection_digest FROM app.ml_inventory_snapshots WHERE snapshot_id=$1 AND ($2::text IS NULL OR institution_id=$2)", [snapshotIdValue, institutionId ?? null]);
+  async get(snapshotIdValue: string, institutionId: string): Promise<MlInventorySnapshot | null> {
+    if (!INSTITUTION_ID.test(institutionId)) throw new Error("ML_SNAPSHOT_INSTITUTION_INVALID");
+    const result = await this.pool.query<Record<string, unknown>>("SELECT snapshot_id,institution_id,scheduled_for,captured_at,policy_version,schema_version,projection_watermark,source_projection_digest FROM app.ml_inventory_snapshots WHERE snapshot_id=$1 AND institution_id=$2", [snapshotIdValue, institutionId]);
     const row = result.rows[0];
     if (!row) return null;
     const counts = await this.pool.query<Record<string, unknown>>("SELECT component_type,blood_type,available_count,reserved_count,forecast_eligible_available_count FROM app.ml_inventory_snapshot_counts WHERE snapshot_id=$1 ORDER BY component_type,blood_type", [snapshotIdValue]);
@@ -100,7 +169,7 @@ export class PostgresMlInventorySnapshotStore implements CensusStore {
     return { ...recomputed, sourceProjectionDigest: storedDigest, institutionId: String(row.institution_id), snapshotKind: "INTERNAL_ML", schemaVersion: String(row.schema_version) as typeof INTERNAL_ML_SNAPSHOT_SCHEMA_VERSION, projectionWatermark: Number(row.projection_watermark) };
   }
 
-  async copyRow(snapshotIdValue: string, componentType: V2ComponentType, institutionId?: string): Promise<string | null> {
+  async copyRow(snapshotIdValue: string, componentType: V2ComponentType, institutionId: string): Promise<string | null> {
     const snapshot = await this.get(snapshotIdValue, institutionId);
     return snapshot ? censusTsv(snapshot, componentType) : null;
   }
