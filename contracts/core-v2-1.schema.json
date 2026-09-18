@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bloodledger.local/contracts/core-v2-1.schema.json",
+  "title": "BloodLedger Interview Core V2.1",
+  "type": "object",
+  "required": ["componentType", "bloodType", "componentId", "donationId", "issuerInstitutionId", "expiresAt", "status"],
+  "properties": {
+    "componentId": { "type": "string", "pattern": "^COMP_[A-Z0-9_-]{1,56}$" },
+    "donationId": { "type": "string", "pattern": "^DON_[A-Z0-9_-]{1,56}$" },
+    "issuerInstitutionId": { "type": "string", "pattern": "^INST_[A-Z0-9_-]{1,59}$" },
+    "donationNumberDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "componentType": { "enum": ["WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_PLASMA", "PLATELETS", "CRYOPRECIPITATE"] },
+    "bloodType": { "enum": ["A_POSITIVE", "A_NEGATIVE", "B_POSITIVE", "B_NEGATIVE", "AB_POSITIVE", "AB_NEGATIVE", "O_POSITIVE", "O_NEGATIVE"] },
+    "collectedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "institutionId": { "type": "string", "pattern": "^INST_[A-Z0-9_-]{1,59}$" },
+    "status": { "enum": ["AVAILABLE", "RESERVED", "DISPATCHED", "IN_TRANSIT", "RECEIVED", "RELEASED", "COMPROMISED", "EXPIRED", "RECONCILIATION_HOLD"] },
+    "reservationPurpose": { "enum": ["TRANSFER", "LOCAL_RELEASE"] },
+    "reservationId": { "type": ["string", "null"], "pattern": "^RES_[A-Z0-9_-]{1,56}$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "policyVersion": { "const": "INTERVIEW_DERIVED_CORE_V2_1" },
+    "classification": { "const": "SIMULATION_ONLY" }
+  },
+  "additionalProperties": false
+}

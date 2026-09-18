@@ -158,6 +158,19 @@
               "type": "string",
               "format": "date"
             }
+          },
+          {
+            "name": "datasetVersion",
+            "in": "query",
+            "required": false,
+            "description": "Allowlisted historical dataset identity. Omission selects the active V4 runtime dataset.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SYNTHETIC_FORECAST_V1",
+                "SYNTHETIC_FORECAST_V4_RUNTIME_V1"
+              ]
+            }
           }
         ],
         "responses": {
@@ -1668,6 +1681,12 @@
         "required": [
           "businessDate",
           "status",
+          "datasetVersion",
+          "modelVersion",
+          "asOfDate",
+          "horizonDate",
+          "forecastStatus",
+          "unavailableReason",
           "forecasts"
         ],
         "properties": {
@@ -1683,12 +1702,179 @@
               "UNAVAILABLE"
             ]
           },
+          "datasetVersion": {
+            "type": "string",
+            "enum": [
+              "SYNTHETIC_FORECAST_V1",
+              "SYNTHETIC_FORECAST_V4_RUNTIME_V1"
+            ]
+          },
+          "modelVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "asOfDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "horizonDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "forecastStatus": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "STALE",
+              "UNAVAILABLE"
+            ]
+          },
+          "unavailableReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "forecasts": {
             "type": "array",
-            "maxItems": 4,
+            "maxItems": 20,
             "items": {
-              "type": "object"
+              "$ref": "#/components/schemas/ForecastItem"
             }
+          }
+        }
+      },
+      "ForecastItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "runKey",
+          "runId",
+          "institutionId",
+          "bloodType",
+          "component",
+          "horizonDate",
+          "asOfDate",
+          "pointForecast",
+          "lowerForecast",
+          "upperForecast",
+          "uncertaintyStatus",
+          "uncertaintyNote",
+          "datasetVersion",
+          "modelVersion",
+          "forecastStatus",
+          "classification",
+          "recommendationEligibility",
+          "generatedAt",
+          "stale"
+        ],
+        "properties": {
+          "runKey": {
+            "type": "string"
+          },
+          "runId": {
+            "type": "string",
+            "pattern": "^(RUN|FRUN)_[A-Z0-9_-]{1,56}$"
+          },
+          "institutionId": {
+            "type": "string",
+            "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+          },
+          "bloodType": {
+            "type": "string",
+            "enum": [
+              "A_POSITIVE",
+              "B_POSITIVE",
+              "AB_POSITIVE",
+              "O_POSITIVE"
+            ]
+          },
+          "component": {
+            "type": "string",
+            "enum": [
+              "RED_BLOOD_CELLS",
+              "PACKED_RED_BLOOD_CELLS",
+              "PLATELETS",
+              "FRESH_FROZEN_PLASMA",
+              "CRYOPRECIPITATE",
+              "WHOLE_BLOOD"
+            ]
+          },
+          "horizonDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "asOfDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "pointForecast": {
+            "type": "number",
+            "minimum": 0
+          },
+          "lowerForecast": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "upperForecast": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "uncertaintyStatus": {
+            "type": "string",
+            "enum": [
+              "CALIBRATED",
+              "UNCERTAINTY_UNAVAILABLE"
+            ]
+          },
+          "uncertaintyNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "datasetVersion": {
+            "type": "string"
+          },
+          "modelVersion": {
+            "type": "string"
+          },
+          "forecastStatus": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "STALE",
+              "UNAVAILABLE"
+            ]
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          },
+          "recommendationEligibility": {
+            "type": "string",
+            "const": "DISABLED_UNAPPROVED_POLICY"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stale": {
+            "type": "boolean"
           }
         }
       },

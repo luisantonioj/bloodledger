@@ -11,6 +11,7 @@ export type V2BloodType = (typeof V2_BLOOD_TYPES)[number];
 export const V2_COMPONENT_TYPES = [
   "WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_PLASMA", "PLATELETS",
 ] as const;
+export const INTERVIEW_V2_1_COMPONENT_TYPES = [...V2_COMPONENT_TYPES, "CRYOPRECIPITATE"] as const;
 export type V2ComponentType = (typeof V2_COMPONENT_TYPES)[number];
 
 export const V2_INVENTORY_STATUSES = [
@@ -31,7 +32,6 @@ export interface V2ComponentView {
   componentId: string;
   donationId: string;
   issuerInstitutionId: string;
-  donationNumber?: string;
   donationNumberDigest: string;
   componentType: V2ComponentType;
   bloodType: V2BloodType;

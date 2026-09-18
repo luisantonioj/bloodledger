@@ -37,10 +37,26 @@ done
 node_run=(docker run --rm --network "container:$probe_container" --env-file "$probe_root/env" \
   --user "$(id -u):$(id -g)" -v "$root:/workspace" -w /workspace node:24.17.0-bookworm-slim)
 "${node_run[@]}" npm run migrate:up
+upgrade_database="bloodledger_v4_upgrade"
+docker exec "$probe_container" psql -U postgres -d postgres -c "CREATE DATABASE $upgrade_database OWNER bloodledger_migrator" >/dev/null
+upgrade_node_run=(docker run --rm --network "container:$probe_container" --env-file "$probe_root/env" \
+  --env "POSTGRES_DB=$upgrade_database" --env BLOODLEDGER_MIGRATION_COUNT=10 \
+  --user "$(id -u):$(id -g)" -v "$root:/workspace" -w /workspace node:24.17.0-bookworm-slim)
+"${upgrade_node_run[@]}" npm run migrate:up
+upgrade_full_run=(docker run --rm --network "container:$probe_container" --env-file "$probe_root/env" \
+  --env "POSTGRES_DB=$upgrade_database" --user "$(id -u):$(id -g)" \
+  -v "$root:/workspace" -w /workspace node:24.17.0-bookworm-slim)
+"${upgrade_full_run[@]}" npm run migrate:up
+docker exec "$probe_container" psql -U postgres -d "$upgrade_database" -Atc \
+  "SELECT count(*) FROM public.pgmigrations" | grep --fixed-strings '21' >/dev/null
 "${node_run[@]}" npm run build --workspace @bloodledger/api
+"${node_run[@]}" npm run build --workspace @bloodledger/coordination
+docker exec --interactive "$probe_container" psql -U postgres -d bloodledger_dev < "$root/tests/forecasting/v4-verification-fixture.sql"
+forecast_image="$probe_container-forecasting"
+docker build --tag "$forecast_image" "$root/services/forecasting" >/dev/null
 forecast_run=(docker run --rm --network "container:$probe_container" --env-file "$probe_root/env" \
   --user "$(id -u):$(id -g)" -v "$root/services/forecasting:/research:ro" \
-  -v "$probe_root:/outputs" -w /research -e PYTHONPATH=src --entrypoint python bloodledger-forecasting)
+  -v "$probe_root:/outputs" -w /research -e PYTHONPATH=src --entrypoint python "$forecast_image")
 "${forecast_run[@]}" -m bloodledger_forecasting.cli generate-synthetic --output /outputs/data.csv >/dev/null
 "${forecast_run[@]}" -m bloodledger_forecasting.cli train --data /outputs/data.csv \
   --artifact /outputs/model.pkl --manifest /outputs/model.json --generated-at 2026-01-01T00:00:00Z
@@ -49,12 +65,53 @@ for hour in 00 01; do
     --artifact /outputs/model.pkl --manifest /outputs/model.json --output /outputs/bundle.json \
     --generated-at "2026-01-01T${hour}:00:00Z" --persist > "$probe_root/persist-$hour.json"
 done
+python3 - "$probe_root/v4.csv" <<'PY'
+import csv, sys
+from datetime import date, timedelta
+blood_types = ('A_POSITIVE', 'B_POSITIVE', 'AB_POSITIVE', 'O_POSITIVE')
+components = ('PACKED_RED_BLOOD_CELLS', 'PLATELETS', 'FRESH_FROZEN_PLASMA', 'CRYOPRECIPITATE', 'WHOLE_BLOOD')
+with open(sys.argv[1], 'w', newline='') as stream:
+    writer = csv.DictWriter(stream, fieldnames=('business_date','blood_type','component','requested_units'))
+    writer.writeheader()
+    for offset in range(7):
+        for blood_index, blood_type in enumerate(blood_types):
+            for component_index, component in enumerate(components):
+                writer.writerow({'business_date': date(2026, 1, 1) + timedelta(days=offset), 'blood_type': blood_type, 'component': component, 'requested_units': offset + blood_index + component_index})
+PY
+"${forecast_run[@]}" -m bloodledger_forecasting.cli forecast-v4-runtime --data /outputs/v4.csv \
+  --output /outputs/v4-bundle.json --generated-at 2026-01-08T00:00:00Z --persist > "$probe_root/v4-persist.json"
 python3 - "$probe_root" <<'PY'
 import json, pathlib, sys
 p=pathlib.Path(sys.argv[1])
 assert json.loads((p/'persist-00.json').read_text())['persistence']=='INSERTED'
 assert json.loads((p/'persist-01.json').read_text())['persistence']=='EXISTING'
+assert json.loads((p/'v4-persist.json').read_text())['persistence']=='INSERTED'
 print('Runtime persistence: INSERTED then EXISTING')
 PY
 "${forecast_run[@]}" tests/postgres_conflict_probe.py /outputs/bundle.json
-"${node_run[@]}" node tests/forecasting/v4-api-probe.mjs
+"${node_run[@]}" npm run build --workspace @bloodledger/coordination
+"${node_run[@]}" node tests/forecasting/v4-independent-verification.mjs
+"${node_run[@]}" node tests/forecasting/v2-projection-integration.mjs
+
+# BUNO's Issue #9 producer corrections: persist real producer outputs end to end.
+"${forecast_run[@]}" tests/v4_producer_probe.py /outputs/v4.csv
+for hour in 02 03; do
+  "${forecast_run[@]}" -m bloodledger_forecasting.cli forecast-v4-runtime \
+    --data /outputs/v4-null.csv --output /outputs/v4-null-bundle.json \
+    --origin-date 2026-01-07 --horizon-date 2026-01-08 \
+    --generated-at "2026-01-08T${hour}:00:00Z" --persist > "$probe_root/null-$hour.json"
+done
+"${forecast_run[@]}" -m bloodledger_forecasting.cli forecast-v4-runtime \
+  --data /outputs/v4-short.csv --output /outputs/v4-short-bundle.json \
+  --origin-date 2026-01-08 --horizon-date 2026-01-09 \
+  --generated-at 2026-01-09T00:00:00Z --persist > "$probe_root/short.json"
+python3 - "$probe_root" <<'PY'
+import json, pathlib, sys
+p=pathlib.Path(sys.argv[1])
+assert json.loads((p/'null-02.json').read_text())['persistence']=='INSERTED'
+assert json.loads((p/'null-03.json').read_text())['persistence']=='EXISTING'
+assert json.loads((p/'short.json').read_text())['persistence']=='INSERTED'
+assert json.loads((p/'null-02.json').read_text())['status']=='UNAVAILABLE_V4'
+assert json.loads((p/'short.json').read_text())['status']=='UNAVAILABLE_V4'
+PY
+"${node_run[@]}" node tests/forecasting/v4-producer-api-probe.mjs

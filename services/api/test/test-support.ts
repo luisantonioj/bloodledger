@@ -1,6 +1,6 @@
 import { ApiFailure } from "../src/errors.js";
 import type { ScanRepository } from "../src/repository.js";
-import type { AcceptedScan, CaptureInput, ForecastRecord, Principal, ScanEvent } from "../src/types.js";
+import type { AcceptedScan, CaptureInput, ForecastRead, ForecastRecord, Principal, ScanEvent } from "../src/types.js";
 
 export const fixedNow = new Date("2026-08-17T12:00:00.000Z");
 export const fallbackCapture: CaptureInput = {
@@ -75,7 +75,25 @@ export class MemoryRepository implements ScanRepository {
     return this.event?.eventId === eventId && this.event.institutionId === institutionId ? this.event : null;
   }
 
-  async listForecasts(): Promise<ForecastRecord[]> { return this.forecasts; }
+  async readForecasts(_institutionId: string, businessDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1"): Promise<ForecastRead> {
+    const forecasts = this.forecasts.filter((forecast) => forecast.datasetVersion === datasetVersion);
+    const first = forecasts[0];
+    const status = forecasts.length === 0 ? "UNAVAILABLE" : forecasts.some((forecast) => forecast.stale) ? "STALE" : "CURRENT";
+    return {
+      businessDate,
+      status,
+      datasetVersion,
+      modelVersion: first?.modelVersion ?? null,
+      asOfDate: first?.asOfDate ?? null,
+      horizonDate: first?.horizonDate ?? null,
+      forecastStatus: first?.forecastStatus ?? "UNAVAILABLE",
+      unavailableReason: first ? null : "NO_APPLICABLE_FORECAST",
+      forecasts,
+    };
+  }
+  async listForecasts(institutionId: string, businessDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1"): Promise<ForecastRecord[]> {
+    return (await this.readForecasts(institutionId, businessDate, datasetVersion)).forecasts;
+  }
   async recoverExpiredLeases(): Promise<number> { const value = this.recovered; this.recovered = 0; return value; }
   async claimProjection(): Promise<ScanEvent | null> { const value = this.projection; this.projection = null; return value; }
   async claimLedger(): Promise<ScanEvent | null> { const value = this.ledgerClaim; this.ledgerClaim = null; return value; }

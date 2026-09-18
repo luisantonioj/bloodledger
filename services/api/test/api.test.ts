@@ -189,17 +189,25 @@ test("FR-14 exposes forecast evidence as read-only CURRENT, STALE, or UNAVAILABL
   const invalidDate = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-02-30", headers });
   assert.equal(invalidDate.statusCode, 400);
   assert.equal(invalidDate.json().error.code, "INVALID_BUSINESS_DATE");
+  const unknownVersion = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-01-01&datasetVersion=UNKNOWN", headers });
+  assert.equal(unknownVersion.statusCode, 400);
+  assert.equal(unknownVersion.json().error.code, "UNKNOWN_FORECAST_DATASET_VERSION");
   repository.forecasts = [{
-    runKey: "a".repeat(64), institutionId: "INST_MEDIATRIX", bloodType: "A_POSITIVE",
+    runKey: "a".repeat(64), runId: "RUN_0123456789ABCDEF0123456789ABCDEF", institutionId: "INST_MEDIATRIX", bloodType: "A_POSITIVE",
     component: "RED_BLOOD_CELLS", horizonDate: "2026-01-01", pointForecast: 4,
-    lowerForecast: 2, upperForecast: 6, classification: "SIMULATION_ONLY",
+    asOfDate: "2025-12-31", lowerForecast: 2, upperForecast: 6,
+    uncertaintyStatus: "CALIBRATED", uncertaintyNote: "synthetic-test",
+    datasetVersion: "SYNTHETIC_FORECAST_V1", modelVersion: "synthetic-test-model",
+    forecastStatus: "AVAILABLE", classification: "SIMULATION_ONLY",
     recommendationEligibility: "DISABLED_UNAPPROVED_POLICY", generatedAt: fixedNow.toISOString(), stale: false,
   }];
-  const current = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-01-01", headers });
+  const noFallback = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-01-01", headers });
+  assert.equal(noFallback.json().status, "UNAVAILABLE");
+  const current = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-01-01&datasetVersion=SYNTHETIC_FORECAST_V1", headers });
   assert.equal(current.json().status, "CURRENT");
   assert.equal(current.json().forecasts[0].recommendationEligibility, "DISABLED_UNAPPROVED_POLICY");
   repository.forecasts[0].stale = true;
-  const stale = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-01-02", headers });
+  const stale = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-01-02&datasetVersion=SYNTHETIC_FORECAST_V1", headers });
   assert.equal(stale.json().status, "STALE");
   await app.close();
 });

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { Context, Contract, Info, Returns, Transaction } from "fabric-contract-api";
 import policyJson from "../policy/interview-core-v2.json";
+import policyV21Json from "../policy/interview-core-v2-1.json";
 
 const AUTHORIZED_MSP_ID = "MediatrixMSP";
 const AUTHORIZED_ENROLLMENT_ID = "api-gateway";
@@ -9,6 +10,7 @@ const AUTHORIZED_ROLE = "API_GATEWAY";
 const ROLE_ATTRIBUTE = "bloodledger.role";
 const INSTITUTION_ATTRIBUTE = "bloodledger.institution_id";
 const POLICY_VERSION = "INTERVIEW_DERIVED_CORE_V2";
+const POLICY_VERSION_V21 = "INTERVIEW_DERIVED_CORE_V2_1";
 const COMPONENT_SCHEMA = "COMPONENT_ASSET_V2";
 const RESERVATION_SCHEMA = "RESERVATION_ASSET_V2";
 const CASE_SCHEMA = "RECONCILIATION_CASE_V2";
@@ -27,7 +29,8 @@ type BloodType =
   | "A_POSITIVE" | "A_NEGATIVE" | "B_POSITIVE" | "B_NEGATIVE"
   | "AB_POSITIVE" | "AB_NEGATIVE" | "O_POSITIVE" | "O_NEGATIVE";
 type ComponentType =
-  | "WHOLE_BLOOD" | "PACKED_RED_BLOOD_CELLS" | "FRESH_FROZEN_PLASMA" | "PLATELETS";
+  | "WHOLE_BLOOD" | "PACKED_RED_BLOOD_CELLS" | "FRESH_FROZEN_PLASMA" | "PLATELETS" | "CRYOPRECIPITATE";
+type PolicyVersion = typeof POLICY_VERSION | typeof POLICY_VERSION_V21;
 type ComponentStatus =
   | "AVAILABLE" | "RESERVED" | "DISPATCHED" | "IN_TRANSIT" | "RECEIVED"
   | "RELEASED" | "EXPIRED" | "RECONCILIATION_HOLD" | "COMPROMISED";
@@ -53,7 +56,7 @@ interface ComponentAsset {
   reconciliationCaseId?: string;
   version: number;
   actorUserId: string;
-  policyVersion: typeof POLICY_VERSION;
+  policyVersion: PolicyVersion;
   createdAt: string;
   updatedAt: string;
   correlationId: string;
@@ -78,7 +81,7 @@ interface ReservationAsset {
   preparedAt?: string;
   version: number;
   actorUserId: string;
-  policyVersion: typeof POLICY_VERSION;
+  policyVersion: PolicyVersion;
   createdAt: string;
   updatedAt: string;
   correlationId: string;
@@ -96,7 +99,7 @@ interface ReconciliationCaseAsset {
   resolutionCode?: string;
   version: number;
   actorUserId: string;
-  policyVersion: typeof POLICY_VERSION;
+  policyVersion: PolicyVersion;
   createdAt: string;
   updatedAt: string;
   correlationId: string;
@@ -116,7 +119,7 @@ interface TransferAssetV2 {
   status: "PENDING";
   version: number;
   actorUserId: string;
-  policyVersion: typeof POLICY_VERSION;
+  policyVersion: PolicyVersion;
   createdAt: string;
   updatedAt: string;
   correlationId: string;
@@ -125,13 +128,14 @@ interface TransferAssetV2 {
 
 const policy = policyJson as {
   classification: "SIMULATION_ONLY";
-  policyVersion: typeof POLICY_VERSION;
+  policyVersion: PolicyVersion;
   allowedIssuerInstitutionIds: string[];
   bloodTypes: BloodType[];
   componentTypes: ComponentType[];
   nearExpiryEnabled: false;
   actors: Record<string, ActorPolicy>;
 };
+const policyV21 = policyV21Json as typeof policy & { policyVersion: typeof POLICY_VERSION_V21 };
 
 @Info({
   title: "InterviewCoreContract",
@@ -149,12 +153,12 @@ export class InterviewCoreContract extends Contract {
     this.assertActor(input.actorUserId);
     const actor = this.assertActor(input.actorUserId);
     if (actor.role !== "ROLE_03" || actor.institutionId !== String(input.destinationInstitutionId) || input.sourceInstitutionId !== "INST_MEDIATRIX") this.fail("TRANSFER_NOT_AUTHORIZED");
-    if (!policy.bloodTypes.includes(input.bloodType as BloodType) || !policy.componentTypes.includes(input.componentType as ComponentType)) this.fail("TRANSFER_INPUT_INVALID");
+    if (!this.policyFor(input).bloodTypes.includes(input.bloodType as BloodType) || !this.policyFor(input).componentTypes.includes(input.componentType as ComponentType)) this.fail("TRANSFER_INPUT_INVALID");
     if (!Number.isSafeInteger(input.quantity) || Number(input.quantity) < 1 || !["ROUTINE", "URGENT", "CRITICAL"].includes(String(input.urgency))) this.fail("TRANSFER_INPUT_INVALID");
     this.parseUtc(input.requestTime); this.parseUtc(input.eventTime);
     const requestDigest = this.digest(input); const prior = await this.readIdempotent(ctx, String(input.idempotencyKey), "SUBMIT_TRANSFER", requestDigest); if (prior !== undefined) return prior;
     const key = this.transferKey(String(input.transferId)); if ((await ctx.stub.getState(key)).length > 0) this.fail("TRANSFER_DUPLICATE");
-    const transfer: TransferAssetV2 = { schemaVersion: "TRANSFER_ASSET_V2", transferId: String(input.transferId), sourceInstitutionId: String(input.sourceInstitutionId), destinationInstitutionId: String(input.destinationInstitutionId), bloodType: input.bloodType as BloodType, componentType: input.componentType as ComponentType, quantity: Number(input.quantity), urgency: input.urgency as TransferAssetV2["urgency"], requestTime: String(input.requestTime), status: "PENDING", version: 1, actorUserId: String(input.actorUserId), policyVersion: POLICY_VERSION, createdAt: String(input.eventTime), updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID() };
+    const transfer: TransferAssetV2 = { schemaVersion: "TRANSFER_ASSET_V2", transferId: String(input.transferId), sourceInstitutionId: String(input.sourceInstitutionId), destinationInstitutionId: String(input.destinationInstitutionId), bloodType: input.bloodType as BloodType, componentType: input.componentType as ComponentType, quantity: Number(input.quantity), urgency: input.urgency as TransferAssetV2["urgency"], requestTime: String(input.requestTime), status: "PENDING", version: 1, actorUserId: String(input.actorUserId), policyVersion: input.policyVersion as PolicyVersion, createdAt: String(input.eventTime), updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID() };
     const response = this.serialize(transfer); await ctx.stub.putState(key, Buffer.from(response, "utf8")); await this.writeIdempotent(ctx, String(input.idempotencyKey), "SUBMIT_TRANSFER", requestDigest, response); this.emit(ctx, "TransferRequested", { transferId: transfer.transferId, status: transfer.status, version: transfer.version, eventTime: transfer.createdAt, correlationId: transfer.correlationId }); return response;
   }
 
@@ -181,7 +185,7 @@ export class InterviewCoreContract extends Contract {
     if (!policy.allowedIssuerInstitutionIds.includes(String(input.issuerInstitutionId))) this.fail("COMPONENT_ISSUER_UNAPPROVED");
     if (input.custodyInstitutionId !== input.issuerInstitutionId) this.fail("COMPONENT_INSTITUTION_INVALID");
     if (!policy.bloodTypes.includes(input.bloodType as BloodType)) this.fail("COMPONENT_BLOOD_TYPE_UNSUPPORTED");
-    if (!policy.componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
+    if (!this.policyFor(input).componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
     const collectedMs = this.parseUtc(input.collectedAt);
     const expiryMs = this.parseUtc(input.expiresAt);
     const eventMs = this.parseUtc(input.eventTime);
@@ -206,7 +210,7 @@ export class InterviewCoreContract extends Contract {
       componentType: input.componentType as ComponentType, bloodType: input.bloodType as BloodType,
       collectedAt: String(input.collectedAt), labelExpiry: String(input.expiresAt),
       custodyInstitutionId: String(input.custodyInstitutionId), status: "AVAILABLE",
-      version: 1, actorUserId: String(input.actorUserId), policyVersion: POLICY_VERSION,
+      version: 1, actorUserId: String(input.actorUserId), policyVersion: input.policyVersion as PolicyVersion,
       createdAt: String(input.eventTime), updatedAt: String(input.eventTime),
       correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID(),
     };
@@ -235,7 +239,7 @@ export class InterviewCoreContract extends Contract {
     if (input.actorInstitutionId !== input.custodyInstitutionId || input.captureMethod !== "OCR") this.fail("INBOUND_CAPTURE_INVALID");
     if (!policy.allowedIssuerInstitutionIds.includes(String(input.issuerInstitutionId))) this.fail("COMPONENT_ISSUER_UNAPPROVED");
     if (!policy.bloodTypes.includes(input.bloodType as BloodType)) this.fail("COMPONENT_BLOOD_TYPE_UNSUPPORTED");
-    if (!policy.componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
+    if (!this.policyFor(input).componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
     if (!["OCR_LABEL", "OPERATOR_CONFIRMED"].includes(String(input.bloodTypeEvidenceSource)) || !["OCR_LABEL", "BAG_TYPE", "OPERATOR_CONFIRMED"].includes(String(input.componentEvidenceSource))) this.fail("INBOUND_CAPTURE_EVIDENCE_INVALID");
     const collectedMs = this.parseUtc(input.collectedAt); const expiryMs = this.parseUtc(input.expiresAt); this.parseUtc(input.eventTime);
     if (expiryMs <= collectedMs) this.fail("COMPONENT_TIME_INVALID");
@@ -246,7 +250,7 @@ export class InterviewCoreContract extends Contract {
     const donationPrefix = `component:identity:${String(input.issuerInstitutionId)}:${String(input.donationNoDigest)}:`;
     const existingTypes = await this.listIdentityTypes(ctx, donationPrefix);
     if ((input.componentType === "WHOLE_BLOOD" && existingTypes.length > 0) || (input.componentType !== "WHOLE_BLOOD" && existingTypes.includes("WHOLE_BLOOD"))) this.fail("COMPONENT_WHOLE_BLOOD_EXCLUSIVE");
-    const asset: ComponentAsset = { schemaVersion: COMPONENT_SCHEMA, componentId: String(input.componentId), donationId: String(input.donationId), issuerInstitutionId: String(input.issuerInstitutionId), donationNoDigest: String(input.donationNoDigest), componentType: input.componentType as ComponentType, bloodType: input.bloodType as BloodType, collectedAt: String(input.collectedAt), labelExpiry: String(input.expiresAt), custodyInstitutionId: String(input.custodyInstitutionId), status: "AVAILABLE", version: 1, actorUserId: String(input.actorUserId), policyVersion: POLICY_VERSION, createdAt: String(input.eventTime), updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID(), captureMethod: "OCR", bloodTypeEvidenceSource: String(input.bloodTypeEvidenceSource), componentEvidenceSource: String(input.componentEvidenceSource) };
+    const asset: ComponentAsset = { schemaVersion: COMPONENT_SCHEMA, componentId: String(input.componentId), donationId: String(input.donationId), issuerInstitutionId: String(input.issuerInstitutionId), donationNoDigest: String(input.donationNoDigest), componentType: input.componentType as ComponentType, bloodType: input.bloodType as BloodType, collectedAt: String(input.collectedAt), labelExpiry: String(input.expiresAt), custodyInstitutionId: String(input.custodyInstitutionId), status: "AVAILABLE", version: 1, actorUserId: String(input.actorUserId), policyVersion: input.policyVersion as PolicyVersion, createdAt: String(input.eventTime), updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID(), captureMethod: "OCR", bloodTypeEvidenceSource: String(input.bloodTypeEvidenceSource), componentEvidenceSource: String(input.componentEvidenceSource) };
     const response = this.serialize(asset); await ctx.stub.putState(this.componentKey(asset.componentId), Buffer.from(response, "utf8")); await ctx.stub.putState(identityKey, Buffer.from(asset.componentId, "utf8")); await this.writeIdempotent(ctx, String(input.idempotencyKey), "REGISTER_INBOUND_COMPONENT", requestDigest, response); this.emit(ctx, "InboundComponentRegistered", { componentId: asset.componentId, issuerInstitutionId: asset.issuerInstitutionId, custodyInstitutionId: asset.custodyInstitutionId, status: asset.status, version: asset.version, eventTime: asset.createdAt, correlationId: asset.correlationId }); return response;
   }
 
@@ -254,7 +258,7 @@ export class InterviewCoreContract extends Contract {
   @Returns("string")
   public async ReadComponentByIdentity(ctx: Context, inputJson: string): Promise<string> {
     const input = this.parseExactObject<Record<string, unknown>>(inputJson, ["actorUserId", "componentType", "donationNoDigest", "issuerInstitutionId"]);
-    this.assertGateway(ctx); this.assertActor(input.actorUserId); this.assertHash(input.donationNoDigest, "COMPONENT_DONATION_REFERENCE_INVALID"); if (!policy.componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
+    this.assertGateway(ctx); this.assertActor(input.actorUserId); this.assertHash(input.donationNoDigest, "COMPONENT_DONATION_REFERENCE_INVALID"); if (!this.policyFor(input).componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
     const key = this.identityKey(String(input.issuerInstitutionId), String(input.donationNoDigest), String(input.componentType)); const stored = await ctx.stub.getState(key); return stored.length === 0 ? "" : Buffer.from(stored).toString("utf8");
   }
 
@@ -307,7 +311,7 @@ export class InterviewCoreContract extends Contract {
     if (purpose === "TRANSFER" && actor.role !== "ROLE_02") this.fail("RESERVATION_NOT_AUTHORIZED");
     if (purpose === "LOCAL_RELEASE" && !["ROLE_01", "ROLE_02"].includes(actor.role)) this.fail("RESERVATION_NOT_AUTHORIZED");
     if (!policy.bloodTypes.includes(input.bloodType as BloodType)) this.fail("COMPONENT_BLOOD_TYPE_UNSUPPORTED");
-    if (!policy.componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
+    if (!this.policyFor(input).componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
     if (!Number.isSafeInteger(input.quantity) || Number(input.quantity) < 1) this.fail("RESERVATION_QUANTITY_INVALID");
     if (!Array.isArray(input.selectedComponentIds) || !Array.isArray(input.expectedComponentVersions) ||
         input.selectedComponentIds.length !== Number(input.quantity) || input.expectedComponentVersions.length !== input.selectedComponentIds.length ||
@@ -339,7 +343,7 @@ export class InterviewCoreContract extends Contract {
       ...(purpose === "TRANSFER" ? { destinationInstitutionId: String(input.destinationInstitutionId) } : {}),
       bloodType: input.bloodType as BloodType, componentType: input.componentType as ComponentType,
       quantity: Number(input.quantity), selectedComponentIds: expectedIds, status: "ACTIVE", version: 1,
-      actorUserId: String(input.actorUserId), policyVersion: POLICY_VERSION, createdAt: String(input.eventTime),
+      actorUserId: String(input.actorUserId), policyVersion: input.policyVersion as PolicyVersion, createdAt: String(input.eventTime),
       updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID(),
     };
     const response = this.serialize(reservation);
@@ -436,7 +440,7 @@ export class InterviewCoreContract extends Contract {
     const existing = await ctx.stub.getState(this.caseKey(input.caseId));
     if (existing.length > 0) this.fail("RECONCILIATION_DUPLICATE");
     const previousStatus = component.status as "AVAILABLE" | "RESERVED";
-    const caseAsset: ReconciliationCaseAsset = { schemaVersion: CASE_SCHEMA, caseId: input.caseId, componentId: component.componentId, institutionId: component.custodyInstitutionId, previousStatus, ...(component.reservationId === undefined ? {} : { reservationId: component.reservationId }), reasonCode: input.reasonCode, status: "OPEN", version: 1, actorUserId: input.actorUserId, policyVersion: POLICY_VERSION, createdAt: input.eventTime, updatedAt: input.eventTime, correlationId: input.correlationId, lastTransactionId: ctx.stub.getTxID() };
+    const caseAsset: ReconciliationCaseAsset = { schemaVersion: CASE_SCHEMA, caseId: input.caseId, componentId: component.componentId, institutionId: component.custodyInstitutionId, previousStatus, ...(component.reservationId === undefined ? {} : { reservationId: component.reservationId }), reasonCode: input.reasonCode, status: "OPEN", version: 1, actorUserId: input.actorUserId, policyVersion: component.policyVersion, createdAt: input.eventTime, updatedAt: input.eventTime, correlationId: input.correlationId, lastTransactionId: ctx.stub.getTxID() };
     const updated = { ...component, status: "RECONCILIATION_HOLD" as const, reconciliationCaseId: input.caseId, version: component.version + 1, actorUserId: input.actorUserId, updatedAt: input.eventTime, correlationId: input.correlationId, lastTransactionId: ctx.stub.getTxID() };
     await ctx.stub.putState(this.componentKey(component.componentId), Buffer.from(this.serialize(updated), "utf8"));
     await ctx.stub.putState(this.caseKey(caseAsset.caseId), Buffer.from(this.serialize(caseAsset), "utf8"));
@@ -621,11 +625,14 @@ export class InterviewCoreContract extends Contract {
   private assertActor(actorUserId: unknown): ActorPolicy { this.assertId(String(actorUserId), ACTOR_ID_PATTERN, "CORE_INPUT_INVALID"); const actor = policy.actors[String(actorUserId)]; if (actor === undefined) this.fail("CORE_NOT_AUTHORIZED"); return actor; }
   private actorInstitution(actorUserId: unknown): string { return this.assertActor(actorUserId).institutionId; }
 
+  private policyFor(input: Record<string, unknown>): typeof policy | typeof policyV21 {
+    return input.policyVersion === POLICY_VERSION_V21 ? policyV21 : policy;
+  }
   private assertCommon(input: Record<string, unknown>): void {
     this.assertId(String(input.actorUserId), ACTOR_ID_PATTERN, "CORE_INPUT_INVALID");
     this.assertId(String(input.correlationId), CORRELATION_ID_PATTERN, "CORE_INPUT_INVALID");
     this.assertId(String(input.idempotencyKey), IDEMPOTENCY_KEY_PATTERN, "CORE_INPUT_INVALID");
-    this.parseUtc(input.eventTime); if (input.policyVersion !== POLICY_VERSION) this.fail("CORE_POLICY_MISMATCH");
+    this.parseUtc(input.eventTime); if (input.policyVersion !== POLICY_VERSION && input.policyVersion !== POLICY_VERSION_V21) this.fail("CORE_POLICY_MISMATCH");
   }
   private assertReason(value: string): void { this.assertId(value, REASON_PATTERN, "CORE_REASON_INVALID"); }
   private assertHash(value: unknown, errorCode: string): void { if (typeof value !== "string" || !HASH_PATTERN.test(value)) this.fail(errorCode); }

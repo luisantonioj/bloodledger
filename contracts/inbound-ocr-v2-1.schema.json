@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bloodledger.local/contracts/inbound-ocr-v2-1.schema.json",
+  "title": "BloodLedger OCR-only inbound capture V2.1",
+  "type": "object",
+  "required": ["captureMethod", "capturePolicyVersion", "issuerInstitutionId", "donationNumber", "bloodType", "bloodTypeEvidence", "componentType", "componentEvidence", "collectedAt", "expiresAt", "capturedAt", "confirmedAt", "eventTime", "correlationId", "ocrEvidence"],
+  "properties": {
+    "captureMethod": { "const": "OCR" },
+    "capturePolicyVersion": { "const": "INBOUND_OCR_V1" },
+    "issuerInstitutionId": { "type": "string", "pattern": "^INST_[A-Z0-9_-]{1,59}$" },
+    "donationNumber": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "bloodType": { "$ref": "core-v2-1.schema.json#/properties/bloodType" },
+    "bloodTypeEvidence": {
+      "type": "object", "required": ["source", "confirmed"], "additionalProperties": false,
+      "properties": { "source": { "enum": ["OCR_LABEL", "OPERATOR_CONFIRMED"] }, "confirmed": { "const": true } }
+    },
+    "componentType": { "$ref": "core-v2-1.schema.json#/properties/componentType" },
+    "componentEvidence": {
+      "type": "object", "required": ["source", "confirmed"], "additionalProperties": false,
+      "properties": { "source": { "enum": ["OCR_LABEL", "BAG_TYPE", "OPERATOR_CONFIRMED"] }, "confirmed": { "const": true } }
+    },
+    "collectedAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "confirmedAt": { "type": "string", "format": "date-time" },
+    "eventTime": { "type": "string", "format": "date-time" },
+    "correlationId": { "type": "string", "pattern": "^CORR_[0-9A-F]{32}$" },
+    "ocrEvidence": {
+      "type": "object", "required": ["engine", "engineVersion", "fieldConfidence"], "additionalProperties": false,
+      "properties": {
+        "engine": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "engineVersion": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "fieldConfidence": {
+          "type": "object", "required": ["donationNumber", "bloodType", "collectedAt", "expiresAt"], "additionalProperties": false,
+          "properties": {
+            "donationNumber": { "type": "integer", "minimum": 90, "maximum": 100 },
+            "bloodType": { "type": "integer", "minimum": 90, "maximum": 100 },
+            "collectedAt": { "type": "integer", "minimum": 90, "maximum": 100 },
+            "expiresAt": { "type": "integer", "minimum": 90, "maximum": 100 }
+          }
+        }
+      }
+    },
+    "classification": { "const": "SIMULATION_ONLY" }
+  },
+  "additionalProperties": false
+}

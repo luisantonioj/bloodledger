@@ -1,5 +1,10 @@
 # ML thesis exploration — existing-data completion
 
+The application integration derived from the frozen V4 protocol is specified
+in [`ML-RUNTIME-INTEGRATION-V4.md`](./ML-RUNTIME-INTEGRATION-V4.md). This
+separate runtime contract does not revise the research protocol or its
+limitations.
+
 Status: Implementation authorized by the user on 2026-09-15.
 Branch: `codex/sprint-03-ml-exploration`.
 Requirements: FR-14, BR-ALG-07; research preparation for BL-ML-01/02 and

@@ -26,8 +26,10 @@ test("keeps retryable failures queued and makes conflicts visible", async () => 
 
 test("retries projection reconciliation without losing the committed command", async () => {
   const store = new InMemoryV2CommandStore(); await store.enqueue({ ...base, commandId: "CMD_CORE_004", idempotencyKey: "IDEM_CORE_004", resourceId: "COMP_CORE_004" });
-  let projections = 0;
-  const worker = new V2CommandWorker(store, { submit: async () => ({ transactionId: "TX_CORE_004" }), project: async () => { projections += 1; if (projections === 1) throw new Error("projection unavailable"); } }, "WORKER_04");
+  let projections = 0; let submissions = 0;
+  const worker = new V2CommandWorker(store, { submit: async () => { submissions += 1; return { transactionId: "TX_CORE_004" }; }, project: async () => { projections += 1; if (projections === 1) throw new Error("projection unavailable"); } }, "WORKER_04");
   assert.equal((await worker.runOnce(new Date("2026-09-12T00:01:00.000Z"))).status, "RETRY_WAIT");
+  assert.equal((await store.get("CMD_CORE_004", "INST_MEDIATRIX", "ROLE-02"))?.status, "LEDGER_COMMITTED_PROJECTION_PENDING");
   assert.equal((await worker.runOnce(new Date("2026-09-12T00:02:00.000Z"))).status, "COMMITTED");
+  assert.equal(submissions, 1);
 });

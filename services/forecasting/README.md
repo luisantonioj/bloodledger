@@ -117,3 +117,27 @@ API database mapper. It requires Docker, the built `bloodledger-forecasting`
 image and locked npm dependencies installed in `node_modules`. It tests insert,
 replay, conflict, current/stale/unavailable results and exactly four persisted
 rows. Its trap removes only the container and temporary directory it created.
+
+
+### V4 producer corrections (Issue #9)
+
+The v4 runtime integration specification is
+[`ML-RUNTIME-INTEGRATION-V4.md`](../../docs/ML-RUNTIME-INTEGRATION-V4.md).
+From this directory in the pinned Python environment:
+
+```bash
+PYTHONPATH=src python -m bloodledger_forecasting.cli forecast-v4-runtime \
+  --data /external/synthetic-request-history.csv --output /external/forecast.json \
+  --institution-id INST_MEDIATRIX --origin-date 2026-01-07 \
+  --horizon-date 2026-01-08 --generated-at 2026-01-08T00:00:00Z --persist
+```
+
+The history CSV accepts only business_date, blood_type, component and
+requested_units. Blank quantities are unknown, not zero. Null/missing history
+produces a persisted UNAVAILABLE attempt with no forecast rows and the requested
+dates; the latest attempt prevents older success from being shown as current.
+Invalid numeric/schema/date inputs still fail. A supplied path must exist;
+its actual bytes identify the dataset. Python calls without a path use a canonical
+in-memory evidence hash. Execution time alone does not change replay identity.
+Institution, all immutable lineage and the requested window do change identity.
+All outputs remain simulation-only; historical V1 and frozen study results remain.

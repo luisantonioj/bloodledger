@@ -17,6 +17,7 @@ const CASE_ID_PATTERN = /^RECON_[A-Z0-9_-]{1,56}$/;
 const INSTITUTION_PATTERN = /^INST_[A-Z0-9_-]{1,59}$/;
 const BLOOD_TYPES = ["A_POSITIVE", "A_NEGATIVE", "B_POSITIVE", "B_NEGATIVE", "AB_POSITIVE", "AB_NEGATIVE", "O_POSITIVE", "O_NEGATIVE"] as const;
 const COMPONENT_TYPES = ["WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_PLASMA", "PLATELETS"] as const;
+const COMPONENT_TYPES_V21 = [...COMPONENT_TYPES, "CRYOPRECIPITATE"] as const;
 const URGENCIES = ["ROUTINE", "URGENT", "CRITICAL"] as const;
 
 export interface V2RouteDependencies {
@@ -40,6 +41,12 @@ function hasKeys(body: unknown, expected: readonly string[]): body is Record<str
 function requiredHeader(request: FastifyRequest): string {
   const value = request.headers["idempotency-key"];
   if (typeof value !== "string" || !IDEMPOTENCY_PATTERN.test(value)) throw new ApiFailure(400, "INVALID_IDEMPOTENCY_KEY", "A valid Idempotency-Key header is required.");
+  return value;
+}
+function contractVersion(request: FastifyRequest): "V2" | "V2.1" {
+  const value = request.headers["x-bloodledger-contract-version"];
+  if (value === undefined) return "V2";
+  if (typeof value !== "string" || (value !== "V2" && value !== "V2.1")) throw new ApiFailure(400, "V2_CONTRACT_VERSION_INVALID", "The requested V2 contract version is not supported.");
   return value;
 }
 function requiredBodyString(body: Record<string, unknown>, key: string, pattern?: RegExp): string {
@@ -94,7 +101,9 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const { principal } = await restore(request);
     if (!dependencies.projection) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "The component projection is not available.");
     if (principal.roleId === "ROLE-04") throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Regulatory readers receive aggregate reports, not component records.");
-    return { scope: "INSTITUTION", components: await dependencies.projection.listComponents(principal.institutionId, principal.roleId), classification: "SIMULATION_ONLY" as const };
+    const version = contractVersion(request);
+    const components = await dependencies.projection.listComponents(principal.institutionId, principal.roleId);
+    return { scope: "INSTITUTION", components: version === "V2" ? components.filter((component) => component.componentType !== "CRYOPRECIPITATE") : components, classification: "SIMULATION_ONLY" as const };
   });
 
   app.get<{ Params: { componentId: string } }>("/api/v2/components/:componentId", async (request) => {
@@ -102,8 +111,10 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!dependencies.projection) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "The component projection is not available.");
     if (!COMPONENT_ID_PATTERN.test(request.params.componentId)) throw new ApiFailure(400, "V2_COMPONENT_ID_INVALID", "Component ID is invalid.");
     if (principal.roleId === "ROLE-04") throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Regulatory readers receive aggregate reports, not component records.");
+    const version = contractVersion(request);
     const component = await dependencies.projection.getComponent(request.params.componentId, principal.institutionId, principal.roleId);
     if (!component) throw new ApiFailure(404, "V2_COMPONENT_NOT_FOUND", "The component was not found in the authorized scope.");
+    if (version === "V2" && component.componentType === "CRYOPRECIPITATE") throw new ApiFailure(404, "V2_COMPONENT_NOT_FOUND", "The component was not found in the authorized scope.");
     return component;
   });
 
@@ -116,7 +127,8 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     sameOrigin(request); const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02"]);
     if (!dependencies.keyring) throw new ApiFailure(503, "V2_KEYS_UNAVAILABLE", "Donation encryption keys are not available.");
     const idempotencyKey = requiredHeader(request);
-    const capture = validateInboundOcrInput(request.body, dependencies.enabledIssuerInstitutionIds ?? ["INST_MEDIATRIX"]);
+    const version = contractVersion(request);
+    const capture = validateInboundOcrInput(request.body, dependencies.enabledIssuerInstitutionIds ?? ["INST_MEDIATRIX"], version);
     if (!dependencies.projection) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Inbound identity reconciliation is not available.");
     const encrypted = encryptDonationNumber(capture.donationNumber, dependencies.keyring);
     const existing = await dependencies.projection.findComponentByIdentity(capture.issuerInstitutionId, encrypted.lookupHmac, capture.componentType);
@@ -132,7 +144,7 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     }
     const componentId = generatedId("COMP_", idempotencyKey);
     const donationId = `DON_${hash(`${capture.issuerInstitutionId}:${encrypted.lookupHmac}`).slice(0, 40)}`;
-    const payload = { captureId, componentId, donationId, issuerInstitutionId: capture.issuerInstitutionId, donationNoCiphertext: encrypted.ciphertext, donationNoNonce: encrypted.nonce, donationNoAuthTag: encrypted.authTag, donationNoEncryptionKeyVersion: encrypted.encryptionKeyVersion, donationNoLookupHmac: encrypted.lookupHmac, componentType: capture.componentType, bloodType: capture.bloodType, collectedAt: capture.collectedAt, expiresAt: capture.expiresAt, custodyInstitutionId: principal.institutionId, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: capture.eventTime, correlationId: capture.correlationId, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt, bloodTypeEvidenceSource: capture.bloodTypeEvidence.source, componentEvidenceSource: capture.componentEvidence.source, ocrEngine: capture.ocrEvidence.engine, ocrEngineVersion: capture.ocrEvidence.engineVersion, donationNumberConfidence: capture.ocrEvidence.fieldConfidence.donationNumber, bloodTypeConfidence: capture.ocrEvidence.fieldConfidence.bloodType };
+    const payload = { captureId, componentId, donationId, issuerInstitutionId: capture.issuerInstitutionId, donationNoCiphertext: encrypted.ciphertext, donationNoNonce: encrypted.nonce, donationNoAuthTag: encrypted.authTag, donationNoEncryptionKeyVersion: encrypted.encryptionKeyVersion, donationNoLookupHmac: encrypted.lookupHmac, componentType: capture.componentType, bloodType: capture.bloodType, collectedAt: capture.collectedAt, expiresAt: capture.expiresAt, custodyInstitutionId: principal.institutionId, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: capture.eventTime, correlationId: capture.correlationId, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt, bloodTypeEvidenceSource: capture.bloodTypeEvidence.source, componentEvidenceSource: capture.componentEvidence.source, ocrEngine: capture.ocrEvidence.engine, ocrEngineVersion: capture.ocrEvidence.engineVersion, donationNumberConfidence: capture.ocrEvidence.fieldConfidence.donationNumber, bloodTypeConfidence: capture.ocrEvidence.fieldConfidence.bloodType, policyVersion: version === "V2.1" ? "INTERVIEW_DERIVED_CORE_V2_1" : "INTERVIEW_DERIVED_CORE_V2" };
     await dependencies.projection.recordInboundCapture?.(captureId, payload, dependencies.clock().toISOString());
     const payloadSha256 = createHash("sha256").update(JSON.stringify({ capture, captureId, componentId, donationId, custodyInstitutionId: principal.institutionId }), "utf8").digest("hex");
     return enqueue(request, reply, "INBOUND_CAPTURE", captureId, "REGISTER_INBOUND_COMPONENT", payload, principal, payloadSha256);
@@ -152,9 +164,11 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const body = request.body;
     if (!hasKeys(body, ["bloodType", "componentType", "correlationId", "destinationInstitutionId", "eventTime", "quantity", "requestTime", "sourceInstitutionId", "transferId", "urgency"])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Transfer request input is invalid.");
     if (body.sourceInstitutionId !== "INST_MEDIATRIX" || body.destinationInstitutionId !== principal.institutionId) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Transfer requests must target the authenticated recipient institution.");
+    const version = contractVersion(request);
     const transferId = requiredBodyString(body, "transferId", TRANSFER_ID_PATTERN); const bloodType = requiredBodyString(body, "bloodType"); const componentType = requiredBodyString(body, "componentType"); const urgency = requiredBodyString(body, "urgency");
-    if (!(BLOOD_TYPES as readonly string[]).includes(bloodType) || !(COMPONENT_TYPES as readonly string[]).includes(componentType) || !(URGENCIES as readonly string[]).includes(urgency) || !Number.isSafeInteger(body.quantity) || Number(body.quantity) < 1) throw new ApiFailure(400, "V2_INPUT_INVALID", "Transfer request input is invalid.");
-    const payload = { transferId, sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: principal.institutionId, bloodType, componentType, quantity: Number(body.quantity), urgency, requestTime: requiredUtc(body, "requestTime"), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN) };
+    const supportedComponents = version === "V2.1" ? COMPONENT_TYPES_V21 : COMPONENT_TYPES;
+    if (!(BLOOD_TYPES as readonly string[]).includes(bloodType) || !(supportedComponents as readonly string[]).includes(componentType) || !(URGENCIES as readonly string[]).includes(urgency) || !Number.isSafeInteger(body.quantity) || Number(body.quantity) < 1) throw new ApiFailure(400, "V2_INPUT_INVALID", "Transfer request input is invalid.");
+    const payload = { transferId, sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: principal.institutionId, bloodType, componentType, quantity: Number(body.quantity), urgency, requestTime: requiredUtc(body, "requestTime"), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: version === "V2.1" ? "INTERVIEW_DERIVED_CORE_V2_1" : "INTERVIEW_DERIVED_CORE_V2" };
     return enqueue(request, reply, "TRANSFER", transferId, "SUBMIT_TRANSFER", payload, principal);
   });
 
@@ -162,23 +176,19 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     sameOrigin(request); const { principal } = await restore(request);
     if (!TRANSFER_ID_PATTERN.test(request.params.transferId)) throw new ApiFailure(400, "V2_TRANSFER_ID_INVALID", "Transfer ID is invalid.");
     const action = request.params.action.toLowerCase();
-    const roleMap: Record<string, readonly WebPrincipal["roleId"][]> = { approve: ["ROLE-02"], prepare: ["ROLE-01", "ROLE-02"], dispatch: ["ROLE-01", "ROLE-02"], transit: ["ROLE-01", "ROLE-02"], receipt: ["ROLE-03"], delay: ["ROLE-01", "ROLE-02", "ROLE-03"], compromise: ["ROLE-01", "ROLE-02", "ROLE-03"], cancel: ["ROLE-02", "ROLE-03"], reject: ["ROLE-02"] };
-    const roles = roleMap[action]; if (!roles) throw new ApiFailure(404, "V2_ACTION_NOT_FOUND", "Transfer action is not supported."); authorized(principal, roles);
-    const actionKeys = action === "delay" || action === "compromise" || action === "cancel" || action === "reject" ? ["correlationId", "eventTime", "expectedVersion", "reasonCode"] : ["correlationId", "eventTime", "expectedVersion"];
-    if (!hasKeys(request.body, actionKeys)) throw new ApiFailure(400, "V2_INPUT_INVALID", "Transfer action input is invalid.");
-    const body = request.body as Record<string, unknown>; if (!Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1) throw new ApiFailure(400, "V2_VERSION_INVALID", "Expected version is invalid.");
-    const payload: Record<string, unknown> = { transferId: request.params.transferId, expectedVersion: Number(body.expectedVersion), actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN) };
-    if (body.reasonCode !== undefined) payload.reasonCode = requiredBodyString(body, "reasonCode", /^[A-Z][A-Z0-9_]{2,63}$/);
-    return enqueue(request, reply, "TRANSFER", request.params.transferId, action.toUpperCase(), payload, principal);
+    if (["approve", "prepare", "dispatch", "transit", "receipt", "delay", "compromise", "cancel", "reject"].includes(action)) throw new ApiFailure(410, "V2_CANONICAL_WORKFLOW_REQUIRED", "Use the canonical V2 reservation workflow; legacy transfer action aliases are not queued.");
+    throw new ApiFailure(404, "V2_ACTION_NOT_FOUND", "Transfer action is not supported.");
   });
 
   app.post("/api/v2/local-releases", async (request, reply) => {
     sameOrigin(request); const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02"]);
     const body = request.body;
     if (!hasKeys(body, ["bloodType", "componentType", "correlationId", "eventTime", "quantity", "releaseId"])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Local-release input is invalid.");
+    const version = contractVersion(request);
     const releaseId = requiredBodyString(body, "releaseId", /^REL_[A-Z0-9_-]{1,56}$/); const bloodType = requiredBodyString(body, "bloodType"); const componentType = requiredBodyString(body, "componentType");
-    if (!(BLOOD_TYPES as readonly string[]).includes(bloodType) || !(COMPONENT_TYPES as readonly string[]).includes(componentType) || !Number.isSafeInteger(body.quantity) || Number(body.quantity) < 1) throw new ApiFailure(400, "V2_INPUT_INVALID", "Local-release input is invalid.");
-    const payload = { releaseId, sourceInstitutionId: principal.institutionId, bloodType, componentType, quantity: Number(body.quantity), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN) };
+    const supportedComponents = version === "V2.1" ? COMPONENT_TYPES_V21 : COMPONENT_TYPES;
+    if (!(BLOOD_TYPES as readonly string[]).includes(bloodType) || !(supportedComponents as readonly string[]).includes(componentType) || !Number.isSafeInteger(body.quantity) || Number(body.quantity) < 1) throw new ApiFailure(400, "V2_INPUT_INVALID", "Local-release input is invalid.");
+    const payload = { releaseId, sourceInstitutionId: principal.institutionId, bloodType, componentType, quantity: Number(body.quantity), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: version === "V2.1" ? "INTERVIEW_DERIVED_CORE_V2_1" : "INTERVIEW_DERIVED_CORE_V2" };
     return enqueue(request, reply, "LOCAL_RELEASE", releaseId, "RESERVE_LOCAL_RELEASE", payload, principal);
   });
 
@@ -186,8 +196,9 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     sameOrigin(request); const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02"]);
     const body = request.body;
     if (!hasKeys(body, ["caseId", "componentId", "correlationId", "reasonCode"])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Reconciliation input is invalid.");
+    const version = contractVersion(request);
     const componentId = requiredBodyString(body, "componentId", COMPONENT_ID_PATTERN); const caseId = requiredBodyString(body, "caseId", CASE_ID_PATTERN); const reasonCode = requiredBodyString(body, "reasonCode", /^[A-Z][A-Z0-9_]{2,63}$/);
-    const payload = { componentId, caseId, reasonCode, actorUserId: principal.userId, eventTime: dependencies.clock().toISOString(), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN) };
+    const payload = { componentId, caseId, reasonCode, actorUserId: principal.userId, eventTime: dependencies.clock().toISOString(), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: version === "V2.1" ? "INTERVIEW_DERIVED_CORE_V2_1" : "INTERVIEW_DERIVED_CORE_V2" };
     return enqueue(request, reply, "RECONCILIATION", caseId, "PLACE_RECONCILIATION_HOLD", payload, principal);
   });
 
@@ -235,8 +246,10 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1) throw new ApiFailure(400, "V2_VERSION_INVALID", "Expected version is invalid.");
     const roleMap: Record<string, readonly WebPrincipal["roleId"][]> = { prepare: ["ROLE-01", "ROLE-02"], dispatch: ["ROLE-01", "ROLE-02"], transit: ["ROLE-01", "ROLE-02"], receive: ["ROLE-03"], cancel: ["ROLE-01", "ROLE-02", "ROLE-03"], "local-release-complete": ["ROLE-01", "ROLE-02"], compromise: ["ROLE-01", "ROLE-02", "ROLE-03"] };
     const roles = roleMap[action]; if (!roles) throw new ApiFailure(404, "V2_ACTION_NOT_FOUND", "Reservation action is not supported."); authorized(principal, roles);
-    const payload: Record<string, unknown> = { reservationId: request.params.reservationId, expectedVersion: Number(body.expectedVersion), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN) };
+    const version = contractVersion(request);
+    const operationByAction: Record<string, string> = { prepare: "PREPARE_RESERVATION", dispatch: "DISPATCH_RESERVATION", transit: "START_RESERVATION_TRANSIT", receive: "RECEIVE_RESERVATION", cancel: "CANCEL_RESERVATION", compromise: "COMPROMISE_RESERVATION", "local-release-complete": "COMPLETE_LOCAL_RELEASE" };
+    const payload: Record<string, unknown> = { reservationId: request.params.reservationId, expectedVersion: Number(body.expectedVersion), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: version === "V2.1" ? "INTERVIEW_DERIVED_CORE_V2_1" : "INTERVIEW_DERIVED_CORE_V2" };
     for (const key of ["preparedEvidenceDigest", "preparedEvidenceId", "preparedAt", "reasonCode"] as const) if (body[key] !== undefined) payload[key] = body[key];
-    return enqueue(request, reply, "TRANSFER", request.params.reservationId, action.toUpperCase(), payload, principal);
+    return enqueue(request, reply, "TRANSFER", request.params.reservationId, operationByAction[action], payload, principal);
   });
 }
