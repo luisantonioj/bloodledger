@@ -9,6 +9,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
+
 from .constants import (
     CLASSIFICATION,
     DATA_COLUMNS,
@@ -24,6 +26,12 @@ from .persistence import (
     app_database_config_from_environment,
     connect_as_runtime,
     persist_forecast_bundle,
+    persist_v4_runtime_bundle,
+)
+from .runtime_v4 import (
+    V4_CLASSIFICATION,
+    V4_RECOMMENDATION_ELIGIBILITY,
+    create_v4_runtime_bundle,
 )
 from .scenario import evaluate_surplus_scenario
 from .synthetic import SyntheticConfig, generate_synthetic_data, write_synthetic_csv
@@ -184,6 +192,43 @@ def _forecast(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _forecast_v4(args: argparse.Namespace) -> dict[str, Any]:
+    data_path = Path(args.data)
+    try:
+        data = pd.read_csv(data_path, keep_default_na=False, na_values=[""])
+    except (OSError, ValueError) as error:
+        raise ForecastingError("V4_INPUT_READ_FAILED", "V4 input could not be read") from error
+    bundle = create_v4_runtime_bundle(
+        data,
+        dataset_path=data_path,
+        generated_at=_utc_timestamp(args.generated_at),
+        institution_id=args.institution_id,
+        origin_date=args.origin_date,
+        horizon_date=args.horizon_date,
+    )
+    _write_json(Path(args.output), bundle)
+    persistence_status = "NOT_REQUESTED"
+    if args.persist:
+        connection = connect_as_runtime(app_database_config_from_environment())
+        try:
+            persistence_status = persist_v4_runtime_bundle(connection, bundle)
+        finally:
+            connection.close()
+    return {
+        "status": "FORECASTED_V4"
+        if bundle["run"]["runStatus"] == "COMPLETED"
+        else "UNAVAILABLE_V4",
+        "classification": V4_CLASSIFICATION,
+        "output": str(args.output),
+        "run_id": bundle["run"]["runId"],
+        "forecast_count": len(bundle["forecasts"]),
+        "dataset_version": bundle["run"]["datasetVersion"],
+        "model_version": bundle["run"]["modelVersion"],
+        "recommendation_eligibility": V4_RECOMMENDATION_ELIGIBILITY,
+        "persistence": persistence_status,
+    }
+
+
 def _scenario(args: argparse.Namespace) -> dict[str, Any]:
     surplus = evaluate_surplus_scenario(
         current_stock=args.current_stock,
@@ -241,6 +286,16 @@ def build_parser() -> argparse.ArgumentParser:
     forecast.add_argument("--generated-at")
     forecast.add_argument("--persist", action="store_true")
     forecast.set_defaults(handler=_forecast)
+
+    forecast_v4 = subparsers.add_parser("forecast-v4-runtime")
+    forecast_v4.add_argument("--data", required=True)
+    forecast_v4.add_argument("--output", required=True)
+    forecast_v4.add_argument("--generated-at")
+    forecast_v4.add_argument("--persist", action="store_true")
+    forecast_v4.add_argument("--institution-id", default="INST_MEDIATRIX")
+    forecast_v4.add_argument("--origin-date")
+    forecast_v4.add_argument("--horizon-date")
+    forecast_v4.set_defaults(handler=_forecast_v4)
 
     scenario = subparsers.add_parser("evaluate-surplus-scenario")
     scenario.add_argument("--current-stock", type=float, required=True)

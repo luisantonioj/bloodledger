@@ -52,9 +52,41 @@
       },
       "get": {
         "operationId": "listComponents",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          }
+        ],
         "responses": {
           "200": {
             "$ref": "#/components/responses/Components"
+          }
+        }
+      }
+    },
+    "/components/{componentId}": {
+      "get": {
+        "operationId": "getComponent",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "name": "componentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^COMP_[A-Z0-9_-]{1,56}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A component in the authorized institution scope"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           }
         }
       }
@@ -63,12 +95,20 @@
       "post": {
         "operationId": "acceptInboundOcrCapture",
         "description": "Accept a confirmed OCR capture. The receiving custody institution is derived from the authenticated session; raw OCR text and images are not accepted.",
-        "responses": {
-          "202": {
-            "$ref": "#/components/responses/Command"
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
           },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
           "200": {
             "description": "Already registered in the same custody scope"
+          },
+          "202": {
+            "$ref": "#/components/responses/Command"
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
@@ -89,6 +129,14 @@
     "/transfers": {
       "post": {
         "operationId": "submitTransfer",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
         "responses": {
           "202": {
             "$ref": "#/components/responses/Command"
@@ -109,7 +157,11 @@
     "/transfers/{transferId}/{action}": {
       "post": {
         "operationId": "transitionTransfer",
+        "description": "Legacy transfer action aliases are intentionally rejected. Use /reservations/{reservationId}/{action} for the canonical custody workflow.",
         "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
           {
             "name": "transferId",
             "in": "path",
@@ -140,8 +192,32 @@
           }
         ],
         "responses": {
-          "202": {
-            "$ref": "#/components/responses/Command"
+          "410": {
+            "description": "Legacy transfer action is disabled; the canonical reservation workflow is required"
+          }
+        }
+      }
+    },
+    "/reports/doh-census/catch-up": {
+      "post": {
+        "operationId": "captureDohCensusCatchUp",
+        "description": "Manual authorized catch-up. The report policy and blood-type column order must be approved before this route is enabled.",
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/Census"
+          },
+          "503": {
+            "$ref": "#/components/responses/PolicyDisabled"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CensusCatchUpRequest"
+              }
+            }
           }
         }
       }
@@ -211,9 +287,28 @@
     "/local-releases": {
       "post": {
         "operationId": "reserveLocalRelease",
+        "description": "Queue a local-release reservation. ROLE-01 and ROLE-02 only.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
         "responses": {
           "202": {
             "$ref": "#/components/responses/Command"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalReleaseRequest"
+              }
+            }
           }
         }
       }
@@ -221,9 +316,28 @@
     "/reconciliation": {
       "post": {
         "operationId": "placeReconciliationHold",
+        "description": "Queue a reconciliation hold. ROLE-01 and ROLE-02 only.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
         "responses": {
           "202": {
             "$ref": "#/components/responses/Command"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconciliationRequest"
+              }
+            }
           }
         }
       }
@@ -231,9 +345,53 @@
     "/reservations/{reservationId}/{action}": {
       "post": {
         "operationId": "transitionReservation",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "reservationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^RES_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "prepare",
+                "dispatch",
+                "transit",
+                "receive",
+                "cancel",
+                "compromise",
+                "local-release-complete"
+              ]
+            }
+          }
+        ],
         "responses": {
           "202": {
             "$ref": "#/components/responses/Command"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReservationActionRequest"
+              }
+            }
           }
         }
       }
@@ -241,6 +399,30 @@
   },
   "components": {
     "parameters": {
+      "ContractVersion": {
+        "name": "x-bloodledger-contract-version",
+        "in": "header",
+        "required": false,
+        "description": "V2 by default. Set V2.1 to enable the additive CRYOPRECIPITATE contract; V2 behavior remains unchanged.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "V2",
+            "V2.1"
+          ],
+          "default": "V2"
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "description": "Stable replay key for this mutation. Reuse only with the identical request payload.",
+        "schema": {
+          "type": "string",
+          "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+        }
+      },
       "CommandId": {
         "name": "commandId",
         "in": "path",
@@ -281,6 +463,17 @@
           "PACKED_RED_BLOOD_CELLS",
           "FRESH_FROZEN_PLASMA",
           "PLATELETS"
+        ]
+      },
+      "ComponentTypeV21": {
+        "type": "string",
+        "description": "The additive V2.1 component vocabulary. CRYOPRECIPITATE is rejected by V2.",
+        "enum": [
+          "WHOLE_BLOOD",
+          "PACKED_RED_BLOOD_CELLS",
+          "FRESH_FROZEN_PLASMA",
+          "PLATELETS",
+          "CRYOPRECIPITATE"
         ]
       },
       "ComponentRegistration": {
@@ -552,6 +745,125 @@
         },
         "additionalProperties": false
       },
+      "LocalReleaseRequest": {
+        "type": "object",
+        "description": "Exact request body for POST /local-releases. ROLE-01 and ROLE-02 only.",
+        "required": [
+          "bloodType",
+          "componentType",
+          "correlationId",
+          "eventTime",
+          "quantity",
+          "releaseId"
+        ],
+        "properties": {
+          "releaseId": {
+            "type": "string",
+            "pattern": "^REL_[A-Z0-9_-]{1,56}$"
+          },
+          "bloodType": {
+            "$ref": "#/components/schemas/BloodType"
+          },
+          "componentType": {
+            "$ref": "#/components/schemas/ComponentType"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReconciliationRequest": {
+        "type": "object",
+        "description": "Exact request body for POST /reconciliation. ROLE-01 and ROLE-02 only.",
+        "required": [
+          "caseId",
+          "componentId",
+          "correlationId",
+          "reasonCode"
+        ],
+        "properties": {
+          "caseId": {
+            "type": "string",
+            "pattern": "^RECON_[A-Z0-9_-]{1,56}$"
+          },
+          "componentId": {
+            "type": "string",
+            "pattern": "^COMP_[A-Z0-9_-]{1,56}$"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "reasonCode": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReservationActionRequest": {
+        "type": "object",
+        "description": "The endpoint enforces an exact body by action: prepare requires preparedAt, preparedEvidenceDigest and preparedEvidenceId; compromise requires reasonCode; all other actions accept only the base fields.",
+        "required": [
+          "correlationId",
+          "eventTime",
+          "expectedVersion"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "preparedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "preparedEvidenceDigest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "preparedEvidenceId": {
+            "type": "string",
+            "pattern": "^EVD_[A-Z0-9_-]{1,56}$"
+          },
+          "reasonCode": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CensusCatchUpRequest": {
+        "type": "object",
+        "required": [
+          "scheduledFor"
+        ],
+        "properties": {
+          "scheduledFor": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "Command": {
         "type": "object",
         "required": [
@@ -562,7 +874,8 @@
           "statusUrl",
           "acceptedAt",
           "correlationId",
-          "classification"
+          "classification",
+          "replayed"
         ],
         "properties": {
           "commandId": {
@@ -611,6 +924,9 @@
           },
           "classification": {
             "const": "SIMULATION_ONLY"
+          },
+          "replayed": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -635,10 +951,27 @@
         "content": {
           "application/json": {
             "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "../../contracts/core-v2.schema.json"
-              }
+              "type": "object",
+              "required": [
+                "scope",
+                "components",
+                "classification"
+              ],
+              "properties": {
+                "scope": {
+                  "const": "INSTITUTION"
+                },
+                "components": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "../../contracts/core-v2.schema.json"
+                  }
+                },
+                "classification": {
+                  "const": "SIMULATION_ONLY"
+                }
+              },
+              "additionalProperties": false
             }
           }
         }

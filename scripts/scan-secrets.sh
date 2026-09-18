@@ -33,11 +33,11 @@ fi
 echo "Gitleaks image: $GITLEAKS_IMAGE"
 echo "Resolved digest: $resolved_digest"
 
-docker run --rm --volume "$history_snapshot:/repo:ro" "$GITLEAKS_IMAGE" \
-  git --log-opts=--all --redact --no-banner /repo
-docker run --rm --volume "$index_snapshot:/scan:ro" "$GITLEAKS_IMAGE" \
-  dir --redact --no-banner /scan
-docker run --rm --volume "$candidate_snapshot:/scan:ro" "$GITLEAKS_IMAGE" \
-  dir --redact --no-banner /scan
+docker run --rm --volume "$repository_root/.gitleaks.toml:/config/gitleaks.toml:ro" --volume "$history_snapshot:/repo:ro" "$GITLEAKS_IMAGE" \
+  git --config /config/gitleaks.toml --log-opts=--all --redact --no-banner /repo
+docker run --rm --volume "$repository_root/.gitleaks.toml:/config/gitleaks.toml:ro" --volume "$index_snapshot:/scan:ro" "$GITLEAKS_IMAGE" \
+  dir --config /config/gitleaks.toml --redact --no-banner /scan
+docker run --rm --volume "$repository_root/.gitleaks.toml:/config/gitleaks.toml:ro" --volume "$candidate_snapshot:/scan:ro" "$GITLEAKS_IMAGE" \
+  dir --config /config/gitleaks.toml --redact --no-banner /scan
 
 echo "Gitleaks passed for Git history, the index, and tracked/candidate content"

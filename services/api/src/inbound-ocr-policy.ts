@@ -1,5 +1,5 @@
 import { ApiFailure } from "./errors.js";
-import { V2_BLOOD_TYPES, V2_COMPONENT_TYPES, type V2BloodType, type V2ComponentType } from "./v2-contracts.js";
+import { V2_BLOOD_TYPES, V2_COMPONENT_TYPES, INTERVIEW_V2_1_COMPONENT_TYPES, type V2BloodType, type V2ComponentType } from "./v2-contracts.js";
 
 export const INBOUND_OCR_POLICY_VERSION = "INBOUND_OCR_V1" as const;
 export const INBOUND_CAPTURE_METHOD = "OCR" as const;
@@ -15,7 +15,7 @@ export type InboundOcrInput = {
   donationNumber: string;
   bloodType: V2BloodType;
   bloodTypeEvidence: { source: "OCR_LABEL" | "OPERATOR_CONFIRMED"; confirmed: true };
-  componentType: V2ComponentType;
+  componentType: V2ComponentType | typeof INTERVIEW_V2_1_COMPONENT_TYPES[number];
   componentEvidence: { source: "OCR_LABEL" | "BAG_TYPE" | "OPERATOR_CONFIRMED"; confirmed: true };
   collectedAt: string;
   expiresAt: string;
@@ -48,7 +48,7 @@ function evidence(value: unknown, sources: readonly string[]): { source: string;
 }
 
 /** Validate the only supported intake path. Raw OCR text/images are intentionally not accepted. */
-export function validateInboundOcrInput(value: unknown, enabledIssuerIds: readonly string[] = ["INST_MEDIATRIX"]): InboundOcrInput {
+export function validateInboundOcrInput(value: unknown, enabledIssuerIds: readonly string[] = ["INST_MEDIATRIX"], contractVersion: "V2" | "V2.1" = "V2"): InboundOcrInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new ApiFailure(400, "INBOUND_OCR_INPUT_INVALID", "The OCR inbound capture is invalid.");
   const body = value as Record<string, unknown>;
   const expected = ["bloodType", "bloodTypeEvidence", "captureMethod", "capturePolicyVersion", "capturedAt", "collectedAt", "componentEvidence", "componentType", "confirmedAt", "correlationId", "donationNumber", "eventTime", "expiresAt", "issuerInstitutionId", "ocrEvidence"].sort();
@@ -61,7 +61,8 @@ export function validateInboundOcrInput(value: unknown, enabledIssuerIds: readon
   const bloodType = stringField(body, "bloodType") as V2BloodType;
   const componentType = stringField(body, "componentType") as V2ComponentType;
   if (!(V2_BLOOD_TYPES as readonly string[]).includes(bloodType)) throw new ApiFailure(400, "V2_BLOOD_TYPE_INVALID", "The blood type is not supported.");
-  if (!(V2_COMPONENT_TYPES as readonly string[]).includes(componentType)) throw new ApiFailure(400, "V2_COMPONENT_TYPE_INVALID", "The component type is not supported.");
+  const supportedComponents = contractVersion === "V2.1" ? INTERVIEW_V2_1_COMPONENT_TYPES : V2_COMPONENT_TYPES;
+  if (!(supportedComponents as readonly string[]).includes(componentType)) throw new ApiFailure(400, "V2_COMPONENT_TYPE_INVALID", "The component type is not supported by this contract version.");
   const bloodTypeEvidence = evidence(body.bloodTypeEvidence, ["OCR_LABEL", "OPERATOR_CONFIRMED"]) as InboundOcrInput["bloodTypeEvidence"];
   const componentEvidence = evidence(body.componentEvidence, ["OCR_LABEL", "BAG_TYPE", "OPERATOR_CONFIRMED"]) as InboundOcrInput["componentEvidence"];
   const ocr = body.ocrEvidence;

@@ -2,7 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 
 const root = new URL("../../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
-const [compose, bootstrap, migration, forecastMigration, coordinationMigration, scanMigration, webAccessMigration, transferAlertMigration, alertAckMigration, sharedInventoryTransactionMigration, v2Migration, inboundMigration, databasePackage] = await Promise.all([
+const [compose, bootstrap, migration, forecastMigration, coordinationMigration, scanMigration, webAccessMigration, transferAlertMigration, alertAckMigration, sharedInventoryTransactionMigration, v2Migration, inboundMigration, v4RuntimeMigration, projectionReceiptMigration, mlSnapshotMigration, surplusProvenanceMigration, v21SemanticsMigration, v21HoldFixMigration, mlSnapshotSchemaMigration, reservationTimestampMigration, databasePackage] = await Promise.all([
   read("compose.yaml"),
   read("database/bootstrap/001-create-development-roles.sh"),
   read("database/migrations/20260715000000000_bootstrap-app-schema.js"),
@@ -15,6 +15,14 @@ const [compose, bootstrap, migration, forecastMigration, coordinationMigration, 
   read("database/migrations/20260823010000000_allow-shared-inventory-ledger-transactions.js"),
   read("database/migrations/20260912000000000_create-interview-core-v2-tables.js"),
   read("database/migrations/20260912010000000_add-inbound-ocr-capture-v2.js"),
+  read("database/migrations/20260917000000000_add-v4-runtime-and-v21-evidence.js"),
+  read("database/migrations/20260917020000000_add-v4-scope-and-projection-receipts.js"),
+  read("database/migrations/20260917040000000_create-internal-ml-snapshots.js"),
+  read("database/migrations/20260917050000000_add-surplus-provenance.js"),
+  read("database/migrations/20260917060000000_align-v21-ledger-projection-semantics.js"),
+  read("database/migrations/20260917070000000_fix-v21-hold-compromise-constraint.js"),
+  read("database/migrations/20260917080000000_widen-ml-snapshot-schema-version.js"),
+  read("database/migrations/20260917090000000_add-reservation-projection-timestamps.js"),
   read("database/package.json").then(JSON.parse)
 ]);
 
@@ -87,6 +95,16 @@ const assertions = [
   [inboundMigration.includes("capture_method = 'OCR'"), "OCR-only database constraint"],
   [inboundMigration.includes("INBOUND_CAPTURE"), "inbound command resource type"],
   [inboundMigration.includes("exports.down = false"), "inbound forward-only migration"],
+  [v4RuntimeMigration.includes("SYNTHETIC_FORECAST_V4_RUNTIME_V1"), "V4 forecast runtime scope"],
+  [projectionReceiptMigration.includes("CREATE TABLE app.v2_projection_receipts"), "durable projection receipts"],
+  [projectionReceiptMigration.includes("LEDGER_COMMITTED_PROJECTION_PENDING"), "projection retry claim index"],
+  [mlSnapshotMigration.includes("CREATE TABLE app.ml_inventory_snapshots"), "immutable internal ML snapshot"],
+  [mlSnapshotMigration.includes("CREATE CONSTRAINT TRIGGER ml_inventory_snapshot_complete"), "complete snapshot guard"],
+  [surplusProvenanceMigration.includes("forecast_run_id"), "surplus forecast provenance"],
+  [v21SemanticsMigration.includes("prepared_evidence_digest"), "V2.1 lifecycle evidence"],
+  [v21HoldFixMigration.includes("inventory_status = 'RECONCILIATION_HOLD'"), "hold/compromise constraint correction"],
+  [mlSnapshotSchemaMigration.includes("schema_version TYPE varchar(64)"), "ML snapshot schema version width"],
+  [reservationTimestampMigration.includes("ADD COLUMN updated_at"), "reservation projection timestamp"],
   [databasePackage.scripts["migrate:up"] === "node scripts/migrate.mjs", "apply command"],
   [databasePackage.scripts["migrate:status"] === "node scripts/migration-status.mjs", "status command"]
 ];
@@ -97,8 +115,8 @@ for (const [passed, label] of assertions) {
 
 const migrationFiles = (await readdir(new URL("database/migrations", root)))
   .filter((name) => /\.(?:js|cjs|mjs|sql)$/.test(name));
-if (migrationFiles.length !== 10) {
-  throw new Error(`Expected ten approved bootstrap through inbound OCR migrations, received ${migrationFiles.length}`);
+if (migrationFiles.length < 20) {
+  throw new Error(`Expected bootstrap through V4/V2.1 migrations, received ${migrationFiles.length}`);
 }
 
 const prohibited = /blood_units|transfers|users|institutions|forecasts|notifications|audit_logs|sync(?:hronization)?_queues/i;

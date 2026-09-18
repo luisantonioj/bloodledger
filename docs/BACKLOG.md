@@ -237,6 +237,17 @@ safety/reserve policy remain replacement gates.
 **Evidence:** All technical gates passed and Jopia recorded accountable-owner
 acceptance on 2026-08-16 in `docs/SPRINT-03.md`.
 
+### BL-ML-05 — Existing-data thesis exploration
+
+**Priority:** Must | **Status:** Implemented; accountable review pending | **Target:** Thesis research follow-up
+**Authorization:** User / 2026-09-15, `codex/sprint-03-ml-exploration`
+**Requirements:** FR-14, BR-ALG-07
+
+Scope and acceptance: [ML thesis exploration](ML-THESIS-EXPLORATION.md).
+Audit the supplied sample, retain unknown coverage, run reproducible synthetic
+comparisons and prepare reviewable artifacts without requiring further data.
+No operational accuracy claim, runtime replacement, or RQ-07 closure is implied.
+
 ## 7. EPIC-05 — Scan, middleware, and synchronization
 
 ### BL-SCN-01 — ISBT 128 scan parsing

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bloodledger.local/contracts/source-surplus-evidence-v2-1.schema.json",
+  "title": "BloodLedger Source Surplus Evidence V2.1",
+  "type": "object",
+  "required": ["evidenceId", "sourceInstitutionId", "bloodType", "componentType", "surplusQuantity", "asOf", "horizonDate", "forecastStatus", "datasetVersion", "forecastRunId", "modelVersion", "optimizationPolicyVersion", "configurationSha256", "inventorySnapshotId", "sourceProjectionDigest", "classification", "recommendationEligibility"],
+  "properties": {
+    "evidenceId": { "type": "string", "pattern": "^SURP_[A-Z0-9_-]{1,56}$" },
+    "sourceInstitutionId": { "type": "string", "pattern": "^INST_[A-Z0-9_-]{1,59}$" },
+    "bloodType": { "enum": ["A_POSITIVE", "A_NEGATIVE", "B_POSITIVE", "B_NEGATIVE", "AB_POSITIVE", "AB_NEGATIVE", "O_POSITIVE", "O_NEGATIVE"] },
+    "componentType": { "enum": ["WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_PLASMA", "PLATELETS", "CRYOPRECIPITATE"] },
+    "surplusQuantity": { "type": "integer", "minimum": 0 },
+    "asOf": { "type": "string", "format": "date-time" },
+    "horizonDate": { "type": "string", "format": "date" },
+    "forecastStatus": { "enum": ["AVAILABLE", "STALE", "UNAVAILABLE"] },
+    "datasetVersion": { "const": "SYNTHETIC_FORECAST_V4_RUNTIME_V1" },
+    "forecastRunId": { "type": "string", "pattern": "^(RUN|FRUN)_[A-Z0-9_-]{1,56}$" },
+    "modelVersion": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "optimizationPolicyVersion": { "const": "INTERVIEW_DERIVED_OPTIMIZATION_V2_1" },
+    "configurationSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "inventorySnapshotId": { "type": "string", "pattern": "^CENSUS_[A-Z0-9_-]{1,56}$" },
+    "sourceProjectionDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "classification": { "const": "SIMULATION_ONLY" },
+    "recommendationEligibility": { "const": "DISABLED_UNAPPROVED_POLICY" }
+  },
+  "additionalProperties": false
+}

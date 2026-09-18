@@ -72,3 +72,72 @@ explicit. Generated data and model artifacts are ignored by Git.
 JupyterLab is optional analysis tooling. Any notebook must import this package
 instead of reimplementing generation, validation, or modeling behavior. Kaggle
 and scheduled execution are outside Sprint 3.
+
+## Existing-data thesis exploration
+
+The isolated offline experiment is specified in
+[`docs/ML-THESIS-EXPLORATION.md`](../../docs/ML-THESIS-EXPLORATION.md).
+It does not replace the accepted four-series runtime model or persistence schema.
+From this directory, using the pinned environment:
+
+```bash
+PYTHONPATH=src python -m bloodledger_forecasting.exploration \
+  --output /absolute/external/new-experiment-directory
+```
+
+The default runs all five fixed seeds and three scenarios with invented neutral
+rates. For the provided institutional sample, append `--workbook /absolute/input.xlsx`
+to produce a local descriptive audit. Append `--use-sample-scale` only to explicitly
+use the partial sample as a scenario scale, or `--audit-only` to skip modeling.
+Inputs mount read-only; outputs must be a new external or ignored artifacts
+folder. These examples use the same module command executed in the pinned
+container during the exploration; use `PYTHONPATH=src` from this directory.
+
+Outputs include safe observed aggregates and row-reason audit (if a source is
+supplied), coverage, SVG figures, generated data, validation/test predictions,
+selection evidence, a model artifact, demo forecasts, report and SHA-256 manifest.
+Do not commit these source-derived research files. Source free text is never
+copied; cached formula values are not silently trusted. Observed missing days
+stay unknown. Real forecasting accuracy remains unavailable while coverage is
+unverified. The optional 14-day extension is not selected for runtime delivery.
+
+### Frozen workbook v4 handoff
+
+Use `python -m bloodledger_forecasting.thesis_release --workbook /source.xlsx
+--release /final-v1 --output /outputs/new-handoff` (arguments on one command
+line, with `PYTHONPATH=src`). This verifies the frozen release and exports all
+metrics, descriptive summaries, figures, a model card and historical replay.
+The mixed v4 workbook must not be supplied to the original request-file audit.
+No training is repeated and no study model is promoted to the application.
+
+From the repository root, `bash tests/forecasting/v4-runtime-integration.sh`
+checks the accepted runtime with a new disposable PostgreSQL container, no
+published ports, generated test credentials, all current migrations, and the
+API database mapper. It requires Docker, the built `bloodledger-forecasting`
+image and locked npm dependencies installed in `node_modules`. It tests insert,
+replay, conflict, current/stale/unavailable results and exactly four persisted
+rows. Its trap removes only the container and temporary directory it created.
+
+
+### V4 producer corrections (Issue #9)
+
+The v4 runtime integration specification is
+[`ML-RUNTIME-INTEGRATION-V4.md`](../../docs/ML-RUNTIME-INTEGRATION-V4.md).
+From this directory in the pinned Python environment:
+
+```bash
+PYTHONPATH=src python -m bloodledger_forecasting.cli forecast-v4-runtime \
+  --data /external/synthetic-request-history.csv --output /external/forecast.json \
+  --institution-id INST_MEDIATRIX --origin-date 2026-01-07 \
+  --horizon-date 2026-01-08 --generated-at 2026-01-08T00:00:00Z --persist
+```
+
+The history CSV accepts only business_date, blood_type, component and
+requested_units. Blank quantities are unknown, not zero. Null/missing history
+produces a persisted UNAVAILABLE attempt with no forecast rows and the requested
+dates; the latest attempt prevents older success from being shown as current.
+Invalid numeric/schema/date inputs still fail. A supplied path must exist;
+its actual bytes identify the dataset. Python calls without a path use a canonical
+in-memory evidence hash. Execution time alone does not change replay identity.
+Institution, all immutable lineage and the requested window do change identity.
+All outputs remain simulation-only; historical V1 and frozen study results remain.

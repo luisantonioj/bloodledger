@@ -1,0 +1,8 @@
+{
+  "classification": "SIMULATION_ONLY",
+  "policyVersion": "INTERVIEW_DERIVED_OPTIMIZATION_V2_1",
+  "recommendationEligibility": "DISABLED_UNAPPROVED_POLICY",
+  "automaticApprovalEnabled": false,
+  "surplus": {"horizonDays": 1, "safetyAllowance": 2, "minimumReserve": 10, "rounding": "FLOOR", "eligibleStock": "AVAILABLE_COMMITTED_ONLY"},
+  "broa": {"weights": {"urgency": 0.5, "stockShortage": 0.3125, "distancePenalty": 0.1875}, "normalization": "MIN_MAX", "sourceSurplusIsEligibilityGate": true, "contextIsExplanatoryOnly": true}
+}

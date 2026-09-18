@@ -13,8 +13,11 @@ export function recommendBroaV2(input: BroaV2Input) {
   const evaluationMs = Date.parse(input.evaluationTime);
   if (!Number.isFinite(evaluationMs) || new Date(evaluationMs).toISOString() !== input.evaluationTime) fail("COORD_BROA_V2_TIME_INVALID");
   try { validateSourceSurplusEvidenceV2(input.sourceSurplus); } catch { fail("COORD_BROA_V2_SURPLUS_NOT_ELIGIBLE"); }
-  if (input.sourceSurplus.forecastStatus !== "AVAILABLE" || input.sourceSurplus.classification !== INTERVIEW_V2_CLASSIFICATION || input.sourceSurplus.recommendationEligibility !== INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY || input.sourceSurplus.sourceInstitutionId === "" || input.sourceSurplus.surplusQuantity < input.requiredQuantity || Date.parse(input.sourceSurplus.asOf) > evaluationMs) fail("COORD_BROA_V2_SURPLUS_NOT_ELIGIBLE");
-  if (input.sourceSurplus.inventorySnapshotId === undefined || input.sourceSurplus.sourceProjectionDigest === undefined) fail("COORD_BROA_V2_COMMITTED_INVENTORY_REQUIRED");
+  const asOfMs = Date.parse(input.sourceSurplus.asOf);
+  const horizonMs = Date.parse(`${input.sourceSurplus.horizonDate}T00:00:00.000Z`);
+  if (!Number.isFinite(asOfMs) || new Date(asOfMs).toISOString() !== input.sourceSurplus.asOf || asOfMs > evaluationMs) fail("COORD_BROA_V2_SURPLUS_NOT_ELIGIBLE");
+  if (!Number.isFinite(horizonMs) || new Date(horizonMs).toISOString().slice(0, 10) !== input.sourceSurplus.horizonDate || horizonMs < Date.parse(`${input.evaluationTime.slice(0, 10)}T00:00:00.000Z`)) fail("COORD_BROA_V2_SURPLUS_STALE");
+  if (input.sourceSurplus.forecastStatus !== "AVAILABLE" || input.sourceSurplus.classification !== INTERVIEW_V2_CLASSIFICATION || input.sourceSurplus.recommendationEligibility !== INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY || input.sourceSurplus.sourceInstitutionId === "" || input.sourceSurplus.surplusQuantity < input.requiredQuantity) fail("COORD_BROA_V2_SURPLUS_NOT_ELIGIBLE");
   if (!INTERVIEW_V2_BLOOD_TYPES.includes(input.sourceSurplus.bloodType) || !INTERVIEW_V2_COMPONENT_TYPES.includes(input.sourceSurplus.componentType)) fail("COORD_BROA_V2_SURPLUS_INVALID");
   const keys = new Set<string>();
   for (const candidate of input.candidates) {

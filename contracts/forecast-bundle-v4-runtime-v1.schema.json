@@ -1,0 +1,222 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bloodledger.local/contracts/forecast-bundle-v4-runtime-v1.schema.json",
+  "title": "BloodLedger V4 Runtime Forecast Bundle V1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "run",
+    "forecasts"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "BLOODLEDGER_FORECAST_BUNDLE_V4_RUNTIME_V1"
+    },
+    "run": {
+      "type": "object",
+      "required": [
+        "runId",
+        "runKey",
+        "institutionId",
+        "originDate",
+        "datasetVersion",
+        "modelVersion",
+        "modelName",
+        "target",
+        "inputStartDate",
+        "inputEndDate",
+        "horizonDate",
+        "generatedAt",
+        "classification",
+        "recommendationEligibility",
+        "runStatus",
+        "lineage"
+      ],
+      "properties": {
+        "runId": {
+          "type": "string",
+          "pattern": "^RUN_[A-Z0-9_-]{1,56}$"
+        },
+        "institutionId": {
+          "type": "string",
+          "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+        },
+        "originDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "runKey": {
+          "type": "string",
+          "pattern": "^RUNKEY_[A-Z0-9_-]{1,55}$"
+        },
+        "datasetVersion": {
+          "const": "SYNTHETIC_FORECAST_V4_RUNTIME_V1"
+        },
+        "modelVersion": {
+          "const": "bloodledger-weighted-average-7-1.0.0"
+        },
+        "modelName": {
+          "const": "weighted_average_7"
+        },
+        "target": {
+          "const": "requested_units"
+        },
+        "inputStartDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "inputEndDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "horizonDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "classification": {
+          "const": "SIMULATION_ONLY"
+        },
+        "recommendationEligibility": {
+          "const": "DISABLED_UNAPPROVED_POLICY"
+        },
+        "runStatus": {
+          "enum": [
+            "COMPLETED",
+            "UNAVAILABLE",
+            "FAILED"
+          ]
+        },
+        "unavailableReason": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "lineage": {
+          "type": "object",
+          "required": [
+            "datasetSha256",
+            "codeSha256",
+            "configurationSha256",
+            "modelSha256",
+            "inputSha256",
+            "payloadSha256"
+          ],
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "forecasts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "forecastId",
+          "institutionId",
+          "bloodType",
+          "component",
+          "asOfDate",
+          "horizonDate",
+          "pointForecast",
+          "lowerForecast",
+          "upperForecast",
+          "uncertaintyStatus",
+          "uncertaintyNote",
+          "forecastStatus",
+          "staleAfter",
+          "classification",
+          "recommendationEligibility"
+        ],
+        "properties": {
+          "forecastId": {
+            "type": "string",
+            "pattern": "^FC_[A-Z0-9_-]{1,60}$"
+          },
+          "institutionId": {
+            "type": "string",
+            "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+          },
+          "bloodType": {
+            "enum": [
+              "A_POSITIVE",
+              "B_POSITIVE",
+              "AB_POSITIVE",
+              "O_POSITIVE"
+            ]
+          },
+          "component": {
+            "enum": [
+              "PACKED_RED_BLOOD_CELLS",
+              "PLATELETS",
+              "FRESH_FROZEN_PLASMA",
+              "CRYOPRECIPITATE",
+              "WHOLE_BLOOD"
+            ]
+          },
+          "horizonDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "asOfDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "pointForecast": {
+            "type": "number",
+            "minimum": 0
+          },
+          "lowerForecast": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "upperForecast": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "uncertaintyStatus": {
+            "enum": [
+              "CALIBRATED",
+              "UNCERTAINTY_UNAVAILABLE"
+            ]
+          },
+          "uncertaintyNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "forecastStatus": {
+            "enum": [
+              "AVAILABLE",
+              "UNAVAILABLE",
+              "STALE"
+            ]
+          },
+          "staleAfter": {
+            "type": "string",
+            "format": "date"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          },
+          "recommendationEligibility": {
+            "const": "DISABLED_UNAPPROVED_POLICY"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

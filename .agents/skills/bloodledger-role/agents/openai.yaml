@@ -1,0 +1,7 @@
+interface:
+  display_name: "BloodLedger Role Context"
+  short_description: "Switch BloodLedger owner context"
+  default_prompt: "Use $bloodledger-role to select the BloodLedger owner perspective before planning this task."
+
+policy:
+  allow_implicit_invocation: true

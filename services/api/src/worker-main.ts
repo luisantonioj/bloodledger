@@ -18,7 +18,7 @@ const worker = new ScanSyncWorker(
   `WORKER_${randomUUID().replaceAll("-", "").slice(0, 24).toUpperCase()}`,
 );
 const v2Worker = process.env.FABRIC_V2_SYNC_ENABLED === "true"
-  ? new V2CommandWorker(new PostgresV2CommandStore(pool), { submit: (command) => new FabricGatewayInterviewCore().submit(command), project: (command) => new PostgresV2Projector(pool).project(command) }, `V2WORKER_${randomUUID().replaceAll("-", "").slice(0, 24).toUpperCase()}`)
+  ? new V2CommandWorker(new PostgresV2CommandStore(pool), { submit: (command) => new FabricGatewayInterviewCore().submit(command), project: (command, committed) => new PostgresV2Projector(pool).project(command, committed) }, `V2WORKER_${randomUUID().replaceAll("-", "").slice(0, 24).toUpperCase()}`)
   : null;
 let stopping = false;
 process.on("SIGINT", () => { stopping = true; });

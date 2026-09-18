@@ -1,4 +1,4 @@
-import type { AcceptedScan, CaptureInput, ForecastRecord, Principal, ScanEvent } from "./types.js";
+import type { AcceptedScan, CaptureInput, ForecastRead, ForecastRecord, Principal, ScanEvent } from "./types.js";
 
 export interface ScanRepository {
   health(): Promise<boolean>;
@@ -9,7 +9,8 @@ export interface ScanRepository {
     receivedAt: Date,
   ): Promise<AcceptedScan>;
   findScan(eventId: string, institutionId: string): Promise<ScanEvent | null>;
-  listForecasts(institutionId: string, manilaDate: string): Promise<ForecastRecord[]>;
+  listForecasts(institutionId: string, manilaDate: string, datasetVersion?: string): Promise<ForecastRecord[]>;
+  readForecasts?(institutionId: string, manilaDate: string, datasetVersion?: string): Promise<ForecastRead>;
   recoverExpiredLeases(now: Date): Promise<number>;
   claimProjection(now: Date): Promise<ScanEvent | null>;
   claimLedger(workerId: string, now: Date): Promise<ScanEvent | null>;
