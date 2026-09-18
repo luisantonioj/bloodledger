@@ -2,6 +2,14 @@
 
 These instructions apply to the entire repository.
 
+## Role context
+
+Use the repository-local [`bloodledger-role`](.agents/skills/bloodledger-role/SKILL.md)
+skill when a task needs Jopia, Buno, or Lat owner context before answering,
+planning, reviewing, or implementing. The skill keeps role selection in the
+current conversation and routes ownership without replacing this file's
+requirements, approvals, or evidence rules.
+
 ## 1. Current phase
 
 BloodLedger has an approved Sprint 0 baseline and Sprint 1 implementation guide.
