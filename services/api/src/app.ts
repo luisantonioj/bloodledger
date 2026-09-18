@@ -115,7 +115,7 @@ export async function buildApp(
   sessions?: SessionRepository,
   applicationReads?: ApplicationReadRepository,
   applicationWrites?: ApplicationWriteRepository,
-  v2?: { store: V2CommandStore; keyring?: DonationKeyring; census?: CensusStore; projection?: V2ProjectionReader },
+  v2?: { store: V2CommandStore; keyring?: DonationKeyring; census?: CensusStore; projection?: V2ProjectionReader; enabledIssuerInstitutionIds?: readonly string[] },
 ): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
