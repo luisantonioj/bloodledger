@@ -21,6 +21,7 @@ fixture data, topology claims, or browser-only writes.
 ## Registers
 
 - `MOCKUP_REFERENCE.md` — immutable selected-source hashes and exclusions.
+- `MOCKUP_REFERENCE_2026-09-17.md` — later committed visual delta, adaptations, and exclusions.
 - `COMPONENT_MIGRATION.md` — shared visual primitive mapping and evidence.
 - `PAGE_MIGRATION.md` — selected/deferred page mapping and API dependencies.
 - `FRONTEND_ONLY_EXTENSION.md` — post-Sprint-05 visual-only surfaces and deferred dependencies.

@@ -1,4 +1,5 @@
 import { can, composition, type Principal } from "../auth/permissions";
+import { canViewAnalyticsPreview } from "../features/analytics/analytics-access";
 import { FeatureRouter } from "./feature-router";
 
 const pages: Record<string, [string, string, string]> = {
@@ -8,6 +9,7 @@ const pages: Record<string, [string, string, string]> = {
   "/consortium": ["Approved aggregate", "Network view", "Read-only synthetic city-wide summaries without fabricated peer ownership."],
   "/audit": ["Safe provenance", "Audit", "Permission-scoped events with redacted evidence identifiers."],
   "/reporting": ["Simulation evidence", "Reports", "Approved read-only synthetic summaries and exports."],
+  "/analytics": ["Decision-support preview", "Analytics", "Read-only historical-demand and redistribution-assessment interface; backend data remains unavailable."],
   "/accounts": ["Frontend parity preview", "System administration", "Visual-only application, institution, and account-management workspace."],
   "/profile": ["Session context", "Profile", "Safe principal and institution metadata assigned by the server."],
 };
@@ -30,11 +32,12 @@ function dashboardPage(principal: Principal): [string, string, string] {
 
 export function PageContent({ path, principal }: { path: string; principal: Principal }) {
   const page = path === "/" ? dashboardPage(principal) : pages[path] ?? ["Unavailable", "Page not found", "This route is not part of Sprint 5."];
+  const frontendOnly = ["/analytics", "/accounts"].includes(path);
   return <div className="page">
     <header className="page-head"><div><p className="eyebrow">{page[0]}</p><h1 className="page-title">{page[1]}</h1><p className="subtitle">{page[2]}</p></div><span className="page-classification">Synthetic evidence</span></header>
     <section className="card feature-card">
-      <div className="card-heading"><div><h2>{page[1]} data</h2><p>Authorized official API view with explicit freshness and state.</p></div><span>SIMULATION_ONLY</span></div>
-      <FeatureRouter key={path} path={path} canAcknowledge={can(principal, "alerts:acknowledge")} canSubmitTransfer={principal.roleId === "ROLE-03"} canRejectTransfer={principal.roleId === "ROLE-02"} canCancelTransfer={["ROLE-02", "ROLE-03"].includes(principal.roleId)} canCancelApprovedTransfer={principal.roleId === "ROLE-02"} canDispatchTransfer={["ROLE-01", "ROLE-02"].includes(principal.roleId)} canStartTransit={["ROLE-01", "ROLE-02"].includes(principal.roleId)} canResumeTransfer={["ROLE-01", "ROLE-02"].includes(principal.roleId)} canDelayTransfer={["ROLE-01", "ROLE-02", "ROLE-03"].includes(principal.roleId)} canReceiveTransfer={principal.roleId === "ROLE-03"} canCapture={can(principal, "inventory:write")} principal={principal}/>
+      <div className="card-heading"><div><h2>{page[1]} {frontendOnly ? "preview" : "data"}</h2><p>{frontendOnly ? "Frontend-only presentation; no workflow or data API is connected." : "Authorized official API view with explicit freshness and state."}</p></div><span>SIMULATION_ONLY</span></div>
+      <FeatureRouter key={path} path={path} canAcknowledge={can(principal, "alerts:acknowledge")} canSubmitTransfer={principal.roleId === "ROLE-03"} canRejectTransfer={principal.roleId === "ROLE-02"} canCancelTransfer={["ROLE-02", "ROLE-03"].includes(principal.roleId)} canCancelApprovedTransfer={principal.roleId === "ROLE-02"} canDispatchTransfer={["ROLE-01", "ROLE-02"].includes(principal.roleId)} canStartTransit={["ROLE-01", "ROLE-02"].includes(principal.roleId)} canResumeTransfer={["ROLE-01", "ROLE-02"].includes(principal.roleId)} canDelayTransfer={["ROLE-01", "ROLE-02", "ROLE-03"].includes(principal.roleId)} canReceiveTransfer={principal.roleId === "ROLE-03"} canCapture={can(principal, "inventory:write")} canPreviewInventoryExport={["ROLE-01", "ROLE-02"].includes(principal.roleId)} canPreviewTransferExport={["ROLE-01", "ROLE-02", "ROLE-03"].includes(principal.roleId) || canViewAnalyticsPreview(principal)} principal={principal}/>
     </section>
   </div>;
 }

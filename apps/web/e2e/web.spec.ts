@@ -13,8 +13,8 @@ const permissions = {
 } as const;
 
 const navigation: Record<RoleId, string[]> = {
-  "ROLE-01": ["Dashboard", "Inventory", "Transfers", "Alerts", "Profile"],
-  "ROLE-02": ["Dashboard", "Inventory", "Transfers", "Alerts", "Audit", "Profile"],
+  "ROLE-01": ["Dashboard", "Inventory", "Transfers", "Alerts", "Analytics", "Profile"],
+  "ROLE-02": ["Dashboard", "Inventory", "Transfers", "Alerts", "Audit", "Analytics", "Profile"],
   "ROLE-03": ["Dashboard", "Transfers", "Alerts", "Profile"],
   "ROLE-04": ["Dashboard", "Inventory", "Transfers", "Alerts", "Network view", "Audit", "Reports", "Profile"],
   "ROLE-05": ["Dashboard", "Accounts", "Profile"],
@@ -129,6 +129,7 @@ test("PRC, DOH, and administrators receive truthful non-operational compositions
     if (roleId === "ROLE-04") {
       await expect(page.getByText("Ledger-confirmed", { exact: true })).toBeVisible();
       await expect(page.getByText("Non-clinical workspace", { exact: true })).toHaveCount(0);
+      await expect(page.getByRole("link", { name: "Analytics", exact: true })).toHaveCount(institutionId === "INST_SYNTH_PRC" ? 1 : 0);
     } else {
       await expect(page.getByText("Non-clinical workspace", { exact: true })).toBeVisible();
       await expect(page.getByText("Ledger-confirmed", { exact: true })).toHaveCount(0);
@@ -618,8 +619,45 @@ test("regulatory navigation renders every selected read-only page and CSV bounda
     if (path === "/profile") await expect(page.locator(".profile-identity")).toBeVisible();
     if (path === "/reporting") {
       await expect(page.getByRole("link", { name: "Download simulation CSV" })).toHaveAttribute("href", "/api/v1/reports/inventory.csv");
+      await expect(page.getByRole("button", { name: "Export fixed-layout PDF" })).toBeDisabled();
+      await expect(page.getByText("PDF generator not connected", { exact: true })).toBeVisible();
     }
   }
+});
+
+test("latest mockup visual delta stays role-scoped and frontend-only", async ({ page }) => {
+  const transfer = { transferId: "TRF_SYNTH_EXPORT_PREVIEW", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_SYNTH_SECONDARY", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "ROUTINE", requestTime: timestamp, status: "PENDING", reasonCode: null, recommendationDigest: null, ledgerVersion: 1, projectedAt: timestamp, dispatchEvidenceRecorded: false, receiptEvidenceRecorded: false };
+  await authenticatedApi(page, "ROLE-02", async (route, path) => {
+    if (path !== "/api/v1/transfers" || route.request().method() !== "GET") return false;
+    await fulfillJson(route, { scope: "SOURCE_INSTITUTION", transfers: [transfer], classification: "SIMULATION_ONLY" });
+    return true;
+  });
+
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Blood inventory overview" })).toBeVisible();
+  await expect(page.locator(".inventory-overview-bar")).toHaveCount(8);
+  await expect(page.locator(".inventory-overview-note")).toContainText("No shortage, surplus, or redistributability threshold is inferred in the browser.");
+
+  await page.getByRole("link", { name: "Analytics", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeVisible();
+  await expect(page.getByText("Frontend-only presentation; no workflow or data API is connected.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Historical demand unavailable", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export PDF" })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Export PDF" }).first()).toBeDisabled();
+  await expect(page.getByText("Assessment unavailable", { exact: true })).toBeVisible();
+
+  await page.getByRole("link", { name: "Inventory", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Export filtered PDF" })).toBeDisabled();
+
+  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Export filtered PDF" })).toBeDisabled();
+
+  await page.getByRole("link", { name: "Profile", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Staff Directory" })).toBeVisible();
+  await page.getByRole("button", { name: "Manage staff preview" }).click();
+  await expect(page.getByRole("dialog", { name: "Protected staff management" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Authorize change" })).toBeDisabled();
+  await expect(page.getByText("Duty scheduling is also outside the latest mockup baseline.", { exact: false })).toBeVisible();
 });
 
 test("committed projection becomes visible within the frontend NFR-06 budget", async ({ page }, testInfo) => {

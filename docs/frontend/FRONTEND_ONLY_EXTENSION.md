@@ -3,7 +3,7 @@
 **Status:** Non-capture mockup visual parity implemented; backend and integrated behavior deferred
 **Authorization:** Lat / 2026-08-26 and 2026-08-27
 **Baseline:** accepted Sprint 05 merge `7c87c67`, followed by formal Testing-phase planning commit `2ebc3ea`
-**Visual reference:** `MOCKUP_VISUAL_2026-08-20`
+**Visual references:** `MOCKUP_VISUAL_2026-08-20` and the selected committed delta in `MOCKUP_REFERENCE_2026-09-17.md`
 
 ## Purpose
 
@@ -32,6 +32,10 @@ Only synthetic information may be entered during review.
 | Navigation badge | application shell | Accounts Preview badge | Static visual label, not an authoritative count |
 | Scanner | `apps/capture-pwa/src/app.tsx` | Mockup-derived mobile header, framed capture area, staged confirmation, offline banner, and device queue | Existing Sprint 04 OCR, fallback, confirmation, privacy, and synchronization behavior remains authoritative; see `CAPTURE_PWA_VISUAL_PARITY.md` |
 | Design preview panel | `components/layout/design-preview-panel.tsx` | Local theme, accent, and density controls | Component state only; no persistence or host protocol |
+| Operational blood-type chart | `features/dashboard/inventory-overview-chart.tsx` | Mockup-derived eight-blood-type composition chart with committed and available totals | Uses only official dashboard aggregates; it does not infer shortage, surplus, or redistributability |
+| Analytics | `features/analytics/analytics-preview.tsx` | Filters, summary cards, historical-demand chart area, redistribution table, and export presentation | Read-only unavailable-state preview; no Analytics API, browser calculation, or PDF generation |
+| Staff Directory | `features/profile/profile-parity-preview.tsx` | Generic staff rows and staff/PIN administration dialogs | Synthetic presentation only; no staff API, credential handling, hashing, verification, mutation, or persistence |
+| PDF export presentation | inventory, transfers, reporting, and Analytics views | Role-scoped fixed-layout PDF controls derived from the mockup | Controls are disabled; the existing server-generated simulation CSV remains the only functional report export |
 
 The Accounts link is composed for `ROLE-05` and `ROLE-06` in the browser to
 match the administrative mockup audience. That visibility rule is usability
@@ -45,11 +49,30 @@ not read their credential file or duplicate passwords. These rows and cards are
 a presentation reference, not evidence that account-management APIs or backend
 authorization have been implemented.
 
+## Future ROLE-01 navigation parity
+
+The Mediatrix `ROLE-01` composition does not yet reproduce every tab shown to a
+blood-bank operator in the latest mockup. `Blood Inventory` and `Requests &
+Transfers` are represented as **Inventory** and **Transfers**; **Blood Unit
+Transactions** is provided by the separate Capture PWA rather than a duplicate
+web-sidebar page. **Activity History**, **Consortium Inventory**, and
+**Compliance Reports** exist globally as **Audit**, **Network view**, and
+**Reports**, but they are hidden from `ROLE-01` because the official server
+principal does not grant `audit:read`, `consortium:read`, or `reports:read`.
+
+Future frontend-parity work may present those three destinations as explicitly
+disabled or read-only previews for Mediatrix review. It must not broaden the
+server permission map, expose protected data, or imply backend authority unless
+the corresponding requirements and authorization policy are formally approved.
+
 ## Remaining exclusions
 
 All approved product surfaces are now visually represented across `apps/web`
 and the separately owned Capture PWA. The scanner adaptation is documented in
 `CAPTURE_PWA_VISUAL_PARITY.md`; it does not duplicate scanning in `apps/web`.
+Duty scheduling is intentionally excluded because the latest committed mockup
+context places it outside the prototype. The official `ROLE-02` name remains
+Hospital Administrator; the mockup term “Blood Bank Head” is explanatory only.
 The mockup's fixture/session architecture, plaintext credentials,
 real-person-like records, fabricated hashes or network topology, runtime
 CDN/Babel loading, global `window.*` collections, duplicate source tree, and
@@ -71,6 +94,9 @@ authorize reconstructing those implementation patterns.
 | Navigation badges | Aggregate/count endpoints | Optional derived count projection | Same visibility rules as destination feature | Freshness, stale-state and information leakage controls | Scope, freshness, empty/error, and browser tests |
 | Notifications | Permission-scoped notification endpoint | Notification delivery/read-state projection | Recipient, role, institution, and message-content visibility | Redaction, rate limits, acknowledgement integrity, and leakage controls | Scope, redaction, unread-state, failure, and browser tests |
 | Administration activity | Permission-scoped audit endpoint | Durable administration event projection | Auditor/reviewer scope and retention policy | Redaction and tamper-evident linkage | Scope, redaction, ordering, retention, and failure tests |
+| Analytics | Historical-demand, forecast-readiness, and redistribution-assessment endpoints | Time-versioned aggregate series, freshness, lineage, and assessment evidence | Blood-bank operational and PRC read scope; no autonomous clinical or transfer authority | Data minimization, stale/unavailable semantics, model/configuration versioning, and inference isolation | Contract, role scope, missing/stale data, deterministic display, accessibility, and end-to-end tests |
+| Staff Directory and access PIN | Staff read/create/update/suspend and PIN lifecycle endpoints | Institution-scoped staff identity, role assignment, status, and revocable credential metadata | Hospital/system administrator authority, separation of duties, recovery, revocation, and no duty-scheduling scope | No plaintext credential return, secure hashing, throttling, expiry, replay resistance, audit, and PII minimization | RBAC, cross-institution, credential security, recovery, abuse, audit, accessibility, and end-to-end tests |
+| Fixed-layout PDF exports | Server-side, role-scoped inventory, transfer, reporting, and Analytics export endpoints | Optional export job/evidence metadata and immutable source snapshot reference | Module-, role-, institution-, and aggregate-scope authorization | Redaction, formula/HTML injection resistance, bounded queries, safe filenames, audit, and no browser-authoritative calculations | Contract, scope isolation, redaction, content/layout, injection, empty/stale/failure, accessibility, and browser tests |
 
 ## Activation rule
 

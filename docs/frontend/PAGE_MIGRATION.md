@@ -13,6 +13,8 @@
 | Profile | `pages/profile.jsx` | `apps/web/src/features/profile/` | own safe principal/institution metadata | current session/profile | Implemented; automated validation passed |
 | Accounts/onboarding | `pages/accounts.jsx` and login application flow | `features/auth/access-page.tsx` and `features/accounts/accounts-parity-preview.tsx` | frontend-only preview for applicants and administrative compositions | BL-API-02 | Visual parity extension implemented after Sprint 5; all submission, persistence, review, authorization, and mutation behavior deferred |
 | Scanner | `pages/scanner.jsx` | `apps/capture-pwa/` | authorized capture users | Sprint 4 scan API and offline queue | Mockup-derived visual adaptation implemented after Sprint 5; official capture behavior preserved |
+| Analytics | `pages/reporting.jsx` | `apps/web/src/features/analytics/` | blood-bank operational roles and PRC only | historical-demand and redistribution-assessment contract not approved | Latest-mockup visual preview implemented with unavailable states; calculations and exports deferred |
+| Staff Directory | `pages/accounts.jsx` | `apps/web/src/features/profile/profile-parity-preview.tsx` | hospital and system administrators | staff-directory and access-PIN contracts not approved | Latest-mockup visual preview implemented; mutation, credentials, persistence, and scheduling deferred |
 
 All selected runtime pages use typed official API services. Fixtures are limited
 to tests and isolated component validation; there is no runtime mock fallback.
