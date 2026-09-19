@@ -21,19 +21,27 @@
         "operationId": "listRecoverableCommands",
         "description": "Recover safe command envelopes created by the authenticated actor in the authenticated institution. Request payloads are never returned.",
         "parameters": [
-          { "$ref": "#/components/parameters/PageLimit" },
+          {
+            "$ref": "#/components/parameters/PageLimit"
+          },
           {
             "name": "cursor",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "pattern": "^CMD_[A-Z0-9_-]{1,56}$" }
+            "schema": {
+              "type": "string",
+              "pattern": "^CMD_[A-Z0-9_-]{1,56}$"
+            }
           },
           {
             "name": "idempotencyKey",
             "in": "query",
             "required": false,
             "description": "Exact recovery lookup for a key created by the authenticated actor.",
-            "schema": { "type": "string", "pattern": "^IDEM_[A-Z0-9_-]{1,59}$" }
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
           }
         ],
         "responses": {
@@ -41,7 +49,9 @@
             "description": "Actor- and institution-scoped safe command envelopes",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/CommandRecovery" }
+                "schema": {
+                  "$ref": "#/components/schemas/CommandRecovery"
+                }
               }
             }
           }
@@ -264,12 +274,17 @@
         "operationId": "listCensusSnapshots",
         "description": "Discover existing safe census snapshot metadata. Discovery does not activate capture or export.",
         "parameters": [
-          { "$ref": "#/components/parameters/PageLimit" },
+          {
+            "$ref": "#/components/parameters/PageLimit"
+          },
           {
             "name": "cursor",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "pattern": "^CENSUS_[A-Z0-9_-]{1,56}$" }
+            "schema": {
+              "type": "string",
+              "pattern": "^CENSUS_[A-Z0-9_-]{1,56}$"
+            }
           }
         ],
         "responses": {
@@ -277,11 +292,15 @@
             "description": "Authorized snapshot index and report availability",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/CensusIndex" }
+                "schema": {
+                  "$ref": "#/components/schemas/CensusIndex"
+                }
               }
             }
           },
-          "403": { "$ref": "#/components/responses/Forbidden" }
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
         }
       }
     },
@@ -1030,23 +1049,47 @@
       },
       "ReconciliationReasonPolicy": {
         "type": "object",
-        "required": ["policyVersion", "reasons", "effect", "freeTextAllowed", "classification"],
+        "required": [
+          "policyVersion",
+          "reasons",
+          "effect",
+          "freeTextAllowed",
+          "classification"
+        ],
         "properties": {
-          "policyVersion": { "const": "SYNTHETIC_RECONCILIATION_REASONS_V1" },
+          "policyVersion": {
+            "const": "SYNTHETIC_RECONCILIATION_REASONS_V1"
+          },
           "reasons": {
             "type": "array",
             "minItems": 7,
             "maxItems": 7,
             "items": {
               "type": "object",
-              "required": ["code", "label"],
-              "properties": { "code": { "type": "string" }, "label": { "type": "string" } },
+              "required": [
+                "code",
+                "label"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": false
             }
           },
-          "effect": { "const": "RECONCILIATION_HOLD_ONLY" },
-          "freeTextAllowed": { "const": false },
-          "classification": { "const": "SIMULATION_ONLY" }
+          "effect": {
+            "const": "RECONCILIATION_HOLD_ONLY"
+          },
+          "freeTextAllowed": {
+            "const": false
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
         },
         "additionalProperties": false
       },
@@ -1068,32 +1111,89 @@
           "classification"
         ],
         "properties": {
-          "reservationId": { "type": "string" },
-          "purpose": { "type": "string", "enum": ["TRANSFER", "LOCAL_RELEASE"] },
-          "status": { "type": "string" },
-          "version": { "type": "integer", "minimum": 1 },
-          "sourceInstitutionId": { "type": "string" },
-          "destinationInstitutionId": { "type": ["string", "null"] },
-          "transferId": { "type": ["string", "null"] },
-          "localReleaseId": { "type": ["string", "null"] },
-          "preparedAt": { "type": ["string", "null"], "format": "date-time" },
-          "preparedEvidencePresent": { "type": "boolean" },
-          "updatedAt": { "type": "string", "format": "date-time" },
+          "reservationId": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "TRANSFER",
+              "LOCAL_RELEASE"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sourceInstitutionId": {
+            "type": "string"
+          },
+          "destinationInstitutionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transferId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "localReleaseId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "preparedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "preparedEvidencePresent": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "components": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["componentId", "componentType", "inventoryStatus", "inventoryVersion"],
+              "required": [
+                "componentId",
+                "componentType",
+                "inventoryStatus",
+                "inventoryVersion"
+              ],
               "properties": {
-                "componentId": { "type": "string" },
-                "componentType": { "$ref": "#/components/schemas/ComponentTypeV21" },
-                "inventoryStatus": { "type": "string" },
-                "inventoryVersion": { "type": "integer", "minimum": 1 }
+                "componentId": {
+                  "type": "string"
+                },
+                "componentType": {
+                  "$ref": "#/components/schemas/ComponentTypeV21"
+                },
+                "inventoryStatus": {
+                  "type": "string"
+                },
+                "inventoryVersion": {
+                  "type": "integer",
+                  "minimum": 1
+                }
               },
               "additionalProperties": false
             }
           },
-          "classification": { "const": "SIMULATION_ONLY" }
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
         },
         "additionalProperties": false
       },
@@ -1112,37 +1212,122 @@
       },
       "CensusIndex": {
         "type": "object",
-        "required": ["scope", "displayPolicyVersion", "displayBloodTypeOrder", "totalColumn", "reportAvailability", "snapshots", "nextCursor", "exportAvailable", "classification"],
+        "required": [
+          "scope",
+          "displayPolicyVersion",
+          "displayBloodTypeOrder",
+          "totalColumn",
+          "reportAvailability",
+          "snapshots",
+          "nextCursor",
+          "exportAvailable",
+          "classification"
+        ],
         "properties": {
-          "scope": { "type": "string", "enum": ["INSTITUTION", "REGULATORY_AGGREGATE"] },
-          "displayPolicyVersion": { "const": "DOH_CENSUS_COLUMN_ORDER_V1" },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "INSTITUTION",
+              "REGULATORY_AGGREGATE"
+            ]
+          },
+          "displayPolicyVersion": {
+            "const": "DOH_CENSUS_COLUMN_ORDER_V1"
+          },
           "displayBloodTypeOrder": {
             "type": "array",
             "prefixItems": [
-              { "const": "O_POSITIVE" }, { "const": "A_POSITIVE" }, { "const": "B_POSITIVE" }, { "const": "AB_POSITIVE" },
-              { "const": "O_NEGATIVE" }, { "const": "A_NEGATIVE" }, { "const": "B_NEGATIVE" }, { "const": "AB_NEGATIVE" }
+              {
+                "const": "O_POSITIVE"
+              },
+              {
+                "const": "A_POSITIVE"
+              },
+              {
+                "const": "B_POSITIVE"
+              },
+              {
+                "const": "AB_POSITIVE"
+              },
+              {
+                "const": "O_NEGATIVE"
+              },
+              {
+                "const": "A_NEGATIVE"
+              },
+              {
+                "const": "B_NEGATIVE"
+              },
+              {
+                "const": "AB_NEGATIVE"
+              }
             ],
             "minItems": 8,
             "maxItems": 8
           },
-          "totalColumn": { "const": "CALCULATED" },
-          "reportAvailability": { "type": "string", "enum": ["EXPORT_AVAILABLE", "EXPORT_DISABLED_PENDING_FORMAT"] },
+          "totalColumn": {
+            "const": "CALCULATED"
+          },
+          "reportAvailability": {
+            "type": "string",
+            "enum": [
+              "EXPORT_AVAILABLE",
+              "EXPORT_DISABLED_PENDING_FORMAT"
+            ]
+          },
           "snapshots": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["snapshotId", "institutionId", "scheduledFor", "capturedAt", "reportPolicyVersion", "triggerType", "classification"],
+              "required": [
+                "snapshotId",
+                "institutionId",
+                "scheduledFor",
+                "capturedAt",
+                "reportPolicyVersion",
+                "triggerType",
+                "classification"
+              ],
               "properties": {
-                "snapshotId": { "type": "string" }, "institutionId": { "type": "string" },
-                "scheduledFor": { "type": "string", "format": "date-time" }, "capturedAt": { "type": "string", "format": "date-time" },
-                "reportPolicyVersion": { "type": "string" }, "triggerType": { "type": "string" }, "classification": { "const": "SIMULATION_ONLY" }
+                "snapshotId": {
+                  "type": "string"
+                },
+                "institutionId": {
+                  "type": "string"
+                },
+                "scheduledFor": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "capturedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "reportPolicyVersion": {
+                  "type": "string"
+                },
+                "triggerType": {
+                  "type": "string"
+                },
+                "classification": {
+                  "const": "SIMULATION_ONLY"
+                }
               },
               "additionalProperties": false
             }
           },
-          "nextCursor": { "type": ["string", "null"] },
-          "exportAvailable": { "type": "boolean" },
-          "classification": { "const": "SIMULATION_ONLY" }
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "exportAvailable": {
+            "type": "boolean"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
         },
         "additionalProperties": false
       },
@@ -1215,12 +1400,31 @@
       },
       "CommandRecovery": {
         "type": "object",
-        "required": ["scope", "commands", "nextCursor", "classification"],
+        "required": [
+          "scope",
+          "commands",
+          "nextCursor",
+          "classification"
+        ],
         "properties": {
-          "scope": { "const": "ACTOR_INSTITUTION" },
-          "commands": { "type": "array", "items": { "$ref": "#/components/schemas/Command" } },
-          "nextCursor": { "type": ["string", "null"] },
-          "classification": { "const": "SIMULATION_ONLY" }
+          "scope": {
+            "const": "ACTOR_INSTITUTION"
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Command"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
         },
         "additionalProperties": false
       },
@@ -1245,12 +1449,35 @@
           "application/json": {
             "schema": {
               "type": "object",
-              "required": ["scope", "reservations", "nextCursor", "classification"],
+              "required": [
+                "scope",
+                "reservations",
+                "nextCursor",
+                "classification"
+              ],
               "properties": {
-                "scope": { "type": "string", "enum": ["SOURCE_INSTITUTION", "DESTINATION_INSTITUTION"] },
-                "reservations": { "type": "array", "items": { "$ref": "#/components/schemas/Reservation" } },
-                "nextCursor": { "type": ["string", "null"] },
-                "classification": { "const": "SIMULATION_ONLY" }
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "SOURCE_INSTITUTION",
+                    "DESTINATION_INSTITUTION"
+                  ]
+                },
+                "reservations": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Reservation"
+                  }
+                },
+                "nextCursor": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "classification": {
+                  "const": "SIMULATION_ONLY"
+                }
               },
               "additionalProperties": false
             }
