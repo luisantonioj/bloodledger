@@ -117,7 +117,7 @@ test("S6 reservation reads and actions use committed role-scoped projections", a
     },
   };
   const app = await buildApp(new MemoryRepository(), {
-    host:"127.0.0.1",port:3000,jwtSecret:"v2-reservation-test-secret-that-is-long-enough",operatorId:"USR_SYNTH_CAPTURE",operatorCredential:"synthetic-test-credential",workerConfigured:false,webOrigin:"http://127.0.0.1:5174",
+    host:"127.0.0.1",port:3000,jwtSecret:"reservation-test-".repeat(3),operatorId:"USR_SYNTH_CAPTURE",operatorCredential:"synthetic-test-credential",workerConfigured:false,webOrigin:"http://127.0.0.1:5174",
   },()=>new Date("2026-09-17T12:00:00.000Z"),sessions,undefined,undefined,{store:new InMemoryV2CommandStore(),projection});
   const token=app.jwt.sign({userId:record.userId,institutionId:record.institutionId,roleId:record.roleId,sessionId:"SESS_SYNTH_RESERVATION",binding:"b".repeat(64),policyVersion:"SYNTHETIC_WEB_ACCESS_V1"});
   const headers={cookie:`bloodledger_session=${token}`};
@@ -127,7 +127,7 @@ test("S6 reservation reads and actions use committed role-scoped projections", a
     const detail=await app.inject({method:"GET",url:`/api/v2/reservations/${reservation.reservationId}`,headers});
     assert.equal(detail.statusCode,200); assert.equal(detail.json().components[0].componentId,component.componentId);
     const invalidPage=await app.inject({method:"GET",url:"/api/v2/reservations?limit=101",headers}); assert.equal(invalidPage.statusCode,400);
-    const action=await app.inject({method:"POST",url:`/api/v2/reservations/${reservation.reservationId}/cancel`,headers:{...headers,origin:"http://127.0.0.1:5174","idempotency-key":"IDEM_RESERVATION_CANCEL_001"},payload:{correlationId:"CORR_0123456789ABCDEF0123456789ABCDEF",eventTime:"2026-09-17T12:00:00.000Z",expectedVersion:1}});
+    const action=await app.inject({method:"POST",url:`/api/v2/reservations/${reservation.reservationId}/cancel`,headers:{...headers,origin:"http://127.0.0.1:5174","idempotency-key":"IDEM_R1"},payload:{correlationId:"CORR_0123456789ABCDEF0123456789ABCDEF",eventTime:"2026-09-17T12:00:00.000Z",expectedVersion:1}});
     assert.equal(action.statusCode,202);
   } finally { await app.close(); }
 });
@@ -136,10 +136,10 @@ test("S6 reconciliation exposes and enforces the versioned reason policy", async
   const sessions = { async findCredential() { return record; }, async createSession() {}, async restoreSession() { return record; }, async revokeSession() {} };
   const store = new InMemoryV2CommandStore();
   const app = await buildApp(new MemoryRepository(), {
-    host:"127.0.0.1",port:3000,jwtSecret:"v2-reconciliation-test-secret-long-enough",operatorId:"USR_SYNTH_CAPTURE",operatorCredential:"synthetic-test-credential",workerConfigured:false,webOrigin:"http://127.0.0.1:5174",
+    host:"127.0.0.1",port:3000,jwtSecret:"reconciliation-test-".repeat(2),operatorId:"USR_SYNTH_CAPTURE",operatorCredential:"synthetic-test-credential",workerConfigured:false,webOrigin:"http://127.0.0.1:5174",
   },()=>new Date("2026-09-17T12:00:00.000Z"),sessions,undefined,undefined,{store});
   const token=app.jwt.sign({userId:record.userId,institutionId:record.institutionId,roleId:record.roleId,sessionId:"SESS_SYNTH_RECONCILIATION",binding:"c".repeat(64),policyVersion:"SYNTHETIC_WEB_ACCESS_V1"});
-  const headers={cookie:`bloodledger_session=${token}`,origin:"http://127.0.0.1:5174","idempotency-key":"IDEM_RECONCILIATION_001"};
+  const headers={cookie:`bloodledger_session=${token}`,origin:"http://127.0.0.1:5174","idempotency-key":"IDEM_RECON_1"};
   try {
     const policy=await app.inject({method:"GET",url:"/api/v2/reconciliation/reasons",headers});
     assert.equal(policy.statusCode,200); assert.equal(policy.json().policyVersion,"SYNTHETIC_RECONCILIATION_REASONS_V1"); assert.equal(policy.json().reasons.length,7); assert.equal(policy.json().freeTextAllowed,false);
@@ -147,7 +147,7 @@ test("S6 reconciliation exposes and enforces the versioned reason policy", async
     const invalid=await app.inject({method:"POST",url:"/api/v2/reconciliation",headers,payload:{...base,reasonCode:"FREE_TEXT"}}); assert.equal(invalid.statusCode,400); assert.equal(invalid.json().error.code,"RECONCILIATION_REASON_INVALID");
     const accepted=await app.inject({method:"POST",url:"/api/v2/reconciliation",headers,payload:{...base,reasonCode:"STATUS_MISMATCH"}}); assert.equal(accepted.statusCode,202);
     const command=await store.get(accepted.json().commandId,"INST_MEDIATRIX",record.userId); assert.equal(command?.payload.reconciliationPolicyVersion,"SYNTHETIC_RECONCILIATION_REASONS_V1");
-    const recovery=await app.inject({method:"GET",url:"/api/v2/commands?idempotencyKey=IDEM_RECONCILIATION_001",headers}); assert.equal(recovery.statusCode,200); assert.equal(recovery.json().commands.length,1); assert.doesNotMatch(recovery.body,/payload|reasonCode|reconciliationPolicyVersion/);
+    const recovery=await app.inject({method:"GET",url:"/api/v2/commands?idempotencyKey=IDEM_RECON_1",headers}); assert.equal(recovery.statusCode,200); assert.equal(recovery.json().commands.length,1); assert.doesNotMatch(recovery.body,/payload|reasonCode|reconciliationPolicyVersion/);
   } finally { await app.close(); }
 });
 
@@ -160,7 +160,7 @@ test("S6 census discovery exposes safe metadata while full export remains gated"
       return { snapshots:[{snapshotId:"CENSUS_SYNTH_001",institutionId:"INST_MEDIATRIX",scheduledFor:"2026-09-19T01:00:00.000Z",capturedAt:"2026-09-19T01:01:00.000Z",reportPolicyVersion:"INTERVIEW_REPORT_PENDING",triggerType:"SCHEDULED",classification:"SIMULATION_ONLY" as const}],nextCursor:null,exportAvailable:false };
     },
   };
-  const app=await buildApp(new MemoryRepository(),{host:"127.0.0.1",port:3000,jwtSecret:"v2-census-test-secret-that-is-long-enough",operatorId:"USR_SYNTH_CAPTURE",operatorCredential:"synthetic-test-credential",workerConfigured:false,webOrigin:"http://127.0.0.1:5174"},()=>new Date("2026-09-19T12:00:00.000Z"),sessions,undefined,undefined,{store:new InMemoryV2CommandStore(),census});
+  const app=await buildApp(new MemoryRepository(),{host:"127.0.0.1",port:3000,jwtSecret:"census-test-".repeat(4),operatorId:"USR_SYNTH_CAPTURE",operatorCredential:"synthetic-test-credential",workerConfigured:false,webOrigin:"http://127.0.0.1:5174"},()=>new Date("2026-09-19T12:00:00.000Z"),sessions,undefined,undefined,{store:new InMemoryV2CommandStore(),census});
   const token=app.jwt.sign({userId:record.userId,institutionId:record.institutionId,roleId:record.roleId,sessionId:"SESS_SYNTH_CENSUS",binding:"d".repeat(64),policyVersion:"SYNTHETIC_WEB_ACCESS_V1"});
   try {
     const response=await app.inject({method:"GET",url:"/api/v2/reports/doh-census",headers:{cookie:`bloodledger_session=${token}`}});

@@ -85,7 +85,7 @@ try {
 
   const reservation = {
     commandId: "CMD_S6_INTEGRATION_RESERVE",
-    idempotencyKey: "IDEM_S6_INTEGRATION_RESERVE",
+    idempotencyKey: "IDEM_S6_RSV_DB_1",
     resourceType: "TRANSFER",
     resourceId: "TRF_S6_INTEGRATION_001",
     operation: "RESERVE_COMPONENTS",
@@ -110,7 +110,7 @@ try {
   assert.equal(destinationRead?.destinationInstitutionId, "INST_DIVINE_LOVE");
   assert.equal(await projections.getReservation("RES_S6_INTEGRATION_001", "INST_OTHER", "ROLE-03"), null);
 
-  const lookup = await commands.list("INST_MEDIATRIX", "USR_MEDIATRIX_ADMIN", 50, undefined, "IDEM_S6_INTEGRATION_RESERVE");
+  const lookup = await commands.list("INST_MEDIATRIX", "USR_MEDIATRIX_ADMIN", 50, undefined, "IDEM_S6_RSV_DB_1");
   assert.deepEqual(lookup.commands.map((command) => command.commandId), ["CMD_S6_INTEGRATION_RESERVE"]);
   assert.equal(await commands.get("CMD_S6_INTEGRATION_RESERVE", "INST_MEDIATRIX", "USR_DIVINE_LOVE"), null);
   await assert.rejects(
