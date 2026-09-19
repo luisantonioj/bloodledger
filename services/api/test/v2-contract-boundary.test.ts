@@ -146,7 +146,8 @@ test("S6 reconciliation exposes and enforces the versioned reason policy", async
     const base={caseId:"RECON_SYNTH_001",componentId:"COMP_SYNTH_V2_001",correlationId:"CORR_0123456789ABCDEF0123456789ABCDEF"};
     const invalid=await app.inject({method:"POST",url:"/api/v2/reconciliation",headers,payload:{...base,reasonCode:"FREE_TEXT"}}); assert.equal(invalid.statusCode,400); assert.equal(invalid.json().error.code,"RECONCILIATION_REASON_INVALID");
     const accepted=await app.inject({method:"POST",url:"/api/v2/reconciliation",headers,payload:{...base,reasonCode:"STATUS_MISMATCH"}}); assert.equal(accepted.statusCode,202);
-    const command=await store.get(accepted.json().commandId,"INST_MEDIATRIX","ROLE-02"); assert.equal(command?.payload.reconciliationPolicyVersion,"SYNTHETIC_RECONCILIATION_REASONS_V1");
+    const command=await store.get(accepted.json().commandId,"INST_MEDIATRIX",record.userId); assert.equal(command?.payload.reconciliationPolicyVersion,"SYNTHETIC_RECONCILIATION_REASONS_V1");
+    const recovery=await app.inject({method:"GET",url:"/api/v2/commands?idempotencyKey=IDEM_RECONCILIATION_001",headers}); assert.equal(recovery.statusCode,200); assert.equal(recovery.json().commands.length,1); assert.doesNotMatch(recovery.body,/payload|reasonCode|reconciliationPolicyVersion/);
   } finally { await app.close(); }
 });
 

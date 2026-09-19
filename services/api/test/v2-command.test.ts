@@ -12,7 +12,7 @@ test("queues idempotently and exposes a safe command state machine", async () =>
   const ledger = { submit: async () => ({ transactionId: "TX_CORE_001" }), project: async () => undefined };
   const worker = new V2CommandWorker(store, ledger, "WORKER_01");
   assert.deepEqual(await worker.runOnce(new Date("2026-09-12T00:01:00.000Z")), { commandId: "CMD_CORE_001", status: "COMMITTED" });
-  assert.equal((await store.get("CMD_CORE_001", "INST_MEDIATRIX", "ROLE-02"))?.status, "COMMITTED");
+  assert.equal((await store.get("CMD_CORE_001", "INST_MEDIATRIX", "USR_MEDIATRIX_TECH"))?.status, "COMMITTED");
 });
 
 test("keeps retryable failures queued and makes conflicts visible", async () => {
@@ -29,7 +29,14 @@ test("retries projection reconciliation without losing the committed command", a
   let projections = 0; let submissions = 0;
   const worker = new V2CommandWorker(store, { submit: async () => { submissions += 1; return { transactionId: "TX_CORE_004" }; }, project: async () => { projections += 1; if (projections === 1) throw new Error("projection unavailable"); } }, "WORKER_04");
   assert.equal((await worker.runOnce(new Date("2026-09-12T00:01:00.000Z"))).status, "RETRY_WAIT");
-  assert.equal((await store.get("CMD_CORE_004", "INST_MEDIATRIX", "ROLE-02"))?.status, "LEDGER_COMMITTED_PROJECTION_PENDING");
+  assert.equal((await store.get("CMD_CORE_004", "INST_MEDIATRIX", "USR_MEDIATRIX_TECH"))?.status, "LEDGER_COMMITTED_PROJECTION_PENDING");
   assert.equal((await worker.runOnce(new Date("2026-09-12T00:02:00.000Z"))).status, "COMMITTED");
   assert.equal(submissions, 1);
+});
+
+test("command recovery is actor-scoped and idempotency keys cannot cross scopes", async () => {
+  const store=new InMemoryV2CommandStore(); await store.enqueue(base);
+  assert.equal((await store.list("INST_MEDIATRIX","USR_MEDIATRIX_TECH",50,undefined,"IDEM_CORE_001")).commands.length,1);
+  assert.equal((await store.list("INST_MEDIATRIX","USR_OTHER",50,undefined,"IDEM_CORE_001")).commands.length,0);
+  await assert.rejects(store.enqueue({...base,actorUserId:"USR_OTHER"}),(error)=>error instanceof Error&&"code" in error&&error.code==="V2_IDEMPOTENCY_SCOPE_CONFLICT");
 });

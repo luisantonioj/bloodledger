@@ -23,6 +23,7 @@ const COMPONENT_TYPES_V21 = [...COMPONENT_TYPES, "CRYOPRECIPITATE"] as const;
 const URGENCIES = ["ROUTINE", "URGENT", "CRITICAL"] as const;
 const PAGE_CURSOR_PATTERN = /^RES_[A-Z0-9_-]{1,56}$/;
 const CENSUS_CURSOR_PATTERN = /^CENSUS_[A-Z0-9_-]{1,56}$/;
+const COMMAND_CURSOR_PATTERN = /^CMD_[A-Z0-9_-]{1,56}$/;
 
 export interface V2RouteDependencies {
   store: V2CommandStore;
@@ -106,9 +107,18 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
 
   app.get<{ Params: { commandId: string } }>("/api/v2/commands/:commandId", async (request) => {
     const { principal } = await restore(request);
-    const command = await dependencies.store.get(request.params.commandId, principal.institutionId, principal.roleId);
+    const command = await dependencies.store.get(request.params.commandId, principal.institutionId, principal.userId);
     if (!command) throw new ApiFailure(404, "V2_COMMAND_NOT_FOUND", "The command was not found in the authorized scope.");
     return safeCommand(command, request);
+  });
+
+  app.get<{ Querystring: { limit?: string; cursor?: string; idempotencyKey?: string } }>("/api/v2/commands", async (request) => {
+    const { principal } = await restore(request);
+    const { cursor, idempotencyKey } = request.query;
+    if (cursor !== undefined && !COMMAND_CURSOR_PATTERN.test(cursor)) throw new ApiFailure(400, "V2_PAGE_INVALID", "Page cursor is invalid.");
+    if (idempotencyKey !== undefined && !IDEMPOTENCY_PATTERN.test(idempotencyKey)) throw new ApiFailure(400, "INVALID_IDEMPOTENCY_KEY", "Idempotency key lookup is invalid.");
+    const page = await dependencies.store.list(principal.institutionId, principal.userId, pageLimit(request.query.limit), cursor, idempotencyKey);
+    return { scope: "ACTOR_INSTITUTION", commands: page.commands.map((command) => safeCommand(command, request)), nextCursor: page.nextCursor, classification: "SIMULATION_ONLY" as const };
   });
 
   app.get("/api/v2/components", async (request) => {

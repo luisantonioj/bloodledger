@@ -16,6 +16,38 @@
     }
   ],
   "paths": {
+    "/commands": {
+      "get": {
+        "operationId": "listRecoverableCommands",
+        "description": "Recover safe command envelopes created by the authenticated actor in the authenticated institution. Request payloads are never returned.",
+        "parameters": [
+          { "$ref": "#/components/parameters/PageLimit" },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "pattern": "^CMD_[A-Z0-9_-]{1,56}$" }
+          },
+          {
+            "name": "idempotencyKey",
+            "in": "query",
+            "required": false,
+            "description": "Exact recovery lookup for a key created by the authenticated actor.",
+            "schema": { "type": "string", "pattern": "^IDEM_[A-Z0-9_-]{1,59}$" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actor- and institution-scoped safe command envelopes",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CommandRecovery" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/commands/{commandId}": {
       "get": {
         "operationId": "getCommand",
@@ -1178,6 +1210,17 @@
           "replayed": {
             "type": "boolean"
           }
+        },
+        "additionalProperties": false
+      },
+      "CommandRecovery": {
+        "type": "object",
+        "required": ["scope", "commands", "nextCursor", "classification"],
+        "properties": {
+          "scope": { "const": "ACTOR_INSTITUTION" },
+          "commands": { "type": "array", "items": { "$ref": "#/components/schemas/Command" } },
+          "nextCursor": { "type": ["string", "null"] },
+          "classification": { "const": "SIMULATION_ONLY" }
         },
         "additionalProperties": false
       },
