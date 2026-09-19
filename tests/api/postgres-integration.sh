@@ -46,6 +46,7 @@ export POSTGRES_APP_USER="${POSTGRES_APP_USER:-bloodledger_app}"
 npm run migrate:up
 npm run build --workspace @bloodledger/api
 node services/api/test/postgres-probe.mjs
+node services/api/test/sprint-6-integration-probe.mjs
 
 PGPASSWORD="${POSTGRES_APP_PASSWORD}" "${compose[@]}" exec --no-TTY \
   --env PGPASSWORD postgres psql --host 127.0.0.1 --username bloodledger_app \
