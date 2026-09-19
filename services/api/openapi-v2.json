@@ -227,6 +227,32 @@
         }
       }
     },
+    "/reports/doh-census": {
+      "get": {
+        "operationId": "listCensusSnapshots",
+        "description": "Discover existing safe census snapshot metadata. Discovery does not activate capture or export.",
+        "parameters": [
+          { "$ref": "#/components/parameters/PageLimit" },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "pattern": "^CENSUS_[A-Z0-9_-]{1,56}$" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized snapshot index and report availability",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CensusIndex" }
+              }
+            }
+          },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
     "/reports/doh-census/{snapshotId}": {
       "get": {
         "operationId": "getCensusSnapshot",
@@ -1049,6 +1075,42 @@
             "type": "string",
             "format": "date-time"
           }
+        },
+        "additionalProperties": false
+      },
+      "CensusIndex": {
+        "type": "object",
+        "required": ["scope", "displayPolicyVersion", "displayBloodTypeOrder", "totalColumn", "reportAvailability", "snapshots", "nextCursor", "exportAvailable", "classification"],
+        "properties": {
+          "scope": { "type": "string", "enum": ["INSTITUTION", "REGULATORY_AGGREGATE"] },
+          "displayPolicyVersion": { "const": "DOH_CENSUS_COLUMN_ORDER_V1" },
+          "displayBloodTypeOrder": {
+            "type": "array",
+            "prefixItems": [
+              { "const": "O_POSITIVE" }, { "const": "A_POSITIVE" }, { "const": "B_POSITIVE" }, { "const": "AB_POSITIVE" },
+              { "const": "O_NEGATIVE" }, { "const": "A_NEGATIVE" }, { "const": "B_NEGATIVE" }, { "const": "AB_NEGATIVE" }
+            ],
+            "minItems": 8,
+            "maxItems": 8
+          },
+          "totalColumn": { "const": "CALCULATED" },
+          "reportAvailability": { "type": "string", "enum": ["EXPORT_AVAILABLE", "EXPORT_DISABLED_PENDING_FORMAT"] },
+          "snapshots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["snapshotId", "institutionId", "scheduledFor", "capturedAt", "reportPolicyVersion", "triggerType", "classification"],
+              "properties": {
+                "snapshotId": { "type": "string" }, "institutionId": { "type": "string" },
+                "scheduledFor": { "type": "string", "format": "date-time" }, "capturedAt": { "type": "string", "format": "date-time" },
+                "reportPolicyVersion": { "type": "string" }, "triggerType": { "type": "string" }, "classification": { "const": "SIMULATION_ONLY" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "nextCursor": { "type": ["string", "null"] },
+          "exportAvailable": { "type": "boolean" },
+          "classification": { "const": "SIMULATION_ONLY" }
         },
         "additionalProperties": false
       },

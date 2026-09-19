@@ -149,3 +149,20 @@ test("S6 reconciliation exposes and enforces the versioned reason policy", async
     const command=await store.get(accepted.json().commandId,"INST_MEDIATRIX","ROLE-02"); assert.equal(command?.payload.reconciliationPolicyVersion,"SYNTHETIC_RECONCILIATION_REASONS_V1");
   } finally { await app.close(); }
 });
+
+test("S6 census discovery exposes safe metadata while full export remains gated", async () => {
+  const sessions = { async findCredential() { return record; }, async createSession() {}, async restoreSession() { return record; }, async revokeSession() {} };
+  const census = {
+    async capture() { throw new Error("DISABLED_UNAPPROVED_REPORT_FORMAT"); }, async get() { return null; }, async copyRow() { return null; },
+    async list(institutionId: string | undefined, limit: number, cursor?: string) {
+      assert.equal(institutionId,"INST_MEDIATRIX"); assert.equal(limit,50); assert.equal(cursor,undefined);
+      return { snapshots:[{snapshotId:"CENSUS_SYNTH_001",institutionId:"INST_MEDIATRIX",scheduledFor:"2026-09-19T01:00:00.000Z",capturedAt:"2026-09-19T01:01:00.000Z",reportPolicyVersion:"INTERVIEW_REPORT_PENDING",triggerType:"SCHEDULED",classification:"SIMULATION_ONLY" as const}],nextCursor:null,exportAvailable:false };
+    },
+  };
+  const app=await buildApp(new MemoryRepository(),{host:"127.0.0.1",port:3000,jwtSecret:"v2-census-test-secret-that-is-long-enough",operatorId:"USR_SYNTH_CAPTURE",operatorCredential:"synthetic-test-credential",workerConfigured:false,webOrigin:"http://127.0.0.1:5174"},()=>new Date("2026-09-19T12:00:00.000Z"),sessions,undefined,undefined,{store:new InMemoryV2CommandStore(),census});
+  const token=app.jwt.sign({userId:record.userId,institutionId:record.institutionId,roleId:record.roleId,sessionId:"SESS_SYNTH_CENSUS",binding:"d".repeat(64),policyVersion:"SYNTHETIC_WEB_ACCESS_V1"});
+  try {
+    const response=await app.inject({method:"GET",url:"/api/v2/reports/doh-census",headers:{cookie:`bloodledger_session=${token}`}});
+    assert.equal(response.statusCode,200); assert.equal(response.json().displayPolicyVersion,"DOH_CENSUS_COLUMN_ORDER_V1"); assert.deepEqual(response.json().displayBloodTypeOrder,["O_POSITIVE","A_POSITIVE","B_POSITIVE","AB_POSITIVE","O_NEGATIVE","A_NEGATIVE","B_NEGATIVE","AB_NEGATIVE"]); assert.equal(response.json().totalColumn,"CALCULATED"); assert.equal(response.json().reportAvailability,"EXPORT_DISABLED_PENDING_FORMAT");
+  } finally { await app.close(); }
+});

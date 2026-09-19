@@ -13,3 +13,8 @@ test("enables copy mode only for a complete configured order", () => {
   assert.equal(policy.copyModeEnabled, true);
   assert.equal(policy.bloodTypeOrder[0], "O_NEGATIVE");
 });
+
+test("keeps copy mode disabled when only the confirmed display order is configured", () => {
+  const policy = readDohReportPolicy({ BLOODLEDGER_DOH_REPORT_POLICY_VERSION: "DOH_CENSUS_COLUMN_ORDER_V1", BLOODLEDGER_DOH_BLOOD_TYPE_ORDER: "O_POSITIVE,A_POSITIVE,B_POSITIVE,AB_POSITIVE,O_NEGATIVE,A_NEGATIVE,B_NEGATIVE,AB_NEGATIVE" });
+  assert.equal(policy.copyModeEnabled, false);
+});

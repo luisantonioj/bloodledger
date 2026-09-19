@@ -8,6 +8,7 @@ import type { CensusStore } from "./census-worker.js";
 import type { V2ProjectionReader } from "./database-v2.js";
 import { validateInboundOcrInput } from "./inbound-ocr-policy.js";
 import { isReconciliationReasonCode, RECONCILIATION_POLICY_VERSION, RECONCILIATION_REASONS } from "./reconciliation-policy.js";
+import { DOH_CENSUS_DISPLAY_ORDER, DOH_CENSUS_DISPLAY_POLICY_VERSION } from "./report-policy.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
 const CORRELATION_PATTERN = /^CORR_[0-9A-F]{32}$/;
@@ -21,6 +22,7 @@ const COMPONENT_TYPES = ["WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_
 const COMPONENT_TYPES_V21 = [...COMPONENT_TYPES, "CRYOPRECIPITATE"] as const;
 const URGENCIES = ["ROUTINE", "URGENT", "CRITICAL"] as const;
 const PAGE_CURSOR_PATTERN = /^RES_[A-Z0-9_-]{1,56}$/;
+const CENSUS_CURSOR_PATTERN = /^CENSUS_[A-Z0-9_-]{1,56}$/;
 
 export interface V2RouteDependencies {
   store: V2CommandStore;
@@ -250,8 +252,18 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     return reply.status(201).send(snapshot);
   });
 
+  app.get<{ Querystring: { limit?: string; cursor?: string } }>("/api/v2/reports/doh-census", async (request) => {
+    const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-04"]);
+    if (!dependencies.census?.list) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Census discovery is not available.");
+    const cursor = request.query.cursor;
+    if (cursor !== undefined && !CENSUS_CURSOR_PATTERN.test(cursor)) throw new ApiFailure(400, "V2_PAGE_INVALID", "Page cursor is invalid.");
+    const page = await dependencies.census.list(principal.roleId === "ROLE-04" ? undefined : principal.institutionId, pageLimit(request.query.limit), cursor);
+    return { scope: principal.roleId === "ROLE-04" ? "REGULATORY_AGGREGATE" : "INSTITUTION", displayPolicyVersion: DOH_CENSUS_DISPLAY_POLICY_VERSION, displayBloodTypeOrder: DOH_CENSUS_DISPLAY_ORDER, totalColumn: "CALCULATED", reportAvailability: page.exportAvailable ? "EXPORT_AVAILABLE" : "EXPORT_DISABLED_PENDING_FORMAT", ...page, classification: "SIMULATION_ONLY" as const };
+  });
+
   app.get<{ Params: { snapshotId: string } }>("/api/v2/reports/doh-census/:snapshotId", async (request) => {
     const { principal } = await restore(request);
+    authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-04"]);
     if (!dependencies.census) throw new ApiFailure(503, "DISABLED_UNAPPROVED_REPORT_FORMAT", "The report policy has not been approved.");
     const snapshot = await dependencies.census.get(request.params.snapshotId, principal.roleId === "ROLE-04" ? undefined : principal.institutionId);
     if (!snapshot) throw new ApiFailure(404, "CENSUS_NOT_FOUND", "The census snapshot was not found in the authorized scope.");
@@ -260,6 +272,7 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
 
   app.get<{ Params: { snapshotId: string; componentType: string } }>("/api/v2/reports/doh-census/:snapshotId/:componentType.tsv", async (request, reply) => {
     const { principal } = await restore(request);
+    authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-04"]);
     if (!dependencies.census) throw new ApiFailure(503, "DISABLED_UNAPPROVED_REPORT_FORMAT", "The report policy has not been approved.");
     if (!(COMPONENT_TYPES as readonly string[]).includes(request.params.componentType)) throw new ApiFailure(400, "V2_COMPONENT_TYPE_INVALID", "Component type is not supported.");
     const tsv = await dependencies.census.copyRow(request.params.snapshotId, request.params.componentType as typeof COMPONENT_TYPES[number], principal.roleId === "ROLE-04" ? undefined : principal.institutionId);
