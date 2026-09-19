@@ -1,5 +1,8 @@
 # [Frontend] Integrate Sprint 6 V2/OCR workflows and ML V4 contracts
 
+**Implementation status:** Contract-based frontend work implemented on
+`codex/s6-frontend-integration`; live integration and human UAT remain open.
+
 ## Purpose
 
 Track the frontend integration work created by the Sprint 6 backend, inbound
@@ -21,17 +24,21 @@ Detailed review and acceptance guidance:
 
 ## Current frontend state
 
-- Capture PWA still submits to `POST /api/v1/scan-events` and polls the V1
-  scan-event resource.
-- Capture PWA still uses the earlier `SYNTHETIC_CAPTURE_V1` payload and limited
-  blood-group/component contract.
-- The main web frontend primarily consumes V1 feature contracts.
-- Analytics remains an intentional frontend-only unavailable-state preview and
-  does not call the demand-forecast endpoint.
+- Capture PWA submits confirmed OCR intake to `POST /api/v2/inbound-captures`
+  and polls the returned command status.
+- V2 inventory reads, intake status, ROLE-03 transfer requests, and ROLE-01/02
+  local releases are integrated in the main web workspace.
+- Active ML V4 Analytics is contract-backed and rejects unsupported datasets,
+  models, and series.
+- Reservation actions, reconciliation, and census remain visibly unavailable
+  where the required read contract or approved policy input is missing.
+- Offline V2 submission remains blocked because the exact Donation No. cannot
+  be persisted and no approved secure replay mechanism exists.
+- The forecast endpoint still requires legacy bearer authentication while the
+  web workspace uses the official session cookie; the live UI reports this gap
+  without fabricating data.
 
-Concrete frontend changes are therefore required.
-
-## Confirmations required before implementation
+## Confirmations used for implementation
 
 ### JOPIA — backend and integration confirmation
 
@@ -145,29 +152,32 @@ Please confirm:
 
 ## Acceptance criteria
 
-- [ ] JOPIA records the stable integration baseline and answers the backend
+- [x] JOPIA records the stable integration baseline and answers the backend
   confirmations above.
-- [ ] BUNO records the accepted forecasting correction/re-review status and
-  answers the forecasting confirmations above.
-- [ ] Capture PWA uses the approved V2 inbound OCR contract and explicit
+- [ ] BUNO human research re-review remains pending; the merged technical
+  corrections and active runtime contract were used without making an accuracy
+  claim.
+- [x] Capture PWA uses the approved V2 inbound OCR contract and explicit
   operator confirmation.
-- [ ] Raw images and unrestricted OCR text are not persisted or transmitted.
-- [ ] Receiving custody cannot be overridden by the client.
-- [ ] Every asynchronous command state is represented truthfully.
-- [ ] Pending, failed, and conflicted intake is excluded from committed
+- [x] Raw images and unrestricted OCR text are not persisted or transmitted.
+- [x] Receiving custody cannot be overridden by the client.
+- [x] Every asynchronous command state is represented truthfully.
+- [x] Pending, failed, and conflicted intake is excluded from committed
   inventory.
-- [ ] Component reads parse `{ scope, components, classification }`.
-- [ ] Inventory, census, and workflow views preserve role and institution scope.
-- [ ] V2.1 is used only where required, including approved
+- [x] Component reads parse `{ scope, components, classification }`.
+- [ ] Inventory and connected workflows preserve role/institution scope; census
+  remains blocked by the missing snapshot index and unapproved DOH order.
+- [x] V2.1 is used only where required, including approved
   `CRYOPRECIPITATE` behavior.
-- [ ] Transfer, local-release, and reconciliation controls match the accepted
-  roles and command contracts.
-- [ ] Forecasts distinguish `CURRENT`, `STALE`, and `UNAVAILABLE`.
-- [ ] Missing forecasts and null uncertainty never become zero values or
+- [ ] Transfer request and local release match the accepted roles/contracts;
+  reservation actions and reconciliation remain disabled for the documented
+  contract/policy gaps.
+- [x] Forecasts distinguish `CURRENT`, `STALE`, and `UNAVAILABLE`.
+- [x] Missing forecasts and null uncertainty never become zero values or
   invented bounds.
-- [ ] Forecast provenance and `SIMULATION_ONLY` limitations remain visible.
-- [ ] Automated frontend checks and browser UAT pass against the accepted
-  integration baseline.
+- [x] Forecast provenance and `SIMULATION_ONLY` limitations remain visible.
+- [ ] Automated frontend checks pass; human browser UAT and live cross-owner
+  integration evidence remain pending.
 - [ ] Final live integration evidence is rerun after BUNO's fixes and JOPIA's
   accepted backend baseline are available.
 

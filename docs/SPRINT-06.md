@@ -120,6 +120,10 @@ Each commit must pass the relevant focused checks and must not modify
 LAT receives `services/api/openapi-v2.json`, including the command envelope,
 role-scoped component reads, transfer actions, local-release and reconciliation
 routes, and versioned census TSV behavior. Frontend work is outside this branch.
+The separate LAT implementation is recorded in
+`docs/LAT-S6-FRONTEND-HANDOFF.md` and
+`docs/LAT-S6-FRONTEND-IMPLEMENTATION-ISSUE.md`; unresolved frontend integration
+gates there do not change this sprint's backend acceptance boundary.
 
 Buno receives `contracts/source-surplus-evidence-v2.schema.json` and the
 simulation-only freshness/classification gate in `services/coordination`.

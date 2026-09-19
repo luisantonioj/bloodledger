@@ -1,7 +1,8 @@
 # LAT Sprint 6 Frontend Handoff
 
-**Status:** Proposed integration handoff; the verified backend revision is
-pushed, while owner acceptance and browser UAT remain pending
+**Status:** Frontend contract implementation complete on
+`codex/s6-frontend-integration`; live cross-owner integration evidence and
+human browser UAT remain pending
 
 **Backend scope:** PR #11 on `codex/ml-v4-verification`; implementation commit
 `3b890f0` incorporates BUNO's correction commit `f58b905`; subsequent
@@ -20,9 +21,8 @@ contracts remain authoritative:
 - [ML V4 runtime contract](./ML-RUNTIME-INTEGRATION-V4.md)
 
 The exact combined backend implementation revision for frontend development is
-`3b890f0`. The branch also carries documentation-only follow-ups for this
-handoff; LAT should pin `3b890f0` (or a later branch revision containing it)
-until PR #11 is merged. The main merge commit replaces it after merge.
+`3b890f0`. PR #11 was merged to `main` in `11afde3`; the frontend branch merged
+the later `origin/main` revision `fbd9a84` in `e408817` before implementation.
 
 ## Contract and version headers
 
@@ -61,9 +61,11 @@ validation/conflict codes include `INBOUND_OCR_INPUT_INVALID`,
 `INBOUND_RECEIPT_REQUIRED`, `V2_KEYS_UNAVAILABLE`, and
 `V2_PROJECTION_UNAVAILABLE`.
 
-The existing Capture PWA still uses the older
-`SYNTHETIC_CAPTURE_V1`/`/api/v1/scan-events` flow. Migration to the V2
-inbound contract is LAT work and is not represented as complete here.
+The Capture PWA now uses the V2 inbound contract, the official session cookie,
+explicit review of all five OCR fields, and the backend command envelope. It
+selects V2.1 only for `CRYOPRECIPITATE`. The exact Donation No. remains
+in-memory only and raw images/unrestricted OCR text are neither submitted nor
+persisted.
 
 ## Offline queue and privacy gate
 
@@ -94,10 +96,9 @@ possible states are `QUEUED`, `SUBMITTING`, `RETRY_WAIT`,
 `LEDGER_COMMITTED_PROJECTION_PENDING`, `COMMITTED`, `FAILED`, and
 `CONFLICT`.
 
-The recommended frontend behavior is two seconds initially with exponential
-error backoff capped at 30 seconds; this recommendation requires LAT/JOPIA
-confirmation. Stop on `COMMITTED`, `FAILED`, or `CONFLICT`, pause while
-offline, and stop authenticated polling after logout or session loss.
+The frontend polls at two seconds initially with exponential error backoff
+capped at 30 seconds. It stops on `COMMITTED`, `FAILED`, or `CONFLICT`, pauses
+while offline, and stops authenticated polling after logout or session loss.
 `LEDGER_COMMITTED_PROJECTION_PENDING` remains visible as pending. Projection
 retries must never resubmit a transaction already committed by Fabric.
 
@@ -152,18 +153,42 @@ uses `AVAILABLE`, `STALE`, and `UNAVAILABLE`. Missing or unsupported
 series remain absent/unavailable and are never displayed as zero. Null lower
 and upper values display as “Uncertainty unavailable”. The UI should show
 dataset/model identity, requested dates, unavailable reason, and
-`SIMULATION_ONLY`. These semantics still require BUNO's human research
-re-review.
+`SIMULATION_ONLY`. The web client now enforces this active dataset/model and
+matrix. BUNO's human research interpretation and any accuracy claim remain a
+separate gate.
+
+## Frontend implementation evidence
+
+- Capture PWA migrated from V1 scan events to V2 inbound OCR and durable
+  command status.
+- Main web inventory consumes the institution-scoped V2 component envelope and
+  keeps intake command counts separate from committed components.
+- Main web exposes canonical V2 transfer request and local-release entry points
+  only for the confirmed roles. Legacy V1 mutations are disabled.
+- Reservation actions remain unavailable because no permission-scoped
+  reservation list/detail read exists. Reconciliation remains unavailable
+  because an approved reason-code list is not frozen.
+- Census UI remains unavailable because there is no snapshot index/list read
+  and the DOH copy column order is unapproved.
+- Analytics consumes only the active ML V4 envelope, preserves absent/null
+  semantics, and never enables recommendation or approval behavior.
+- Automated evidence: web production build and 50 unit tests pass; Capture PWA
+  production build and 14 unit tests pass; web browser coverage passes with
+  seven retired V1 mutation fixtures skipped; Capture PWA browser coverage
+  passes 3/3.
 
 ## Readiness and remaining gates
 
-Verified locally on implementation commit `3b890f0` and its documentation
-follow-ups: BUNO's four producer corrections,
+Backend behavior was verified on implementation commit `3b890f0` and its
+documentation follow-ups: BUNO's four producer corrections,
 fresh/upgrade migrations, cross-institution scope, replay/conflict behavior,
 null and requested-date handling, API/coordination/chaincode tests, static
-boundaries, JSON formatting, and secret scanning. LAT implementation, browser
-UAT, approved offline retention rule,
-BUNO human re-review, JOPIA acceptance, and real-Fabric restart/submission-count
-evidence remain pending. All outputs remain simulation-only; `RQ-07` and
+boundaries, JSON formatting, and secret scanning. LAT's contract-based
+implementation and automated browser evidence are complete. Human browser UAT,
+an approved offline retention/secure Donation No. replay rule, reservation
+reads, reconciliation reason codes, census snapshot listing, the forecast
+endpoint's session-cookie alignment, BUNO human re-review, and real-Fabric
+restart/submission-count evidence remain pending. All outputs remain
+simulation-only; `RQ-07` and
 clinical, operational, institutional, UAT, regulatory, and production gates
 remain open.
