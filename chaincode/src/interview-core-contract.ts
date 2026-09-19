@@ -133,6 +133,8 @@ const policy = policyJson as {
   bloodTypes: BloodType[];
   componentTypes: ComponentType[];
   nearExpiryEnabled: false;
+  reconciliationPolicyVersion: "SYNTHETIC_RECONCILIATION_REASONS_V1";
+  reconciliationReasonCodes: string[];
   actors: Record<string, ActorPolicy>;
 };
 const policyV21 = policyV21Json as typeof policy & { policyVersion: typeof POLICY_VERSION_V21 };
@@ -434,7 +436,7 @@ export class InterviewCoreContract extends Contract {
     this.assertActorForInstitution(input.actorUserId, component.custodyInstitutionId, ["ROLE_01", "ROLE_02"]);
     if (!["AVAILABLE", "RESERVED"].includes(component.status)) this.fail("RECONCILIATION_TRANSITION_INVALID");
     this.assertId(input.caseId, CASE_ID_PATTERN, "RECONCILIATION_INPUT_INVALID");
-    this.assertReason(input.reasonCode);
+    this.assertReconciliationReason(input.reasonCode, component.policyVersion);
     const prior = await this.readIdempotent(ctx, input.idempotencyKey, "PLACE_RECONCILIATION_HOLD", this.digest(input));
     if (prior !== undefined) return prior;
     const existing = await ctx.stub.getState(this.caseKey(input.caseId));
@@ -635,6 +637,10 @@ export class InterviewCoreContract extends Contract {
     this.parseUtc(input.eventTime); if (input.policyVersion !== POLICY_VERSION && input.policyVersion !== POLICY_VERSION_V21) this.fail("CORE_POLICY_MISMATCH");
   }
   private assertReason(value: string): void { this.assertId(value, REASON_PATTERN, "CORE_REASON_INVALID"); }
+  private assertReconciliationReason(value: string, policyVersion: PolicyVersion): void {
+    const activePolicy = policyVersion === POLICY_VERSION_V21 ? policyV21 : policy;
+    if (!activePolicy.reconciliationReasonCodes.includes(value)) this.fail("RECONCILIATION_REASON_INVALID");
+  }
   private assertHash(value: unknown, errorCode: string): void { if (typeof value !== "string" || !HASH_PATTERN.test(value)) this.fail(errorCode); }
   private assertId(value: string, pattern: RegExp, errorCode: string): void { if (!pattern.test(value)) this.fail(errorCode); }
   private parseUtc(value: unknown): number { if (typeof value !== "string") this.fail("CORE_TIME_INVALID"); const ms = Date.parse(value); if (!Number.isFinite(ms) || new Date(ms).toISOString() !== value) this.fail("CORE_TIME_INVALID"); return ms; }

@@ -131,3 +131,21 @@ test("S6 reservation reads and actions use committed role-scoped projections", a
     assert.equal(action.statusCode,202);
   } finally { await app.close(); }
 });
+
+test("S6 reconciliation exposes and enforces the versioned reason policy", async () => {
+  const sessions = { async findCredential() { return record; }, async createSession() {}, async restoreSession() { return record; }, async revokeSession() {} };
+  const store = new InMemoryV2CommandStore();
+  const app = await buildApp(new MemoryRepository(), {
+    host:"127.0.0.1",port:3000,jwtSecret:"v2-reconciliation-test-secret-long-enough",operatorId:"USR_SYNTH_CAPTURE",operatorCredential:"synthetic-test-credential",workerConfigured:false,webOrigin:"http://127.0.0.1:5174",
+  },()=>new Date("2026-09-17T12:00:00.000Z"),sessions,undefined,undefined,{store});
+  const token=app.jwt.sign({userId:record.userId,institutionId:record.institutionId,roleId:record.roleId,sessionId:"SESS_SYNTH_RECONCILIATION",binding:"c".repeat(64),policyVersion:"SYNTHETIC_WEB_ACCESS_V1"});
+  const headers={cookie:`bloodledger_session=${token}`,origin:"http://127.0.0.1:5174","idempotency-key":"IDEM_RECONCILIATION_001"};
+  try {
+    const policy=await app.inject({method:"GET",url:"/api/v2/reconciliation/reasons",headers});
+    assert.equal(policy.statusCode,200); assert.equal(policy.json().policyVersion,"SYNTHETIC_RECONCILIATION_REASONS_V1"); assert.equal(policy.json().reasons.length,7); assert.equal(policy.json().freeTextAllowed,false);
+    const base={caseId:"RECON_SYNTH_001",componentId:"COMP_SYNTH_V2_001",correlationId:"CORR_0123456789ABCDEF0123456789ABCDEF"};
+    const invalid=await app.inject({method:"POST",url:"/api/v2/reconciliation",headers,payload:{...base,reasonCode:"FREE_TEXT"}}); assert.equal(invalid.statusCode,400); assert.equal(invalid.json().error.code,"RECONCILIATION_REASON_INVALID");
+    const accepted=await app.inject({method:"POST",url:"/api/v2/reconciliation",headers,payload:{...base,reasonCode:"STATUS_MISMATCH"}}); assert.equal(accepted.statusCode,202);
+    const command=await store.get(accepted.json().commandId,"INST_MEDIATRIX","ROLE-02"); assert.equal(command?.payload.reconciliationPolicyVersion,"SYNTHETIC_RECONCILIATION_REASONS_V1");
+  } finally { await app.close(); }
+});

@@ -651,7 +651,9 @@ export class FabricGatewayInterviewCore implements V2LedgerSubmitter {
           const { captureId: _captureId, donationNoCiphertext: _ciphertext, donationNoNonce: _nonce, donationNoAuthTag: _authTag, donationNoEncryptionKeyVersion: _keyVersion, capturedAt: _capturedAt, confirmedAt: _confirmedAt, ocrEngine: _engine, ocrEngineVersion: _engineVersion, donationNumberConfidence: _donationConfidence, bloodTypeConfidence: _bloodConfidence, donationNoLookupHmac, ...safe } = command.payload;
           return { ...safe, donationNoDigest: donationNoLookupHmac };
         })()
-        : command.payload;
+        : command.operation === "PLACE_RECONCILIATION_HOLD"
+          ? (() => { const { reconciliationPolicyVersion: _policyEvidence, ...ledgerPayload } = command.payload; return ledgerPayload; })()
+          : command.payload;
       const policyVersion = (rawPayload as Record<string, unknown>).policyVersion === "INTERVIEW_DERIVED_CORE_V2_1"
         ? "INTERVIEW_DERIVED_CORE_V2_1"
         : "INTERVIEW_DERIVED_CORE_V2";

@@ -7,6 +7,7 @@ import type { V2CommandStore, V2ResourceType } from "./v2-command.js";
 import type { CensusStore } from "./census-worker.js";
 import type { V2ProjectionReader } from "./database-v2.js";
 import { validateInboundOcrInput } from "./inbound-ocr-policy.js";
+import { isReconciliationReasonCode, RECONCILIATION_POLICY_VERSION, RECONCILIATION_REASONS } from "./reconciliation-policy.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
 const CORRELATION_PATTERN = /^CORR_[0-9A-F]{32}$/;
@@ -229,9 +230,15 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const body = request.body;
     if (!hasKeys(body, ["caseId", "componentId", "correlationId", "reasonCode"])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Reconciliation input is invalid.");
     const version = contractVersion(request);
-    const componentId = requiredBodyString(body, "componentId", COMPONENT_ID_PATTERN); const caseId = requiredBodyString(body, "caseId", CASE_ID_PATTERN); const reasonCode = requiredBodyString(body, "reasonCode", /^[A-Z][A-Z0-9_]{2,63}$/);
-    const payload = { componentId, caseId, reasonCode, actorUserId: principal.userId, eventTime: dependencies.clock().toISOString(), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: version === "V2.1" ? "INTERVIEW_DERIVED_CORE_V2_1" : "INTERVIEW_DERIVED_CORE_V2" };
+    const componentId = requiredBodyString(body, "componentId", COMPONENT_ID_PATTERN); const caseId = requiredBodyString(body, "caseId", CASE_ID_PATTERN); const reasonCode = requiredBodyString(body, "reasonCode");
+    if (!isReconciliationReasonCode(reasonCode)) throw new ApiFailure(400, "RECONCILIATION_REASON_INVALID", "The reconciliation reason is not supported by the active synthetic policy.");
+    const payload = { componentId, caseId, reasonCode, reconciliationPolicyVersion: RECONCILIATION_POLICY_VERSION, actorUserId: principal.userId, eventTime: dependencies.clock().toISOString(), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: version === "V2.1" ? "INTERVIEW_DERIVED_CORE_V2_1" : "INTERVIEW_DERIVED_CORE_V2" };
     return enqueue(request, reply, "RECONCILIATION", caseId, "PLACE_RECONCILIATION_HOLD", payload, principal);
+  });
+
+  app.get("/api/v2/reconciliation/reasons", async (request) => {
+    const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02"]);
+    return { policyVersion: RECONCILIATION_POLICY_VERSION, reasons: RECONCILIATION_REASONS, effect: "RECONCILIATION_HOLD_ONLY", freeTextAllowed: false, classification: "SIMULATION_ONLY" as const };
   });
 
   app.post("/api/v2/reports/doh-census/catch-up", async (request, reply) => {
