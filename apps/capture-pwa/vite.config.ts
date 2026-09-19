@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg", "ocr-assets/**/*"],
       manifest: {
-        name: "BloodLedger Synthetic Capture",
+        name: "BloodLedger Inbound OCR Capture",
         short_name: "BloodLedger",
-        description: "Simulation-only mobile OCR capture for BloodLedger Sprint 4",
+        description: "Simulation-only confirmed inbound OCR capture for BloodLedger Sprint 6",
         theme_color: "#7f1d1d",
         background_color: "#fffaf8",
         display: "standalone",
