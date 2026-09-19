@@ -20,18 +20,58 @@ export interface V2ComponentProjection {
   classification: "SIMULATION_ONLY";
 }
 
+export interface V2ReservationProjection {
+  reservationId: string;
+  purpose: "TRANSFER" | "LOCAL_RELEASE";
+  status: string;
+  version: number;
+  sourceInstitutionId: string;
+  destinationInstitutionId: string | null;
+  transferId: string | null;
+  localReleaseId: string | null;
+  preparedAt: string | null;
+  preparedEvidencePresent: boolean;
+  updatedAt: string;
+  components: Array<{ componentId: string; componentType: string; inventoryStatus: string; inventoryVersion: number }>;
+  classification: "SIMULATION_ONLY";
+}
+
 export interface V2ProjectionReader {
   listComponents(institutionId: string, roleId: string): Promise<V2ComponentProjection[]>;
   getComponent(componentId: string, institutionId: string, roleId: string): Promise<V2ComponentProjection | null>;
   findComponentByIdentity(issuerInstitutionId: string, donationNumberLookupHmac: string, componentType: string): Promise<Pick<V2ComponentProjection, "componentId" | "donationId" | "institutionId" | "inventoryStatus" | "reservationId" | "reservationVersion" | "inventoryVersion"> | null>;
   recordInboundCapture?(captureId: string, payload: Record<string, unknown>, acceptedAt: string): Promise<void>;
   listInboundIntake?(institutionId?: string): Promise<Record<string, number>>;
+  listReservations?(institutionId: string, roleId: string, limit: number, cursor?: string): Promise<{ reservations: V2ReservationProjection[]; nextCursor: string | null }>;
+  getReservation?(reservationId: string, institutionId: string, roleId: string): Promise<V2ReservationProjection | null>;
 }
 
 type Row = Record<string, unknown>;
 
 function mapRow(row: Row): V2ComponentProjection {
   return { componentId: String(row.component_id), donationId: String(row.donation_id), issuerInstitutionId: String(row.issuer_institution_id), componentType: String(row.component_type), bloodType: String(row.blood_type), collectedAt: new Date(String(row.collected_at)).toISOString(), expiresAt: new Date(String(row.expires_at)).toISOString(), institutionId: String(row.institution_id), inventoryStatus: String(row.inventory_status), reservationId: row.reservation_id === null || row.reservation_id === undefined ? null : String(row.reservation_id), reservationVersion: row.reservation_version === null || row.reservation_version === undefined ? null : Number(row.reservation_version), inventoryVersion: Number(row.ledger_version), policyVersion: String(row.policy_version), classification: "SIMULATION_ONLY" };
+}
+
+function mapReservation(row: Row): V2ReservationProjection {
+  const components = Array.isArray(row.components) ? row.components : [];
+  return {
+    reservationId: String(row.reservation_id),
+    purpose: String(row.purpose) as V2ReservationProjection["purpose"],
+    status: String(row.status),
+    version: Number(row.version),
+    sourceInstitutionId: String(row.institution_id),
+    destinationInstitutionId: row.destination_institution_id == null ? null : String(row.destination_institution_id),
+    transferId: row.transfer_id == null ? null : String(row.transfer_id),
+    localReleaseId: row.local_release_id == null ? null : String(row.local_release_id),
+    preparedAt: row.prepared_at == null ? null : new Date(String(row.prepared_at)).toISOString(),
+    preparedEvidencePresent: row.prepared_evidence_digest != null && row.prepared_evidence_id != null,
+    updatedAt: new Date(String(row.updated_at)).toISOString(),
+    components: components.map((item) => {
+      const component = item as Record<string, unknown>;
+      return { componentId: String(component.componentId), componentType: String(component.componentType), inventoryStatus: String(component.inventoryStatus), inventoryVersion: Number(component.inventoryVersion) };
+    }),
+    classification: "SIMULATION_ONLY",
+  };
 }
 
 export class PostgresV2ProjectionReader implements V2ProjectionReader {
@@ -53,6 +93,28 @@ export class PostgresV2ProjectionReader implements V2ProjectionReader {
   async listInboundIntake(institutionId?: string): Promise<Record<string, number>> {
     const result = await this.pool.query<Row>(`SELECT status,COUNT(*)::int AS count FROM app.v2_inbound_captures ${institutionId ? "WHERE custody_institution_id=$1" : ""} GROUP BY status`, institutionId ? [institutionId] : []);
     return Object.fromEntries(result.rows.map((row) => [String(row.status), Number(row.count)]));
+  }
+
+  private reservationSelect = `SELECT r.reservation_id,r.purpose,r.status,r.version,r.institution_id,r.transfer_id,r.local_release_id,r.prepared_at,r.prepared_evidence_digest,r.prepared_evidence_id,r.updated_at,t.destination_institution_id,COALESCE(jsonb_agg(jsonb_build_object('componentId',c.component_id,'componentType',c.component_type,'inventoryStatus',c.inventory_status,'inventoryVersion',c.ledger_version) ORDER BY c.component_id) FILTER (WHERE c.component_id IS NOT NULL),'[]'::jsonb) AS components FROM app.v2_reservations r LEFT JOIN app.v2_transfer_requests t ON t.transfer_id=r.transfer_id LEFT JOIN app.v2_components c ON c.reservation_id=r.reservation_id`;
+
+  async listReservations(institutionId: string, roleId: string, limit: number, cursor?: string): Promise<{ reservations: V2ReservationProjection[]; nextCursor: string | null }> {
+    const destination = roleId === "ROLE-03";
+    const scope = destination ? "t.destination_institution_id=$1" : "r.institution_id=$1";
+    const cursorClause = cursor ? " AND r.reservation_id>$2" : "";
+    const values: unknown[] = [institutionId];
+    if (cursor) values.push(cursor);
+    values.push(limit + 1);
+    const result = await this.pool.query<Row>(`${this.reservationSelect} WHERE ${scope}${cursorClause} GROUP BY r.reservation_id,t.destination_institution_id ORDER BY r.reservation_id LIMIT $${values.length}`, values);
+    const hasMore = result.rows.length > limit;
+    const rows = result.rows.slice(0, limit).map(mapReservation);
+    return { reservations: rows, nextCursor: hasMore ? rows.at(-1)?.reservationId ?? null : null };
+  }
+
+  async getReservation(reservationId: string, institutionId: string, roleId: string): Promise<V2ReservationProjection | null> {
+    const destination = roleId === "ROLE-03";
+    const scope = destination ? "t.destination_institution_id=$2" : "r.institution_id=$2";
+    const result = await this.pool.query<Row>(`${this.reservationSelect} WHERE r.reservation_id=$1 AND ${scope} GROUP BY r.reservation_id,t.destination_institution_id`, [reservationId, institutionId]);
+    return result.rows[0] ? mapReservation(result.rows[0]) : null;
   }
 }
 

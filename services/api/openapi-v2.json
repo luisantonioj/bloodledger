@@ -10,6 +10,11 @@
       "url": "/api/v2"
     }
   ],
+  "security": [
+    {
+      "cookieAuth": []
+    }
+  ],
   "paths": {
     "/commands/{commandId}": {
       "get": {
@@ -342,6 +347,72 @@
         }
       }
     },
+    "/reservations": {
+      "get": {
+        "operationId": "listReservations",
+        "description": "List committed reservation projections in the authenticated source or destination institution scope.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "$ref": "#/components/parameters/PageLimit"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^RES_[A-Z0-9_-]{1,56}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Reservations"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "V2.1 is required when the reservation contains cryoprecipitate"
+          }
+        }
+      }
+    },
+    "/reservations/{reservationId}": {
+      "get": {
+        "operationId": "getReservation",
+        "description": "Read a committed reservation projection in the authenticated institution scope.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "$ref": "#/components/parameters/ReservationId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped reservation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "V2.1 is required when the reservation contains cryoprecipitate"
+          }
+        }
+      }
+    },
     "/reservations/{reservationId}/{action}": {
       "post": {
         "operationId": "transitionReservation",
@@ -353,13 +424,7 @@
             "$ref": "#/components/parameters/IdempotencyKey"
           },
           {
-            "name": "reservationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^RES_[A-Z0-9_-]{1,56}$"
-            }
+            "$ref": "#/components/parameters/ReservationId"
           },
           {
             "name": "action",
@@ -398,6 +463,13 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "bloodledger_session"
+      }
+    },
     "parameters": {
       "ContractVersion": {
         "name": "x-bloodledger-contract-version",
@@ -439,6 +511,26 @@
         "schema": {
           "type": "string",
           "pattern": "^CENSUS_[A-Z0-9_-]{1,56}$"
+        }
+      },
+      "ReservationId": {
+        "name": "reservationId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^RES_[A-Z0-9_-]{1,56}$"
+        }
+      },
+      "PageLimit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
         }
       }
     },
@@ -851,6 +943,53 @@
         },
         "additionalProperties": false
       },
+      "Reservation": {
+        "type": "object",
+        "required": [
+          "reservationId",
+          "purpose",
+          "status",
+          "version",
+          "sourceInstitutionId",
+          "destinationInstitutionId",
+          "transferId",
+          "localReleaseId",
+          "preparedAt",
+          "preparedEvidencePresent",
+          "updatedAt",
+          "components",
+          "classification"
+        ],
+        "properties": {
+          "reservationId": { "type": "string" },
+          "purpose": { "type": "string", "enum": ["TRANSFER", "LOCAL_RELEASE"] },
+          "status": { "type": "string" },
+          "version": { "type": "integer", "minimum": 1 },
+          "sourceInstitutionId": { "type": "string" },
+          "destinationInstitutionId": { "type": ["string", "null"] },
+          "transferId": { "type": ["string", "null"] },
+          "localReleaseId": { "type": ["string", "null"] },
+          "preparedAt": { "type": ["string", "null"], "format": "date-time" },
+          "preparedEvidencePresent": { "type": "boolean" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "components": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["componentId", "componentType", "inventoryStatus", "inventoryVersion"],
+              "properties": {
+                "componentId": { "type": "string" },
+                "componentType": { "$ref": "#/components/schemas/ComponentTypeV21" },
+                "inventoryStatus": { "type": "string" },
+                "inventoryVersion": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "classification": { "const": "SIMULATION_ONLY" }
+        },
+        "additionalProperties": false
+      },
       "CensusCatchUpRequest": {
         "type": "object",
         "required": [
@@ -942,6 +1081,24 @@
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/Command"
+            }
+          }
+        }
+      },
+      "Reservations": {
+        "description": "Role- and institution-scoped committed reservations",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": ["scope", "reservations", "nextCursor", "classification"],
+              "properties": {
+                "scope": { "type": "string", "enum": ["SOURCE_INSTITUTION", "DESTINATION_INSTITUTION"] },
+                "reservations": { "type": "array", "items": { "$ref": "#/components/schemas/Reservation" } },
+                "nextCursor": { "type": ["string", "null"] },
+                "classification": { "const": "SIMULATION_ONLY" }
+              },
+              "additionalProperties": false
             }
           }
         }

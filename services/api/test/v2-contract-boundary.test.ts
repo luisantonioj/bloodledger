@@ -35,6 +35,22 @@ const component = {
   classification: "SIMULATION_ONLY" as const,
 };
 
+const reservation = {
+  reservationId: "RES_SYNTH_V2_001",
+  purpose: "TRANSFER" as const,
+  status: "ACTIVE",
+  version: 1,
+  sourceInstitutionId: "INST_MEDIATRIX",
+  destinationInstitutionId: "INST_SYNTH_SECONDARY_01",
+  transferId: "TRF_SYNTH_V2_001",
+  localReleaseId: null,
+  preparedAt: null,
+  preparedEvidencePresent: false,
+  updatedAt: "2026-09-17T12:00:00.000Z",
+  components: [{ componentId: component.componentId, componentType: component.componentType, inventoryStatus: "RESERVED", inventoryVersion: 2 }],
+  classification: "SIMULATION_ONLY" as const,
+};
+
 test("V2 components response preserves the envelope and excludes exact Donation No. values", async () => {
   const sessions = {
     async findCredential() { return record; },
@@ -84,4 +100,34 @@ test("V2 and V2.1 source-surplus schemas agree on provenance and component bound
   }
   assert.ok(!v2.properties.componentType.enum.includes("CRYOPRECIPITATE"));
   assert.ok(v21.properties.componentType.enum.includes("CRYOPRECIPITATE"));
+});
+
+test("S6 reservation reads and actions use committed role-scoped projections", async () => {
+  const sessions = {
+    async findCredential() { return record; }, async createSession() {}, async restoreSession() { return record; }, async revokeSession() {},
+  };
+  const projection = {
+    async listComponents() { return [component]; }, async getComponent() { return component; }, async findComponentByIdentity() { return null; },
+    async listReservations(institutionId: string, roleId: string, limit: number, cursor?: string) {
+      assert.equal(institutionId, "INST_MEDIATRIX"); assert.equal(roleId, "ROLE-02"); assert.equal(limit, 50); assert.equal(cursor, undefined);
+      return { reservations: [reservation], nextCursor: null };
+    },
+    async getReservation(reservationId: string, institutionId: string, roleId: string) {
+      return reservationId === reservation.reservationId && institutionId === "INST_MEDIATRIX" && roleId === "ROLE-02" ? reservation : null;
+    },
+  };
+  const app = await buildApp(new MemoryRepository(), {
+    host:"127.0.0.1",port:3000,jwtSecret:"v2-reservation-test-secret-that-is-long-enough",operatorId:"USR_SYNTH_CAPTURE",operatorCredential:"synthetic-test-credential",workerConfigured:false,webOrigin:"http://127.0.0.1:5174",
+  },()=>new Date("2026-09-17T12:00:00.000Z"),sessions,undefined,undefined,{store:new InMemoryV2CommandStore(),projection});
+  const token=app.jwt.sign({userId:record.userId,institutionId:record.institutionId,roleId:record.roleId,sessionId:"SESS_SYNTH_RESERVATION",binding:"b".repeat(64),policyVersion:"SYNTHETIC_WEB_ACCESS_V1"});
+  const headers={cookie:`bloodledger_session=${token}`};
+  try {
+    const list=await app.inject({method:"GET",url:"/api/v2/reservations",headers});
+    assert.equal(list.statusCode,200); assert.equal(list.json().scope,"SOURCE_INSTITUTION"); assert.equal(list.json().reservations[0].version,1); assert.doesNotMatch(list.body,/donation|ciphertext|lookupHmac/i);
+    const detail=await app.inject({method:"GET",url:`/api/v2/reservations/${reservation.reservationId}`,headers});
+    assert.equal(detail.statusCode,200); assert.equal(detail.json().components[0].componentId,component.componentId);
+    const invalidPage=await app.inject({method:"GET",url:"/api/v2/reservations?limit=101",headers}); assert.equal(invalidPage.statusCode,400);
+    const action=await app.inject({method:"POST",url:`/api/v2/reservations/${reservation.reservationId}/cancel`,headers:{...headers,origin:"http://127.0.0.1:5174","idempotency-key":"IDEM_RESERVATION_CANCEL_001"},payload:{correlationId:"CORR_0123456789ABCDEF0123456789ABCDEF",eventTime:"2026-09-17T12:00:00.000Z",expectedVersion:1}});
+    assert.equal(action.statusCode,202);
+  } finally { await app.close(); }
 });
