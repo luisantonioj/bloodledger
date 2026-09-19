@@ -9,7 +9,7 @@ const pages: Record<string, [string, string, string]> = {
   "/consortium": ["Approved aggregate", "Network view", "Read-only synthetic city-wide summaries without fabricated peer ownership."],
   "/audit": ["Safe provenance", "Audit", "Permission-scoped events with redacted evidence identifiers."],
   "/reporting": ["Simulation evidence", "Reports", "Approved read-only synthetic summaries and exports."],
-  "/analytics": ["Decision-support preview", "Analytics", "Read-only historical-demand and redistribution-assessment interface; backend data remains unavailable."],
+  "/analytics": ["Simulation decision support", "Analytics", "Active ML V4 demand forecasts with explicit freshness, uncertainty, provenance, and disabled operational recommendations."],
   "/accounts": ["Frontend parity preview", "System administration", "Visual-only application, institution, and account-management workspace."],
   "/profile": ["Session context", "Profile", "Safe principal and institution metadata assigned by the server."],
 };
@@ -32,7 +32,7 @@ function dashboardPage(principal: Principal): [string, string, string] {
 
 export function PageContent({ path, principal }: { path: string; principal: Principal }) {
   const page = path === "/" ? dashboardPage(principal) : pages[path] ?? ["Unavailable", "Page not found", "This route is not part of Sprint 5."];
-  const frontendOnly = ["/analytics", "/accounts"].includes(path);
+  const frontendOnly = path === "/accounts";
   return <div className="page">
     <header className="page-head"><div><p className="eyebrow">{page[0]}</p><h1 className="page-title">{page[1]}</h1><p className="subtitle">{page[2]}</p></div><span className="page-classification">Synthetic evidence</span></header>
     <section className="card feature-card">
