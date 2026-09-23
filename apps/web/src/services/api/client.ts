@@ -1,5 +1,9 @@
 interface ApiErrorEnvelope {
-  error?: { message?: string };
+  error?: { code?: string; message?: string };
+}
+
+export class ApiRequestError extends Error {
+  constructor(message: string, public readonly status: number, public readonly code?: string) { super(message); }
 }
 
 export async function requestJson<T>(path: string, init: RequestInit = {}, fallback = "Request failed."): Promise<T> {
@@ -13,6 +17,6 @@ export async function requestJson<T>(path: string, init: RequestInit = {}, fallb
     },
   });
   const body = await response.json().catch(() => null) as ApiErrorEnvelope | null;
-  if (!response.ok) throw new Error(body?.error?.message ?? fallback);
+  if (!response.ok) throw new ApiRequestError(body?.error?.message ?? fallback, response.status, body?.error?.code);
   return body as T;
 }

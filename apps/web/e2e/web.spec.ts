@@ -119,6 +119,10 @@ async function authenticatedApi(page: Page, roleId: RoleId, override?: (route: R
     if (path === "/api/v1/demand-forecasts") return fulfillJson(route, forecastResponse);
     if (path === "/api/v2/components") return fulfillJson(route, { scope: "INSTITUTION", components: [v2Component], classification: "SIMULATION_ONLY" });
     if (path === "/api/v2/reports/inbound-intake") return fulfillJson(route, { scope: "INSTITUTION", statuses: { QUEUED: 1 }, includedInventoryStatuses: ["COMMITTED"], excludedFromInventory: ["QUEUED", "FAILED", "CONFLICT"], classification: "SIMULATION_ONLY" });
+    if (path === "/api/v2/reservations") return fulfillJson(route, { scope: roleId === "ROLE-03" ? "DESTINATION_INSTITUTION" : "SOURCE_INSTITUTION", reservations: [], nextCursor: null, classification: "SIMULATION_ONLY" });
+    if (path === "/api/v2/reconciliation/reasons") return fulfillJson(route, { policyVersion: "SYNTHETIC_RECONCILIATION_REASONS_V1", reasons: [{ code: "LABEL_RECORD_MISMATCH", label: "Label and record do not match" }], effect: "RECONCILIATION_HOLD_ONLY", freeTextAllowed: false, classification: "SIMULATION_ONLY" });
+    if (path === "/api/v2/commands") return fulfillJson(route, { scope: "ACTOR_INSTITUTION", commands: [], nextCursor: null, classification: "SIMULATION_ONLY" });
+    if (path === "/api/v2/reports/doh-census") return fulfillJson(route, { scope: roleId === "ROLE-04" ? "REGULATORY_AGGREGATE" : "INSTITUTION", displayPolicyVersion: "DOH_CENSUS_COLUMN_ORDER_V1", displayBloodTypeOrder: ["O_POSITIVE", "A_POSITIVE", "B_POSITIVE", "AB_POSITIVE", "O_NEGATIVE", "A_NEGATIVE", "B_NEGATIVE", "AB_NEGATIVE"], totalColumn: "CALCULATED", reportAvailability: "EXPORT_DISABLED_PENDING_FORMAT", snapshots: [], nextCursor: null, exportAvailable: false, classification: "SIMULATION_ONLY" });
     const body = responses[path];
     if (path === "/api/v1/dashboard") return fulfillJson(route, dashboardFor(roleId));
     if (body) return fulfillJson(route, body);
@@ -233,6 +237,36 @@ test("login fails safely, then accepts only the server-returned principal and ca
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page.getByRole("heading", { name: "Sign in to BloodLedger" })).toBeVisible();
   expect(revoked).toBe(true);
+});
+
+test("ROLE-02 prepares a committed V2.1 reservation from its returned ID and version", async ({ page }) => {
+  const reservation = { reservationId: "RES_SYNTH_BROWSER_001", purpose: "TRANSFER", status: "ACTIVE", version: 3, sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_SYNTH_SECONDARY", transferId: "TRF_SYNTH_BROWSER_001", localReleaseId: null, preparedAt: null, preparedEvidencePresent: false, updatedAt: timestamp, components: [{ componentId: "CMP_SYNTH_BROWSER_01", componentType: "CRYOPRECIPITATE", inventoryStatus: "RESERVED", inventoryVersion: 2 }], classification: "SIMULATION_ONLY" };
+  let submissions = 0;
+  await authenticatedApi(page, "ROLE-02", async (route, path) => {
+    if (path === "/api/v2/reservations" && route.request().method() === "GET") {
+      expect(route.request().headers()["x-bloodledger-contract-version"]).toBe("V2.1");
+      await fulfillJson(route, { scope: "SOURCE_INSTITUTION", reservations: [reservation], nextCursor: null, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v2/reservations/${reservation.reservationId}` && route.request().method() === "GET") { await fulfillJson(route, reservation); return true; }
+    if (path === `/api/v2/reservations/${reservation.reservationId}/prepare`) {
+      submissions += 1;
+      expect(route.request().headers()["x-bloodledger-contract-version"]).toBe("V2.1");
+      expect(route.request().postDataJSON()).toMatchObject({ expectedVersion: 3, preparedEvidenceId: "EVD_SYNTH_BROWSER_001", preparedEvidenceDigest: "a".repeat(64) });
+      await fulfillJson(route, { commandId: "CMD_SYNTH_PREPARE_001", resourceType: "TRANSFER", resourceId: reservation.reservationId, status: "QUEUED", statusUrl: "/api/v2/commands/CMD_SYNTH_PREPARE_001", acceptedAt: timestamp, correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF", safeErrorCode: null, classification: "SIMULATION_ONLY", replayed: false }, 202);
+      return true;
+    }
+    if (path === "/api/v2/commands/CMD_SYNTH_PREPARE_001") { await fulfillJson(route, { commandId: "CMD_SYNTH_PREPARE_001", resourceType: "TRANSFER", resourceId: reservation.reservationId, status: "COMMITTED", statusUrl: "/api/v2/commands/CMD_SYNTH_PREPARE_001", acceptedAt: timestamp, correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF", safeErrorCode: null, classification: "SIMULATION_ONLY", replayed: false }); return true; }
+    return false;
+  });
+  await page.goto("/transfers");
+  await page.getByRole("button", { name: "Review", exact: true }).click();
+  await page.getByLabel("Action").selectOption("prepare");
+  await page.getByLabel("Approved evidence ID").fill("EVD_SYNTH_BROWSER_001");
+  await page.getByLabel("Evidence SHA-256 digest").fill("a".repeat(64));
+  await page.getByRole("button", { name: "Confirm action" }).click();
+  await expect(page.getByRole("heading", { name: "Committed" })).toBeVisible({ timeout: 10_000 });
+  expect(submissions).toBe(1);
 });
 
 // Historical V1 transfer mutation fixtures are retained temporarily as migration evidence.
@@ -616,9 +650,9 @@ test("legacy V1 transfer mutations stay unavailable while canonical V2 entry poi
     await page.goto("/");
     await page.getByRole("link", { name: "Transfers", exact: true }).click();
     await expect(page.getByRole("button", { name: canonicalButton, exact: true })).toBeVisible();
-    await expect(page.getByText("Canonical reservation actions unavailable", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Reservations and custody" })).toBeVisible();
     await expect(page.getByRole("button", { name: /Submit request|Approve FEFO selection|Reject request|Cancel transfer|Record dispatch|Start transit|Record receipt/ })).toHaveCount(0);
-    if (roleId === "ROLE-02") await expect(page.getByText("Reconciliation reason policy unavailable", { exact: true })).toBeVisible();
+    if (roleId === "ROLE-02") await expect(page.getByRole("heading", { name: "Request reconciliation hold" })).toBeVisible();
     await context.close();
   }
 });

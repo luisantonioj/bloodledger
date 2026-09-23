@@ -51,7 +51,7 @@ export function AnalyticsPreview({ principal }: { principal: Principal }) {
       </div>
     </section>
 
-    {error && <div className="analytics-api-state" role="alert"><span aria-hidden="true">!</span><div><strong>Forecast endpoint unavailable</strong><p>{error}</p><small>The current backend forecast route requires its legacy bearer session, while this web workspace uses the official session cookie. No values are fabricated while that cross-owner authentication gap remains.</small></div></div>}
+    {error && <div className="analytics-api-state" role="alert"><span aria-hidden="true">!</span><div><strong>Forecast endpoint unavailable</strong><p>{error}</p><small>The official session is required. No values are fabricated when access or forecast evidence is unavailable.</small></div></div>}
     {!data && busy && <div className="analytics-preview-state"><span aria-hidden="true">…</span><div><strong>Loading active V4 forecast</strong><p>Waiting for the backend forecast envelope.</p></div></div>}
 
     {data && <>

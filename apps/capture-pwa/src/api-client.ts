@@ -108,3 +108,21 @@ export async function fetchCommandStatus(statusUrl: string): Promise<V2Command> 
   if (!isCommand(body)) throw new ApiError("V2_RESPONSE_INVALID", response.status);
   return body;
 }
+
+export async function recoverCommands(idempotencyKey?: string): Promise<V2Command[]> {
+  const commands: V2Command[] = [];
+  let cursor: string | null = null;
+  do {
+    const query = new URLSearchParams();
+    if (cursor) query.set("cursor", cursor);
+    if (idempotencyKey) query.set("idempotencyKey", idempotencyKey);
+    const response = await fetch(`/api/v2/commands${query.size ? `?${query}` : ""}`, { credentials: "same-origin" });
+    const body = await safeJson(response);
+    if (!response.ok) throw apiError(body, "V2_COMMAND_RECOVERY_FAILED", response.status);
+    const page = body as { scope?: unknown; commands?: unknown; nextCursor?: unknown; classification?: unknown } | null;
+    if (page?.scope !== "ACTOR_INSTITUTION" || page.classification !== "SIMULATION_ONLY" || !Array.isArray(page.commands) || !page.commands.every(isCommand) || (page.nextCursor !== null && typeof page.nextCursor !== "string")) throw new ApiError("V2_RESPONSE_INVALID", response.status);
+    commands.push(...page.commands);
+    cursor = page.nextCursor as string | null;
+  } while (cursor && !idempotencyKey);
+  return commands;
+}

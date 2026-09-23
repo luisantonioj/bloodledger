@@ -1,8 +1,7 @@
 # LAT Sprint 6 Frontend Handoff
 
-**Status:** Jopia backend dependencies implemented on
-`codex/s6-frontend-backend-integration`; Lat frontend follow-ups, automated
-browser rerun, and human browser UAT remain pending
+**Status:** PR #14 merged at `40b8c64`; LAT frontend follow-ups implemented on
+`codex/s6-frontend-followups`. Human browser UAT and owner review remain pending.
 
 **Integration baseline:** Lat commit
 `111681e26d2c91515cdea75f71faf341768cc1fa`; Jopia implementation and evidence
@@ -208,27 +207,58 @@ separate gate.
   keeps intake command counts separate from committed components.
 - Main web exposes canonical V2 transfer request and local-release entry points
   only for the confirmed roles. Legacy V1 mutations are disabled.
-- Jopia now provides permission-scoped reservation list/detail reads, exact
-  reconciliation-reason discovery, census snapshot discovery, web-session
-  forecast reads, and actor-scoped command recovery. Lat must connect these
-  contracts and retain the existing role and pending-state behavior.
+- LAT connects permission-scoped reservation list/detail reads and source or
+  destination role actions from committed IDs and versions. V2.1 reads retain
+  cryoprecipitate. Prepare, dispatch, transit, receive, cancel, and local
+  release completion follow the published state and role map. Compromise is
+  held pending an approved incident reason-code vocabulary.
+- Reconciliation reason choices come from the running API; the UI exposes no
+  free text and describes the effect as a hold. Census discovery is visible
+  to authorized institution and regulatory users with the versioned display
+  order. Copy/export remains disabled.
+- Web and Capture recover actor-scoped commands after reload or a lost
+  response. Capture clears sensitive fields on acceptance, cancellation,
+  logout, session expiry, or the 15-minute confirmation timeout. Terminal
+  receipts expire after 24 hours; nonterminal receipts stay until recovery.
+- The official session-cookie forecast path is now supported by the backend.
+  The frontend retains active-V4-only presentation and truthful unavailable
+  and uncertainty states.
 - Census copy/export remains unavailable even though the visible blood-type
   order is now confirmed.
 - Analytics consumes only the active ML V4 envelope, preserves absent/null
   semantics, and never enables recommendation or approval behavior.
-- Combined automated evidence: API 97/97, chaincode 30/30, web 50/50, Capture
-  PWA 14/14, disposable PostgreSQL integration, and real-Fabric
-  committed-command recovery passed. Playwright is blocked on this host before
-  browser launch because `libnspr4.so` is unavailable; prior Lat browser
-  results are not treated as a rerun of this combined revision.
+- Combined PR #14 validation on LAT's host passed API 97/97, chaincode 30/30,
+  web 50/50, Capture 14/14, all 21 PostgreSQL migrations and Sprint 6 probes,
+  web browser 22 passed with seven retired V1 cases skipped, and Capture
+  browser 3/3. The Chromium dependency was available on this host.
+- LAT follow-up branch verification passed web production build, 54 web unit
+  tests, 23 current web browser tests (seven retired V1 cases skipped), Capture
+  PWA production build, 14 Capture unit tests, four Capture browser tests,
+  and repository foundation checks. The Sprint 6 integrated-boundary script
+  is restricted by its own branch-name check to the backend integration
+  branch and is not a follow-up-branch test.
+
+## LAT follow-up discrepancy register — 2026-09-23
+
+- **JOPIA contract correction:** The running API registers
+  `GET /api/v2/reconciliation/reasons`, while `services/api/openapi-v2.json`
+  currently places `listReconciliationReasons` under `GET /reconciliation`.
+  The frontend uses the running route; align OpenAPI and route before final
+  contract acceptance.
+- **JOPIA decision needed:** The reservation compromise command accepts a
+  syntactically valid `reasonCode`, but there is no approved selectable
+  incident vocabulary. LAT has not invented one. Keep the compromise control
+  disabled until the versioned codes and labels are supplied and enforced.
+- **LAT/human evidence:** Automated browser checks are technical evidence.
+  Human browser UAT, visual acceptance of these follow-ups, and live
+  authenticated walkthrough remain separate pending records.
 
 ## Readiness and remaining gates
 
 Backend dependencies and real-Fabric restart/submission-count recovery are
 verified through `9a5d768`, with Jopia self-validation disclosed in the
-validation record. Lat must implement the reservation, reconciliation, census,
-and recovery checklist above, rerun browser automation on a capable host, and
-perform human browser UAT. Buno's human research/lineage review remains open.
+validation record. LAT's follow-up implementation awaits PR review and human
+browser UAT. Buno's human research/lineage review remains open.
 Full report-format approval, export/copy activation, offline V2 submission,
 physical Android evidence, `RQ-07`, and all clinical, operational,
 institutional, UAT, regulatory, and production gates remain open. All outputs

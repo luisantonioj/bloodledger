@@ -40,6 +40,7 @@ async function restoreCaptureSession(page: Page): Promise<void> {
     contentType: "application/json",
     body: JSON.stringify({ principal }),
   }));
+  await page.route("**/api/v2/commands", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ scope: "ACTOR_INSTITUTION", commands: [], nextCursor: null, classification: "SIMULATION_ONLY" }) }));
 }
 
 async function recognize(page: Page, image: Buffer, name: string): Promise<void> {
@@ -64,6 +65,8 @@ test("PA-S6-02 extracts a synthetic inbound label on device without external req
   const evidence = await app.locator("dl").innerText();
   for (const value of Object.values(labels[0])) expect(evidence).toContain(value);
   expect(externalRequests).toEqual([]);
+  await app.getByRole("button", { name: "Cancel capture" }).click();
+  await expect(app.getByText(labels[0].donationNumber)).toHaveCount(0);
   await app.close();
   await generator.close();
 });
@@ -169,4 +172,24 @@ test("FR-01 tracks one accepted V2 command to commitment without resubmission or
   });
   expect(JSON.stringify(persisted)).not.toContain(cryoprecipitate.donationNumber);
   expect(JSON.stringify(persisted)).toContain("CMD_SYNTH_BROWSER_001");
+});
+
+test("reload recovers an accepted inbound command without resubmission and logout clears receipts", async ({ page }) => {
+  await restoreCaptureSession(page);
+  let submissions = 0;
+  await page.route("**/api/v2/inbound-captures", (route) => { submissions += 1; return route.abort(); });
+  const recovered = { commandId: "CMD_SYNTH_RECOVER_001", resourceType: "INBOUND_CAPTURE", resourceId: "INCAP_SYNTH_RECOVER_001", status: "COMMITTED", statusUrl: "/api/v2/commands/CMD_SYNTH_RECOVER_001", acceptedAt: new Date().toISOString(), correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF", safeErrorCode: null, classification: "SIMULATION_ONLY", replayed: false };
+  await page.route("**/api/v2/commands", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ scope: "ACTOR_INSTITUTION", commands: [recovered], nextCursor: null, classification: "SIMULATION_ONLY" }) }));
+  await page.goto("/capture/");
+  await expect(page.getByText("INCAP_SYNTH_RECOVER_001", { exact: true })).toBeVisible();
+  expect(submissions).toBe(0);
+  await page.getByRole("button", { name: /Sign out Synthetic Capture Operator/ }).click();
+  const receipts = await page.evaluate(async () => {
+    const request = indexedDB.open("bloodledger-inbound-command-status-v2", 1);
+    const db = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const read = db.transaction("command-receipts").objectStore("command-receipts").getAll();
+    const values = await new Promise<unknown[]>((resolve, reject) => { read.onsuccess = () => resolve(read.result); read.onerror = () => reject(read.error); });
+    db.close(); return values;
+  });
+  expect(receipts).toEqual([]);
 });

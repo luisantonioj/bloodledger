@@ -119,3 +119,30 @@ Node.js 24.18.1 because that was the available Linux runtime before the pinned
 
 Issues #9 and #13 and overall Sprint acceptance remain open until their
 remaining owner and human acceptance criteria are satisfied.
+
+## LAT follow-up validation — 2026-09-23
+
+PR #14 was reviewed at `91ac87d` in an isolated worktree and merged through
+the normal merge-commit method at `40b8c64`. LAT's technical review recorded
+API 97/97, chaincode 30/30, web 50/50, Capture 14/14, web browser 22 passed
+with seven retired V1 fixtures skipped, Capture browser 3/3, and all 21
+migrations plus the Sprint 6 disposable-PostgreSQL probes. This host's Chromium
+launched successfully; the earlier `libnspr4.so` block remains a true record
+of Jopia's separate host.
+
+The separate `codex/s6-frontend-followups` branch connects reservation,
+reconciliation, census, and actor-scoped command recovery. Web and Capture
+production builds passed; web unit 54/54, Capture unit 14/14, web browser
+23 passed with seven retired V1 fixtures skipped, and Capture browser 4/4
+passed. Repository foundation checks passed. The Sprint 6 static boundary
+script exits at its explicit branch-name gate on this frontend branch; its
+backend-branch evidence remains recorded above.
+This is LAT technical validation, not human UAT. Jopia's prior real-Fabric
+restart/submission-count result was not repeated because these follow-ups do
+not change chaincode or its backend submission path.
+
+The running reconciliation reason discovery route and OpenAPI path disagree;
+see [the frontend discrepancy register](./LAT-S6-FRONTEND-HANDOFF.md#lat-follow-up-discrepancy-register--2026-09-23).
+An approved compromise incident-code list is still missing, so that one
+frontend action remains disabled. BUNO's human method/lineage review and all
+formal participant/consent/instrument gates remain open.

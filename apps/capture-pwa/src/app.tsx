@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ApiError,
   createSession,
   endSession,
   fetchCommandStatus,
+  recoverCommands,
   restoreSession,
   submitInboundCapture,
   type CapturePrincipal,
@@ -14,7 +15,7 @@ import {
   OCR_ENGINE_VERSION,
   contractVersionFor,
 } from "./capture-policy";
-import { deleteLegacyCaptureQueue, listStoredCommands, saveStoredCommand } from "./offline-queue";
+import { clearStoredCommands, deleteLegacyCaptureQueue, listStoredCommands, saveStoredCommand } from "./offline-queue";
 import type { RecognitionResult } from "./recognition";
 import type { InboundOcrCapture, StoredCommandReceipt, V2Command } from "./types";
 
@@ -53,6 +54,10 @@ export function App() {
   const [message, setMessage] = useState("Simulation only — use approved synthetic Mediatrix labels.");
   const [busy, setBusy] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [recoveryLoading, setRecoveryLoading] = useState(true);
+  const [recoveryReady, setRecoveryReady] = useState(false);
+  const [recoveryAttempt, setRecoveryAttempt] = useState(0);
+  const submissionInFlight = useRef(false);
 
   const refreshEvents = async () => setEvents(await listStoredCommands());
 
@@ -63,6 +68,56 @@ export function App() {
       .catch(() => undefined)
       .finally(() => setSessionLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!recognition) return;
+    const timer = setTimeout(() => {
+      setRecognition(undefined);
+      setAttempt(undefined);
+      setImage(undefined);
+      setMessage("Confirmation timed out after 15 minutes. Capture the label again.");
+    }, 15 * 60 * 1000);
+    return () => clearTimeout(timer);
+  }, [recognition]);
+
+  useEffect(() => {
+    const timer = setInterval(() => { void refreshEvents(); }, 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!principal) return;
+    let closed = false;
+    setRecoveryLoading(true);
+    setRecoveryReady(false);
+    void (async () => {
+      try {
+        const existing = await listStoredCommands();
+        const server = (await recoverCommands()).filter((command) => command.resourceType === "INBOUND_CAPTURE");
+        if (closed) return;
+        await clearStoredCommands();
+        for (const command of server) {
+          if (closed) return;
+          const prior = existing.find((item) => item.commandId === command.commandId);
+          if (!prior && TERMINAL_COMMAND_STATES.has(command.status) && Date.now() - Date.parse(command.acceptedAt) >= 24 * 60 * 60 * 1000) continue;
+          await saveStoredCommand({
+            ...(prior ?? {}), commandId: command.commandId, resourceId: command.resourceId,
+            statusUrl: command.statusUrl, status: command.status, correlationId: command.correlationId,
+            acceptedAt: command.acceptedAt, safeErrorCode: command.safeErrorCode,
+            classification: "SIMULATION_ONLY", terminalObservedAt: prior?.terminalObservedAt,
+          });
+        }
+        if (closed) return;
+        await refreshEvents();
+        setRecoveryReady(true);
+      } catch (error) {
+        if (closed) return;
+        setMessage(error instanceof ApiError && error.status === 401 ? "Session expired. Sign in again." : "Command recovery is unavailable. Check server status before another capture.");
+        if (error instanceof ApiError && error.status === 401) { setPrincipal(undefined); setRecognition(undefined); setAttempt(undefined); setImage(undefined); }
+      } finally { if (!closed) setRecoveryLoading(false); }
+    })();
+    return () => { closed = true; };
+  }, [principal?.userId, recoveryAttempt]);
 
   useEffect(() => {
     const markOnline = () => setIsOnline(true);
@@ -83,26 +138,33 @@ export function App() {
 
     const poll = async () => {
       if (closed) return;
-      if (!navigator.onLine) {
+      if (!navigator.onLine || document.hidden) {
         timer = setTimeout(() => void poll(), 2_000);
         return;
       }
       try {
         for (const receipt of await listStoredCommands()) {
+          if (closed) return;
           if (TERMINAL_COMMAND_STATES.has(receipt.status)) continue;
           const command = await fetchCommandStatus(receipt.statusUrl);
+          if (closed) return;
           await saveStoredCommand({
             ...receipt,
             status: command.status,
             safeErrorCode: command.safeErrorCode,
+            terminalObservedAt: TERMINAL_COMMAND_STATES.has(command.status) ? receipt.terminalObservedAt ?? new Date().toISOString() : undefined,
           });
         }
+        if (closed) return;
         failures = 0;
         await refreshEvents();
       } catch (error) {
         failures += 1;
         if (error instanceof ApiError && error.status === 401) {
           setPrincipal(undefined);
+          setRecognition(undefined);
+          setAttempt(undefined);
+          setImage(undefined);
           setMessage("Session expired. Sign in again to resume command-status checks.");
         } else {
           setMessage("Command status is temporarily unavailable. No intake command was resubmitted.");
@@ -135,11 +197,14 @@ export function App() {
   }
 
   async function signOut() {
-    await endSession().catch(() => undefined);
     setPrincipal(undefined);
     setRecognition(undefined);
     setAttempt(undefined);
     setImage(undefined);
+    setRecoveryReady(false);
+    await endSession().catch(() => undefined);
+    await clearStoredCommands();
+    setEvents([]);
     setMessage("Signed out. Volatile OCR values were cleared.");
   }
 
@@ -160,7 +225,8 @@ export function App() {
   }
 
   async function confirmAndSubmit() {
-    if (!recognition || !principal || !isOnline) return;
+    if (!recognition || !principal || !isOnline || !recoveryReady || submissionInFlight.current) return;
+    submissionInFlight.current = true;
     const confirmation = attempt ?? {
       idempotencyKey: newEvidenceId("IDEM_INBOUND_"),
       correlationId: newEvidenceId("CORR_"),
@@ -212,10 +278,23 @@ export function App() {
       setImage(undefined);
       await refreshEvents();
     } catch (error) {
+      try {
+        const recovered = (await recoverCommands(confirmation.idempotencyKey))[0];
+        if (recovered) {
+          await saveStoredCommand(commandReceipt(recovered, recognition, confirmation.idempotencyKey));
+          setRecognition(undefined);
+          setAttempt(undefined);
+          setImage(undefined);
+          await refreshEvents();
+          setMessage("The server accepted this intake command. Its status was recovered without resubmission.");
+          return;
+        }
+      } catch { /* Keep the same in-memory key and payload for explicit retry. */ }
       const code = error instanceof ApiError ? error.code : "API_UNAVAILABLE";
       setMessage(code + ". The confirmed value remains volatile; retry uses the same idempotency key.");
     } finally {
       setBusy(false);
+      submissionInFlight.current = false;
     }
   }
 
@@ -248,6 +327,7 @@ export function App() {
           <div><strong>Offline V2 submission is disabled</strong><small>You may inspect the screen, but exact Donation No. cannot be queued or replayed until an approved secure retention rule exists.</small></div>
         </div>
       )}
+      {principal && !recoveryReady && !recoveryLoading && <div className="offline-banner" role="alert"><span aria-hidden="true">!</span><div><strong>Command recovery required</strong><small>Check accepted commands before starting another capture.</small><button type="button" onClick={() => setRecoveryAttempt((value) => value + 1)}>Retry recovery</button></div></div>}
 
       <div className="capture-layout">
         <div className="capture-flow">
@@ -303,7 +383,7 @@ export function App() {
               </label>
 
               <div className="capture-actions">
-                <button type="button" disabled={image === undefined || busy} onClick={() => void runRecognition()}>{busy ? "Processing…" : "Run OCR"}</button>
+                <button type="button" disabled={image === undefined || busy || !recoveryReady} onClick={() => void runRecognition()}>{busy ? "Processing…" : !recoveryReady ? "Recovering commands…" : "Run OCR"}</button>
               </div>
               <p className="privacy-note"><span aria-hidden="true">i</span> Raw image and OCR text stay in volatile memory and are never sent to the API.</p>
               <button className="session-sign-out" type="button" onClick={() => void signOut()}>Sign out {principal.displayName}</button>
@@ -327,7 +407,7 @@ export function App() {
                 ))}
               </dl>
               <p className="confirmation-policy">Contract: {contractVersionFor(recognition.label.componentType)}. Fields cannot be edited; recapture if any value is wrong.</p>
-              <div className="confirmation-actions"><button type="button" disabled={busy || !isOnline} onClick={() => void confirmAndSubmit()}>{busy ? "Submitting…" : attempt ? "Retry same confirmed intake" : "I confirm every field"}</button></div>
+              <div className="confirmation-actions"><button type="button" disabled={busy || !isOnline || !recoveryReady} onClick={() => void confirmAndSubmit()}>{busy ? "Submitting…" : attempt ? "Retry same confirmed intake" : "I confirm every field"}</button><button type="button" className="secondary" disabled={busy} onClick={() => { setRecognition(undefined); setAttempt(undefined); setImage(undefined); setMessage("Capture cancelled. Volatile OCR values were cleared."); }}>Cancel capture</button></div>
             </section>
           )}
         </div>
@@ -345,7 +425,7 @@ export function App() {
             <ul className="events">
               {events.map((event) => (
                 <li key={event.commandId}>
-                  <span><strong>{event.resourceId}</strong><small>{event.bloodType} · {event.componentType}</small></span>
+                  <span><strong>{event.resourceId}</strong><small>{event.bloodType ?? "Recovered"} · {event.componentType ?? "command"}</small></span>
                   <span className={"event-status status-" + event.status.toLowerCase().replaceAll("_", "-")}>{event.status}</span>
                 </li>
               ))}
