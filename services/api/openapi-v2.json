@@ -396,25 +396,6 @@
       }
     },
     "/reconciliation": {
-      "get": {
-        "operationId": "listReconciliationReasons",
-        "description": "Return the active synthetic hold-reason policy for ROLE-01 and ROLE-02.",
-        "responses": {
-          "200": {
-            "description": "Versioned reconciliation reason policy",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReconciliationReasonPolicy"
-                }
-              }
-            }
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      },
       "post": {
         "operationId": "placeReconciliationHold",
         "description": "Queue a reconciliation hold. ROLE-01 and ROLE-02 only.",
@@ -439,6 +420,27 @@
                 "$ref": "#/components/schemas/ReconciliationRequest"
               }
             }
+          }
+        }
+      }
+    },
+    "/reconciliation/reasons": {
+      "get": {
+        "operationId": "listReconciliationReasons",
+        "description": "Return the active synthetic hold-reason policy for ROLE-01 and ROLE-02.",
+        "responses": {
+          "200": {
+            "description": "Versioned reconciliation reason policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationReasonPolicy"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
