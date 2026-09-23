@@ -247,3 +247,37 @@ test("late intake response after logout cannot restore a receipt", async ({ page
   });
   expect(persisted).toEqual([]);
 });
+
+test("delayed recovery from a signed-out actor cannot appear after account switching", async ({ page }) => {
+  const secondPrincipal = { ...principal, userId: "USR_SYNTH_CAPTURE_OTHER", displayName: "Second Synthetic Operator" };
+  await page.route("**/api/v1/auth/session", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ principal: route.request().method() === "POST" ? secondPrincipal : principal }),
+  }));
+  let releaseFirst: (() => void) | undefined;
+  const firstHeld = new Promise<void>((resolve) => { releaseFirst = resolve; });
+  let recoveryCalls = 0;
+  const oldCommand = { commandId: "CMD_SYNTH_PRIOR_ACTOR", resourceType: "INBOUND_CAPTURE", resourceId: "INCAP_SYNTH_PRIOR_ACTOR", status: "COMMITTED", statusUrl: "/api/v2/commands/CMD_SYNTH_PRIOR_ACTOR", acceptedAt: new Date().toISOString(), correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF", safeErrorCode: null, classification: "SIMULATION_ONLY", replayed: false };
+  await page.route("**/api/v2/commands", async (route) => {
+    const call = ++recoveryCalls;
+    if (call === 1) await firstHeld;
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ scope: "ACTOR_INSTITUTION", commands: call === 1 ? [oldCommand] : [], nextCursor: null, classification: "SIMULATION_ONLY" }) });
+  });
+  await page.goto("/capture/");
+  await expect.poll(() => recoveryCalls).toBe(1);
+  await page.getByRole("button", { name: /Sign out Synthetic Capture Operator/ }).click();
+  await page.getByLabel("Username").fill("second-synthetic-operator");
+  await page.getByLabel("Password").fill("synthetic-password");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("button", { name: /Sign out Second Synthetic Operator/ })).toBeVisible();
+  await expect.poll(() => recoveryCalls).toBe(2);
+  releaseFirst?.();
+  await expect(page.getByText("INCAP_SYNTH_PRIOR_ACTOR", { exact: true })).toHaveCount(0);
+  const receipts = await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open("bloodledger-inbound-command-status-v2", 2); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const result = await new Promise<unknown[]>((resolve, reject) => { const request = db.transaction("command-receipts").objectStore("command-receipts").getAll(); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    db.close(); return result;
+  });
+  expect(receipts).toEqual([]);
+});
