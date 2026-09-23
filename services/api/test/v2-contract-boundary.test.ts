@@ -199,6 +199,21 @@ test("compromise discovery and command boundary enforce the four synthetic reaso
       const command=await store.get(accepted.json().commandId,record.institutionId,record.userId);
       assert.equal(command?.payload.reasonCode,item.code);
       assert.doesNotMatch(accepted.body,/reasonCode|payload/);
+      const replay=await app.inject({method:"POST",url,headers:{...headers,"idempotency-key":`IDEM_COMPROMISE_${item.code}`},payload:{...body,reasonCode:item.code}});
+      assert.equal(replay.statusCode,202); assert.equal(replay.json().commandId,accepted.json().commandId); assert.equal(replay.json().replayed,true);
+      const conflict=await app.inject({method:"POST",url,headers:{...headers,"idempotency-key":`IDEM_COMPROMISE_${item.code}`},payload:{...body,reasonCode:"TEMPERATURE_EXCURSION_REPORTED" === item.code ? "CONTAINER_DAMAGE_OR_LEAK_REPORTED" : "TEMPERATURE_EXCURSION_REPORTED"}});
+      assert.equal(conflict.statusCode,409);
     }
+  } finally { await app.close(); }
+});
+
+test("compromise reason discovery rejects roles without custody authority", async () => {
+  const regulator: CredentialRecord = { ...record, roleId: "ROLE-04", userId: "USR_SYNTH_REGULATOR" };
+  const sessions = { async findCredential() { return regulator; }, async createSession() {}, async restoreSession() { return regulator; }, async revokeSession() {} };
+  const app = await buildApp(new MemoryRepository(), { host:"127.0.0.1",port:3000,jwtSecret:"compromise-scope-test-".repeat(2),operatorId:"USR_SYNTH_CAPTURE",operatorCredential:"synthetic-test-credential",workerConfigured:false,webOrigin:"http://127.0.0.1:5174" },()=>new Date("2026-09-23T12:00:00.000Z"),sessions,undefined,undefined,{store:new InMemoryV2CommandStore()});
+  const token=app.jwt.sign({userId:regulator.userId,institutionId:regulator.institutionId,roleId:regulator.roleId,sessionId:"SESS_SYNTH_COMPROMISE_SCOPE",binding:"a".repeat(64),policyVersion:"SYNTHETIC_WEB_ACCESS_V1"});
+  try {
+    const response=await app.inject({method:"GET",url:"/api/v2/reservations/compromise-reasons",headers:{cookie:`bloodledger_session=${token}`}});
+    assert.equal(response.statusCode,403); assert.equal(response.json().error.code,"AUTH_SCOPE_FORBIDDEN");
   } finally { await app.close(); }
 });

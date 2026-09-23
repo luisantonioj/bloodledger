@@ -204,6 +204,11 @@ test("compromise reason policy quarantines each supported incident and rejects i
     await assert.rejects(contract.MarkReservationCompromised(asContext(context),JSON.stringify({...input,actorUserId:"USR_DIVINE_LOVE"})),/RESERVATION_NOT_AUTHORIZED/);
     await assert.rejects(contract.MarkReservationCompromised(asContext(context),JSON.stringify({...input,expectedVersion:2})),/RESERVATION_VERSION_CONFLICT/);
     assert.equal((await read(context,`component:asset:${componentId}`)).status,"DISPATCHED");
+    const beforeConflict = await read(context,`component:asset:${componentId}`);
+    context.state.set(`component:asset:${componentId}`, Buffer.from(JSON.stringify({ ...beforeConflict, status: "AVAILABLE" })));
+    await assert.rejects(contract.MarkReservationCompromised(asContext(context),JSON.stringify(input)),/COMPONENT_STATE_CONFLICT/);
+    assert.equal((await read(context,`reservation:asset:${reservationId}`)).status,"DISPATCHED");
+    context.state.set(`component:asset:${componentId}`, Buffer.from(JSON.stringify(beforeConflict)));
     const first=await contract.MarkReservationCompromised(asContext(context),JSON.stringify(input));
     assert.equal(await contract.MarkReservationCompromised(asContext(context),JSON.stringify(input)),first);
     const held=await read(context,`reservation:asset:${reservationId}`);

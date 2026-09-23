@@ -511,11 +511,15 @@ export class InterviewCoreContract extends Contract {
     if (prior !== undefined) return prior;
     if (reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
     if (!["DISPATCHED", "IN_TRANSIT", "RECEIVED"].includes(reservation.status)) this.fail("RESERVATION_TRANSITION_INVALID");
+    const components: ComponentAsset[] = [];
     for (const id of reservation.selectedComponentIds) {
       const component = await this.readComponent(ctx, id);
-      if (component.reservationId !== reservation.reservationId) this.fail("COMPONENT_STATE_CONFLICT");
+      if (component.reservationId !== reservation.reservationId || component.status !== reservation.status) this.fail("COMPONENT_STATE_CONFLICT");
+      components.push(component);
+    }
+    for (const component of components) {
       const updated = { ...component, status: "COMPROMISED" as const, version: component.version + 1, actorUserId: input.actorUserId, updatedAt: input.eventTime, correlationId: input.correlationId, lastTransactionId: ctx.stub.getTxID() };
-      await ctx.stub.putState(this.componentKey(id), Buffer.from(this.serialize(updated), "utf8"));
+      await ctx.stub.putState(this.componentKey(component.componentId), Buffer.from(this.serialize(updated), "utf8"));
     }
     const updatedReservation = { ...reservation, status: "COMPROMISED" as const, compromiseReasonCode: input.reasonCode, compromisePolicyVersion: this.policyFor(input).compromisePolicyVersion, version: reservation.version + 1, actorUserId: input.actorUserId, updatedAt: input.eventTime, correlationId: input.correlationId, lastTransactionId: ctx.stub.getTxID() };
     return this.applyAction(ctx, input, "COMPROMISE_RESERVATION", updatedReservation, "ReservationCompromised");
