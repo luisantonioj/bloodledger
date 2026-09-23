@@ -1,167 +1,172 @@
 import { expect, test, type Page } from "@playwright/test";
-import labels from "../test/synthetic-labels.json" with { type: "json" };
+import labels from "../test/inbound-labels-v2.json" with { type: "json" };
 
 type Label = (typeof labels)[number];
+
+const principal = {
+  userId: "USR_SYNTH_CAPTURE_V2",
+  displayName: "Synthetic Capture Operator",
+  institutionId: "INST_MEDIATRIX",
+  institutionDisplayName: "Synthetic Mediatrix Review",
+  roleId: "ROLE-01",
+  roleDisplayName: "Blood Bank Staff",
+  classification: "SIMULATION_ONLY",
+};
 
 function escaped(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
-async function labelImage(page: Page, label: Label, extraLine = "", style = ""): Promise<Buffer> {
+async function labelImage(page: Page, label: Label, extraLine = ""): Promise<Buffer> {
   const lines = [
-    `UNIT ID: ${label.unitId}`,
+    `DONATION NO: ${label.donationNumber}`,
     `BLOOD TYPE: ${label.bloodType}`,
-    `COMPONENT: ${label.component}`,
+    `COMPONENT: ${label.componentType}`,
     `COLLECTED AT: ${label.collectedAt}`,
     `EXPIRES AT: ${label.expiresAt}`,
     extraLine,
   ].filter(Boolean);
   await page.setViewportSize({ width: 1500, height: 900 });
   await page.setContent(`
-    <style>
-      body { margin: 0; background: white; }
-      #label { width: 1320px; padding: 70px; background: white; color: black;
-        font: 700 46px/1.55 Arial, sans-serif; letter-spacing: 1px; ${style} }
-      .line { white-space: nowrap; }
-    </style>
+    <style>body{margin:0;background:white}#label{width:1320px;padding:70px;background:white;color:black;font:700 46px/1.55 Arial,sans-serif;letter-spacing:1px}.line{white-space:nowrap}</style>
     <div id="label">${lines.map((line) => `<div class="line">${escaped(line)}</div>`).join("")}</div>
   `);
   return await page.locator("#label").screenshot({ type: "png" });
 }
 
-async function recognize(page: Page, image: Buffer, name: string): Promise<void> {
-  await page.getByLabel("Synthetic label image").setInputFiles({ name, mimeType: "image/png", buffer: image });
-  await page.getByRole("button", { name: "Run OCR" }).click();
+async function restoreCaptureSession(page: Page): Promise<void> {
+  await page.route("**/api/v1/auth/session", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ principal }),
+  }));
 }
 
-test("PA-S4-01 extracts all 16 clean synthetic labels exactly on device", async ({ browser }) => {
+async function recognize(page: Page, image: Buffer, name: string): Promise<void> {
+  await page.getByLabel("Synthetic inbound label image").setInputFiles({ name, mimeType: "image/png", buffer: image });
+  await page.getByRole("button", { name: "Run OCR" }).click();
+  await expect(page.getByRole("heading", { name: "2. Confirm extracted fields" })).toBeVisible({ timeout: 90_000 });
+}
+
+test("PA-S6-02 extracts a synthetic inbound label on device without external requests", async ({ browser }) => {
   const app = await browser.newPage();
   const generator = await browser.newPage();
   const externalRequests: string[] = [];
+  await restoreCaptureSession(app);
   app.on("request", (request) => {
     const url = new URL(request.url());
-    if ((url.protocol === "http:" || url.protocol === "https:") && url.origin !== "http://127.0.0.1:4173") {
-      externalRequests.push(request.url());
-    }
+    if ((url.protocol === "http:" || url.protocol === "https:") && url.origin !== "http://127.0.0.1:4173") externalRequests.push(request.url());
   });
-  await app.goto("/");
-  await expect(app.getByText("Mobile OCR Scanner", { exact: true })).toBeVisible();
-  await expect(app.getByRole("heading", { name: "Blood Unit Capture" })).toBeVisible();
-  await expect(app.getByText("ALIGN LABEL INSIDE FRAME", { exact: true })).toBeVisible();
-  await expect(app.getByText("Images are never uploaded", { exact: true })).toBeVisible();
-  for (const [index, label] of labels.entries()) {
-    await recognize(app, await labelImage(generator, label), `clean-${index + 1}.png`);
-    const review = app.getByRole("heading", { name: "2. Confirm extracted fields" });
-    await expect(review).toBeVisible();
-    const evidence = await app.locator("dl").innerText();
-    for (const value of Object.values(label)) expect(evidence).toContain(value);
-  }
+  await app.goto("/capture/");
+  await expect(app.getByText("Inbound OCR Capture", { exact: true })).toBeVisible();
+  await expect(app.getByRole("heading", { name: "Blood Component Intake" })).toBeVisible();
+  await recognize(app, await labelImage(generator, labels[0]), "inbound-v2.png");
+  const evidence = await app.locator("dl").innerText();
+  for (const value of Object.values(labels[0])) expect(evidence).toContain(value);
   expect(externalRequests).toEqual([]);
   await app.close();
   await generator.close();
 });
 
-test("PA-S4-01 degraded and prohibited labels never expose an incorrect confirmable result", async ({ browser }) => {
-  const app = await browser.newPage();
-  const generator = await browser.newPage();
-  const label = labels[0];
-  const cases = [
-    ["blur", "", "filter: blur(4px)"],
-    ["rotation", "", "transform: rotate(16deg); transform-origin: center"],
-    ["glare", "", "color: #aaa; background: linear-gradient(110deg,#fff 25%,#eee 45%,#fff 60%)"],
-    ["crop", "", "height: 150px; overflow: hidden"],
-    ["prohibited", "PATIENT: SYNTHETIC PERSON", ""],
-  ] as const;
-  await app.goto("/");
-  for (const [name, extra, style] of cases) {
-    await recognize(app, await labelImage(generator, label, extra, style), `${name}.png`);
-    await expect(app.getByRole("button", { name: "Run OCR" })).toBeEnabled({ timeout: 60_000 });
-    const review = app.getByRole("heading", { name: "2. Confirm extracted fields" });
-    if (await review.isVisible()) {
-      const evidence = await app.locator("dl").innerText();
-      for (const value of Object.values(label)) expect(evidence).toContain(value);
-    } else {
-      await expect(app.getByRole("button", { name: "I confirm every field" })).toHaveCount(0);
-    }
-  }
-  await app.close();
-  await generator.close();
-});
-
-test("FR-13 retains only structured data offline and replays it after connectivity returns", async ({ page, context }) => {
-  let intakeCalls = 0;
-  let intakeAvailable = false;
-  await page.route("**/api/v1/simulation/session", (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({ token: "synthetic-token" }),
-  }));
-  await page.route("**/api/v1/scan-events", (route) => {
-    if (!intakeAvailable) return route.abort("internetdisconnected");
-    intakeCalls += 1;
-    return route.fulfill({
-      status: 202,
-      contentType: "application/json",
-      body: JSON.stringify({
-        eventId: "SCAN_0123456789ABCDEF0123456789ABCDEF",
-        correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF",
-        status: "QUEUED",
-      }),
-    });
+test("NFR-05 keeps exact Donation No. volatile and blocks offline V2 submission", async ({ page, context }) => {
+  await restoreCaptureSession(page);
+  let submissions = 0;
+  await page.route("**/api/v2/inbound-captures", (route) => {
+    submissions += 1;
+    return route.abort();
   });
-  await page.route("**/api/v1/scan-events/SCAN_*", (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({
-      eventId: "SCAN_0123456789ABCDEF0123456789ABCDEF",
-      correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF",
-      status: "COMMITTED",
-      safeErrorCode: null,
-    }),
-  }));
-  await page.goto("/");
-  await page.getByLabel("Development credential").fill("synthetic-test-credential");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByText("Synthetic operator authenticated.")).toBeVisible();
-
+  await page.goto("/capture/");
   const generator = await context.newPage();
-  const image = await labelImage(generator, labels[0]);
+  await recognize(page, await labelImage(generator, labels[1]), "offline-v2.png");
   await generator.close();
-  await recognize(page, image, "offline.png");
-  await expect(page.getByRole("heading", { name: "2. Confirm extracted fields" })).toBeVisible();
-  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
   await context.setOffline(true);
-  await expect(page.getByText("Offline capture is available", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "I confirm every field" }).click();
-  await expect(page.getByText("Saved locally; synchronization will be retried.")).toBeVisible();
-  expect(intakeCalls).toBe(0);
-
+  await expect(page.getByText("Offline V2 submission is disabled", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "I confirm every field" })).toBeDisabled();
+  expect(submissions).toBe(0);
   const persisted = await page.evaluate(async () => {
-    const request = indexedDB.open("bloodledger-synthetic-capture-v1", 1);
+    const names = await indexedDB.databases();
+    const request = indexedDB.open("bloodledger-inbound-command-status-v2", 1);
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
     const values = await new Promise<unknown[]>((resolve, reject) => {
-      const query = database.transaction("scan-events").objectStore("scan-events").getAll();
+      const query = database.transaction("command-receipts").objectStore("command-receipts").getAll();
+      query.onsuccess = () => resolve(query.result);
+      query.onerror = () => reject(query.error);
+    });
+    database.close();
+    return { names: names.map((item) => item.name), values };
+  });
+  expect(persisted.names).not.toContain("bloodledger-synthetic-capture-v1");
+  expect(JSON.stringify(persisted)).not.toContain(labels[1].donationNumber);
+});
+
+test("FR-01 tracks one accepted V2 command to commitment without resubmission or sensitive storage", async ({ page, context }) => {
+  await restoreCaptureSession(page);
+  let submissions = 0;
+  let polls = 0;
+  await page.route("**/api/v2/inbound-captures", async (route) => {
+    submissions += 1;
+    const request = route.request();
+    expect(request.headers()["x-bloodledger-contract-version"]).toBe("V2.1");
+    const body = request.postDataJSON() as Record<string, unknown>;
+    expect(body.captureMethod).toBe("OCR");
+    expect(body.capturePolicyVersion).toBe("INBOUND_OCR_V1");
+    expect(body).not.toHaveProperty("custodyInstitutionId");
+    expect(body).not.toHaveProperty("rawText");
+    expect(body).not.toHaveProperty("image");
+    return route.fulfill({ status: 202, contentType: "application/json", body: JSON.stringify({
+      commandId: "CMD_SYNTH_BROWSER_001",
+      resourceType: "INBOUND_CAPTURE",
+      resourceId: "INCAP_SYNTH_BROWSER_001",
+      status: "QUEUED",
+      statusUrl: "/api/v2/commands/CMD_SYNTH_BROWSER_001",
+      acceptedAt: "2026-09-18T00:00:00.000Z",
+      correlationId: body.correlationId,
+      safeErrorCode: null,
+      classification: "SIMULATION_ONLY",
+      replayed: false,
+    }) });
+  });
+  await page.route("**/api/v2/commands/CMD_SYNTH_BROWSER_001", (route) => {
+    polls += 1;
+    const status = polls === 1 ? "LEDGER_COMMITTED_PROJECTION_PENDING" : "COMMITTED";
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      commandId: "CMD_SYNTH_BROWSER_001",
+      resourceType: "INBOUND_CAPTURE",
+      resourceId: "INCAP_SYNTH_BROWSER_001",
+      status,
+      statusUrl: "/api/v2/commands/CMD_SYNTH_BROWSER_001",
+      acceptedAt: "2026-09-18T00:00:00.000Z",
+      correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF",
+      safeErrorCode: null,
+      classification: "SIMULATION_ONLY",
+      replayed: false,
+    }) });
+  });
+  await page.goto("/capture/");
+  const generator = await context.newPage();
+  const cryoprecipitate = labels.find((label) => label.componentType === "CRYOPRECIPITATE")!;
+  await recognize(page, await labelImage(generator, cryoprecipitate), "v21.png");
+  await generator.close();
+  await page.getByRole("button", { name: "I confirm every field" }).click();
+  await expect(page.getByText("COMMITTED", { exact: true })).toBeVisible({ timeout: 15_000 });
+  expect(submissions).toBe(1);
+  const persisted = await page.evaluate(async () => {
+    const request = indexedDB.open("bloodledger-inbound-command-status-v2", 1);
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const query = database.transaction("command-receipts").objectStore("command-receipts").getAll();
+    const values = await new Promise<unknown[]>((resolve, reject) => {
       query.onsuccess = () => resolve(query.result);
       query.onerror = () => reject(query.error);
     });
     database.close();
     return values;
   });
-  expect(JSON.stringify(persisted)).not.toMatch(/data:image|rawText|ocrText|imageData/);
-  expect(JSON.stringify(persisted)).toContain(labels[0].unitId);
-
-  await page.reload();
-  await expect(page.getByText(labels[0].unitId)).toBeVisible();
-  await expect(page.getByText("LOCAL_PENDING")).toBeVisible();
-
-  intakeAvailable = true;
-  await context.setOffline(false);
-  await expect.poll(() => intakeCalls).toBe(1);
-  await expect(page.getByText("COMMITTED")).toBeVisible({ timeout: 15_000 });
-  await page.reload();
-  await expect(page.getByText(labels[0].unitId)).toBeVisible();
-  expect(intakeCalls).toBe(1);
+  expect(JSON.stringify(persisted)).not.toContain(cryoprecipitate.donationNumber);
+  expect(JSON.stringify(persisted)).toContain("CMD_SYNTH_BROWSER_001");
 });

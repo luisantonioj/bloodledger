@@ -10,7 +10,54 @@
       "url": "/api/v2"
     }
   ],
+  "security": [
+    {
+      "cookieAuth": []
+    }
+  ],
   "paths": {
+    "/commands": {
+      "get": {
+        "operationId": "listRecoverableCommands",
+        "description": "Recover safe command envelopes created by the authenticated actor in the authenticated institution. Request payloads are never returned.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PageLimit"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^CMD_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "idempotencyKey",
+            "in": "query",
+            "required": false,
+            "description": "Exact recovery lookup for a key created by the authenticated actor.",
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Actor- and institution-scoped safe command envelopes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandRecovery"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/commands/{commandId}": {
       "get": {
         "operationId": "getCommand",
@@ -222,6 +269,41 @@
         }
       }
     },
+    "/reports/doh-census": {
+      "get": {
+        "operationId": "listCensusSnapshots",
+        "description": "Discover existing safe census snapshot metadata. Discovery does not activate capture or export.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PageLimit"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^CENSUS_[A-Z0-9_-]{1,56}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized snapshot index and report availability",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CensusIndex"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
     "/reports/doh-census/{snapshotId}": {
       "get": {
         "operationId": "getCensusSnapshot",
@@ -314,6 +396,25 @@
       }
     },
     "/reconciliation": {
+      "get": {
+        "operationId": "listReconciliationReasons",
+        "description": "Return the active synthetic hold-reason policy for ROLE-01 and ROLE-02.",
+        "responses": {
+          "200": {
+            "description": "Versioned reconciliation reason policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationReasonPolicy"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
       "post": {
         "operationId": "placeReconciliationHold",
         "description": "Queue a reconciliation hold. ROLE-01 and ROLE-02 only.",
@@ -342,6 +443,72 @@
         }
       }
     },
+    "/reservations": {
+      "get": {
+        "operationId": "listReservations",
+        "description": "List committed reservation projections in the authenticated source or destination institution scope.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "$ref": "#/components/parameters/PageLimit"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^RES_[A-Z0-9_-]{1,56}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Reservations"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "V2.1 is required when the reservation contains cryoprecipitate"
+          }
+        }
+      }
+    },
+    "/reservations/{reservationId}": {
+      "get": {
+        "operationId": "getReservation",
+        "description": "Read a committed reservation projection in the authenticated institution scope.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "$ref": "#/components/parameters/ReservationId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped reservation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reservation"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "V2.1 is required when the reservation contains cryoprecipitate"
+          }
+        }
+      }
+    },
     "/reservations/{reservationId}/{action}": {
       "post": {
         "operationId": "transitionReservation",
@@ -353,13 +520,7 @@
             "$ref": "#/components/parameters/IdempotencyKey"
           },
           {
-            "name": "reservationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "pattern": "^RES_[A-Z0-9_-]{1,56}$"
-            }
+            "$ref": "#/components/parameters/ReservationId"
           },
           {
             "name": "action",
@@ -398,6 +559,13 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "bloodledger_session"
+      }
+    },
     "parameters": {
       "ContractVersion": {
         "name": "x-bloodledger-contract-version",
@@ -439,6 +607,26 @@
         "schema": {
           "type": "string",
           "pattern": "^CENSUS_[A-Z0-9_-]{1,56}$"
+        }
+      },
+      "ReservationId": {
+        "name": "reservationId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^RES_[A-Z0-9_-]{1,56}$"
+        }
+      },
+      "PageLimit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
         }
       }
     },
@@ -806,7 +994,15 @@
           },
           "reasonCode": {
             "type": "string",
-            "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+            "enum": [
+              "LABEL_RECORD_MISMATCH",
+              "POSSIBLE_DUPLICATE",
+              "COMPONENT_TYPE_MISMATCH",
+              "BLOOD_TYPE_MISMATCH",
+              "DATE_MISMATCH",
+              "CUSTODY_MISMATCH",
+              "STATUS_MISMATCH"
+            ]
           }
         },
         "additionalProperties": false
@@ -851,6 +1047,156 @@
         },
         "additionalProperties": false
       },
+      "ReconciliationReasonPolicy": {
+        "type": "object",
+        "required": [
+          "policyVersion",
+          "reasons",
+          "effect",
+          "freeTextAllowed",
+          "classification"
+        ],
+        "properties": {
+          "policyVersion": {
+            "const": "SYNTHETIC_RECONCILIATION_REASONS_V1"
+          },
+          "reasons": {
+            "type": "array",
+            "minItems": 7,
+            "maxItems": 7,
+            "items": {
+              "type": "object",
+              "required": [
+                "code",
+                "label"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "effect": {
+            "const": "RECONCILIATION_HOLD_ONLY"
+          },
+          "freeTextAllowed": {
+            "const": false
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Reservation": {
+        "type": "object",
+        "required": [
+          "reservationId",
+          "purpose",
+          "status",
+          "version",
+          "sourceInstitutionId",
+          "destinationInstitutionId",
+          "transferId",
+          "localReleaseId",
+          "preparedAt",
+          "preparedEvidencePresent",
+          "updatedAt",
+          "components",
+          "classification"
+        ],
+        "properties": {
+          "reservationId": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "TRANSFER",
+              "LOCAL_RELEASE"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sourceInstitutionId": {
+            "type": "string"
+          },
+          "destinationInstitutionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "transferId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "localReleaseId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "preparedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "preparedEvidencePresent": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "componentId",
+                "componentType",
+                "inventoryStatus",
+                "inventoryVersion"
+              ],
+              "properties": {
+                "componentId": {
+                  "type": "string"
+                },
+                "componentType": {
+                  "$ref": "#/components/schemas/ComponentTypeV21"
+                },
+                "inventoryStatus": {
+                  "type": "string"
+                },
+                "inventoryVersion": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        },
+        "additionalProperties": false
+      },
       "CensusCatchUpRequest": {
         "type": "object",
         "required": [
@@ -860,6 +1206,127 @@
           "scheduledFor": {
             "type": "string",
             "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CensusIndex": {
+        "type": "object",
+        "required": [
+          "scope",
+          "displayPolicyVersion",
+          "displayBloodTypeOrder",
+          "totalColumn",
+          "reportAvailability",
+          "snapshots",
+          "nextCursor",
+          "exportAvailable",
+          "classification"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "INSTITUTION",
+              "REGULATORY_AGGREGATE"
+            ]
+          },
+          "displayPolicyVersion": {
+            "const": "DOH_CENSUS_COLUMN_ORDER_V1"
+          },
+          "displayBloodTypeOrder": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "const": "O_POSITIVE"
+              },
+              {
+                "const": "A_POSITIVE"
+              },
+              {
+                "const": "B_POSITIVE"
+              },
+              {
+                "const": "AB_POSITIVE"
+              },
+              {
+                "const": "O_NEGATIVE"
+              },
+              {
+                "const": "A_NEGATIVE"
+              },
+              {
+                "const": "B_NEGATIVE"
+              },
+              {
+                "const": "AB_NEGATIVE"
+              }
+            ],
+            "minItems": 8,
+            "maxItems": 8
+          },
+          "totalColumn": {
+            "const": "CALCULATED"
+          },
+          "reportAvailability": {
+            "type": "string",
+            "enum": [
+              "EXPORT_AVAILABLE",
+              "EXPORT_DISABLED_PENDING_FORMAT"
+            ]
+          },
+          "snapshots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "snapshotId",
+                "institutionId",
+                "scheduledFor",
+                "capturedAt",
+                "reportPolicyVersion",
+                "triggerType",
+                "classification"
+              ],
+              "properties": {
+                "snapshotId": {
+                  "type": "string"
+                },
+                "institutionId": {
+                  "type": "string"
+                },
+                "scheduledFor": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "capturedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "reportPolicyVersion": {
+                  "type": "string"
+                },
+                "triggerType": {
+                  "type": "string"
+                },
+                "classification": {
+                  "const": "SIMULATION_ONLY"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "exportAvailable": {
+            "type": "boolean"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
           }
         },
         "additionalProperties": false
@@ -931,6 +1398,36 @@
         },
         "additionalProperties": false
       },
+      "CommandRecovery": {
+        "type": "object",
+        "required": [
+          "scope",
+          "commands",
+          "nextCursor",
+          "classification"
+        ],
+        "properties": {
+          "scope": {
+            "const": "ACTOR_INSTITUTION"
+          },
+          "commands": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Command"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        },
+        "additionalProperties": false
+      },
       "Census": {
         "$ref": "../../contracts/doh-census-v2.schema.json"
       }
@@ -942,6 +1439,47 @@
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/Command"
+            }
+          }
+        }
+      },
+      "Reservations": {
+        "description": "Role- and institution-scoped committed reservations",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "scope",
+                "reservations",
+                "nextCursor",
+                "classification"
+              ],
+              "properties": {
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "SOURCE_INSTITUTION",
+                    "DESTINATION_INSTITUTION"
+                  ]
+                },
+                "reservations": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Reservation"
+                  }
+                },
+                "nextCursor": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "classification": {
+                  "const": "SIMULATION_ONLY"
+                }
+              },
+              "additionalProperties": false
             }
           }
         }

@@ -109,6 +109,10 @@ input:disabled { color: var(--ink-muted); background: var(--surface-subtle); }
 .capture-actions { margin: 0 16px; display: flex; gap: 8px; }
 .privacy-note { margin: 12px 16px 0; display: flex; align-items: flex-start; gap: 7px; color: var(--ink-muted); font-size: 9px; }
 .privacy-note span, .sync-message > span { width: 19px; height: 19px; display: grid; flex: 0 0 19px; place-items: center; border-radius: 50%; color: var(--information); background: var(--information-container); font-weight: 800; }
+.session-sign-out { margin: 12px 16px 0; border-color: var(--line); color: var(--ink-secondary); background: var(--surface); }
+.capture-access-denied { padding: 22px; }
+.capture-access-denied strong { display: block; margin-bottom: 7px; font: 500 19px Georgia, serif; }
+.capture-access-denied p { margin: 0 0 16px; color: var(--ink-secondary); font-size: 11px; line-height: 1.5; }
 
 .confirmation-card { padding-bottom: 16px; }
 .unit-summary { margin: 16px; padding: 13px; display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-subtle); }
@@ -138,6 +142,8 @@ input:disabled { color: var(--ink-muted); background: var(--surface-subtle); }
 .events li strong { overflow-wrap: anywhere; font: 600 9px ui-monospace, monospace; }
 .events li small { color: var(--ink-muted); font-size: 8px; }
 .event-status { padding: 4px 6px; border-radius: 999px; color: var(--warning); background: var(--warning-container); font-size: 7px; font-weight: 800; letter-spacing: 0.05em; }
+.status-queued, .status-submitting, .status-ledger-committed-projection-pending { color: var(--information); background: var(--information-container); }
+.status-retry-wait { color: var(--warning); background: var(--warning-container); }
 .status-committed { color: var(--success); background: var(--success-container); }
 .status-failed, .status-conflict { color: var(--critical); background: var(--critical-container); }
 .synchronization-card footer { padding: 10px 14px; display: flex; justify-content: space-between; border-top: 1px solid var(--line); color: var(--ink-muted); background: var(--surface-subtle); font-size: 8px; }

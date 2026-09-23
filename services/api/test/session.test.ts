@@ -25,3 +25,16 @@ test("S5-05 rejects invalid credentials, unknown fields, and wrong origins safel
 test("S5-05 restores then revokes a session idempotently",async()=>{const{app,password}=await fixture();const login=await app.inject({method:"POST",url:"/api/v1/auth/session",headers:{origin},payload:{username:"synth_operator_01",password}});const activeCookie=cookie(login);assert.equal((await app.inject({method:"GET",url:"/api/v1/auth/session",headers:{cookie:activeCookie}})).statusCode,200);const logout=await app.inject({method:"DELETE",url:"/api/v1/auth/session",headers:{origin,cookie:activeCookie}});assert.equal(logout.statusCode,204);assert.match(String(logout.headers["set-cookie"]),/Max-Age=0/);assert.equal((await app.inject({method:"GET",url:"/api/v1/auth/session",headers:{cookie:activeCookie}})).statusCode,401);assert.equal((await app.inject({method:"DELETE",url:"/api/v1/auth/session",headers:{origin,cookie:activeCookie}})).statusCode,204);await app.close()});
 
 test("session binding digests do not store the binding",()=>{const value=randomBytes(24).toString("hex");assert.equal(bindingDigest(value),bindingDigest(value));assert.notEqual(bindingDigest(value),value)});
+
+test("S6 forecast reads accept active web sessions and reject revoked cookies without bearer fallback",async()=>{
+  const{app,password}=await fixture();
+  const login=await app.inject({method:"POST",url:"/api/v1/auth/session",headers:{origin},payload:{username:"synth_operator_01",password}});
+  const activeCookie=cookie(login);
+  const current=await app.inject({method:"GET",url:"/api/v1/demand-forecasts?businessDate=2026-09-19",headers:{cookie:activeCookie}});
+  assert.equal(current.statusCode,200);
+  assert.equal(current.json().datasetVersion,"SYNTHETIC_FORECAST_V4_RUNTIME_V1");
+  await app.inject({method:"DELETE",url:"/api/v1/auth/session",headers:{origin,cookie:activeCookie}});
+  const revoked=await app.inject({method:"GET",url:"/api/v1/demand-forecasts?businessDate=2026-09-19",headers:{cookie:activeCookie,authorization:"Bearer deliberately-not-used"}});
+  assert.equal(revoked.statusCode,401);
+  await app.close();
+});

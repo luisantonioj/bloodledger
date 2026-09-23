@@ -7,6 +7,8 @@ import type { V2CommandStore, V2ResourceType } from "./v2-command.js";
 import type { CensusStore } from "./census-worker.js";
 import type { V2ProjectionReader } from "./database-v2.js";
 import { validateInboundOcrInput } from "./inbound-ocr-policy.js";
+import { isReconciliationReasonCode, RECONCILIATION_POLICY_VERSION, RECONCILIATION_REASONS } from "./reconciliation-policy.js";
+import { DOH_CENSUS_DISPLAY_ORDER, DOH_CENSUS_DISPLAY_POLICY_VERSION } from "./report-policy.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
 const CORRELATION_PATTERN = /^CORR_[0-9A-F]{32}$/;
@@ -19,6 +21,9 @@ const BLOOD_TYPES = ["A_POSITIVE", "A_NEGATIVE", "B_POSITIVE", "B_NEGATIVE", "AB
 const COMPONENT_TYPES = ["WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_PLASMA", "PLATELETS"] as const;
 const COMPONENT_TYPES_V21 = [...COMPONENT_TYPES, "CRYOPRECIPITATE"] as const;
 const URGENCIES = ["ROUTINE", "URGENT", "CRITICAL"] as const;
+const PAGE_CURSOR_PATTERN = /^RES_[A-Z0-9_-]{1,56}$/;
+const CENSUS_CURSOR_PATTERN = /^CENSUS_[A-Z0-9_-]{1,56}$/;
+const COMMAND_CURSOR_PATTERN = /^CMD_[A-Z0-9_-]{1,56}$/;
 
 export interface V2RouteDependencies {
   store: V2CommandStore;
@@ -63,6 +68,16 @@ function requiredUtc(body: Record<string, unknown>, key: string): string {
 function authorized(principal: WebPrincipal, allowed: readonly WebPrincipal["roleId"][]): void {
   if (!allowed.includes(principal.roleId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "The requested V2 operation is not permitted for this role.");
 }
+function pageLimit(value: unknown): number {
+  if (value === undefined) return 50;
+  if (typeof value !== "string" || !/^\d{1,3}$/.test(value)) throw new ApiFailure(400, "V2_PAGE_INVALID", "Page size is invalid.");
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > 100) throw new ApiFailure(400, "V2_PAGE_INVALID", "Page size must be between 1 and 100.");
+  return parsed;
+}
+function requireReservationContract(version: "V2" | "V2.1", reservations: readonly { components: readonly { componentType: string }[] }[]): void {
+  if (version === "V2" && reservations.some((reservation) => reservation.components.some((component) => component.componentType === "CRYOPRECIPITATE"))) throw new ApiFailure(409, "V2_1_CONTRACT_REQUIRED", "This reservation requires the V2.1 component contract.");
+}
 function safeCommand(command: Awaited<ReturnType<V2CommandStore["enqueue"]>>["command"], request: FastifyRequest) {
   return {
     commandId: command.commandId,
@@ -92,9 +107,18 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
 
   app.get<{ Params: { commandId: string } }>("/api/v2/commands/:commandId", async (request) => {
     const { principal } = await restore(request);
-    const command = await dependencies.store.get(request.params.commandId, principal.institutionId, principal.roleId);
+    const command = await dependencies.store.get(request.params.commandId, principal.institutionId, principal.userId);
     if (!command) throw new ApiFailure(404, "V2_COMMAND_NOT_FOUND", "The command was not found in the authorized scope.");
     return safeCommand(command, request);
+  });
+
+  app.get<{ Querystring: { limit?: string; cursor?: string; idempotencyKey?: string } }>("/api/v2/commands", async (request) => {
+    const { principal } = await restore(request);
+    const { cursor, idempotencyKey } = request.query;
+    if (cursor !== undefined && !COMMAND_CURSOR_PATTERN.test(cursor)) throw new ApiFailure(400, "V2_PAGE_INVALID", "Page cursor is invalid.");
+    if (idempotencyKey !== undefined && !IDEMPOTENCY_PATTERN.test(idempotencyKey)) throw new ApiFailure(400, "INVALID_IDEMPOTENCY_KEY", "Idempotency key lookup is invalid.");
+    const page = await dependencies.store.list(principal.institutionId, principal.userId, pageLimit(request.query.limit), cursor, idempotencyKey);
+    return { scope: "ACTOR_INSTITUTION", commands: page.commands.map((command) => safeCommand(command, request)), nextCursor: page.nextCursor, classification: "SIMULATION_ONLY" as const };
   });
 
   app.get("/api/v2/components", async (request) => {
@@ -116,6 +140,27 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!component) throw new ApiFailure(404, "V2_COMPONENT_NOT_FOUND", "The component was not found in the authorized scope.");
     if (version === "V2" && component.componentType === "CRYOPRECIPITATE") throw new ApiFailure(404, "V2_COMPONENT_NOT_FOUND", "The component was not found in the authorized scope.");
     return component;
+  });
+
+  app.get<{ Querystring: { limit?: string; cursor?: string } }>("/api/v2/reservations", async (request) => {
+    const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-03"]);
+    if (!dependencies.projection?.listReservations) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "The reservation projection is not available.");
+    const cursor = request.query.cursor;
+    if (cursor !== undefined && !PAGE_CURSOR_PATTERN.test(cursor)) throw new ApiFailure(400, "V2_PAGE_INVALID", "Page cursor is invalid.");
+    const version = contractVersion(request);
+    const page = await dependencies.projection.listReservations(principal.institutionId, principal.roleId, pageLimit(request.query.limit), cursor);
+    requireReservationContract(version, page.reservations);
+    return { scope: principal.roleId === "ROLE-03" ? "DESTINATION_INSTITUTION" : "SOURCE_INSTITUTION", ...page, classification: "SIMULATION_ONLY" as const };
+  });
+
+  app.get<{ Params: { reservationId: string } }>("/api/v2/reservations/:reservationId", async (request) => {
+    const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-03"]);
+    if (!RESERVATION_ID_PATTERN.test(request.params.reservationId)) throw new ApiFailure(400, "V2_RESERVATION_ID_INVALID", "Reservation ID is invalid.");
+    if (!dependencies.projection?.getReservation) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "The reservation projection is not available.");
+    const reservation = await dependencies.projection.getReservation(request.params.reservationId, principal.institutionId, principal.roleId);
+    if (!reservation) throw new ApiFailure(404, "V2_RESERVATION_NOT_FOUND", "The reservation was not found in the authorized scope.");
+    requireReservationContract(contractVersion(request), [reservation]);
+    return reservation;
   });
 
   app.post("/api/v2/components", async (request, reply) => {
@@ -197,9 +242,15 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const body = request.body;
     if (!hasKeys(body, ["caseId", "componentId", "correlationId", "reasonCode"])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Reconciliation input is invalid.");
     const version = contractVersion(request);
-    const componentId = requiredBodyString(body, "componentId", COMPONENT_ID_PATTERN); const caseId = requiredBodyString(body, "caseId", CASE_ID_PATTERN); const reasonCode = requiredBodyString(body, "reasonCode", /^[A-Z][A-Z0-9_]{2,63}$/);
-    const payload = { componentId, caseId, reasonCode, actorUserId: principal.userId, eventTime: dependencies.clock().toISOString(), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: version === "V2.1" ? "INTERVIEW_DERIVED_CORE_V2_1" : "INTERVIEW_DERIVED_CORE_V2" };
+    const componentId = requiredBodyString(body, "componentId", COMPONENT_ID_PATTERN); const caseId = requiredBodyString(body, "caseId", CASE_ID_PATTERN); const reasonCode = requiredBodyString(body, "reasonCode");
+    if (!isReconciliationReasonCode(reasonCode)) throw new ApiFailure(400, "RECONCILIATION_REASON_INVALID", "The reconciliation reason is not supported by the active synthetic policy.");
+    const payload = { componentId, caseId, reasonCode, reconciliationPolicyVersion: RECONCILIATION_POLICY_VERSION, actorUserId: principal.userId, eventTime: dependencies.clock().toISOString(), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: version === "V2.1" ? "INTERVIEW_DERIVED_CORE_V2_1" : "INTERVIEW_DERIVED_CORE_V2" };
     return enqueue(request, reply, "RECONCILIATION", caseId, "PLACE_RECONCILIATION_HOLD", payload, principal);
+  });
+
+  app.get("/api/v2/reconciliation/reasons", async (request) => {
+    const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02"]);
+    return { policyVersion: RECONCILIATION_POLICY_VERSION, reasons: RECONCILIATION_REASONS, effect: "RECONCILIATION_HOLD_ONLY", freeTextAllowed: false, classification: "SIMULATION_ONLY" as const };
   });
 
   app.post("/api/v2/reports/doh-census/catch-up", async (request, reply) => {
@@ -211,8 +262,18 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     return reply.status(201).send(snapshot);
   });
 
+  app.get<{ Querystring: { limit?: string; cursor?: string } }>("/api/v2/reports/doh-census", async (request) => {
+    const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-04"]);
+    if (!dependencies.census?.list) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Census discovery is not available.");
+    const cursor = request.query.cursor;
+    if (cursor !== undefined && !CENSUS_CURSOR_PATTERN.test(cursor)) throw new ApiFailure(400, "V2_PAGE_INVALID", "Page cursor is invalid.");
+    const page = await dependencies.census.list(principal.roleId === "ROLE-04" ? undefined : principal.institutionId, pageLimit(request.query.limit), cursor);
+    return { scope: principal.roleId === "ROLE-04" ? "REGULATORY_AGGREGATE" : "INSTITUTION", displayPolicyVersion: DOH_CENSUS_DISPLAY_POLICY_VERSION, displayBloodTypeOrder: DOH_CENSUS_DISPLAY_ORDER, totalColumn: "CALCULATED", reportAvailability: page.exportAvailable ? "EXPORT_AVAILABLE" : "EXPORT_DISABLED_PENDING_FORMAT", ...page, classification: "SIMULATION_ONLY" as const };
+  });
+
   app.get<{ Params: { snapshotId: string } }>("/api/v2/reports/doh-census/:snapshotId", async (request) => {
     const { principal } = await restore(request);
+    authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-04"]);
     if (!dependencies.census) throw new ApiFailure(503, "DISABLED_UNAPPROVED_REPORT_FORMAT", "The report policy has not been approved.");
     const snapshot = await dependencies.census.get(request.params.snapshotId, principal.roleId === "ROLE-04" ? undefined : principal.institutionId);
     if (!snapshot) throw new ApiFailure(404, "CENSUS_NOT_FOUND", "The census snapshot was not found in the authorized scope.");
@@ -221,6 +282,7 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
 
   app.get<{ Params: { snapshotId: string; componentType: string } }>("/api/v2/reports/doh-census/:snapshotId/:componentType.tsv", async (request, reply) => {
     const { principal } = await restore(request);
+    authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-04"]);
     if (!dependencies.census) throw new ApiFailure(503, "DISABLED_UNAPPROVED_REPORT_FORMAT", "The report policy has not been approved.");
     if (!(COMPONENT_TYPES as readonly string[]).includes(request.params.componentType)) throw new ApiFailure(400, "V2_COMPONENT_TYPE_INVALID", "Component type is not supported.");
     const tsv = await dependencies.census.copyRow(request.params.snapshotId, request.params.componentType as typeof COMPONENT_TYPES[number], principal.roleId === "ROLE-04" ? undefined : principal.institutionId);
@@ -246,7 +308,11 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1) throw new ApiFailure(400, "V2_VERSION_INVALID", "Expected version is invalid.");
     const roleMap: Record<string, readonly WebPrincipal["roleId"][]> = { prepare: ["ROLE-01", "ROLE-02"], dispatch: ["ROLE-01", "ROLE-02"], transit: ["ROLE-01", "ROLE-02"], receive: ["ROLE-03"], cancel: ["ROLE-01", "ROLE-02", "ROLE-03"], "local-release-complete": ["ROLE-01", "ROLE-02"], compromise: ["ROLE-01", "ROLE-02", "ROLE-03"] };
     const roles = roleMap[action]; if (!roles) throw new ApiFailure(404, "V2_ACTION_NOT_FOUND", "Reservation action is not supported."); authorized(principal, roles);
+    if (!dependencies.projection?.getReservation) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "The reservation projection is not available.");
+    const scopedReservation = await dependencies.projection.getReservation(request.params.reservationId, principal.institutionId, principal.roleId);
+    if (!scopedReservation) throw new ApiFailure(404, "V2_RESERVATION_NOT_FOUND", "The reservation was not found in the authorized scope.");
     const version = contractVersion(request);
+    requireReservationContract(version, [scopedReservation]);
     const operationByAction: Record<string, string> = { prepare: "PREPARE_RESERVATION", dispatch: "DISPATCH_RESERVATION", transit: "START_RESERVATION_TRANSIT", receive: "RECEIVE_RESERVATION", cancel: "CANCEL_RESERVATION", compromise: "COMPROMISE_RESERVATION", "local-release-complete": "COMPLETE_LOCAL_RELEASE" };
     const payload: Record<string, unknown> = { reservationId: request.params.reservationId, expectedVersion: Number(body.expectedVersion), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: version === "V2.1" ? "INTERVIEW_DERIVED_CORE_V2_1" : "INTERVIEW_DERIVED_CORE_V2" };
     for (const key of ["preparedEvidenceDigest", "preparedEvidenceId", "preparedAt", "reasonCode"] as const) if (body[key] !== undefined) payload[key] = body[key];

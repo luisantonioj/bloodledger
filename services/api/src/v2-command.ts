@@ -32,7 +32,8 @@ export interface V2Command extends V2CommandInput {
 
 export interface V2CommandStore {
   enqueue(input: V2CommandInput): Promise<{ command: V2Command; replayed: boolean }>;
-  get(commandId: string, institutionId: string, roleId: string): Promise<V2Command | null>;
+  get(commandId: string, institutionId: string, userId: string): Promise<V2Command | null>;
+  list(institutionId: string, userId: string, limit: number, cursor?: string, idempotencyKey?: string): Promise<{ commands: V2Command[]; nextCursor: string | null }>;
   claim(workerId: string, now: Date, leaseMs?: number): Promise<V2Command | null>;
   markLedgerCommitted(commandId: string, transactionId: string, now: Date, result?: unknown): Promise<void>;
   markProjectionRetry(commandId: string, safeErrorCode: string, nextAttemptAt: Date, now: Date): Promise<void>;
@@ -66,6 +67,7 @@ export class InMemoryV2CommandStore implements V2CommandStore {
     const digest = input.payloadSha256 ?? payloadDigest(input.payload);
     const existing = [...this.commands.values()].find((command) => command.idempotencyKey === input.idempotencyKey);
     if (existing) {
+      if (existing.actorInstitutionId !== input.actorInstitutionId || existing.actorUserId !== input.actorUserId) throw new ApiFailure(409, "V2_IDEMPOTENCY_SCOPE_CONFLICT", "Idempotency key belongs to another authenticated scope.");
       if (existing.payloadSha256 !== digest) throw new ApiFailure(409, "V2_IDEMPOTENCY_CONFLICT", "Idempotency key was used for a different command.");
       return { command: existing, replayed: true };
     }
@@ -73,10 +75,15 @@ export class InMemoryV2CommandStore implements V2CommandStore {
     this.commands.set(command.commandId, command);
     return { command, replayed: false };
   }
-  async get(commandId: string, institutionId: string, roleId: string): Promise<V2Command | null> {
+  async get(commandId: string, institutionId: string, userId: string): Promise<V2Command | null> {
     const command = this.commands.get(commandId);
-    if (!command || (roleId !== "ROLE-04" && command.actorInstitutionId !== institutionId)) return null;
+    if (!command || command.actorInstitutionId !== institutionId || command.actorUserId !== userId) return null;
     return command;
+  }
+  async list(institutionId: string, userId: string, limit: number, cursor?: string, idempotencyKey?: string): Promise<{ commands: V2Command[]; nextCursor: string | null }> {
+    const matches = [...this.commands.values()].filter((command) => command.actorInstitutionId === institutionId && command.actorUserId === userId && (!cursor || command.commandId > cursor) && (!idempotencyKey || command.idempotencyKey === idempotencyKey)).sort((left, right) => left.commandId.localeCompare(right.commandId));
+    const hasMore = matches.length > limit; const commands = matches.slice(0, limit);
+    return { commands, nextCursor: hasMore ? commands.at(-1)?.commandId ?? null : null };
   }
   async claim(_workerId: string, now: Date, leaseMs = 30_000): Promise<V2Command | null> {
     const command = [...this.commands.values()].filter((item) => ["QUEUED", "RETRY_WAIT", "LEDGER_COMMITTED_PROJECTION_PENDING"].includes(item.status) && new Date(item.nextAttemptAt) <= now).sort((a, b) => a.acceptedAt.localeCompare(b.acceptedAt) || a.commandId.localeCompare(b.commandId))[0];
@@ -104,6 +111,7 @@ export class PostgresV2CommandStore implements V2CommandStore {
       await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [input.idempotencyKey]);
       const existing = await client.query<Record<string, unknown>>("SELECT * FROM app.v2_commands WHERE idempotency_key=$1", [input.idempotencyKey]);
       if (existing.rows[0]) {
+        if (String(existing.rows[0].actor_institution_id) !== input.actorInstitutionId || String(existing.rows[0].actor_user_id) !== input.actorUserId) throw new ApiFailure(409, "V2_IDEMPOTENCY_SCOPE_CONFLICT", "Idempotency key belongs to another authenticated scope.");
         if (String(existing.rows[0].payload_sha256) !== digest) throw new ApiFailure(409, "V2_IDEMPOTENCY_CONFLICT", "Idempotency key was used for a different command.");
         await client.query("COMMIT");
         return { command: commandView(existing.rows[0]), replayed: true };
@@ -118,9 +126,18 @@ export class PostgresV2CommandStore implements V2CommandStore {
       return { command: commandView(inserted.rows[0] as Record<string, unknown>), replayed: false };
     } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
   }
-  async get(commandId: string, institutionId: string, roleId: string): Promise<V2Command | null> {
-    const result = await this.pool.query<Record<string, unknown>>("SELECT * FROM app.v2_commands WHERE command_id=$1 AND ($2='ROLE-04' OR actor_institution_id=$3)", [commandId, roleId, institutionId]);
+  async get(commandId: string, institutionId: string, userId: string): Promise<V2Command | null> {
+    const result = await this.pool.query<Record<string, unknown>>("SELECT * FROM app.v2_commands WHERE command_id=$1 AND actor_institution_id=$2 AND actor_user_id=$3", [commandId, institutionId, userId]);
     return result.rows[0] ? commandView(result.rows[0]) : null;
+  }
+  async list(institutionId: string, userId: string, limit: number, cursor?: string, idempotencyKey?: string): Promise<{ commands: V2Command[]; nextCursor: string | null }> {
+    const values: unknown[] = [institutionId, userId]; const conditions = ["actor_institution_id=$1", "actor_user_id=$2"];
+    if (cursor) { values.push(cursor); conditions.push(`command_id>$${values.length}`); }
+    if (idempotencyKey) { values.push(idempotencyKey); conditions.push(`idempotency_key=$${values.length}`); }
+    values.push(limit + 1);
+    const result = await this.pool.query<Record<string, unknown>>(`SELECT * FROM app.v2_commands WHERE ${conditions.join(" AND ")} ORDER BY command_id LIMIT $${values.length}`, values);
+    const hasMore = result.rows.length > limit; const commands = result.rows.slice(0, limit).map(commandView);
+    return { commands, nextCursor: hasMore ? commands.at(-1)?.commandId ?? null : null };
   }
   async claim(workerId: string, now: Date, leaseMs = 30_000): Promise<V2Command | null> {
     const client = await this.pool.connect();
@@ -146,5 +163,5 @@ export class PostgresV2CommandStore implements V2CommandStore {
   async markRetry(commandId: string, safeErrorCode: string, nextAttemptAt: Date, now: Date): Promise<void> { await this.pool.query("UPDATE app.v2_commands SET status='RETRY_WAIT',safe_error_code=$2,next_attempt_at=$3,lease_owner=NULL,lease_expires_at=NULL,updated_at=$4,version=version+1 WHERE command_id=$1", [commandId, safeErrorCode, nextAttemptAt.toISOString(), now.toISOString()]); }
   async markProjectionRetry(commandId: string, safeErrorCode: string, nextAttemptAt: Date, now: Date): Promise<void> { await this.pool.query("UPDATE app.v2_commands SET status='LEDGER_COMMITTED_PROJECTION_PENDING',safe_error_code=$2,next_attempt_at=$3,lease_owner=NULL,lease_expires_at=NULL,updated_at=$4,version=version+1 WHERE command_id=$1 AND ledger_transaction_id IS NOT NULL", [commandId, safeErrorCode, nextAttemptAt.toISOString(), now.toISOString()]); }
   async markTerminal(commandId: string, status: "FAILED" | "CONFLICT", safeErrorCode: string, now: Date): Promise<void> { await this.pool.query("UPDATE app.v2_commands SET status=$2,safe_error_code=$3,lease_owner=NULL,lease_expires_at=NULL,updated_at=$4,version=version+1 WHERE command_id=$1", [commandId, status, safeErrorCode, now.toISOString()]); }
-  async markInboundCapture(commandId: string, status: "QUEUED" | "FAILED" | "CONFLICT", safeErrorCode: string | null, now: Date): Promise<void> { await this.pool.query("UPDATE app.v2_inbound_captures SET status=$2,resolution=CASE WHEN $2='CONFLICT' THEN 'CONFLICT' WHEN $2='FAILED' THEN 'REJECTED' ELSE resolution END,safe_error_code=$3,updated_at=$4 WHERE command_id=$1 OR capture_id=(SELECT resource_id FROM app.v2_commands WHERE command_id=$1)", [commandId, status, safeErrorCode, now.toISOString()]); }
+  async markInboundCapture(commandId: string, status: "QUEUED" | "FAILED" | "CONFLICT", safeErrorCode: string | null, now: Date): Promise<void> { await this.pool.query("UPDATE app.v2_inbound_captures SET status=$2::varchar,resolution=CASE WHEN $2::text='CONFLICT' THEN 'CONFLICT' WHEN $2::text='FAILED' THEN 'REJECTED' ELSE resolution END,safe_error_code=$3::varchar,updated_at=$4 WHERE command_id=$1 OR capture_id=(SELECT resource_id FROM app.v2_commands WHERE command_id=$1)", [commandId, status, safeErrorCode, now.toISOString()]); }
 }

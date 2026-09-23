@@ -150,6 +150,7 @@ export async function buildApp(
     await request.jwtVerify();
     principalFrom(request, config.operatorId);
   };
+  let restoreWebSession: ((request: FastifyRequest) => Promise<{ claims: SessionClaims; principal: WebPrincipal }>) | undefined;
 
   app.post("/api/v1/simulation/session", async (request, reply) => {
     const body = request.body as Record<string, unknown> | null;
@@ -185,6 +186,7 @@ export async function buildApp(
       if (!record || record.userId !== claims.userId || record.institutionId !== claims.institutionId || record.roleId !== claims.roleId) throw new ApiFailure(401, "AUTH_REQUIRED", "A valid session is required.");
       return { claims, principal: webPrincipal(record) };
     };
+    restoreWebSession = restore;
     app.post("/api/v1/auth/session", async (request, reply) => {
       requireSameOrigin(request, webOrigin);
       const body = request.body as Record<string, unknown> | null;
@@ -557,7 +559,7 @@ export async function buildApp(
     };
   });
 
-  app.get<{ Querystring: { businessDate?: string; datasetVersion?: string } }>("/api/v1/demand-forecasts", { preHandler: authenticate }, async (request) => {
+  app.get<{ Querystring: { businessDate?: string; datasetVersion?: string } }>("/api/v1/demand-forecasts", async (request) => {
     const requestedDate = request.query.businessDate;
     if (typeof requestedDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(requestedDate) || !validBusinessDate(requestedDate)) {
       throw new ApiFailure(400, "INVALID_BUSINESS_DATE", "businessDate must be YYYY-MM-DD.");
@@ -566,11 +568,20 @@ export async function buildApp(
     if (!(FORECAST_DATASET_VERSIONS as readonly string[]).includes(requestedDataset)) {
       throw new ApiFailure(400, "UNKNOWN_FORECAST_DATASET_VERSION", "datasetVersion is not supported.");
     }
-    const principal = principalFrom(request, config.operatorId);
-    if (repository.readForecasts) {
-      return repository.readForecasts(principal.institutionId, requestedDate, requestedDataset);
+    let institutionId: string;
+    if (cookieValue(request.headers.cookie, "bloodledger_session") !== null) {
+      if (!restoreWebSession) throw new ApiFailure(401, "AUTH_REQUIRED", "A valid session is required.");
+      const { principal } = await restoreWebSession(request);
+      if (!["ROLE-01", "ROLE-02", "ROLE-03"].includes(principal.roleId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Forecast access is not permitted for this role.");
+      institutionId = principal.institutionId;
+    } else {
+      await authenticate(request);
+      institutionId = principalFrom(request, config.operatorId).institutionId;
     }
-    const forecasts = await repository.listForecasts(principal.institutionId, requestedDate, requestedDataset);
+    if (repository.readForecasts) {
+      return repository.readForecasts(institutionId, requestedDate, requestedDataset);
+    }
+    const forecasts = await repository.listForecasts(institutionId, requestedDate, requestedDataset);
     const status = forecasts.length === 0 ? "UNAVAILABLE" : forecasts.some((item) => item.stale) ? "STALE" : "CURRENT";
     const first = forecasts[0];
     return {

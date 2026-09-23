@@ -6,7 +6,10 @@ export interface CensusStore {
   capture(institutionId: string, scheduledFor: Date, triggerType: "SCHEDULED" | "MANUAL", now: Date): Promise<CensusSnapshot>;
   get(snapshotId: string, institutionId?: string): Promise<CensusSnapshot | null>;
   copyRow(snapshotId: string, componentType: V2ComponentType, institutionId?: string): Promise<string | null>;
+  list?(institutionId: string | undefined, limit: number, cursor?: string): Promise<{ snapshots: CensusSnapshotSummary[]; nextCursor: string | null; exportAvailable: boolean }>;
 }
+
+export interface CensusSnapshotSummary { snapshotId: string; institutionId: string; scheduledFor: string; capturedAt: string; reportPolicyVersion: string; triggerType: string; classification: "SIMULATION_ONLY"; }
 
 export const INTERNAL_ML_SNAPSHOT_POLICY_VERSION = "INTERVIEW_ML_INVENTORY_SNAPSHOT_V1";
 export const INTERNAL_ML_SNAPSHOT_SCHEMA_VERSION = "BLOODLEDGER_ML_INVENTORY_SNAPSHOT_V1";
@@ -52,6 +55,17 @@ export class PostgresCensusStore implements CensusStore {
     return buildCensusSnapshot({ snapshotId: String(row.snapshot_id), scheduledFor: new Date(String(row.scheduled_for)).toISOString(), capturedAt: new Date(String(row.captured_at)).toISOString(), reportPolicyVersion: String(row.report_policy_version), sourceProjectionDigest: row.source_projection_digest ? String(row.source_projection_digest) : undefined, componentTypes: String(row.report_policy_version).endsWith("V2_1") ? V2_1_COMPONENT_TYPES : V2_COMPONENT_TYPES, bloodTypeOrder: this.bloodTypeOrder, rows });
   }
   async copyRow(snapshotIdValue: string, componentType: V2ComponentType, institutionId?: string): Promise<string | null> { const snapshot = await this.get(snapshotIdValue, institutionId); return snapshot ? censusTsv(snapshot, componentType) : null; }
+  async list(institutionId: string | undefined, limit: number, cursor?: string): Promise<{ snapshots: CensusSnapshotSummary[]; nextCursor: string | null; exportAvailable: boolean }> {
+    const conditions: string[] = []; const values: unknown[] = [];
+    if (institutionId) { values.push(institutionId); conditions.push(`institution_id=$${values.length}`); }
+    if (cursor) { values.push(cursor); conditions.push(`snapshot_id>$${values.length}`); }
+    values.push(limit + 1);
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    const result = await this.pool.query<Record<string, unknown>>(`SELECT snapshot_id,institution_id,scheduled_for,captured_at,report_policy_version,trigger_type FROM app.v2_census_snapshots ${where} ORDER BY snapshot_id LIMIT $${values.length}`, values);
+    const hasMore = result.rows.length > limit;
+    const snapshots = result.rows.slice(0, limit).map((row) => ({ snapshotId:String(row.snapshot_id), institutionId:String(row.institution_id), scheduledFor:new Date(String(row.scheduled_for)).toISOString(), capturedAt:new Date(String(row.captured_at)).toISOString(), reportPolicyVersion:String(row.report_policy_version), triggerType:String(row.trigger_type), classification:"SIMULATION_ONLY" as const }));
+    return { snapshots, nextCursor: hasMore ? snapshots.at(-1)?.snapshotId ?? null : null, exportAvailable: this.bloodTypeOrder !== undefined };
+  }
 }
 
 /** Internal ML evidence is deliberately separate from the DOH report policy. */

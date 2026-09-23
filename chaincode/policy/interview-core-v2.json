@@ -28,6 +28,16 @@
     "PLATELETS"
   ],
   "nearExpiryEnabled": false,
+  "reconciliationPolicyVersion": "SYNTHETIC_RECONCILIATION_REASONS_V1",
+  "reconciliationReasonCodes": [
+    "LABEL_RECORD_MISMATCH",
+    "POSSIBLE_DUPLICATE",
+    "COMPONENT_TYPE_MISMATCH",
+    "BLOOD_TYPE_MISMATCH",
+    "DATE_MISMATCH",
+    "CUSTODY_MISMATCH",
+    "STATUS_MISMATCH"
+  ],
   "actors": {
     "USR_MEDIATRIX_ADMIN": {
       "institutionId": "INST_MEDIATRIX",

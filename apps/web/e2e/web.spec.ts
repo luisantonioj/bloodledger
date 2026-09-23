@@ -13,8 +13,8 @@ const permissions = {
 } as const;
 
 const navigation: Record<RoleId, string[]> = {
-  "ROLE-01": ["Dashboard", "Inventory", "Transfers", "Alerts", "Profile"],
-  "ROLE-02": ["Dashboard", "Inventory", "Transfers", "Alerts", "Audit", "Profile"],
+  "ROLE-01": ["Dashboard", "Inventory", "Transfers", "Alerts", "Analytics", "Profile"],
+  "ROLE-02": ["Dashboard", "Inventory", "Transfers", "Alerts", "Audit", "Analytics", "Profile"],
   "ROLE-03": ["Dashboard", "Transfers", "Alerts", "Profile"],
   "ROLE-04": ["Dashboard", "Inventory", "Transfers", "Alerts", "Network view", "Audit", "Reports", "Profile"],
   "ROLE-05": ["Dashboard", "Accounts", "Profile"],
@@ -31,6 +31,55 @@ const responses: Record<string, unknown> = {
   "/api/v1/consortium": { scope: "CITY_AGGREGATE", inventory: [aggregate], alerts: [], transferSummary: [], lastSuccessfulProjectionAt: timestamp, classification: "SIMULATION_ONLY" },
   "/api/v1/audit": { scope: "INSTITUTION", events: [], classification: "SIMULATION_ONLY" },
   "/api/v1/reports/inventory": { reportType: "CITY_INVENTORY_SUMMARY", scope: "CITY_AGGREGATE", generatedAt: timestamp, inventory: [aggregate], alerts: [], transferSummary: [], disclaimer: "Prototype simulation evidence; not an official filing.", classification: "SIMULATION_ONLY" },
+};
+
+const v2Component = {
+  componentId: "CMP_SYNTH_BROWSER_01",
+  donationId: "DON_SYNTH_BROWSER_01",
+  issuerInstitutionId: "INST_MEDIATRIX",
+  componentType: "PACKED_RED_BLOOD_CELLS",
+  bloodType: "A_POSITIVE",
+  collectedAt: "2026-08-23T00:00:00.000Z",
+  expiresAt: "2026-09-23T00:00:00.000Z",
+  institutionId: "INST_MEDIATRIX",
+  inventoryStatus: "AVAILABLE",
+  reservationId: null,
+  reservationVersion: null,
+  inventoryVersion: 1,
+  policyVersion: "INTERVIEW_DERIVED_CORE_V2",
+  classification: "SIMULATION_ONLY",
+};
+
+const forecastResponse = {
+  businessDate: "2026-09-18",
+  status: "CURRENT",
+  datasetVersion: "SYNTHETIC_FORECAST_V4_RUNTIME_V1",
+  modelVersion: "bloodledger-weighted-average-7-1.0.0",
+  asOfDate: "2026-09-17",
+  horizonDate: "2026-09-18",
+  forecastStatus: "AVAILABLE",
+  unavailableReason: null,
+  forecasts: [{
+    runKey: "RUN_KEY_SYNTH_BROWSER",
+    runId: "FRUN_SYNTH_BROWSER_01",
+    institutionId: "INST_MEDIATRIX",
+    bloodType: "A_POSITIVE",
+    component: "PACKED_RED_BLOOD_CELLS",
+    horizonDate: "2026-09-18",
+    asOfDate: "2026-09-17",
+    pointForecast: 2,
+    lowerForecast: null,
+    upperForecast: null,
+    uncertaintyStatus: "UNCERTAINTY_UNAVAILABLE",
+    uncertaintyNote: "Synthetic history is insufficient.",
+    datasetVersion: "SYNTHETIC_FORECAST_V4_RUNTIME_V1",
+    modelVersion: "bloodledger-weighted-average-7-1.0.0",
+    forecastStatus: "AVAILABLE",
+    classification: "SIMULATION_ONLY",
+    recommendationEligibility: "DISABLED_UNAPPROVED_POLICY",
+    generatedAt: "2026-09-17T16:00:00.000Z",
+    stale: false,
+  }],
 };
 
 function principal(roleId: RoleId) {
@@ -62,11 +111,14 @@ function dashboardFor(roleId: RoleId) {
 
 async function authenticatedApi(page: Page, roleId: RoleId, override?: (route: Route, path: string) => boolean | Promise<boolean>, principalOverride: Partial<ReturnType<typeof principal>> = {}) {
   const activePrincipal = { ...principal(roleId), ...principalOverride };
-  await page.route("**/api/v1/**", async route => {
+  await page.route("**/api/**", async route => {
     const path = new URL(route.request().url()).pathname;
     if (override && await override(route, path)) return;
     if (path === "/api/v1/auth/session") return fulfillJson(route, { principal: activePrincipal });
     if (path === "/api/v1/reports/inventory.csv") return route.fulfill({ status: 200, contentType: "text/csv", body: "classification\nSIMULATION_ONLY\n" });
+    if (path === "/api/v1/demand-forecasts") return fulfillJson(route, forecastResponse);
+    if (path === "/api/v2/components") return fulfillJson(route, { scope: "INSTITUTION", components: [v2Component], classification: "SIMULATION_ONLY" });
+    if (path === "/api/v2/reports/inbound-intake") return fulfillJson(route, { scope: "INSTITUTION", statuses: { QUEUED: 1 }, includedInventoryStatuses: ["COMMITTED"], excludedFromInventory: ["QUEUED", "FAILED", "CONFLICT"], classification: "SIMULATION_ONLY" });
     const body = responses[path];
     if (path === "/api/v1/dashboard") return fulfillJson(route, dashboardFor(roleId));
     if (body) return fulfillJson(route, body);
@@ -129,6 +181,7 @@ test("PRC, DOH, and administrators receive truthful non-operational compositions
     if (roleId === "ROLE-04") {
       await expect(page.getByText("Ledger-confirmed", { exact: true })).toBeVisible();
       await expect(page.getByText("Non-clinical workspace", { exact: true })).toHaveCount(0);
+      await expect(page.getByRole("link", { name: "Analytics", exact: true })).toHaveCount(institutionId === "INST_SYNTH_PRC" ? 1 : 0);
     } else {
       await expect(page.getByText("Non-clinical workspace", { exact: true })).toBeVisible();
       await expect(page.getByText("Ledger-confirmed", { exact: true })).toHaveCount(0);
@@ -182,7 +235,9 @@ test("login fails safely, then accepts only the server-returned principal and ca
   expect(revoked).toBe(true);
 });
 
-test("secondary request retry preserves idempotency and excludes caller-selected scope", async ({ page }) => {
+// Historical V1 transfer mutation fixtures are retained temporarily as migration evidence.
+// Sprint 6 disables those controls in favor of canonical V2 asynchronous commands.
+test.skip("retired V1 secondary request mutation fixture", async ({ page }) => {
   const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
   let attempts = 0;
   await authenticatedApi(page, "ROLE-03", async (route, path) => {
@@ -221,7 +276,7 @@ test("secondary request retry preserves idempotency and excludes caller-selected
   expect("institutionId" in submitted.body).toBe(false);
 });
 
-test("human FEFO approval retry preserves intent and never submits selected units", async ({ page }) => {
+test.skip("retired V1 FEFO approval mutation fixture", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_APPROVAL", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_SYNTH_SECONDARY_A", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "URGENT", requestTime: timestamp, status: "PENDING", reasonCode: null, recommendationDigest: null, ledgerVersion: 1, projectedAt: timestamp, dispatchEvidenceRecorded: false, receiptEvidenceRecorded: false };
   const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
@@ -274,7 +329,7 @@ test("human FEFO approval retry preserves intent and never submits selected unit
   expect("institutionId" in submitted.body).toBe(false);
 });
 
-test("human rejection retry preserves controlled reason and source authority", async ({ page }) => {
+test.skip("retired V1 rejection mutation fixture", async ({ page }) => {
   const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_REJECTION", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_METRO_LIPA", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "ROUTINE", requestTime: timestamp, status: "PENDING", reasonCode: null, recommendationDigest: null, ledgerVersion: 1, projectedAt: timestamp, dispatchEvidenceRecorded: false, receiptEvidenceRecorded: false };
   const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
   let attempts = 0;
@@ -319,7 +374,7 @@ test("human rejection retry preserves controlled reason and source authority", a
   expect("actorUserId" in submissions[0].body).toBe(false);
 });
 
-test("approved cancellation retry preserves reason through projection reconciliation", async ({ page }) => {
+test.skip("retired V1 cancellation mutation fixture", async ({ page }) => {
   const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_CANCELLATION", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_METRO_LIPA", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "URGENT", requestTime: timestamp, status: "APPROVED", reasonCode: null, recommendationDigest: null, ledgerVersion: 2, projectedAt: timestamp, dispatchEvidenceRecorded: false, receiptEvidenceRecorded: false };
   const selectedUnitId = "UNIT_SYNTH_CANCEL_BROWSER_01";
   const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
@@ -366,7 +421,7 @@ test("approved cancellation retry preserves reason through projection reconcilia
   expect("institutionId" in submissions[0].body).toBe(false);
 });
 
-test("dispatch retry preserves approved synthetic source evidence and mutation identity", async ({ page }) => {
+test.skip("retired V1 dispatch mutation fixture", async ({ page }) => {
   const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_DISPATCH", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_METRO_LIPA", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "URGENT", requestTime: timestamp, status: "APPROVED", reasonCode: null, recommendationDigest: null, ledgerVersion: 2, projectedAt: timestamp, dispatchEvidenceRecorded: false, receiptEvidenceRecorded: false };
   const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
   let attempts = 0;
@@ -414,7 +469,7 @@ test("dispatch retry preserves approved synthetic source evidence and mutation i
   expect("selectedUnitIds" in submitted.body).toBe(false);
 });
 
-test("transit delay and resume retries preserve custody and versioned intent", async ({ page }) => {
+test.skip("retired V1 transit mutation fixture", async ({ page }) => {
   const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_TRANSIT", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_METRO_LIPA", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "URGENT", requestTime: timestamp, status: "DISPATCHED", reasonCode: null, recommendationDigest: null, ledgerVersion: 3, projectedAt: timestamp, dispatchEvidenceRecorded: true, receiptEvidenceRecorded: false };
   const selectedUnitId = "UNIT_SYNTH_TRANSIT_BROWSER_01";
   const submissions = {
@@ -505,7 +560,7 @@ test("transit delay and resume retries preserve custody and versioned intent", a
   expect(new Set([submissions.transit[0].idempotencyKey, submissions.delay[0].idempotencyKey, submissions.resume[0].idempotencyKey]).size).toBe(3);
 });
 
-test("receipt retry preserves approved synthetic destination evidence and scoped authority", async ({ page }) => {
+test.skip("retired V1 receipt mutation fixture", async ({ page }) => {
   const baseTransfer = { transferId: "TRF_SYNTH_BROWSER_RECEIPT", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_METRO_LIPA", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "URGENT", requestTime: timestamp, status: "IN_TRANSIT", reasonCode: null, recommendationDigest: null, ledgerVersion: 4, projectedAt: timestamp, dispatchEvidenceRecorded: true, receiptEvidenceRecorded: false };
   const submissions: { idempotencyKey: string; body: Record<string, unknown> }[] = [];
   let attempts = 0;
@@ -551,6 +606,21 @@ test("receipt retry preserves approved synthetic destination evidence and scoped
   expect(submitted.body.location).toEqual({ latitude: 0, longitude: 0.018, accuracyMetres: 50, source: "FACILITY_FALLBACK", fallbackReason: "SIGNAL_UNAVAILABLE", capturedAt: submitted.body.eventTime });
   expect("institutionId" in submitted.body).toBe(false);
   expect("destinationInstitutionId" in submitted.body).toBe(false);
+});
+
+test("legacy V1 transfer mutations stay unavailable while canonical V2 entry points remain role-scoped", async ({ browser }) => {
+  for (const [roleId, canonicalButton] of [["ROLE-02", "Queue local release"], ["ROLE-03", "Submit V2 request"]] as const) {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await authenticatedApi(page, roleId);
+    await page.goto("/");
+    await page.getByRole("link", { name: "Transfers", exact: true }).click();
+    await expect(page.getByRole("button", { name: canonicalButton, exact: true })).toBeVisible();
+    await expect(page.getByText("Canonical reservation actions unavailable", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Submit request|Approve FEFO selection|Reject request|Cancel transfer|Record dispatch|Start transit|Record receipt/ })).toHaveCount(0);
+    if (roleId === "ROLE-02") await expect(page.getByText("Reconciliation reason policy unavailable", { exact: true })).toBeVisible();
+    await context.close();
+  }
 });
 
 test("alert acknowledgement retry preserves scoped intent and confirmed state", async ({ page }) => {
@@ -618,8 +688,105 @@ test("regulatory navigation renders every selected read-only page and CSV bounda
     if (path === "/profile") await expect(page.locator(".profile-identity")).toBeVisible();
     if (path === "/reporting") {
       await expect(page.getByRole("link", { name: "Download simulation CSV" })).toHaveAttribute("href", "/api/v1/reports/inventory.csv");
+      await expect(page.getByRole("button", { name: "Export fixed-layout PDF" })).toBeDisabled();
+      await expect(page.getByText("PDF generator not connected", { exact: true })).toBeVisible();
     }
   }
+});
+
+test("latest visual baseline stays role-scoped while Sprint 6 integrations remain truthful", async ({ page }) => {
+  const transfer = { transferId: "TRF_SYNTH_EXPORT_PREVIEW", sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_SYNTH_SECONDARY", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", quantity: 1, urgency: "ROUTINE", requestTime: timestamp, status: "PENDING", reasonCode: null, recommendationDigest: null, ledgerVersion: 1, projectedAt: timestamp, dispatchEvidenceRecorded: false, receiptEvidenceRecorded: false };
+  await authenticatedApi(page, "ROLE-02", async (route, path) => {
+    if (path !== "/api/v1/transfers" || route.request().method() !== "GET") return false;
+    await fulfillJson(route, { scope: "SOURCE_INSTITUTION", transfers: [transfer], classification: "SIMULATION_ONLY" });
+    return true;
+  });
+
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Blood inventory overview" })).toBeVisible();
+  await expect(page.locator(".inventory-overview-bar")).toHaveCount(8);
+  await expect(page.locator(".inventory-overview-note")).toContainText("No shortage, surplus, or redistributability threshold is inferred in the browser.");
+
+  await page.getByRole("link", { name: "Analytics", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeVisible();
+  await expect(page.getByText("Active ML V4 simulation", { exact: true })).toBeVisible();
+  await expect(page.getByText("Uncertainty unavailable", { exact: false })).toBeVisible();
+  await expect(page.getByText("Intentionally unavailable", { exact: true })).toBeVisible();
+  await expect(page.getByText("SYNTHETIC_FORECAST_V4_RUNTIME_V1", { exact: true }).first()).toBeVisible();
+
+  await page.getByRole("link", { name: "Inventory", exact: true }).click();
+  await expect(page.getByText("Committed component registry", { exact: true })).toBeVisible();
+  await expect(page.getByText("CMP_SYNTH_BROWSER_01", { exact: true })).toBeVisible();
+
+  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Export filtered PDF" })).toBeDisabled();
+
+  await page.getByRole("link", { name: "Profile", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Staff Directory" })).toBeVisible();
+  await page.getByRole("button", { name: "Manage staff preview" }).click();
+  await expect(page.getByRole("dialog", { name: "Protected staff management" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Authorize change" })).toBeDisabled();
+  await expect(page.getByText("Duty scheduling is also outside the latest mockup baseline.", { exact: false })).toBeVisible();
+});
+
+test("ROLE-02 submits one canonical V2 local release and polls the accepted command to commitment", async ({ page }) => {
+  let submissions = 0;
+  let polls = 0;
+  let submittedBody: Record<string, unknown> = {};
+  await authenticatedApi(page, "ROLE-02", async (route, path) => {
+    if (path === "/api/v2/local-releases" && route.request().method() === "POST") {
+      submissions += 1;
+      expect(route.request().headers()["idempotency-key"]).toMatch(/^IDEM_WEB_[0-9A-F]{32}$/);
+      expect(route.request().headers()["x-bloodledger-contract-version"]).toBe("V2");
+      submittedBody = route.request().postDataJSON() as Record<string, unknown>;
+      await fulfillJson(route, {
+        commandId: "CMD_SYNTH_WEB_V2_01",
+        resourceType: "LOCAL_RELEASE",
+        resourceId: submittedBody.releaseId,
+        status: "QUEUED",
+        statusUrl: "/api/v2/commands/CMD_SYNTH_WEB_V2_01",
+        acceptedAt: timestamp,
+        correlationId: submittedBody.correlationId,
+        safeErrorCode: null,
+        classification: "SIMULATION_ONLY",
+        replayed: false,
+      }, 202);
+      return true;
+    }
+    if (path === "/api/v2/commands/CMD_SYNTH_WEB_V2_01") {
+      polls += 1;
+      await fulfillJson(route, {
+        commandId: "CMD_SYNTH_WEB_V2_01",
+        resourceType: "LOCAL_RELEASE",
+        resourceId: submittedBody.releaseId,
+        status: polls === 1 ? "LEDGER_COMMITTED_PROJECTION_PENDING" : "COMMITTED",
+        statusUrl: "/api/v2/commands/CMD_SYNTH_WEB_V2_01",
+        acceptedAt: timestamp,
+        correlationId: submittedBody.correlationId,
+        safeErrorCode: null,
+        classification: "SIMULATION_ONLY",
+        replayed: false,
+      });
+      return true;
+    }
+    return false;
+  });
+
+  await page.goto("/");
+  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("button", { name: "Queue local release", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Committed", exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("button", { name: "Command accepted", exact: true })).toBeDisabled();
+  expect(submissions).toBe(1);
+  expect(polls).toBe(2);
+  expect(submittedBody).toMatchObject({
+    bloodType: "A_POSITIVE",
+    componentType: "PACKED_RED_BLOOD_CELLS",
+    quantity: 1,
+  });
+  expect(submittedBody).not.toHaveProperty("patientId");
+  expect(submittedBody).not.toHaveProperty("donorId");
+  expect(submittedBody).not.toHaveProperty("donationNumber");
 });
 
 test("committed projection becomes visible within the frontend NFR-06 budget", async ({ page }, testInfo) => {
@@ -682,18 +849,17 @@ test("failed dashboard load exposes a non-destructive retry and recovers", async
 test("inventory exposes loading and empty states without inventing committed data", async ({ page }) => {
   let releaseInventory: (() => void) | undefined;
   await authenticatedApi(page, "ROLE-01", async (route, path) => {
-    if (path !== "/api/v1/inventory") return false;
+    if (path !== "/api/v2/components") return false;
     await new Promise<void>(resolve => { releaseInventory = resolve; });
-    await fulfillJson(route, { scope: "INSTITUTION", aggregates: [], units: [], classification: "SIMULATION_ONLY" });
+    await fulfillJson(route, { scope: "INSTITUTION", components: [], classification: "SIMULATION_ONLY" });
     return true;
   });
   await page.goto("/");
   await page.getByRole("link", { name: "Inventory", exact: true }).click();
-  await expect(page.getByText("Loading authorized data", { exact: true })).toBeVisible();
+  await expect(page.getByText("Loading V2 component inventory", { exact: true })).toBeVisible();
   expect(releaseInventory).toBeDefined();
   releaseInventory?.();
-  await expect(page.getByText("No committed inventory", { exact: true })).toBeVisible();
-  await expect(page.getByRole("status")).toHaveText("0 records");
+  await expect(page.getByText("No committed V2 components", { exact: true })).toBeVisible();
 });
 
 test("refresh failure preserves confirmed data and backs off until manual retry", async ({ page }) => {
@@ -721,7 +887,7 @@ test("route changes clean up the previous poller and refresh only the active pag
   let inventoryCalls = 0;
   await authenticatedApi(page, "ROLE-01", (_route, path) => {
     if (path === "/api/v1/dashboard") dashboardCalls += 1;
-    if (path === "/api/v1/inventory") inventoryCalls += 1;
+    if (path === "/api/v2/components") inventoryCalls += 1;
     return false;
   });
   await page.goto("/");
@@ -729,7 +895,7 @@ test("route changes clean up the previous poller and refresh only the active pag
   await page.getByRole("link", { name: "Inventory", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Inventory", exact: true })).toBeVisible();
   await expect(page.locator(".blood-type")).toHaveText("A+");
-  await page.waitForTimeout(2_200);
+  await page.waitForTimeout(5_200);
   expect(dashboardCalls).toBe(1);
   expect(inventoryCalls).toBeGreaterThanOrEqual(2);
 });

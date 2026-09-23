@@ -1,11 +1,14 @@
 # LAT Sprint 6 Frontend Handoff
 
-**Status:** Proposed integration handoff; the verified backend revision is
-pushed, while owner acceptance and browser UAT remain pending
+**Status:** Jopia backend dependencies implemented on
+`codex/s6-frontend-backend-integration`; Lat frontend follow-ups, automated
+browser rerun, and human browser UAT remain pending
 
-**Backend scope:** PR #11 on `codex/ml-v4-verification`; implementation commit
-`3b890f0` incorporates BUNO's correction commit `f58b905`; subsequent
-documentation commits record the handoff and verification register.
+**Integration baseline:** Lat commit
+`111681e26d2c91515cdea75f71faf341768cc1fa`; Jopia implementation and evidence
+through `9a5d768`. The integration branch contains `main` `fbd9a84`, Lat's
+seven subsequent commits, and the grouped Jopia changes without rewriting
+either owner's history.
 
 **Classification:** `SIMULATION_ONLY`
 
@@ -19,10 +22,10 @@ contracts remain authoritative:
 - [Inbound OCR policy](./INBOUND-OCR-REGISTRATION.md)
 - [ML V4 runtime contract](./ML-RUNTIME-INTEGRATION-V4.md)
 
-The exact combined backend implementation revision for frontend development is
-`3b890f0`. The branch also carries documentation-only follow-ups for this
-handoff; LAT should pin `3b890f0` (or a later branch revision containing it)
-until PR #11 is merged. The main merge commit replaces it after merge.
+The earlier backend implementation revision remains `3b890f0`; this handoff
+adds the contracts needed to integrate that backend with Lat's frontend. The
+authoritative integration evidence is in
+[SPRINT-06-VALIDATION.md](./SPRINT-06-VALIDATION.md).
 
 ## Contract and version headers
 
@@ -61,27 +64,36 @@ validation/conflict codes include `INBOUND_OCR_INPUT_INVALID`,
 `INBOUND_RECEIPT_REQUIRED`, `V2_KEYS_UNAVAILABLE`, and
 `V2_PROJECTION_UNAVAILABLE`.
 
-The existing Capture PWA still uses the older
-`SYNTHETIC_CAPTURE_V1`/`/api/v1/scan-events` flow. Migration to the V2
-inbound contract is LAT work and is not represented as complete here.
+The Capture PWA now uses the V2 inbound contract, the official session cookie,
+explicit review of all five OCR fields, and the backend command envelope. It
+selects V2.1 only for `CRYOPRECIPITATE`. The exact Donation No. remains
+in-memory only and raw images/unrestricted OCR text are neither submitted nor
+persisted.
 
 ## Offline queue and privacy gate
 
-Only confirmed, allowlisted synthetic fields may be retained for offline
-retry: contract version, issuer identifier, blood type and evidence,
-component type and evidence, collection/expiry/event/capture/confirmation
-timestamps, correlation identifier, OCR engine/version and numeric field
-confidence, plus the generated idempotency key and synchronization status.
-Raw images, unrestricted OCR text, exact Donation No. values, patient/donor
-data, and credentials must never enter browser storage.
+Offline V2 submission remains disabled. Exact Donation No. stays in volatile
+browser memory only during active capture and confirmation. Do not place it in
+IndexedDB, local/session storage, service-worker caches, URLs, logs, or
+persisted request bodies, including encrypted forms. Reload requires fresh
+capture and confirmation.
 
-The current V2 backend does not freeze a browser retention period or cleanup
-operation. LAT must keep offline capture marked pending until the owner-approved
-retention/cleanup rule is recorded. Replays use the generated idempotency key;
-because V2 also requires `donationNumber` and that exact value may not be
-persisted in browser storage, offline V2 replay is currently blocked pending an
-approved secure handling mechanism. The server returns the durable
-`statusUrl` and command state.
+Generate one idempotency key per confirmed submission. Retry with the same key
+and identical payload only while the payload remains in memory. After server
+acceptance, persist only allowlisted tracking metadata and poll the returned
+`statusUrl`; never resubmit an accepted command. If the response is lost, use
+`GET /api/v2/commands?idempotencyKey={key}` while the key is available. After
+page loss, recover command status before permitting fresh capture; an empty
+lookup must not create a replacement submission automatically.
+
+Clear sensitive capture state after acceptance, cancellation, logout, session
+expiry, or the 15-minute confirmation timeout. Keep a terminal receipt for 24
+hours after terminal observation and keep nonterminal receipts until
+authenticated recovery resolves them. Delete expired terminal receipts during
+startup and periodic cleanup, and clear local receipts on logout. Retained
+tracking metadata must exclude Donation No., OCR text/material, images,
+credentials, ciphertext, and keyed donation-reference evidence. Memory cleanup
+is application cleanup and is not a forensic-erasure guarantee.
 
 ## Commands and polling
 
@@ -94,12 +106,16 @@ possible states are `QUEUED`, `SUBMITTING`, `RETRY_WAIT`,
 `LEDGER_COMMITTED_PROJECTION_PENDING`, `COMMITTED`, `FAILED`, and
 `CONFLICT`.
 
-The recommended frontend behavior is two seconds initially with exponential
-error backoff capped at 30 seconds; this recommendation requires LAT/JOPIA
-confirmation. Stop on `COMMITTED`, `FAILED`, or `CONFLICT`, pause while
-offline, and stop authenticated polling after logout or session loss.
+The frontend polls at two seconds initially with exponential error backoff
+capped at 30 seconds. It stops on `COMMITTED`, `FAILED`, or `CONFLICT`, pauses
+while offline, and stops authenticated polling after logout or session loss.
 `LEDGER_COMMITTED_PROJECTION_PENDING` remains visible as pending. Projection
 retries must never resubmit a transaction already committed by Fabric.
+
+`GET /api/v2/commands` lists only the authenticated actor's commands in the
+authenticated institution. It supports `limit`, deterministic `cursor`, and
+optional exact `idempotencyKey`. The response contains safe command envelopes
+only and never stored request payloads.
 
 ## Transfer, local release, and reconciliation workflows
 
@@ -122,6 +138,16 @@ The request and custody sequence is:
    `ROLE-01`, `ROLE-02`, or `ROLE-03`; compromise any of those three
    roles.
 
+Use `GET /api/v2/reservations` and
+`GET /api/v2/reservations/{reservationId}` to discover committed reservation
+state. ROLE-01/02 receive source-institution reservations; ROLE-03 receives
+transfers destined for its institution. Absent and out-of-scope details both
+return the safe not-found response. The envelope includes safe component
+references, preparation status, linked transfer or local-release ID, current
+version, source/destination, and `SIMULATION_ONLY`, without Donation No. or
+command payload evidence. Send the V2.1 header when a reservation contains
+`CRYOPRECIPITATE`; do not silently omit that component in a V2 view.
+
 `POST /api/v2/local-releases` is restricted to `ROLE-01` and `ROLE-02`
 and requires `releaseId`, blood type, component type, positive integer
 quantity, event time, and correlation ID. It queues
@@ -133,11 +159,29 @@ and requires `caseId`, `componentId`, `reasonCode`, and correlation ID.
 All three mutation families require the idempotency header and return the
 same command envelope.
 
+Populate the reason selector from `GET /api/v2/reconciliation/reasons`. It
+returns policy `SYNTHETIC_RECONCILIATION_REASONS_V1` and the seven exact safe
+codes/labels recorded in `BL-DEC-S6-2026-09-19-01`. Do not provide free text.
+Selecting a reason requests a reconciliation hold; it does not correct a
+record, release stock, or establish clinical suitability.
+
 Legacy `/api/v2/transfers/{transferId}/{action}` aliases such as
 `approve`, `prepare`, `dispatch`, `receipt`, and `reject` are
 intentionally rejected with `V2_CANONICAL_WORKFLOW_REQUIRED`. The frontend
 must use the reservation endpoint and must not treat the legacy route as a
 successful 202 workflow.
+
+## Census discovery
+
+`GET /api/v2/reports/doh-census` lists existing safe snapshot metadata only.
+ROLE-01/02 receive institution-scoped snapshots; ROLE-04 receives its
+authorized aggregate scope. The display order is O+, A+, B+, AB+, O−, A−, B−,
+AB−, followed by calculated Total under `DOH_CENSUS_COLUMN_ORDER_V1`.
+
+This decision confirms column display order only. Keep snapshot capture,
+copy/TSV, and export controls unavailable while the response reports
+`EXPORT_DISABLED_PENDING_FORMAT`. Do not substitute internal ML snapshots or
+treat the order decision as approval of the full DOH report format.
 
 ## Forecast Analytics handoff
 
@@ -152,18 +196,40 @@ uses `AVAILABLE`, `STALE`, and `UNAVAILABLE`. Missing or unsupported
 series remain absent/unavailable and are never displayed as zero. Null lower
 and upper values display as “Uncertainty unavailable”. The UI should show
 dataset/model identity, requested dates, unavailable reason, and
-`SIMULATION_ONLY`. These semantics still require BUNO's human research
-re-review.
+`SIMULATION_ONLY`. The web client now enforces this active dataset/model and
+matrix. BUNO's human research interpretation and any accuracy claim remain a
+separate gate.
+
+## Frontend implementation evidence
+
+- Capture PWA migrated from V1 scan events to V2 inbound OCR and durable
+  command status.
+- Main web inventory consumes the institution-scoped V2 component envelope and
+  keeps intake command counts separate from committed components.
+- Main web exposes canonical V2 transfer request and local-release entry points
+  only for the confirmed roles. Legacy V1 mutations are disabled.
+- Jopia now provides permission-scoped reservation list/detail reads, exact
+  reconciliation-reason discovery, census snapshot discovery, web-session
+  forecast reads, and actor-scoped command recovery. Lat must connect these
+  contracts and retain the existing role and pending-state behavior.
+- Census copy/export remains unavailable even though the visible blood-type
+  order is now confirmed.
+- Analytics consumes only the active ML V4 envelope, preserves absent/null
+  semantics, and never enables recommendation or approval behavior.
+- Combined automated evidence: API 97/97, chaincode 30/30, web 50/50, Capture
+  PWA 14/14, disposable PostgreSQL integration, and real-Fabric
+  committed-command recovery passed. Playwright is blocked on this host before
+  browser launch because `libnspr4.so` is unavailable; prior Lat browser
+  results are not treated as a rerun of this combined revision.
 
 ## Readiness and remaining gates
 
-Verified locally on implementation commit `3b890f0` and its documentation
-follow-ups: BUNO's four producer corrections,
-fresh/upgrade migrations, cross-institution scope, replay/conflict behavior,
-null and requested-date handling, API/coordination/chaincode tests, static
-boundaries, JSON formatting, and secret scanning. LAT implementation, browser
-UAT, approved offline retention rule,
-BUNO human re-review, JOPIA acceptance, and real-Fabric restart/submission-count
-evidence remain pending. All outputs remain simulation-only; `RQ-07` and
-clinical, operational, institutional, UAT, regulatory, and production gates
-remain open.
+Backend dependencies and real-Fabric restart/submission-count recovery are
+verified through `9a5d768`, with Jopia self-validation disclosed in the
+validation record. Lat must implement the reservation, reconciliation, census,
+and recovery checklist above, rerun browser automation on a capable host, and
+perform human browser UAT. Buno's human research/lineage review remains open.
+Full report-format approval, export/copy activation, offline V2 submission,
+physical Android evidence, `RQ-07`, and all clinical, operational,
+institutional, UAT, regulatory, and production gates remain open. All outputs
+remain `SIMULATION_ONLY`.

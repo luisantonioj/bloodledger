@@ -97,6 +97,43 @@ limitations, and the self-validation disclosure.
   eligibility, and DOH copy mode remain disabled pending approved thresholds,
   report policy, and institutional scoring approval.
 
+### BL-DEC-S6-2026-09-19-01 — Frontend integration support
+
+**Status:** Accepted by Jopia for synthetic prototype implementation on
+2026-09-19
+
+**Classification:** `SIMULATION_ONLY`
+
+**Sanitized interview source:** `BB-INTERVIEW-2026-09-07` (reported by Jopia;
+no interview artifact or participant identity is stored in Git)
+
+This decision adopts the following technical additions for the Sprint 6
+frontend integration. They are synthetic workflow policy, not interview-approved
+clinical classifications or operational instructions.
+
+- `SYNTHETIC_RECONCILIATION_REASONS_V1` contains
+  `LABEL_RECORD_MISMATCH`, `POSSIBLE_DUPLICATE`,
+  `COMPONENT_TYPE_MISMATCH`, `BLOOD_TYPE_MISMATCH`, `DATE_MISMATCH`,
+  `CUSTODY_MISMATCH`, and `STATUS_MISMATCH`. A selected code opens a
+  reconciliation hold only. It does not correct a record, release stock, or
+  establish suitability. Free-text reasons remain disabled.
+- `DOH_CENSUS_COLUMN_ORDER_V1` displays `O_POSITIVE`, `A_POSITIVE`,
+  `B_POSITIVE`, `AB_POSITIVE`, `O_NEGATIVE`, `A_NEGATIVE`, `B_NEGATIVE`,
+  and `AB_NEGATIVE`, followed by a calculated `Total` column. This confirms
+  the visible order only; census export/copy and the complete report format
+  remain disabled until separately approved.
+- Exact Donation No. remains volatile in the browser and has zero persisted
+  browser retention. Offline V2 submission remains disabled. Volatile capture
+  state expires after 15 minutes. Safe terminal command receipts may remain for
+  24 hours after terminal observation; nonterminal safe receipts remain only
+  for authenticated recovery. Logout clears local receipts. ADR-034 continues
+  to govern controlled server-side encrypted storage.
+
+The integration baseline is `main` at `fbd9a84` plus Lat's frontend branch at
+`111681e`. Jopia implements and self-validates backend integration on
+`codex/s6-frontend-backend-integration`; Lat retains frontend ownership and
+human browser acceptance, and Buno retains human method/lineage review.
+
 ## 4. Commit groups
 
 1. `docs(sprint-6): authorize interview-aligned core v2`
@@ -120,6 +157,10 @@ Each commit must pass the relevant focused checks and must not modify
 LAT receives `services/api/openapi-v2.json`, including the command envelope,
 role-scoped component reads, transfer actions, local-release and reconciliation
 routes, and versioned census TSV behavior. Frontend work is outside this branch.
+The separate LAT implementation is recorded in
+`docs/LAT-S6-FRONTEND-HANDOFF.md` and
+`docs/LAT-S6-FRONTEND-IMPLEMENTATION-ISSUE.md`; unresolved frontend integration
+gates there do not change this sprint's backend acceptance boundary.
 
 Buno receives `contracts/source-surplus-evidence-v2.schema.json` and the
 simulation-only freshness/classification gate in `services/coordination`.

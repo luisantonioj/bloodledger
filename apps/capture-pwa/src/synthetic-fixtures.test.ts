@@ -1,35 +1,32 @@
 import { describe, expect, it } from "vitest";
-import labels from "../test/synthetic-labels.json";
-import { parseSyntheticMachinePayload, parseSyntheticOcrText } from "./capture-policy";
-import type { CapturedUnit } from "./types";
+import labels from "../test/inbound-labels-v2.json";
+import { parseInboundOcrText } from "./capture-policy";
+import type { CapturedInboundLabel } from "./types";
 
-function ocrText(unit: CapturedUnit): string {
+function ocrText(label: CapturedInboundLabel): string {
   return [
-    `UNIT ID: ${unit.unitId}`,
-    `BLOOD TYPE: ${unit.bloodType}`,
-    `COMPONENT: ${unit.component}`,
-    `COLLECTED AT: ${unit.collectedAt}`,
-    `EXPIRES AT: ${unit.expiresAt}`,
+    "DONATION NO: " + label.donationNumber,
+    "BLOOD TYPE: " + label.bloodType,
+    "COMPONENT: " + label.componentType,
+    "COLLECTED AT: " + label.collectedAt,
+    "EXPIRES AT: " + label.expiresAt,
   ].join("\n");
 }
 
-describe("Sprint 4 synthetic fixture matrix", () => {
-  it("contains four clean examples for every supported blood-type/component series", () => {
-    expect(labels).toHaveLength(16);
-    const counts = new Map<string, number>();
-    for (const label of labels) {
-      const key = `${label.bloodType}/${label.component}`;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-    expect([...counts.values()].sort()).toEqual([4, 4, 4, 4]);
+describe("Sprint 6 synthetic inbound fixture matrix", () => {
+  it("covers all eight ABO/Rh groups and every V2/V2.1 component value", () => {
+    expect(new Set(labels.map((label) => label.bloodType)).size).toBe(8);
+    expect(new Set(labels.map((label) => label.componentType))).toEqual(new Set([
+      "WHOLE_BLOOD",
+      "PACKED_RED_BLOOD_CELLS",
+      "FRESH_FROZEN_PLASMA",
+      "PLATELETS",
+      "CRYOPRECIPITATE",
+    ]));
   });
 
-  it.each(labels)("extracts $unitId exactly from OCR and fallback contracts", (label) => {
-    const expected = label as CapturedUnit;
-    expect(parseSyntheticOcrText(ocrText(expected), 99).unit).toEqual(expected);
-    expect(parseSyntheticMachinePayload([
-      "BL1", expected.unitId, expected.bloodType, expected.component,
-      expected.collectedAt, expected.expiresAt,
-    ].join("|"))).toEqual(expected);
+  it.each(labels)("extracts confirmed inbound label  exactly", (label) => {
+    const expected = label as CapturedInboundLabel;
+    expect(parseInboundOcrText(ocrText(expected), 99).label).toEqual(expected);
   });
 });
