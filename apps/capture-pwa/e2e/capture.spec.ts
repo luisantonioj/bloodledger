@@ -88,7 +88,7 @@ test("NFR-05 keeps exact Donation No. volatile and blocks offline V2 submission"
   expect(submissions).toBe(0);
   const persisted = await page.evaluate(async () => {
     const names = await indexedDB.databases();
-    const request = indexedDB.open("bloodledger-inbound-command-status-v2", 1);
+    const request = indexedDB.open("bloodledger-inbound-command-status-v2", 2);
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -157,7 +157,7 @@ test("FR-01 tracks one accepted V2 command to commitment without resubmission or
   await expect(page.getByText("COMMITTED", { exact: true })).toBeVisible({ timeout: 15_000 });
   expect(submissions).toBe(1);
   const persisted = await page.evaluate(async () => {
-    const request = indexedDB.open("bloodledger-inbound-command-status-v2", 1);
+    const request = indexedDB.open("bloodledger-inbound-command-status-v2", 2);
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -185,7 +185,7 @@ test("reload recovers an accepted inbound command without resubmission and logou
   expect(submissions).toBe(0);
   await page.getByRole("button", { name: /Sign out Synthetic Capture Operator/ }).click();
   const receipts = await page.evaluate(async () => {
-    const request = indexedDB.open("bloodledger-inbound-command-status-v2", 1);
+    const request = indexedDB.open("bloodledger-inbound-command-status-v2", 2);
     const db = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
     const read = db.transaction("command-receipts").objectStore("command-receipts").getAll();
     const values = await new Promise<unknown[]>((resolve, reject) => { read.onsuccess = () => resolve(read.result); read.onerror = () => reject(read.error); });

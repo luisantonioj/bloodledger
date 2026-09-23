@@ -15,7 +15,7 @@ import {
   OCR_ENGINE_VERSION,
   contractVersionFor,
 } from "./capture-policy";
-import { clearStoredCommands, deleteLegacyCaptureQueue, listStoredCommands, saveStoredCommand } from "./offline-queue";
+import { clearStoredCommands, deleteLegacyCaptureQueue, listStoredCommands, saveStoredCommand, setReceiptActor } from "./offline-queue";
 import type { RecognitionResult } from "./recognition";
 import type { InboundOcrCapture, StoredCommandReceipt, V2Command } from "./types";
 
@@ -25,8 +25,9 @@ function newEvidenceId(prefix: "IDEM_INBOUND_" | "CORR_"): string {
   return prefix + crypto.randomUUID().replaceAll("-", "").toUpperCase();
 }
 
-function commandReceipt(command: V2Command, recognition: RecognitionResult, idempotencyKey: string): StoredCommandReceipt {
+function commandReceipt(command: V2Command, recognition: RecognitionResult, idempotencyKey: string, actorUserId: string): StoredCommandReceipt {
   return {
+    actorUserId,
     idempotencyKey,
     commandId: command.commandId,
     resourceId: command.resourceId,
@@ -59,62 +60,90 @@ export function App() {
   const [recoveryAttempt, setRecoveryAttempt] = useState(0);
   const submissionInFlight = useRef(false);
 
-  const refreshEvents = async () => setEvents(await listStoredCommands());
+  const sessionEpoch = useRef(0);
+  const captureEpoch = useRef(0);
+  const activeActor = useRef<string | undefined>(undefined);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const refreshEvents = async (actorId: string) => {
+    const receipts = await listStoredCommands(actorId);
+    if (activeActor.current === actorId) setEvents(receipts);
+  };
+  const clearCapture = () => {
+    captureEpoch.current += 1;
+    setRecognition(undefined); setAttempt(undefined); setImage(undefined);
+    if (fileInput.current) fileInput.current.value = "";
+  };
+  const activatePrincipal = (restored: CapturePrincipal) => {
+    sessionEpoch.current += 1;
+    activeActor.current = restored.userId;
+    setReceiptActor(restored.userId);
+    setEvents([]); setPrincipal(restored);
+  };
+  const invalidateSession = () => {
+    sessionEpoch.current += 1;
+    activeActor.current = undefined;
+    setReceiptActor(undefined);
+    clearCapture(); setPrincipal(undefined); setEvents([]); setRecoveryReady(false);
+    void clearStoredCommands();
+  };
 
   useEffect(() => {
-    void deleteLegacyCaptureQueue().then(refreshEvents);
+    void deleteLegacyCaptureQueue();
+    const epoch = sessionEpoch.current;
     restoreSession()
-      .then(setPrincipal)
+      .then((restored) => { if (sessionEpoch.current === epoch) activatePrincipal(restored); })
       .catch(() => undefined)
       .finally(() => setSessionLoading(false));
   }, []);
 
   useEffect(() => {
     if (!recognition) return;
+    const generation = captureEpoch.current;
     const timer = setTimeout(() => {
-      setRecognition(undefined);
-      setAttempt(undefined);
-      setImage(undefined);
+      if (captureEpoch.current !== generation) return;
+      clearCapture();
       setMessage("Confirmation timed out after 15 minutes. Capture the label again.");
     }, 15 * 60 * 1000);
     return () => clearTimeout(timer);
   }, [recognition]);
 
   useEffect(() => {
-    const timer = setInterval(() => { void refreshEvents(); }, 60_000);
+    const timer = setInterval(() => { if (activeActor.current) void refreshEvents(activeActor.current); }, 60_000);
     return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
     if (!principal) return;
     let closed = false;
+    const epoch = sessionEpoch.current;
+    const actorId = principal.userId;
+    const valid = () => !closed && sessionEpoch.current === epoch && activeActor.current === actorId;
     setRecoveryLoading(true);
     setRecoveryReady(false);
     void (async () => {
       try {
-        const existing = await listStoredCommands();
+        const existing = await listStoredCommands(actorId);
         const server = (await recoverCommands()).filter((command) => command.resourceType === "INBOUND_CAPTURE");
-        if (closed) return;
-        await clearStoredCommands();
+        if (!valid()) return;
         for (const command of server) {
-          if (closed) return;
+          if (!valid()) return;
           const prior = existing.find((item) => item.commandId === command.commandId);
-          if (!prior && TERMINAL_COMMAND_STATES.has(command.status) && Date.now() - Date.parse(command.acceptedAt) >= 24 * 60 * 60 * 1000) continue;
           await saveStoredCommand({
-            ...(prior ?? {}), commandId: command.commandId, resourceId: command.resourceId,
+            ...(prior ?? {}), actorUserId: actorId, commandId: command.commandId, resourceId: command.resourceId,
             statusUrl: command.statusUrl, status: command.status, correlationId: command.correlationId,
             acceptedAt: command.acceptedAt, safeErrorCode: command.safeErrorCode,
-            classification: "SIMULATION_ONLY", terminalObservedAt: prior?.terminalObservedAt,
+            classification: "SIMULATION_ONLY", terminalObservedAt: TERMINAL_COMMAND_STATES.has(command.status) ? prior?.terminalObservedAt ?? new Date().toISOString() : undefined,
           });
         }
-        if (closed) return;
-        await refreshEvents();
-        setRecoveryReady(true);
+        if (!valid()) return;
+        await refreshEvents(actorId);
+        if (valid()) setRecoveryReady(true);
       } catch (error) {
-        if (closed) return;
+        if (!valid()) return;
         setMessage(error instanceof ApiError && error.status === 401 ? "Session expired. Sign in again." : "Command recovery is unavailable. Check server status before another capture.");
-        if (error instanceof ApiError && error.status === 401) { setPrincipal(undefined); setRecognition(undefined); setAttempt(undefined); setImage(undefined); }
-      } finally { if (!closed) setRecoveryLoading(false); }
+        if (error instanceof ApiError && error.status === 401) invalidateSession();
+      } finally { if (valid()) setRecoveryLoading(false); }
     })();
     return () => { closed = true; };
   }, [principal?.userId, recoveryAttempt]);
@@ -133,21 +162,24 @@ export function App() {
   useEffect(() => {
     if (!principal) return;
     let closed = false;
+    const epoch = sessionEpoch.current;
+    const actorId = principal.userId;
+    const valid = () => !closed && sessionEpoch.current === epoch && activeActor.current === actorId;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let failures = 0;
 
     const poll = async () => {
-      if (closed) return;
+      if (!valid()) return;
       if (!navigator.onLine || document.hidden) {
         timer = setTimeout(() => void poll(), 2_000);
         return;
       }
       try {
-        for (const receipt of await listStoredCommands()) {
-          if (closed) return;
+        for (const receipt of await listStoredCommands(actorId)) {
+          if (!valid()) return;
           if (TERMINAL_COMMAND_STATES.has(receipt.status)) continue;
           const command = await fetchCommandStatus(receipt.statusUrl);
-          if (closed) return;
+          if (!valid()) return;
           await saveStoredCommand({
             ...receipt,
             status: command.status,
@@ -155,22 +187,20 @@ export function App() {
             terminalObservedAt: TERMINAL_COMMAND_STATES.has(command.status) ? receipt.terminalObservedAt ?? new Date().toISOString() : undefined,
           });
         }
-        if (closed) return;
+        if (!valid()) return;
         failures = 0;
-        await refreshEvents();
+        await refreshEvents(actorId);
       } catch (error) {
+        if (!valid()) return;
         failures += 1;
         if (error instanceof ApiError && error.status === 401) {
-          setPrincipal(undefined);
-          setRecognition(undefined);
-          setAttempt(undefined);
-          setImage(undefined);
+          invalidateSession();
           setMessage("Session expired. Sign in again to resume command-status checks.");
         } else {
           setMessage("Command status is temporarily unavailable. No intake command was resubmitted.");
         }
       } finally {
-        if (!closed) timer = setTimeout(() => void poll(), Math.min(30_000, 2_000 * (2 ** failures)));
+        if (valid()) timer = setTimeout(() => void poll(), Math.min(30_000, 2_000 * (2 ** failures)));
       }
     };
 
@@ -184,49 +214,51 @@ export function App() {
   async function signIn(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
+    const epoch = sessionEpoch.current;
     try {
       const restored = await createSession(username, password);
-      setPrincipal(restored);
+      if (sessionEpoch.current !== epoch) return;
+      activatePrincipal(restored);
       setPassword("");
       setMessage("Authenticated as " + restored.displayName + ".");
     } catch (error) {
-      setMessage(error instanceof ApiError ? error.code : "AUTH_FAILED");
+      if (sessionEpoch.current === epoch) setMessage(error instanceof ApiError ? error.code : "AUTH_FAILED");
     } finally {
       setBusy(false);
     }
   }
 
   async function signOut() {
-    setPrincipal(undefined);
-    setRecognition(undefined);
-    setAttempt(undefined);
-    setImage(undefined);
-    setRecoveryReady(false);
+    invalidateSession();
+    setPassword("");
     await endSession().catch(() => undefined);
     await clearStoredCommands();
-    setEvents([]);
     setMessage("Signed out. Volatile OCR values were cleared.");
   }
 
   async function runRecognition() {
     if (image === undefined) return;
-    setBusy(true);
-    setRecognition(undefined);
-    setAttempt(undefined);
+    const generation = ++captureEpoch.current;
+    const epoch = sessionEpoch.current;
+    setBusy(true); setRecognition(undefined); setAttempt(undefined);
     try {
       const { recognizeInboundLabel } = await import("./recognition");
-      setRecognition(await recognizeInboundLabel(image));
+      const result = await recognizeInboundLabel(image);
+      if (generation !== captureEpoch.current || epoch !== sessionEpoch.current) return;
+      setRecognition(result);
       setMessage("Review all five extracted fields. Exact Donation No. remains only in memory.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "CAPTURE_RECOGNITION_FAILED");
-    } finally {
-      setBusy(false);
-    }
+      if (generation === captureEpoch.current && epoch === sessionEpoch.current) setMessage(error instanceof Error ? error.message : "CAPTURE_RECOGNITION_FAILED");
+    } finally { if (generation === captureEpoch.current) setBusy(false); }
   }
 
   async function confirmAndSubmit() {
     if (!recognition || !principal || !isOnline || !recoveryReady || submissionInFlight.current) return;
     submissionInFlight.current = true;
+    const generation = captureEpoch.current;
+    const epoch = sessionEpoch.current;
+    const actorId = principal.userId;
+    const valid = () => generation === captureEpoch.current && epoch === sessionEpoch.current && activeActor.current === actorId;
     const confirmation = attempt ?? {
       idempotencyKey: newEvidenceId("IDEM_INBOUND_"),
       correlationId: newEvidenceId("CORR_"),
@@ -267,33 +299,35 @@ export function App() {
         capture,
         contractVersionFor(capture.componentType),
       );
+      if (!valid()) return;
       if ("commandId" in result) {
-        await saveStoredCommand(commandReceipt(result, recognition, confirmation.idempotencyKey));
+        await saveStoredCommand(commandReceipt(result, recognition, confirmation.idempotencyKey, actorId));
+        if (!valid()) return;
         setMessage("Intake accepted as " + result.status + ". It is not committed inventory yet.");
       } else {
         setMessage("Already registered as component " + result.componentId + ". No duplicate was created.");
       }
-      setRecognition(undefined);
-      setAttempt(undefined);
-      setImage(undefined);
-      await refreshEvents();
+      clearCapture();
+      await refreshEvents(actorId);
     } catch (error) {
+      if (!valid()) return;
       try {
         const recovered = (await recoverCommands(confirmation.idempotencyKey))[0];
+        if (!valid()) return;
         if (recovered) {
-          await saveStoredCommand(commandReceipt(recovered, recognition, confirmation.idempotencyKey));
-          setRecognition(undefined);
-          setAttempt(undefined);
-          setImage(undefined);
-          await refreshEvents();
+          await saveStoredCommand(commandReceipt(recovered, recognition, confirmation.idempotencyKey, actorId));
+          if (!valid()) return;
+          clearCapture();
+          await refreshEvents(actorId);
           setMessage("The server accepted this intake command. Its status was recovered without resubmission.");
           return;
         }
       } catch { /* Keep the same in-memory key and payload for explicit retry. */ }
+      if (!valid()) return;
       const code = error instanceof ApiError ? error.code : "API_UNAVAILABLE";
       setMessage(code + ". The confirmed value remains volatile; retry uses the same idempotency key.");
     } finally {
-      setBusy(false);
+      if (valid()) setBusy(false);
       submissionInFlight.current = false;
     }
   }
@@ -361,9 +395,11 @@ export function App() {
                 <input
                   aria-label="Synthetic inbound label image"
                   type="file"
+                  ref={fileInput}
                   accept="image/*"
                   capture="environment"
                   onChange={(event) => {
+                    captureEpoch.current += 1;
                     setImage(event.target.files?.[0]);
                     setRecognition(undefined);
                     setAttempt(undefined);
@@ -407,7 +443,7 @@ export function App() {
                 ))}
               </dl>
               <p className="confirmation-policy">Contract: {contractVersionFor(recognition.label.componentType)}. Fields cannot be edited; recapture if any value is wrong.</p>
-              <div className="confirmation-actions"><button type="button" disabled={busy || !isOnline || !recoveryReady} onClick={() => void confirmAndSubmit()}>{busy ? "Submitting…" : attempt ? "Retry same confirmed intake" : "I confirm every field"}</button><button type="button" className="secondary" disabled={busy} onClick={() => { setRecognition(undefined); setAttempt(undefined); setImage(undefined); setMessage("Capture cancelled. Volatile OCR values were cleared."); }}>Cancel capture</button></div>
+              <div className="confirmation-actions"><button type="button" disabled={busy || !isOnline || !recoveryReady} onClick={() => void confirmAndSubmit()}>{busy ? "Submitting…" : attempt ? "Retry same confirmed intake" : "I confirm every field"}</button><button type="button" className="secondary" disabled={busy} onClick={() => { clearCapture(); setMessage("Capture cancelled. Volatile OCR values were cleared."); }}>Cancel capture</button></div>
             </section>
           )}
         </div>
@@ -419,7 +455,7 @@ export function App() {
           </div>
           <div className="sync-message"><span aria-hidden="true">i</span><p>{message}</p></div>
           <div className="queue-heading"><strong>Recent intake commands</strong><span>{events.length} privacy-safe receipts</span></div>
-          {events.length === 0 ? (
+          {!principal || !recoveryReady || events.length === 0 ? (
             <div className="empty-queue"><span aria-hidden="true">◎</span><strong>No accepted commands yet</strong><small>Only server command IDs and status evidence appear here—never Donation No.</small></div>
           ) : (
             <ul className="events">
