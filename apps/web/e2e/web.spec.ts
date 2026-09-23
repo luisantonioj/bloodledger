@@ -994,3 +994,49 @@ test("visual parity controls remain local previews without connected claims", as
   await page.getByRole("button", { name: "Compact" }).click();
   await expect(page.locator(".shell")).toHaveClass(/preview-compact/);
 });
+
+test("approved compromise policy requires reason and quarantine confirmation without resubmission", async ({ page }) => {
+  const reservation = { reservationId: "RES_SYNTH_COMPROMISE_BROWSER", purpose: "TRANSFER", status: "DISPATCHED", version: 3, sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_SYNTH_SECONDARY", transferId: "TRF_SYNTH_COMPROMISE_BROWSER", localReleaseId: null, preparedAt: timestamp, preparedEvidencePresent: true, updatedAt: timestamp, components: [{ componentId: "COMP_SYNTH_COMPROMISE_BROWSER", componentType: "PACKED_RED_BLOOD_CELLS", inventoryStatus: "DISPATCHED", inventoryVersion: 3 }], classification: "SIMULATION_ONLY" };
+  let submissions = 0;
+  let polls = 0;
+  await authenticatedApi(page, "ROLE-02", async (route, path) => {
+    if (path === "/api/v2/reservations") { await fulfillJson(route, { scope: "SOURCE_INSTITUTION", reservations: [reservation], nextCursor: null, classification: "SIMULATION_ONLY" }); return true; }
+    if (path === `/api/v2/reservations/${reservation.reservationId}`) { await fulfillJson(route, reservation); return true; }
+    if (path === "/api/v2/reservations/compromise-reasons") { await fulfillJson(route, { policyVersion: "SYNTHETIC_COMPROMISE_REASONS_V1", reasons: ["TEMPERATURE_EXCURSION_REPORTED", "CONTAINER_DAMAGE_OR_LEAK_REPORTED", "VISIBLE_COMPONENT_ABNORMALITY_REPORTED", "HANDLING_OR_CUSTODY_DEVIATION_REPORTED"].map((code) => ({ code, label: code })), effect: "QUARANTINE_PENDING_MANUAL_REVIEW", freeTextAllowed: false, classification: "SIMULATION_ONLY" }); return true; }
+    if (path === `/api/v2/reservations/${reservation.reservationId}/compromise` && route.request().method() === "POST") {
+      submissions += 1;
+      expect(route.request().postDataJSON()).toMatchObject({ expectedVersion: 3, reasonCode: "TEMPERATURE_EXCURSION_REPORTED" });
+      await fulfillJson(route, { commandId: "CMD_SYNTH_COMPROMISE_BROWSER", resourceType: "TRANSFER", resourceId: reservation.reservationId, status: "QUEUED", statusUrl: "/api/v2/commands/CMD_SYNTH_COMPROMISE_BROWSER", acceptedAt: timestamp, correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF", safeErrorCode: null, classification: "SIMULATION_ONLY", replayed: false }, 202); return true;
+    }
+    if (path === "/api/v2/commands/CMD_SYNTH_COMPROMISE_BROWSER") {
+      polls += 1;
+      await fulfillJson(route, { commandId: "CMD_SYNTH_COMPROMISE_BROWSER", resourceType: "TRANSFER", resourceId: reservation.reservationId, status: polls === 1 ? "LEDGER_COMMITTED_PROJECTION_PENDING" : "COMMITTED", statusUrl: "/api/v2/commands/CMD_SYNTH_COMPROMISE_BROWSER", acceptedAt: timestamp, correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF", safeErrorCode: null, classification: "SIMULATION_ONLY", replayed: false }); return true;
+    }
+    return false;
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("button", { name: "Review", exact: true }).click();
+  await page.getByLabel("Action").selectOption("compromise");
+  await expect(page.getByRole("button", { name: "Confirm action" })).toBeDisabled();
+  await page.getByLabel("Reported incident reason").selectOption("TEMPERATURE_EXCURSION_REPORTED");
+  await page.getByRole("checkbox", { name: /quarantines the selected components pending manual review/ }).check();
+  await page.getByRole("button", { name: "Confirm action" }).click();
+  await expect(page.getByRole("heading", { name: "Committed", exact: true })).toBeVisible({ timeout: 10_000 });
+  expect(submissions).toBe(1); expect(polls).toBe(2);
+});
+
+test("unavailable compromise policy leaves the custody action disabled", async ({ page }) => {
+  const reservation = { reservationId: "RES_SYNTH_POLICY_UNAVAILABLE", purpose: "TRANSFER", status: "DISPATCHED", version: 3, sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_SYNTH_SECONDARY", transferId: "TRF_SYNTH_POLICY_UNAVAILABLE", localReleaseId: null, preparedAt: timestamp, preparedEvidencePresent: true, updatedAt: timestamp, components: [], classification: "SIMULATION_ONLY" };
+  await authenticatedApi(page, "ROLE-02", async (route, path) => {
+    if (path === "/api/v2/reservations") { await fulfillJson(route, { scope: "SOURCE_INSTITUTION", reservations: [reservation], nextCursor: null, classification: "SIMULATION_ONLY" }); return true; }
+    if (path === `/api/v2/reservations/${reservation.reservationId}`) { await fulfillJson(route, reservation); return true; }
+    if (path === "/api/v2/reservations/compromise-reasons") { await fulfillJson(route, { error: { code: "POLICY_UNAVAILABLE" } }, 503); return true; }
+    return false;
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("button", { name: "Review", exact: true }).click();
+  await expect(page.getByText("Compromise reasons are unavailable. The action is disabled.")).toBeVisible();
+  await expect(page.getByRole("option", { name: "Compromise" })).toHaveCount(0);
+});

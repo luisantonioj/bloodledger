@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { permittedReservationActions } from "./v2-followups";
-import { readCensusIndex, readReservation, readReservations, readReconciliationReasons } from "../../services/api/v2";
+import { readCensusIndex, readCompromiseReasons, readReservation, readReservations, readReconciliationReasons } from "../../services/api/v2";
 import type { V2Reservation } from "../../services/api/v2";
 
 const reservation: V2Reservation = {
@@ -20,7 +20,9 @@ describe("Sprint 6 reservation follow-ups", () => {
     expect(permittedReservationActions(reservation, "ROLE-03")).toEqual(["cancel"]);
     expect(permittedReservationActions(reservation, "ROLE-04")).toEqual([]);
     expect(permittedReservationActions({ ...reservation, preparedEvidencePresent: true }, "ROLE-02")).toEqual(["dispatch", "cancel"]);
-    expect(permittedReservationActions({ ...reservation, status: "IN_TRANSIT" }, "ROLE-03")).toEqual(["receive"]);
+    expect(permittedReservationActions({ ...reservation, status: "IN_TRANSIT" }, "ROLE-03")).toEqual(["receive", "compromise"]);
+    expect(permittedReservationActions({ ...reservation, status: "DISPATCHED" }, "ROLE-02")).toEqual(["transit", "compromise"]);
+    expect(permittedReservationActions({ ...reservation, status: "RECEIVED" }, "ROLE-03")).toEqual(["compromise"]);
     expect(permittedReservationActions({ ...reservation, purpose: "LOCAL_RELEASE", preparedEvidencePresent: true }, "ROLE-01")).toEqual(["local-release-complete", "cancel"]);
     expect(permittedReservationActions({ ...reservation, purpose: "LOCAL_RELEASE" }, "ROLE-03")).toEqual([]);
     expect(permittedReservationActions({ ...reservation, status: "COMPLETED" }, "ROLE-01")).toEqual([]);
@@ -40,6 +42,15 @@ describe("Sprint 6 reservation follow-ups", () => {
   it("rejects an unversioned or free-text reconciliation policy response", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ policyVersion: "UNKNOWN", reasons: [], effect: "RECONCILIATION_HOLD_ONLY", freeTextAllowed: true, classification: "SIMULATION_ONLY" }), { status: 200 })));
     await expect(readReconciliationReasons()).rejects.toThrow("V2_REASONS_RESPONSE_INVALID");
+  });
+
+  it("accepts only the complete versioned compromise policy", async () => {
+    const reasons = ["TEMPERATURE_EXCURSION_REPORTED", "CONTAINER_DAMAGE_OR_LEAK_REPORTED", "VISIBLE_COMPONENT_ABNORMALITY_REPORTED", "HANDLING_OR_CUSTODY_DEVIATION_REPORTED"].map((code) => ({ code, label: code }));
+    const policy = { policyVersion: "SYNTHETIC_COMPROMISE_REASONS_V1", effect: "QUARANTINE_PENDING_MANUAL_REVIEW", freeTextAllowed: false, classification: "SIMULATION_ONLY", reasons };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(policy), { status: 200 })));
+    expect((await readCompromiseReasons()).reasons).toHaveLength(4);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ...policy, reasons: [...reasons.slice(0, 3), { code: "FREE_TEXT", label: "Free text" }] }), { status: 200 })));
+    await expect(readCompromiseReasons()).rejects.toThrow("V2_COMPROMISE_POLICY_INVALID");
   });
 
   it("rejects a census index whose column order differs from the approved display policy", async () => {

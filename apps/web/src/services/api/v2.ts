@@ -91,6 +91,7 @@ export interface V2Reservation {
 
 export interface V2Page<T> { items: T[]; nextCursor: string | null }
 export interface ReconciliationReasons { policyVersion: "SYNTHETIC_RECONCILIATION_REASONS_V1"; reasons: { code: string; label: string }[]; effect: "RECONCILIATION_HOLD_ONLY"; freeTextAllowed: false; classification: "SIMULATION_ONLY" }
+export interface CompromiseReasons { policyVersion: "SYNTHETIC_COMPROMISE_REASONS_V1"; reasons: { code: string; label: string }[]; effect: "QUARANTINE_PENDING_MANUAL_REVIEW"; freeTextAllowed: false; classification: "SIMULATION_ONLY" }
 export interface CensusIndex { scope: "INSTITUTION" | "REGULATORY_AGGREGATE"; displayPolicyVersion: "DOH_CENSUS_COLUMN_ORDER_V1"; displayBloodTypeOrder: V2BloodType[]; totalColumn: "CALCULATED"; reportAvailability: string; snapshots: { snapshotId: string; institutionId: string; scheduledFor: string; capturedAt: string; reportPolicyVersion: string; triggerType: string; classification: "SIMULATION_ONLY" }[]; nextCursor: string | null; classification: "SIMULATION_ONLY" }
 
 function pageCursor(cursor?: string): string { return cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""; }
@@ -121,6 +122,15 @@ export async function readReconciliationReasons(): Promise<ReconciliationReasons
   const body = record(await requestJson<unknown>("/api/v2/reconciliation/reasons", {}, "Reconciliation choices are unavailable."), "V2_REASONS_RESPONSE_INVALID");
   if (body.policyVersion !== "SYNTHETIC_RECONCILIATION_REASONS_V1" || body.effect !== "RECONCILIATION_HOLD_ONLY" || body.freeTextAllowed !== false || body.classification !== "SIMULATION_ONLY" || !Array.isArray(body.reasons)) throw new Error("V2_REASONS_RESPONSE_INVALID");
   return { ...body, reasons: body.reasons.map((item: unknown) => { const reason = record(item, "V2_REASONS_RESPONSE_INVALID"); return { code: requiredString(reason.code, "V2_REASONS_RESPONSE_INVALID"), label: requiredString(reason.label, "V2_REASONS_RESPONSE_INVALID") }; }) } as ReconciliationReasons;
+}
+
+const COMPROMISE_CODES = ["TEMPERATURE_EXCURSION_REPORTED", "CONTAINER_DAMAGE_OR_LEAK_REPORTED", "VISIBLE_COMPONENT_ABNORMALITY_REPORTED", "HANDLING_OR_CUSTODY_DEVIATION_REPORTED"];
+export async function readCompromiseReasons(): Promise<CompromiseReasons> {
+  const body = record(await requestJson<unknown>("/api/v2/reservations/compromise-reasons", {}, "Compromise reasons are unavailable."), "V2_COMPROMISE_POLICY_INVALID");
+  if (body.policyVersion !== "SYNTHETIC_COMPROMISE_REASONS_V1" || body.effect !== "QUARANTINE_PENDING_MANUAL_REVIEW" || body.freeTextAllowed !== false || body.classification !== "SIMULATION_ONLY" || !Array.isArray(body.reasons) || body.reasons.length !== 4) throw new Error("V2_COMPROMISE_POLICY_INVALID");
+  const reasons = body.reasons.map((item: unknown) => { const reason = record(item, "V2_COMPROMISE_POLICY_INVALID"); return { code: requiredString(reason.code, "V2_COMPROMISE_POLICY_INVALID"), label: requiredString(reason.label, "V2_COMPROMISE_POLICY_INVALID") }; });
+  if (reasons.some((reason) => !COMPROMISE_CODES.includes(reason.code) || !reason.label) || new Set(reasons.map((reason) => reason.code)).size !== COMPROMISE_CODES.length) throw new Error("V2_COMPROMISE_POLICY_INVALID");
+  return { policyVersion: "SYNTHETIC_COMPROMISE_REASONS_V1", reasons, effect: "QUARANTINE_PENDING_MANUAL_REVIEW", freeTextAllowed: false, classification: "SIMULATION_ONLY" };
 }
 
 export async function readCensusIndex(cursor?: string): Promise<CensusIndex> {
