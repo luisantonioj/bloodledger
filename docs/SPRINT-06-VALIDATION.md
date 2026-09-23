@@ -147,8 +147,53 @@ This is LAT technical validation, not human UAT. Jopia's prior real-Fabric
 restart/submission-count result was not repeated because these follow-ups do
 not change chaincode or its backend submission path.
 
-The running reconciliation reason discovery route and OpenAPI path disagree;
-see [the frontend discrepancy register](./LAT-S6-FRONTEND-HANDOFF.md#lat-follow-up-discrepancy-register--2026-09-23).
-An approved compromise incident-code list is still missing, so that one
-frontend action remains disabled. BUNO's human method/lineage review and all
-formal participant/consent/instrument gates remain open.
+Those September 23 discrepancies are resolved by the Jopia review below.
+BUNO's human method/lineage review and all formal
+participant/consent/instrument gates remain open.
+
+## Jopia review of draft PR #15 — 2026-09-23
+
+**Review baseline:** LAT head `847e43e`; isolated branch
+`s6-pr15-backend-review`, with LAT commits preserved. Jopia performed this
+technical validation and records it as self-validation. PR #15 remains draft.
+
+- `fix(api)` corrects the OpenAPI reconciliation discovery path while retaining
+  the hold POST. A focused contract test confirms both operations.
+- `BL-DEC-S6-2026-09-23-01` versions four synthetic compromise reason codes.
+  ROLE-01/02/03 may discover them. API validation rejects unknown or free-text
+  codes before enqueue; chaincode independently enforces them, authorization,
+  version, state, and deterministic replay. Committed reservation evidence
+  includes the code and policy version; components become `COMPROMISED`.
+- Web compromise actions require discovery, an eligible committed reservation,
+  a reason, and explicit quarantine confirmation. Policy failure disables the
+  action. Capture receipts are scoped to actor and institution; terminal
+  retention starts on observation and expired receipts cannot be recreated by
+  recovery. Cancellation, timeout, logout, and session loss invalidate late
+  asynchronous results and clear the native file input.
+
+**Executed on Node 24.17.0/npm 11.13.0:** repository foundation, API,
+chaincode, web, and Capture checks/builds passed. API 100/100, chaincode 31/31,
+web 55/55, and Capture 14/14 unit tests passed. The disposable PostgreSQL
+probe applied all 21 migrations and passed the Sprint 6 scenarios plus
+compromise quarantine and replay without a second component version change.
+The pinned `mcr.microsoft.com/playwright:v1.61.1-noble` container passed Capture
+7/7 browser cases and web 25 passed with seven retired V1 cases skipped. These
+are automated synthetic tests, not human UAT or physical Android evidence.
+
+The complete repository-history Gitleaks 8.30.1 scan reported seven inherited
+findings; the review commits and current tracked/candidate content had no
+findings in scoped scans. The Sprint 6 integrated script was not run because
+its explicit branch guard admits only its original backend branches; its
+applicable checks were run separately.
+
+**Live Fabric `BLOCKED`:** the project peer was stopped by a stale Docker
+socket mount. A project-scoped peer recreation preserved its volumes and
+restored container health, but peer logs show repeated TLS verification
+failure against the orderer authority. No new compromise transaction was
+submitted. The prior accepted real-Fabric recovery result applies to its
+older validation package only. Do not count this as live-chaincode acceptance.
+
+LAT visual acceptance, BUNO human method/lineage and wording review, formal
+participant UAT, institutional compromise policy, `RQ-07`, full report format,
+offline V2 capture, physical Android OCR, clinical/regulatory, and production
+gates remain open. Issues #9 and #13 remain open.

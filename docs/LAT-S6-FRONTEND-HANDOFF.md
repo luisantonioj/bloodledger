@@ -1,7 +1,8 @@
 # LAT Sprint 6 Frontend Handoff
 
-**Status:** PR #14 merged at `40b8c64`; LAT frontend follow-ups implemented on
-`codex/s6-frontend-followups`. Human browser UAT and owner review remain pending.
+**Status:** PR #14 merged at `40b8c64`; LAT frontend follow-ups and Jopia
+review corrections are in draft PR #15. Visual acceptance, Buno review, and
+formal human browser UAT remain pending.
 
 **Integration baseline:** Lat commit
 `111681e26d2c91515cdea75f71faf341768cc1fa`; Jopia implementation and evidence
@@ -210,8 +211,10 @@ separate gate.
 - LAT connects permission-scoped reservation list/detail reads and source or
   destination role actions from committed IDs and versions. V2.1 reads retain
   cryoprecipitate. Prepare, dispatch, transit, receive, cancel, and local
-  release completion follow the published state and role map. Compromise is
-  held pending an approved incident reason-code vocabulary.
+  release completion follow the published state and role map. Jopia's review
+  adds a discovery-driven compromise selector for dispatched, in-transit, or
+  received reservations. It requires a reported reason and explicit quarantine
+  confirmation; missing or altered policy disables the action.
 - Reconciliation reason choices come from the running API; the UI exposes no
   free text and describes the effect as a hold. Census discovery is visible
   to authorized institution and regulatory users with the versioned display
@@ -219,7 +222,10 @@ separate gate.
 - Web and Capture recover actor-scoped commands after reload or a lost
   response. Capture clears sensitive fields on acceptance, cancellation,
   logout, session expiry, or the 15-minute confirmation timeout. Terminal
-  receipts expire after 24 hours; nonterminal receipts stay until recovery.
+  receipts expire 24 hours after first terminal observation; an actor-and-
+  institution-scoped expiry marker prevents server recovery from recreating
+  them. Nonterminal receipts stay until authenticated recovery. Delayed OCR and
+  network responses cannot restore state after cancellation or session loss.
 - The official session-cookie forecast path is now supported by the backend.
   The frontend retains active-V4-only presentation and truthful unavailable
   and uncertainty states.
@@ -244,27 +250,32 @@ separate gate.
   server and validation database were removed afterward. This verifies API
   connectivity, not a human browser workflow or populated custody data.
 
-## LAT follow-up discrepancy register — 2026-09-23
+## Jopia review disposition — 2026-09-23
 
-- **JOPIA contract correction:** The running API registers
-  `GET /api/v2/reconciliation/reasons`, while `services/api/openapi-v2.json`
-  currently places `listReconciliationReasons` under `GET /reconciliation`.
-  The frontend uses the running route; align OpenAPI and route before final
-  contract acceptance.
-- **JOPIA decision needed:** The reservation compromise command accepts a
-  syntactically valid `reasonCode`, but there is no approved selectable
-  incident vocabulary. LAT has not invented one. Keep the compromise control
-  disabled until the versioned codes and labels are supplied and enforced.
-- **LAT/human evidence:** Automated browser checks and the authenticated HTTP
-  smoke test are technical evidence. Human browser UAT and visual acceptance
-  of these follow-ups remain separate pending records.
+- The OpenAPI discovery operation now matches the running
+  `GET /api/v2/reconciliation/reasons`; `POST /api/v2/reconciliation` remains
+  the hold command.
+- Decision `BL-DEC-S6-2026-09-23-01` establishes
+  `SYNTHETIC_COMPROMISE_REASONS_V1`. API and chaincode reject other reasons;
+  the version and selected code are recorded in the committed reservation.
+  The effect is quarantine pending manual review under `BR-TRF-07`, not a
+  clinical usability or disposal decision.
+- The Capture receipt and recovery corrections are Jopia technical
+  self-validation. Automated browser evidence uses a pinned Playwright
+  container. LAT visual acceptance and formal human UAT are separate records.
+- Real Fabric validation of the changed compromise contract is `BLOCKED`:
+  the peer cannot verify the running orderer's TLS authority. The earlier
+  accepted recovery transaction remains historical evidence for that older
+  package and is not a validation of these chaincode changes.
 
 ## Readiness and remaining gates
 
-Backend dependencies and real-Fabric restart/submission-count recovery are
-verified through `9a5d768`, with Jopia self-validation disclosed in the
-validation record. LAT's follow-up implementation awaits PR review and human
-browser UAT. Buno's human research/lineage review remains open.
+Earlier backend dependencies and real-Fabric restart/submission-count recovery
+are recorded through `9a5d768`, with Jopia self-validation disclosed in the
+validation record. The new compromise chaincode still needs live Fabric
+validation after the TLS issue is resolved. PR #15 remains draft pending LAT
+visual acceptance and human browser UAT. Buno's human research/lineage review
+remains open.
 Full report-format approval, export/copy activation, offline V2 submission,
 physical Android evidence, `RQ-07`, and all clinical, operational,
 institutional, UAT, regulatory, and production gates remain open. All outputs
