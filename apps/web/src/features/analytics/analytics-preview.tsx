@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Principal } from "../../auth/permissions";
 import { humanizeCode, statusClassName } from "../../components/ui/display";
 import {
@@ -18,16 +18,22 @@ export function AnalyticsPreview({ principal }: { principal: Principal }) {
   const [data, setData] = useState<ForecastResponse>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const requestId = useRef(0);
 
   const refresh = useCallback(async () => {
+    const currentRequest = ++requestId.current;
+    setData(undefined);
+    setError("");
     setBusy(true);
     try {
-      setData(await readActiveForecast(businessDate));
-      setError("");
+      const result = await readActiveForecast(businessDate);
+      if (requestId.current === currentRequest) setData(result);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Active V4 forecast data is unavailable.");
+      if (requestId.current === currentRequest) {
+        setError(reason instanceof Error ? reason.message : "Active V4 forecast data is unavailable.");
+      }
     } finally {
-      setBusy(false);
+      if (requestId.current === currentRequest) setBusy(false);
     }
   }, [businessDate]);
 
@@ -36,16 +42,16 @@ export function AnalyticsPreview({ principal }: { principal: Principal }) {
   }, [principal, refresh]);
 
   if (!canViewAnalyticsPreview(principal)) {
-    return <div className="analytics-preview-state unauthorized" role="alert"><span aria-hidden="true">!</span><div><strong>Analytics unavailable</strong><p>This composition is limited to blood-bank operational roles and the PRC institution. Backend authorization remains authoritative.</p></div></div>;
+    return <div className="analytics-preview-state unauthorized" role="alert"><span aria-hidden="true">!</span><div><strong>Analytics unavailable</strong><p>This forecast view is limited to authorized blood-bank roles. Backend authorization remains authoritative.</p></div></div>;
   }
 
   return <div className="analytics-preview">
-    <div className="preview-disclosure analytics-disclosure"><span aria-hidden="true">i</span><div><strong>Active ML V4 simulation</strong><p>Only backend-produced V4 results are rendered. No browser calculation, reserve decision, redistribution approval, or silent V1 fallback occurs.</p></div><b>SIMULATION ONLY</b></div>
+    <div className="preview-disclosure analytics-disclosure"><span aria-hidden="true">i</span><div><strong>Active ML V4 simulation</strong><p>The forecast uses synthetic recorded-request history; accuracy on real hospital requests is unverified. Results cannot approve reserve or redistribution decisions.</p></div><b>SIMULATION ONLY</b></div>
 
     <section className="analytics-preview-filter">
       <header><div><h3>Forecast scope</h3><p>One-day active-runtime forecasts for the authenticated institution.</p></div><span>{analyticsScopeLabel(principal)}</span></header>
       <div className="forecast-filter-grid">
-        <label>Business date<input type="date" value={businessDate} onChange={(event) => setBusinessDate(event.target.value)} /></label>
+        <label>Business date<input type="date" value={businessDate} onChange={(event) => { requestId.current += 1; setData(undefined); setError(""); setBusy(false); setBusinessDate(event.target.value); }} /></label>
         <label>Dataset<input value={ACTIVE_FORECAST_DATASET} readOnly /></label>
         <button className="button primary" type="button" disabled={busy} onClick={() => void refresh()}>{busy ? "Loading…" : "Refresh forecast"}</button>
       </div>
@@ -67,8 +73,8 @@ export function AnalyticsPreview({ principal }: { principal: Principal }) {
       {data.status === "STALE" && <div className="analytics-api-state warning" role="status"><span aria-hidden="true">!</span><div><strong>Forecast is stale</strong><p>Values remain visible as evidence, but forecast-only recommendations stay disabled.</p></div></div>}
 
       <section className="analytics-preview-panel assessment">
-        <header><div><h3>Daily demand forecast</h3><p>Only supported series returned by the backend are shown. Missing series are unavailable, never zero.</p></div><span className={statusClassName(data.status)}>{humanizeCode(data.status)}</span></header>
-        {data.forecasts.length === 0 ? <div className="analytics-preview-state"><span aria-hidden="true">∅</span><div><strong>No returned forecast series</strong><p>The active V4 result is unavailable for this business date.</p></div></div> : <div className="table-wrap"><table className="data-table forecast-table"><thead><tr><th>Blood type</th><th>Component</th><th>Point forecast</th><th>Uncertainty</th><th>Series status</th><th>Generated</th><th>Decision use</th></tr></thead><tbody>{data.forecasts.map((item) => <tr key={item.runKey + ":" + item.bloodType + ":" + item.component}>
+        <header><div><h3>One-day recorded-request forecast</h3><p>Forecasted units requested, not units transfused or stock on hand. Missing series are unavailable, never zero.</p></div><span className={statusClassName(data.status)}>{humanizeCode(data.status)}</span></header>
+        {data.forecasts.length === 0 ? <div className="analytics-preview-state"><span aria-hidden="true">∅</span><div><strong>No returned forecast series</strong><p>The active V4 result is unavailable for this business date.</p></div></div> : <div className="table-wrap"><table className="data-table forecast-table"><thead><tr><th>Blood type</th><th>Component</th><th>Requested units forecast</th><th>Uncertainty</th><th>Series status</th><th>Generated</th><th>Decision use</th></tr></thead><tbody>{data.forecasts.map((item) => <tr key={item.runKey + ":" + item.bloodType + ":" + item.component}>
           <td>{humanizeCode(item.bloodType)}</td>
           <td>{humanizeCode(item.component)}</td>
           <td className="numeric">{item.forecastStatus === "UNAVAILABLE" ? "Unavailable" : item.pointForecast.toFixed(2) + " units"}</td>
@@ -81,7 +87,7 @@ export function AnalyticsPreview({ principal }: { principal: Principal }) {
       </section>
 
       <section className="analytics-preview-panel">
-        <header><div><h3>Historical demand and redistribution assessment</h3><p>No approved permission-scoped history or operational reserve policy is exposed by this contract.</p></div></header>
+        <header><div><h3>Historical requests and redistribution assessment</h3><p>No approved permission-scoped history or operational reserve policy is exposed by this contract.</p></div></header>
         <div className="analytics-preview-state"><span aria-hidden="true">⌕</span><div><strong>Intentionally unavailable</strong><p>The frontend will not infer usage, reserve, surplus, or redistributability from forecast values alone.</p></div></div>
       </section>
     </>}

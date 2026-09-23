@@ -200,6 +200,43 @@ dataset/model identity, requested dates, unavailable reason, and
 matrix. BUNO's human research interpretation and any accuracy claim remain a
 separate gate.
 
+## BUNO V4 method, lineage, and wording review — 2026-09-23
+
+The local external v4 workbook matched the recorded SHA-256
+`76a188830467d290af26c2d01459e5b3ef470f8b552568cdbe89fe3118002dbd`.
+No workbook rows or patient/donor data were copied into the repository. The
+frozen `THESIS_EXPLORATION_V1` selected weighted average 7 on validation in all
+15 synthetic scenario runs; its synthetic test scores do not measure real
+Mediatrix forecast accuracy. The application's V4 runtime uses the selected
+method separately from that frozen study: seven prior `requested_units` values
+per series, oldest-to-newest weights 1 through 7 divided by 28, a one-day
+horizon, and 20 positive-Rh/component series. Its input is recorded requests,
+not transfusions, issued units, or inventory. `RQ-07` remains open.
+
+The runtime review confirms institution and immutable evidence in run and
+forecast identity; actual file-byte or canonical in-memory dataset evidence;
+null and incomplete history as persisted `UNAVAILABLE` attempts without zero
+imputation; and requested origin/horizon retention. The active read selects V4
+without silent V1 fallback. Uncertainty bounds remain nullable, and any
+forecast recommendation remains `DISABLED_UNAPPROVED_POLICY`.
+
+The Analytics review found and corrected three presentation boundaries on the
+BUNO review branch: the screen now names recorded requested units and states
+that real-hospital accuracy is unverified; regulatory PRC navigation no longer
+advertises a consortium aggregate forecast that the cookie-authenticated
+institution-scoped API cannot serve; and old numbers are hidden on date changes
+or failed refreshes while a response for another requested date is rejected.
+The envelope and item states, stale flag, model/dataset labels, unavailable
+reasons, and nullable uncertainty remain visible as supplied by the API.
+
+The web production build and 55 unit tests passed in the pinned Linux Node
+container. A focused browser regression was added, but its local execution
+could not start because Playwright Chromium was absent from that container.
+LAT's browser host must run that check and complete visual/browser UAT. This
+record is a technical method and wording review; it does not itself establish
+personal human sign-off, clinical validity, operational accuracy, or frontend
+visual acceptance.
+
 ## Frontend implementation evidence
 
 - Capture PWA migrated from V1 scan events to V2 inbound OCR and durable
