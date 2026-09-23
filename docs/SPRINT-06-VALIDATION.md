@@ -137,6 +137,12 @@ production builds passed; web unit 54/54, Capture unit 14/14, web browser
 passed. Repository foundation checks passed. The Sprint 6 static boundary
 script exits at its explicit branch-name gate on this frontend branch; its
 backend-branch evidence remains recorded above.
+An isolated live API smoke test used the built frontend bundles and a
+disposable PostgreSQL database with all 21 migrations and one synthetic
+ROLE-01 account. Cookie-authenticated forecast, reservation, reconciliation
+reason, census, and command-recovery GETs returned HTTP 200. The test server
+and database were removed. This confirms connectivity and authentication, not
+populated custody workflows or human UAT.
 This is LAT technical validation, not human UAT. Jopia's prior real-Fabric
 restart/submission-count result was not repeated because these follow-ups do
 not change chaincode or its backend submission path.

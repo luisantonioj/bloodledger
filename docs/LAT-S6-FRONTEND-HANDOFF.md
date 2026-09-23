@@ -237,6 +237,12 @@ separate gate.
   and repository foundation checks. The Sprint 6 integrated-boundary script
   is restricted by its own branch-name check to the backend integration
   branch and is not a follow-up-branch test.
+- An isolated live API smoke test used a disposable 21-migration PostgreSQL
+  database, a synthetic ROLE-01 account, the actual session cookie, and the
+  built web/Capture bundles. Forecast, reservations, reconciliation reasons,
+  census discovery, and command recovery all returned HTTP 200. The local
+  server and validation database were removed afterward. This verifies API
+  connectivity, not a human browser workflow or populated custody data.
 
 ## LAT follow-up discrepancy register — 2026-09-23
 
@@ -249,9 +255,9 @@ separate gate.
   syntactically valid `reasonCode`, but there is no approved selectable
   incident vocabulary. LAT has not invented one. Keep the compromise control
   disabled until the versioned codes and labels are supplied and enforced.
-- **LAT/human evidence:** Automated browser checks are technical evidence.
-  Human browser UAT, visual acceptance of these follow-ups, and live
-  authenticated walkthrough remain separate pending records.
+- **LAT/human evidence:** Automated browser checks and the authenticated HTTP
+  smoke test are technical evidence. Human browser UAT and visual acceptance
+  of these follow-ups remain separate pending records.
 
 ## Readiness and remaining gates
 
