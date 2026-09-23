@@ -182,7 +182,9 @@ are automated synthetic tests, not human UAT or physical Android evidence.
 
 The complete repository-history Gitleaks 8.30.1 scan reported seven inherited
 findings; the review commits and current tracked/candidate content had no
-findings in scoped scans. The Sprint 6 integrated script was not run because
+findings in scoped scans. Two synthetic projection-probe idempotency IDs have
+a path- and value-scoped allowlist in `.gitleaks.toml`; they are not credentials.
+The Sprint 6 integrated script was not run because
 its explicit branch guard admits only its original backend branches; its
 applicable checks were run separately.
 
