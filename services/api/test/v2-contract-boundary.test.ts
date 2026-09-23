@@ -167,3 +167,38 @@ test("S6 census discovery exposes safe metadata while full export remains gated"
     assert.equal(response.statusCode,200); assert.equal(response.json().displayPolicyVersion,"DOH_CENSUS_COLUMN_ORDER_V1"); assert.deepEqual(response.json().displayBloodTypeOrder,["O_POSITIVE","A_POSITIVE","B_POSITIVE","AB_POSITIVE","O_NEGATIVE","A_NEGATIVE","B_NEGATIVE","AB_NEGATIVE"]); assert.equal(response.json().totalColumn,"CALCULATED"); assert.equal(response.json().reportAvailability,"EXPORT_DISABLED_PENDING_FORMAT");
   } finally { await app.close(); }
 });
+
+
+test("V2 OpenAPI documents the running reconciliation discovery and hold routes", async () => {
+  const contract = JSON.parse(await readFile("openapi-v2.json", "utf8")) as { paths: Record<string, Record<string, { operationId: string }>> };
+  assert.equal(contract.paths["/reconciliation/reasons"]?.get?.operationId, "listReconciliationReasons");
+  assert.equal(contract.paths["/reconciliation"]?.post?.operationId, "placeReconciliationHold");
+  assert.equal(contract.paths["/reconciliation"]?.get, undefined);
+});
+
+test("compromise discovery and command boundary enforce the four synthetic reasons", async () => {
+  const sessions = { async findCredential() { return record; }, async createSession() {}, async restoreSession() { return record; }, async revokeSession() {} };
+  const store = new InMemoryV2CommandStore();
+  const projection = { async listComponents() { return []; }, async getComponent() { return null; }, async findComponentByIdentity() { return null; }, async getReservation() { return { ...reservation, status: "DISPATCHED" }; } };
+  const app = await buildApp(new MemoryRepository(), {host:"127.0.0.1",port:3000,jwtSecret:"compromise-test-".repeat(3),operatorId:"USR_SYNTH_CAPTURE",operatorCredential:"synthetic-test-credential",workerConfigured:false,webOrigin:"http://127.0.0.1:5174"},()=>new Date("2026-09-23T12:00:00.000Z"),sessions,undefined,undefined,{store,projection});
+  const token = app.jwt.sign({userId:record.userId,institutionId:record.institutionId,roleId:record.roleId,sessionId:"SESS_SYNTH_COMPROMISE",binding:"a".repeat(64),policyVersion:"SYNTHETIC_WEB_ACCESS_V1"});
+  const headers={cookie:`bloodledger_session=${token}`,origin:"http://127.0.0.1:5174","idempotency-key":"IDEM_COMPROMISE_TEST","x-bloodledger-contract-version":"V2"};
+  try {
+    const policy=await app.inject({method:"GET",url:"/api/v2/reservations/compromise-reasons",headers});
+    assert.equal(policy.statusCode,200); assert.equal(policy.json().policyVersion,"SYNTHETIC_COMPROMISE_REASONS_V1"); assert.equal(policy.json().effect,"QUARANTINE_PENDING_MANUAL_REVIEW"); assert.equal(policy.json().freeTextAllowed,false);
+    assert.equal(policy.json().reasons.length,4);
+    const body={correlationId:"CORR_0123456789ABCDEF0123456789ABCDEF",eventTime:"2026-09-23T12:00:00.000Z",expectedVersion:1};
+    const url=`/api/v2/reservations/${reservation.reservationId}/compromise`;
+    for (const reason of ["FREE_TEXT", "TEMPERATURE_EXCURSION_REPORTED extra", ""]) {
+      const rejected=await app.inject({method:"POST",url,headers,payload:{...body,reasonCode:reason}});
+      assert.equal(rejected.statusCode,400); assert.equal(rejected.json().error.code,"COMPROMISE_REASON_INVALID");
+    }
+    for (const item of policy.json().reasons as Array<{code:string}>) {
+      const accepted=await app.inject({method:"POST",url,headers:{...headers,"idempotency-key":`IDEM_COMPROMISE_${item.code}`},payload:{...body,reasonCode:item.code}});
+      assert.equal(accepted.statusCode,202);
+      const command=await store.get(accepted.json().commandId,record.institutionId,record.userId);
+      assert.equal(command?.payload.reasonCode,item.code);
+      assert.doesNotMatch(accepted.body,/reasonCode|payload/);
+    }
+  } finally { await app.close(); }
+});

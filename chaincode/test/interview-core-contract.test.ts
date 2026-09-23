@@ -188,3 +188,27 @@ test("accepts a recipient transfer request without putting Donation No. on Fabri
   assert.equal("donationNumber" in result, false);
   assert.equal(JSON.parse((context.state.get("transfer:v2:asset:TRF_CORE_051") ?? Buffer.alloc(0)).toString("utf8")).status, "PENDING");
 });
+
+
+test("compromise reason policy quarantines each supported incident and rejects invalid or stale transitions", async () => {
+  const codes = ["TEMPERATURE_EXCURSION_REPORTED", "CONTAINER_DAMAGE_OR_LEAK_REPORTED", "VISIBLE_COMPONENT_ABNORMALITY_REPORTED", "HANDLING_OR_CUSTODY_DEVIATION_REPORTED"];
+  for (const [index, code] of codes.entries()) {
+    const context = new MockContext(); const contract = new InterviewCoreContract();
+    const componentId = `COMP_COMPROMISE_${index}`; const reservationId = `RES_COMPROMISE_${index}`;
+    await register(contract,context,component(componentId,`DON_COMPROMISE_${index}`,digest(String(index)),"2026-10-01T00:00:00.000Z"));
+    await contract.ReserveComponents(asContext(context),JSON.stringify(reservation(reservationId,[componentId],[1])));
+    await contract.PrepareReservation(asContext(context),JSON.stringify(action(reservationId,1,"USR_MEDIATRIX_TECH",{preparedEvidenceDigest:digest("e"),preparedEvidenceId:`EVD_COMPROMISE_${index}`,preparedAt:"2026-09-02T00:05:00.000Z"})));
+    await contract.DispatchReservation(asContext(context),JSON.stringify(action(reservationId,2)));
+    const input=action(reservationId,3,"USR_MEDIATRIX_TECH",{reasonCode:code,idempotencyKey:`IDEM_COMPROMISE_${index}`});
+    await assert.rejects(contract.MarkReservationCompromised(asContext(context),JSON.stringify({...input,reasonCode:"FREE_TEXT"})),/COMPROMISE_REASON_INVALID/);
+    await assert.rejects(contract.MarkReservationCompromised(asContext(context),JSON.stringify({...input,actorUserId:"USR_DIVINE_LOVE"})),/RESERVATION_NOT_AUTHORIZED/);
+    await assert.rejects(contract.MarkReservationCompromised(asContext(context),JSON.stringify({...input,expectedVersion:2})),/RESERVATION_VERSION_CONFLICT/);
+    assert.equal((await read(context,`component:asset:${componentId}`)).status,"DISPATCHED");
+    const first=await contract.MarkReservationCompromised(asContext(context),JSON.stringify(input));
+    assert.equal(await contract.MarkReservationCompromised(asContext(context),JSON.stringify(input)),first);
+    const held=await read(context,`reservation:asset:${reservationId}`);
+    assert.equal(held.status,"COMPROMISED"); assert.equal(held.compromiseReasonCode,code); assert.equal(held.compromisePolicyVersion,"SYNTHETIC_COMPROMISE_REASONS_V1");
+    assert.equal((await read(context,`component:asset:${componentId}`)).status,"COMPROMISED");
+    await assert.rejects(contract.MarkReservationCompromised(asContext(context),JSON.stringify({...input,idempotencyKey:`IDEM_COMPROMISE_REPEAT_${index}`,expectedVersion:4})),/RESERVATION_TRANSITION_INVALID/);
+  }
+});

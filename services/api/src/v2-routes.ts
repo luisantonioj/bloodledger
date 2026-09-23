@@ -9,6 +9,7 @@ import type { V2ProjectionReader } from "./database-v2.js";
 import { validateInboundOcrInput } from "./inbound-ocr-policy.js";
 import { isReconciliationReasonCode, RECONCILIATION_POLICY_VERSION, RECONCILIATION_REASONS } from "./reconciliation-policy.js";
 import { DOH_CENSUS_DISPLAY_ORDER, DOH_CENSUS_DISPLAY_POLICY_VERSION } from "./report-policy.js";
+import { COMPROMISE_POLICY_VERSION, COMPROMISE_REASONS, isCompromiseReasonCode } from "./compromise-policy.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
 const CORRELATION_PATTERN = /^CORR_[0-9A-F]{32}$/;
@@ -140,6 +141,11 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!component) throw new ApiFailure(404, "V2_COMPONENT_NOT_FOUND", "The component was not found in the authorized scope.");
     if (version === "V2" && component.componentType === "CRYOPRECIPITATE") throw new ApiFailure(404, "V2_COMPONENT_NOT_FOUND", "The component was not found in the authorized scope.");
     return component;
+  });
+
+  app.get("/api/v2/reservations/compromise-reasons", async (request) => {
+    const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-03"]);
+    return { policyVersion: COMPROMISE_POLICY_VERSION, reasons: COMPROMISE_REASONS, effect: "QUARANTINE_PENDING_MANUAL_REVIEW", freeTextAllowed: false, classification: "SIMULATION_ONLY" as const };
   });
 
   app.get<{ Querystring: { limit?: string; cursor?: string } }>("/api/v2/reservations", async (request) => {
@@ -313,6 +319,7 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!scopedReservation) throw new ApiFailure(404, "V2_RESERVATION_NOT_FOUND", "The reservation was not found in the authorized scope.");
     const version = contractVersion(request);
     requireReservationContract(version, [scopedReservation]);
+    if (action === "compromise" && !isCompromiseReasonCode(body.reasonCode)) throw new ApiFailure(400, "COMPROMISE_REASON_INVALID", "The incident reason is not supported by the active synthetic policy.");
     const operationByAction: Record<string, string> = { prepare: "PREPARE_RESERVATION", dispatch: "DISPATCH_RESERVATION", transit: "START_RESERVATION_TRANSIT", receive: "RECEIVE_RESERVATION", cancel: "CANCEL_RESERVATION", compromise: "COMPROMISE_RESERVATION", "local-release-complete": "COMPLETE_LOCAL_RELEASE" };
     const payload: Record<string, unknown> = { reservationId: request.params.reservationId, expectedVersion: Number(body.expectedVersion), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: version === "V2.1" ? "INTERVIEW_DERIVED_CORE_V2_1" : "INTERVIEW_DERIVED_CORE_V2" };
     for (const key of ["preparedEvidenceDigest", "preparedEvidenceId", "preparedAt", "reasonCode"] as const) if (body[key] !== undefined) payload[key] = body[key];

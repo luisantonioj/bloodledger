@@ -79,6 +79,8 @@ interface ReservationAsset {
   preparedEvidenceDigest?: string;
   preparedEvidenceId?: string;
   preparedAt?: string;
+  compromiseReasonCode?: string;
+  compromisePolicyVersion?: string;
   version: number;
   actorUserId: string;
   policyVersion: PolicyVersion;
@@ -135,6 +137,8 @@ const policy = policyJson as {
   nearExpiryEnabled: false;
   reconciliationPolicyVersion: "SYNTHETIC_RECONCILIATION_REASONS_V1";
   reconciliationReasonCodes: string[];
+  compromisePolicyVersion: "SYNTHETIC_COMPROMISE_REASONS_V1";
+  compromiseReasonCodes: string[];
   actors: Record<string, ActorPolicy>;
 };
 const policyV21 = policyV21Json as typeof policy & { policyVersion: typeof POLICY_VERSION_V21 };
@@ -502,18 +506,18 @@ export class InterviewCoreContract extends Contract {
     const input = this.parseReservationAction(inputJson, ["reasonCode"]);
     const reservation = await this.readReservation(ctx, input.reservationId);
     this.assertReservationActor(input.actorUserId, reservation, ["ROLE_01", "ROLE_02", "ROLE_03"]);
-    if (reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
-    this.assertReason(input.reasonCode);
-    if (!["DISPATCHED", "IN_TRANSIT", "RECEIVED"].includes(reservation.status)) this.fail("RESERVATION_TRANSITION_INVALID");
+    this.assertCompromiseReason(input.reasonCode, reservation.policyVersion);
     const prior = await this.readIdempotent(ctx, input.idempotencyKey, "COMPROMISE_RESERVATION", this.digest(input));
     if (prior !== undefined) return prior;
+    if (reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
+    if (!["DISPATCHED", "IN_TRANSIT", "RECEIVED"].includes(reservation.status)) this.fail("RESERVATION_TRANSITION_INVALID");
     for (const id of reservation.selectedComponentIds) {
       const component = await this.readComponent(ctx, id);
       if (component.reservationId !== reservation.reservationId) this.fail("COMPONENT_STATE_CONFLICT");
       const updated = { ...component, status: "COMPROMISED" as const, version: component.version + 1, actorUserId: input.actorUserId, updatedAt: input.eventTime, correlationId: input.correlationId, lastTransactionId: ctx.stub.getTxID() };
       await ctx.stub.putState(this.componentKey(id), Buffer.from(this.serialize(updated), "utf8"));
     }
-    const updatedReservation = { ...reservation, status: "COMPROMISED" as const, version: reservation.version + 1, actorUserId: input.actorUserId, updatedAt: input.eventTime, correlationId: input.correlationId, lastTransactionId: ctx.stub.getTxID() };
+    const updatedReservation = { ...reservation, status: "COMPROMISED" as const, compromiseReasonCode: input.reasonCode, compromisePolicyVersion: this.policyFor(input).compromisePolicyVersion, version: reservation.version + 1, actorUserId: input.actorUserId, updatedAt: input.eventTime, correlationId: input.correlationId, lastTransactionId: ctx.stub.getTxID() };
     return this.applyAction(ctx, input, "COMPROMISE_RESERVATION", updatedReservation, "ReservationCompromised");
   }
 
@@ -637,6 +641,10 @@ export class InterviewCoreContract extends Contract {
     this.parseUtc(input.eventTime); if (input.policyVersion !== POLICY_VERSION && input.policyVersion !== POLICY_VERSION_V21) this.fail("CORE_POLICY_MISMATCH");
   }
   private assertReason(value: string): void { this.assertId(value, REASON_PATTERN, "CORE_REASON_INVALID"); }
+  private assertCompromiseReason(value: string, policyVersion: PolicyVersion): void {
+    const activePolicy = policyVersion === POLICY_VERSION_V21 ? policyV21 : policy;
+    if (!activePolicy.compromiseReasonCodes.includes(value)) this.fail("COMPROMISE_REASON_INVALID");
+  }
   private assertReconciliationReason(value: string, policyVersion: PolicyVersion): void {
     const activePolicy = policyVersion === POLICY_VERSION_V21 ? policyV21 : policy;
     if (!activePolicy.reconciliationReasonCodes.includes(value)) this.fail("RECONCILIATION_REASON_INVALID");
