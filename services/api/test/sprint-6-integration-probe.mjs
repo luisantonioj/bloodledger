@@ -110,6 +110,29 @@ try {
   assert.equal(destinationRead?.destinationInstitutionId, "INST_DIVINE_LOVE");
   assert.equal(await projections.getReservation("RES_S6_INTEGRATION_001", "INST_OTHER", "ROLE-03"), null);
 
+  const prepare = {
+    ...reservation,
+    commandId: "CMD_S6_INTEGRATION_PREPARE",
+    idempotencyKey: "IDEM_S6_INTEGRATION_PREPARE",
+    resourceId: "RES_S6_INTEGRATION_001",
+    operation: "PREPARE_RESERVATION",
+    payload: { reservationId: "RES_S6_INTEGRATION_001", expectedVersion: 1, preparedAt: acceptedAt, preparedEvidenceDigest: "c".repeat(64), preparedEvidenceId: "EVD_S6_COMPROMISE_PREP" },
+  };
+  await commit(prepare, "TX_S6_INTEGRATION_PREPARE");
+  const dispatch = { ...prepare, commandId: "CMD_S6_INTEGRATION_DISPATCH", idempotencyKey: "IDEM_S6_INTEGRATION_DISPATCH", operation: "DISPATCH_RESERVATION", payload: { reservationId: "RES_S6_INTEGRATION_001", expectedVersion: 2 } };
+  await commit(dispatch, "TX_S6_INTEGRATION_DISPATCH");
+  const compromise = { ...prepare, commandId: "CMD_S6_INTEGRATION_COMPROMISE", idempotencyKey: "IDEM_S6_INTEGRATION_COMPROMISE", operation: "COMPROMISE_RESERVATION", payload: { reservationId: "RES_S6_INTEGRATION_001", expectedVersion: 3, reasonCode: "TEMPERATURE_EXCURSION_REPORTED" } };
+  const compromised = await commit(compromise, "TX_S6_INTEGRATION_COMPROMISE");
+  assert.equal(compromised?.status, "COMMITTED");
+  const heldComponent = await projections.getComponent("COMP_S6_INTEGRATION_001", "INST_MEDIATRIX", "ROLE-02");
+  assert.equal(heldComponent?.inventoryStatus, "COMPROMISED");
+  assert.equal((await projections.getReservation("RES_S6_INTEGRATION_001", "INST_MEDIATRIX", "ROLE-02"))?.status, "COMPROMISED");
+  const beforeReplay = await pool.query("SELECT ledger_version FROM app.v2_components WHERE component_id='COMP_S6_INTEGRATION_001'");
+  assert.equal(beforeReplay.rows[0]?.ledger_version, 4);
+  await projector.project(compromised, { transactionId: "TX_S6_INTEGRATION_COMPROMISE", result: { accepted: true } });
+  const afterReplay = await pool.query("SELECT ledger_version FROM app.v2_components WHERE component_id='COMP_S6_INTEGRATION_001'");
+  assert.equal(afterReplay.rows[0]?.ledger_version, 4);
+
   const lookup = await commands.list("INST_MEDIATRIX", "USR_MEDIATRIX_ADMIN", 50, undefined, "IDEM_S6_RSV_DB_1");
   assert.deepEqual(lookup.commands.map((command) => command.commandId), ["CMD_S6_INTEGRATION_RESERVE"]);
   assert.equal(await commands.get("CMD_S6_INTEGRATION_RESERVE", "INST_MEDIATRIX", "USR_DIVINE_LOVE"), null);
@@ -136,7 +159,7 @@ try {
       ORDER BY command_id`,
   );
   assert.equal(privacy.rows.some((row) => /donationNo|ciphertext|ocr/i.test(`${row.payload}${row.result}`)), false);
-  console.log("Sprint 6 PostgreSQL reservation, recovery, census-discovery, V2.1, scope, replay, and privacy probes passed");
+  console.log("Sprint 6 PostgreSQL reservation, compromise quarantine, recovery, census-discovery, V2.1, scope, replay, and privacy probes passed");
 } finally {
   await pool.end();
 }

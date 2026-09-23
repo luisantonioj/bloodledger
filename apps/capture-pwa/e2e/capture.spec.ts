@@ -214,7 +214,7 @@ test("old accepted command starts retention when terminal status is first observ
   await expect(page.getByText("INCAP_SYNTH_OLD_TERMINAL", { exact: true })).toHaveCount(0);
   const tombstone = await page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open("bloodledger-inbound-command-status-v2", 2); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
-    const key = "USR_SYNTH_CAPTURE_V2:CMD_SYNTH_OLD_TERMINAL";
+    const key = "INST_MEDIATRIX:USR_SYNTH_CAPTURE_V2:CMD_SYNTH_OLD_TERMINAL";
     const result = await new Promise<unknown>((resolve, reject) => { const request = db.transaction("expired-command-ids").objectStore("expired-command-ids").get(key); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
     db.close(); return result;
   });

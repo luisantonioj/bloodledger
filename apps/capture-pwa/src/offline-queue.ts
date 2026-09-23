@@ -33,12 +33,12 @@ function actorRequired(actorId: string): void { if (activeActorId !== actorId) t
 
 export function saveStoredCommand(receipt: StoredCommandReceipt): Promise<void> {
   return serial(async () => {
-    actorRequired(receipt.actorUserId);
+    actorRequired(receipt.actorScopeKey);
     const db = await database();
     try {
-      actorRequired(receipt.actorUserId);
+      actorRequired(receipt.actorScopeKey);
       const transaction = db.transaction([STORE_NAME, EXPIRED_STORE], "readwrite");
-      const expired = await requestResult(transaction.objectStore(EXPIRED_STORE).get(`${receipt.actorUserId}:${receipt.commandId}`));
+      const expired = await requestResult(transaction.objectStore(EXPIRED_STORE).get(`${receipt.actorScopeKey}:${receipt.commandId}`));
       if (expired) { await completed(transaction); return; }
       transaction.objectStore(STORE_NAME).put({ ...receipt, terminalObservedAt: TERMINAL_STATES.has(receipt.status) ? receipt.terminalObservedAt ?? new Date().toISOString() : undefined });
       await completed(transaction);
@@ -56,7 +56,7 @@ export function listStoredCommands(actorId: string): Promise<StoredCommandReceip
       const receipts = await requestResult(transaction.objectStore(STORE_NAME).getAll()) as StoredCommandReceipt[];
       const visible: StoredCommandReceipt[] = [];
       for (const receipt of receipts) {
-        if (receipt.actorUserId !== actorId) { transaction.objectStore(STORE_NAME).delete(receipt.commandId); continue; }
+        if (receipt.actorScopeKey !== actorId) { transaction.objectStore(STORE_NAME).delete(receipt.commandId); continue; }
         const observed = Date.parse(receipt.terminalObservedAt ?? "");
         if (TERMINAL_STATES.has(receipt.status) && Number.isFinite(observed) && Date.now() - observed >= TERMINAL_RETENTION_MS) {
           transaction.objectStore(STORE_NAME).delete(receipt.commandId);

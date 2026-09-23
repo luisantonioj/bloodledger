@@ -25,9 +25,9 @@ function newEvidenceId(prefix: "IDEM_INBOUND_" | "CORR_"): string {
   return prefix + crypto.randomUUID().replaceAll("-", "").toUpperCase();
 }
 
-function commandReceipt(command: V2Command, recognition: RecognitionResult, idempotencyKey: string, actorUserId: string): StoredCommandReceipt {
+function commandReceipt(command: V2Command, recognition: RecognitionResult, idempotencyKey: string, actorScopeKey: string): StoredCommandReceipt {
   return {
-    actorUserId,
+    actorScopeKey,
     idempotencyKey,
     commandId: command.commandId,
     resourceId: command.resourceId,
@@ -76,16 +76,17 @@ export function App() {
   };
   const activatePrincipal = (restored: CapturePrincipal) => {
     sessionEpoch.current += 1;
-    activeActor.current = restored.userId;
-    setReceiptActor(restored.userId);
+    activeActor.current = `${restored.institutionId}:${restored.userId}`;
+    setReceiptActor(activeActor.current);
     setEvents([]); setPrincipal(restored);
   };
-  const invalidateSession = () => {
+  const invalidateSession = (): Promise<void> => {
     sessionEpoch.current += 1;
     activeActor.current = undefined;
     setReceiptActor(undefined);
-    clearCapture(); setPrincipal(undefined); setEvents([]); setRecoveryReady(false);
-    void clearStoredCommands();
+    clearCapture(); setPrincipal(undefined); setEvents([]); setRecoveryReady(false); setBusy(false);
+    submissionInFlight.current = false;
+    return clearStoredCommands();
   };
 
   useEffect(() => {
@@ -117,7 +118,7 @@ export function App() {
     if (!principal) return;
     let closed = false;
     const epoch = sessionEpoch.current;
-    const actorId = principal.userId;
+    const actorId = `${principal.institutionId}:${principal.userId}`;
     const valid = () => !closed && sessionEpoch.current === epoch && activeActor.current === actorId;
     setRecoveryLoading(true);
     setRecoveryReady(false);
@@ -130,7 +131,7 @@ export function App() {
           if (!valid()) return;
           const prior = existing.find((item) => item.commandId === command.commandId);
           await saveStoredCommand({
-            ...(prior ?? {}), actorUserId: actorId, commandId: command.commandId, resourceId: command.resourceId,
+            ...(prior ?? {}), actorScopeKey: actorId, commandId: command.commandId, resourceId: command.resourceId,
             statusUrl: command.statusUrl, status: command.status, correlationId: command.correlationId,
             acceptedAt: command.acceptedAt, safeErrorCode: command.safeErrorCode,
             classification: "SIMULATION_ONLY", terminalObservedAt: TERMINAL_COMMAND_STATES.has(command.status) ? prior?.terminalObservedAt ?? new Date().toISOString() : undefined,
@@ -142,11 +143,11 @@ export function App() {
       } catch (error) {
         if (!valid()) return;
         setMessage(error instanceof ApiError && error.status === 401 ? "Session expired. Sign in again." : "Command recovery is unavailable. Check server status before another capture.");
-        if (error instanceof ApiError && error.status === 401) invalidateSession();
+        if (error instanceof ApiError && error.status === 401) void invalidateSession().catch(() => setMessage("Local receipt cleanup failed. Clear browser storage before reuse."));
       } finally { if (valid()) setRecoveryLoading(false); }
     })();
     return () => { closed = true; };
-  }, [principal?.userId, recoveryAttempt]);
+  }, [principal?.institutionId, principal?.userId, recoveryAttempt]);
 
   useEffect(() => {
     const markOnline = () => setIsOnline(true);
@@ -163,7 +164,7 @@ export function App() {
     if (!principal) return;
     let closed = false;
     const epoch = sessionEpoch.current;
-    const actorId = principal.userId;
+    const actorId = `${principal.institutionId}:${principal.userId}`;
     const valid = () => !closed && sessionEpoch.current === epoch && activeActor.current === actorId;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let failures = 0;
@@ -194,7 +195,7 @@ export function App() {
         if (!valid()) return;
         failures += 1;
         if (error instanceof ApiError && error.status === 401) {
-          invalidateSession();
+          void invalidateSession().catch(() => setMessage("Local receipt cleanup failed. Clear browser storage before reuse."));
           setMessage("Session expired. Sign in again to resume command-status checks.");
         } else {
           setMessage("Command status is temporarily unavailable. No intake command was resubmitted.");
@@ -229,11 +230,13 @@ export function App() {
   }
 
   async function signOut() {
-    invalidateSession();
+    const cleared = invalidateSession();
     setPassword("");
     await endSession().catch(() => undefined);
-    await clearStoredCommands();
-    setMessage("Signed out. Volatile OCR values were cleared.");
+    try {
+      await cleared;
+      setMessage("Signed out. Volatile OCR values were cleared.");
+    } catch { setMessage("Local receipt cleanup failed. Clear browser storage before reuse."); }
   }
 
   async function runRecognition() {
@@ -257,7 +260,7 @@ export function App() {
     submissionInFlight.current = true;
     const generation = captureEpoch.current;
     const epoch = sessionEpoch.current;
-    const actorId = principal.userId;
+    const actorId = `${principal.institutionId}:${principal.userId}`;
     const valid = () => generation === captureEpoch.current && epoch === sessionEpoch.current && activeActor.current === actorId;
     const confirmation = attempt ?? {
       idempotencyKey: newEvidenceId("IDEM_INBOUND_"),
@@ -327,8 +330,7 @@ export function App() {
       const code = error instanceof ApiError ? error.code : "API_UNAVAILABLE";
       setMessage(code + ". The confirmed value remains volatile; retry uses the same idempotency key.");
     } finally {
-      if (valid()) setBusy(false);
-      submissionInFlight.current = false;
+      if (valid()) { setBusy(false); submissionInFlight.current = false; }
     }
   }
 
