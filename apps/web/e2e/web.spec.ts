@@ -994,3 +994,23 @@ test("visual parity controls remain local previews without connected claims", as
   await page.getByRole("button", { name: "Compact" }).click();
   await expect(page.locator(".shell")).toHaveClass(/preview-compact/);
 });
+
+test("Analytics clears old requested-unit values when a later date cannot be loaded", async ({ page }) => {
+  await authenticatedApi(page, "ROLE-01", async (route, path) => {
+    if (path !== "/api/v1/demand-forecasts") return false;
+    const date = new URL(route.request().url()).searchParams.get("businessDate");
+    if (date === "2026-09-19") {
+      await fulfillJson(route, { error: { code: "PROJECTION_UNAVAILABLE", message: "Forecast unavailable for this date." } }, 503);
+    } else {
+      await fulfillJson(route, { ...forecastResponse, businessDate: date, horizonDate: date });
+    }
+    return true;
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Analytics", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "One-day recorded-request forecast" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "2.00 units" })).toBeVisible();
+  await page.getByLabel("Business date").fill("2026-09-19");
+  await expect(page.getByText("Forecast unavailable for this date.")).toBeVisible();
+  await expect(page.getByRole("cell", { name: "2.00 units" })).toHaveCount(0);
+});
