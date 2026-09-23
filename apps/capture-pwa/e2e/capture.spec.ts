@@ -67,6 +67,7 @@ test("PA-S6-02 extracts a synthetic inbound label on device without external req
   expect(externalRequests).toEqual([]);
   await app.getByRole("button", { name: "Cancel capture" }).click();
   await expect(app.getByText(labels[0].donationNumber)).toHaveCount(0);
+  await expect(app.getByLabel("Synthetic inbound label image")).toHaveValue("");
   await app.close();
   await generator.close();
 });
@@ -192,4 +193,57 @@ test("reload recovers an accepted inbound command without resubmission and logou
     db.close(); return values;
   });
   expect(receipts).toEqual([]);
+});
+
+test("old accepted command starts retention when terminal status is first observed", async ({ page }) => {
+  await restoreCaptureSession(page);
+  const recovered = { commandId: "CMD_SYNTH_OLD_TERMINAL", resourceType: "INBOUND_CAPTURE", resourceId: "INCAP_SYNTH_OLD_TERMINAL", status: "COMMITTED", statusUrl: "/api/v2/commands/CMD_SYNTH_OLD_TERMINAL", acceptedAt: "2025-01-01T00:00:00.000Z", correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF", safeErrorCode: null, classification: "SIMULATION_ONLY", replayed: false };
+  await page.route("**/api/v2/commands", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ scope: "ACTOR_INSTITUTION", commands: [recovered], nextCursor: null, classification: "SIMULATION_ONLY" }) }));
+  await page.goto("/capture/");
+  await expect(page.getByText("INCAP_SYNTH_OLD_TERMINAL", { exact: true })).toBeVisible();
+  await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open("bloodledger-inbound-command-status-v2", 2); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const transaction = db.transaction("command-receipts", "readwrite");
+    const store = transaction.objectStore("command-receipts");
+    const receipt = await new Promise<Record<string, unknown>>((resolve, reject) => { const request = store.get("CMD_SYNTH_OLD_TERMINAL"); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    store.put({ ...receipt, terminalObservedAt: "2025-01-02T00:00:00.000Z" });
+    await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); });
+    db.close();
+  });
+  await page.reload();
+  await expect(page.getByText("INCAP_SYNTH_OLD_TERMINAL", { exact: true })).toHaveCount(0);
+  const tombstone = await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open("bloodledger-inbound-command-status-v2", 2); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const key = "USR_SYNTH_CAPTURE_V2:CMD_SYNTH_OLD_TERMINAL";
+    const result = await new Promise<unknown>((resolve, reject) => { const request = db.transaction("expired-command-ids").objectStore("expired-command-ids").get(key); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    db.close(); return result;
+  });
+  expect(tombstone).toBeTruthy();
+});
+
+test("late intake response after logout cannot restore a receipt", async ({ page, context }) => {
+  await restoreCaptureSession(page);
+  let release: (() => void) | undefined;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("**/api/v2/inbound-captures", async (route) => {
+    await held;
+    await route.fulfill({ status: 202, contentType: "application/json", body: JSON.stringify({ commandId: "CMD_SYNTH_LATE", resourceType: "INBOUND_CAPTURE", resourceId: "INCAP_SYNTH_LATE", status: "QUEUED", statusUrl: "/api/v2/commands/CMD_SYNTH_LATE", acceptedAt: new Date().toISOString(), correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF", safeErrorCode: null, classification: "SIMULATION_ONLY", replayed: false }) });
+  });
+  await page.goto("/capture/");
+  const generator = await context.newPage();
+  await recognize(page, await labelImage(generator, labels[0]), "late-v2.png");
+  await generator.close();
+  const requested = page.waitForRequest("**/api/v2/inbound-captures");
+  await page.getByRole("button", { name: "I confirm every field" }).click();
+  await requested;
+  await page.getByRole("button", { name: /Sign out Synthetic Capture Operator/ }).click();
+  release?.();
+  await expect(page.getByText("INCAP_SYNTH_LATE", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(labels[0].donationNumber)).toHaveCount(0);
+  const persisted = await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open("bloodledger-inbound-command-status-v2", 2); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const result = await new Promise<unknown[]>((resolve, reject) => { const request = db.transaction("command-receipts").objectStore("command-receipts").getAll(); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    db.close(); return result;
+  });
+  expect(persisted).toEqual([]);
 });
