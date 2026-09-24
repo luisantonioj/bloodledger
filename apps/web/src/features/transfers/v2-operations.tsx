@@ -2,13 +2,16 @@ import { useRef, useState } from "react";
 import type { Principal } from "../../auth/permissions";
 import { humanizeCode } from "../../components/ui/display";
 import { CommandStatusCard } from "../commands/command-status-card";
+import { CommandRecoveryWorkspace } from "../commands/command-recovery";
 import { useCommandStatus } from "../commands/use-command-status";
+import { ReconciliationWorkspace, ReservationWorkspace } from "./v2-followups";
 import { newMutationKeys, type MutationKeys } from "../../services/api/mutation-keys";
 import {
   V2_BLOOD_TYPES,
   V2_COMPONENT_TYPES,
   submitV2LocalRelease,
   submitV2Transfer,
+  recoverAcceptedCommand,
   type V2BloodType,
   type V2ComponentType,
 } from "../../services/api/v2";
@@ -63,6 +66,7 @@ function V2TransferRequest({ principal, onRefresh }: { principal: Principal; onR
       status.accept(await submitV2Transfer(current.payload, current.keys));
       attempt.current = undefined;
     } catch (reason) {
+      try { const recovered = await recoverAcceptedCommand(current.keys.idempotencyKey); if (recovered) { status.accept(recovered); attempt.current = undefined; return; } } catch { /* Keep the same in-memory attempt for explicit retry. */ }
       setError(reason instanceof Error ? reason.message : "The V2 transfer command was not accepted.");
     } finally {
       setBusy(false);
@@ -123,6 +127,7 @@ function V2LocalRelease({ onRefresh }: { onRefresh: () => void }) {
       status.accept(await submitV2LocalRelease(current.payload, current.keys));
       attempt.current = undefined;
     } catch (reason) {
+      try { const recovered = await recoverAcceptedCommand(current.keys.idempotencyKey); if (recovered) { status.accept(recovered); attempt.current = undefined; return; } } catch { /* Keep the same in-memory attempt for explicit retry. */ }
       setError(reason instanceof Error ? reason.message : "The local-release command was not accepted.");
     } finally {
       setBusy(false);
@@ -141,10 +146,6 @@ function V2LocalRelease({ onRefresh }: { onRefresh: () => void }) {
   </section>;
 }
 
-function BlockedWorkflow({ title, detail }: { title: string; detail: string }) {
-  return <section className="v2-blocked-workflow"><span aria-hidden="true">!</span><div><strong>{title}</strong><p>{detail}</p></div><b>NOT CONNECTED</b></section>;
-}
-
 export function V2Operations({ principal, onRefresh }: { principal: Principal; onRefresh: () => void }) {
   const recipient = principal.roleId === "ROLE-03";
   const sourceOperator = ["ROLE-01", "ROLE-02"].includes(principal.roleId);
@@ -153,7 +154,8 @@ export function V2Operations({ principal, onRefresh }: { principal: Principal; o
     <div className="v2-workflow-disclosure"><strong>Sprint 6 command workflows</strong><span>Acceptance is not ledger commitment. Every state remains visible until committed, failed, or conflicted.</span></div>
     {recipient && <V2TransferRequest principal={principal} onRefresh={onRefresh}/>}
     {sourceOperator && <V2LocalRelease onRefresh={onRefresh}/>}
-    <BlockedWorkflow title="Canonical reservation actions unavailable" detail="The backend exposes mutation actions but no permission-scoped reservation list/detail read for the frontend. Prepare, dispatch, transit, receive, cancel, compromise, and completion remain disabled rather than guessing an ID or version."/>
-    {sourceOperator && <BlockedWorkflow title="Reconciliation reason policy unavailable" detail="A command route exists, but the approved reason-code list is still an external decision. The frontend will not invent a reason code."/>}
+    <ReservationWorkspace principal={principal} onRefresh={onRefresh}/>
+    {sourceOperator && <ReconciliationWorkspace onRefresh={onRefresh}/>}
+    <CommandRecoveryWorkspace actorKey={`${principal.institutionId}:${principal.userId}`}/>
   </div>;
 }

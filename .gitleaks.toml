@@ -9,3 +9,10 @@ condition = "AND"
 paths = ['''(^|/)chaincode/test/interview-core-contract\.test\.ts$''']
 regexTarget = "secret"
 regexes = ['''^IDEM_RESOLVE_03[12]$''']
+
+[[allowlists]]
+description = "Reviewed synthetic projection-probe idempotency IDs; not authentication credentials"
+condition = "AND"
+paths = ['''(^|/)services/api/test/sprint-6-integration-probe\.mjs$''']
+regexTarget = "secret"
+regexes = ['''^IDEM_S6_INTEGRATION_(PREPARE|COMPROMISE)$''']

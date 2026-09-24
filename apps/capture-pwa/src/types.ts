@@ -82,7 +82,8 @@ export type InboundCaptureResult = V2Command | AlreadyRegisteredCapture;
 
 /** Privacy-safe status evidence. Exact Donation No. and OCR payloads are never stored here. */
 export interface StoredCommandReceipt {
-  idempotencyKey: string;
+  actorScopeKey: string;
+  idempotencyKey?: string;
   commandId: string;
   resourceId: string;
   statusUrl: string;
@@ -90,8 +91,9 @@ export interface StoredCommandReceipt {
   correlationId: string;
   acceptedAt: string;
   safeErrorCode: string | null;
-  bloodType: BloodType;
-  componentType: ComponentType;
-  issuerInstitutionId: string;
+  bloodType?: BloodType;
+  componentType?: ComponentType;
+  issuerInstitutionId?: string;
+  terminalObservedAt?: string;
   classification: "SIMULATION_ONLY";
 }

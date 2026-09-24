@@ -119,3 +119,96 @@ Node.js 24.18.1 because that was the available Linux runtime before the pinned
 
 Issues #9 and #13 and overall Sprint acceptance remain open until their
 remaining owner and human acceptance criteria are satisfied.
+
+## LAT follow-up validation — 2026-09-23
+
+PR #14 was reviewed at `91ac87d` in an isolated worktree and merged through
+the normal merge-commit method at `40b8c64`. LAT's technical review recorded
+API 97/97, chaincode 30/30, web 50/50, Capture 14/14, web browser 22 passed
+with seven retired V1 fixtures skipped, Capture browser 3/3, and all 21
+migrations plus the Sprint 6 disposable-PostgreSQL probes. This host's Chromium
+launched successfully; the earlier `libnspr4.so` block remains a true record
+of Jopia's separate host.
+
+The separate `codex/s6-frontend-followups` branch connects reservation,
+reconciliation, census, and actor-scoped command recovery. Web and Capture
+production builds passed; web unit 54/54, Capture unit 14/14, web browser
+23 passed with seven retired V1 fixtures skipped, and Capture browser 4/4
+passed. Repository foundation checks passed. The Sprint 6 static boundary
+script exits at its explicit branch-name gate on this frontend branch; its
+backend-branch evidence remains recorded above.
+An isolated live API smoke test used the built frontend bundles and a
+disposable PostgreSQL database with all 21 migrations and one synthetic
+ROLE-01 account. Cookie-authenticated forecast, reservation, reconciliation
+reason, census, and command-recovery GETs returned HTTP 200. The test server
+and database were removed. This confirms connectivity and authentication, not
+populated custody workflows or human UAT.
+This is LAT technical validation, not human UAT. Jopia's prior real-Fabric
+restart/submission-count result was not repeated because these follow-ups do
+not change chaincode or its backend submission path.
+
+Those September 23 discrepancies are resolved by the Jopia review below.
+BUNO's human method/lineage review and all formal
+participant/consent/instrument gates remain open.
+
+## Jopia review of draft PR #15 — 2026-09-23
+
+**Review baseline:** LAT head `847e43e`; isolated branch
+`s6-pr15-backend-review`, with LAT commits preserved. Jopia performed this
+technical validation and records it as self-validation. PR #15 remains draft.
+
+- `fix(api)` corrects the OpenAPI reconciliation discovery path while retaining
+  the hold POST. A focused contract test confirms both operations.
+- `BL-DEC-S6-2026-09-23-01` versions four synthetic compromise reason codes.
+  ROLE-01/02/03 may discover them. API validation rejects unknown or free-text
+  codes before enqueue; chaincode independently enforces them, authorization,
+  version, state, and deterministic replay. Committed reservation evidence
+  includes the code and policy version; components become `COMPROMISED`.
+- Web compromise actions require discovery, an eligible committed reservation,
+  a reason, and explicit quarantine confirmation. Policy failure disables the
+  action. Capture receipts are scoped to actor and institution; terminal
+  retention starts on observation and expired receipts cannot be recreated by
+  recovery. Cancellation, timeout, logout, and session loss invalidate late
+  asynchronous results and clear the native file input.
+
+**Executed on Node 24.17.0/npm 11.13.0:** repository foundation, API,
+chaincode, web, and Capture checks/builds passed. API 100/100, chaincode 31/31,
+web 55/55, and Capture 14/14 unit tests passed. The disposable PostgreSQL
+probe applied all 21 migrations and passed the Sprint 6 scenarios plus
+compromise quarantine and replay without a second component version change.
+The pinned `mcr.microsoft.com/playwright:v1.61.1-noble` container passed Capture
+7/7 browser cases and web 25 passed with seven retired V1 cases skipped. These
+are automated synthetic tests, not human UAT or physical Android evidence.
+
+The complete repository-history Gitleaks 8.30.1 scan reported seven inherited
+findings; the review commits and current tracked/candidate content had no
+findings in scoped scans. Two synthetic projection-probe idempotency IDs have
+a path- and value-scoped allowlist in `.gitleaks.toml`; they are not credentials.
+The Sprint 6 integrated script was not run because
+its explicit branch guard admits only its original backend branches; its
+applicable checks were run separately.
+
+**Live Fabric `BLOCKED`:** the project peer was stopped by a stale Docker
+socket mount. A project-scoped peer recreation preserved its volumes and
+restored container health, but peer logs show repeated TLS verification
+failure against the orderer authority. No new compromise transaction was
+submitted. The prior accepted real-Fabric recovery result applies to its
+older validation package only. Do not count this as live-chaincode acceptance.
+
+LAT visual acceptance, BUNO human method/lineage and wording review, formal
+participant UAT, institutional compromise policy, `RQ-07`, full report format,
+offline V2 capture, physical Android OCR, clinical/regulatory, and production
+gates remain open. Issues #9 and #13 remain open.
+
+## LAT combined frontend validation — 2026-09-24
+
+LAT integrated BUNO's authored Analytics review commit above Jopia's PR #15
+head, preserving both authors' commits. The one browser-test conflict retained
+the compromise and stale-forecast cases. Old browser expectations were updated
+for PRC Analytics access and date-matched forecasts.
+
+On Node 24.17.0: web build passed; web unit 56/56; web Playwright 26 passed
+with seven retired V1 cases skipped. Capture build and 14/14 unit tests passed;
+Capture Playwright passed 7/7. These are synthetic technical checks. LAT visual
+acceptance and participant UAT remain unrecorded. Live Fabric validation of the
+changed compromise transaction remains Jopia's separate TLS-blocked gate.
