@@ -212,3 +212,59 @@ with seven retired V1 cases skipped. Capture build and 14/14 unit tests passed;
 Capture Playwright passed 7/7. These are synthetic technical checks. LAT visual
 acceptance and participant UAT remain unrecorded. Live Fabric validation of the
 changed compromise transaction remains Jopia's separate TLS-blocked gate.
+
+## Jopia follow-up to LAT's 2026-09-24 Fabric request
+
+**Branch:** `codex/s6-fabric-compromise-validation`, based on PR #15 head
+`c61ce3e`; LAT and Buno commits remain ancestors. **Owner/validator:** Jopia
+(self-validation). **Classification:** `SIMULATION_ONLY`.
+
+The stale Docker socket mount stopped the project peer. Jopia recreated only
+`peer0-mediatrix` with `docker compose --project-name bloodledger up --detach
+--no-deps --force-recreate peer0-mediatrix`, preserving both Fabric data volumes,
+identities, and the orderer. The peer became healthy. Its block-delivery logs
+still report `x509: certificate signed by unknown authority` when connecting to
+the orderer. A signed `peer channel getinfo` fails the channel's Application
+Readers policy. The orderer admin API reports `bloodledger-dev` active at height
+49 with `consensusRelation: follower`. The orderer TLS server certificate
+verifies against the generated root; the generated channel block pins the same
+orderer server certificate and orderer/Mediatrix roots as the current generated
+files. This does **not** prove that the peer's persisted channel configuration
+trusts those files. The cause of that persisted-channel disagreement remains
+unresolved.
+
+Grouped commits add a read-only
+[`preflight-fabric-trust.sh`](../network/scripts/preflight-fabric-trust.sh)
+and a one-shot
+[`v2-fabric-compromise.sh`](../tests/api/v2-fabric-compromise.sh) validation
+harness. The preflight checks generated and mounted certificate fingerprints,
+channel-block roots, node health, signed peer channel access, and synchronized
+heights. The harness refuses an existing validation definition/database, pins
+the package ID and definition, and uses a disposable database and synthetic
+Gateway scenario for capture, FEFO reservation, preparation, dispatch,
+compromise, quarantine projection, restart recovery, and replay. On this host,
+`BLOODLEDGER_COMPROMISE_RUN_SUFFIX=S6SEP24A
+tests/api/v2-fabric-compromise.sh` stopped at the preflight **before** package
+installation, database creation, or a compromise submission. The focused live
+result is therefore **BLOCKED**, not a pass; there is no new package ID or
+transaction ID to report.
+
+Static syntax checks passed for both shell scripts and the Node probe. API
+typecheck and 100/100 unit tests passed; chaincode formatting, lint, typecheck,
+and 31/31 unit tests passed. Those results retain their separate automated
+scope and do not validate the changed package on live Fabric.
+
+**Recovery gate:** keep the current ledger and identities unchanged. First
+locate an approved backup of the identity/channel trust material matching the
+persisted ledger or establish an authorized channel-configuration update path.
+If neither exists, the project-scoped `reset-fabric` policy in
+[`LOCAL-DEVELOPMENT.md`](LOCAL-DEVELOPMENT.md#level-1--fabric-network-reset)
+is the documented recreation path, but it deletes the local Fabric ledger and
+generated identities. That destructive operation needs a separate explicit
+decision after preservation/backup and impact review. Do not use it to turn the
+current blocked result into a pass.
+
+LAT visual acceptance, Buno personal acceptance, participant UAT, institutional
+compromise policy, `RQ-07`, full report format, offline V2 capture, physical
+Android OCR, and clinical/regulatory/production gates remain open. Issues #9
+and #13 remain open; PR #15 remains draft.
