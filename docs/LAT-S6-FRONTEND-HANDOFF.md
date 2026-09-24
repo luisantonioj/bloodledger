@@ -237,6 +237,13 @@ record is a technical method and wording review; it does not itself establish
 personal human sign-off, clinical validity, operational accuracy, or frontend
 visual acceptance.
 
+LAT integrated BUNO's authored Analytics commit above Jopia's PR #15 review
+head on 2026-09-24. The overlap was limited to browser tests; both the
+compromise tests and BUNO's stale-result regression were retained. The web
+build and 56 unit tests passed on LAT's host, and the added browser regression
+passed there. The earlier note about missing Chromium describes BUNO's host
+only. LAT visual acceptance and participant UAT still require their own records.
+
 ## Frontend implementation evidence
 
 - Capture PWA migrated from V1 scan events to V2 inbound OCR and durable

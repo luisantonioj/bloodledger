@@ -199,3 +199,16 @@ LAT visual acceptance, BUNO human method/lineage and wording review, formal
 participant UAT, institutional compromise policy, `RQ-07`, full report format,
 offline V2 capture, physical Android OCR, clinical/regulatory, and production
 gates remain open. Issues #9 and #13 remain open.
+
+## LAT combined frontend validation — 2026-09-24
+
+LAT integrated BUNO's authored Analytics review commit above Jopia's PR #15
+head, preserving both authors' commits. The one browser-test conflict retained
+the compromise and stale-forecast cases. Old browser expectations were updated
+for PRC Analytics access and date-matched forecasts.
+
+On Node 24.17.0: web build passed; web unit 56/56; web Playwright 26 passed
+with seven retired V1 cases skipped. Capture build and 14/14 unit tests passed;
+Capture Playwright passed 7/7. These are synthetic technical checks. LAT visual
+acceptance and participant UAT remain unrecorded. Live Fabric validation of the
+changed compromise transaction remains Jopia's separate TLS-blocked gate.

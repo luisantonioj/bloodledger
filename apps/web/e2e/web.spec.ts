@@ -185,7 +185,7 @@ test("PRC, DOH, and administrators receive truthful non-operational compositions
     if (roleId === "ROLE-04") {
       await expect(page.getByText("Ledger-confirmed", { exact: true })).toBeVisible();
       await expect(page.getByText("Non-clinical workspace", { exact: true })).toHaveCount(0);
-      await expect(page.getByRole("link", { name: "Analytics", exact: true })).toHaveCount(institutionId === "INST_SYNTH_PRC" ? 1 : 0);
+      await expect(page.getByRole("link", { name: "Analytics", exact: true })).toHaveCount(0);
     } else {
       await expect(page.getByText("Non-clinical workspace", { exact: true })).toBeVisible();
       await expect(page.getByText("Ledger-confirmed", { exact: true })).toHaveCount(0);
@@ -743,6 +743,7 @@ test("latest visual baseline stays role-scoped while Sprint 6 integrations remai
 
   await page.getByRole("link", { name: "Analytics", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeVisible();
+  await page.getByLabel("Business date").fill("2026-09-18");
   await expect(page.getByText("Active ML V4 simulation", { exact: true })).toBeVisible();
   await expect(page.getByText("Uncertainty unavailable", { exact: false })).toBeVisible();
   await expect(page.getByText("Intentionally unavailable", { exact: true })).toBeVisible();
