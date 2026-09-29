@@ -7,7 +7,14 @@ reader, leakage checks, model comparison, held-out evaluation, sensitivity probe
 secondary confusion matrix and deterministic research preview. This is ready for
 technical review as an isolated research addition. It is NOT ready to replace the
 application's active V4 model or to merge as an application activation release.
-No push, PR, merge, human UAT or clinical acceptance is implied.
+## Publication status — updated 2026-09-29
+
+The research implementation was committed and pushed at `82d9feb` on
+`codex/ml-v5-exploration`. Draft PR [#19](https://github.com/luisantonioj/bloodledger/pull/19)
+is open against `main` for technical review. It has not been merged and does not
+activate V5 in the application. Follow-up documentation commits may advance the
+PR head; `82d9feb` identifies the original research implementation commit.
+No human UAT or clinical acceptance is implied.
 
 Branch: `codex/ml-v5-exploration`, created after fetching `origin/main` at `40b8c64`.
 V4 source and application paths are unchanged. The external workbook is unchanged.
@@ -132,7 +139,14 @@ preserved; no automatic refit occurs; and stale/unavailable behavior follows the
 agreed contract. These tests and application changes are not completed by this
 handoff update.
 
-## Next application activation handoff
+## Developer review and next application activation handoff
+
+Jopia and Lat: read this handoff and review draft PR #19. The ZIP package includes
+this same handoff, explanatory documents, selected model, evaluation outputs and
+standalone preview. The PR contains code and aggregate research evidence, not
+the institutional source workbook. Buno will clarify the proposed decisions and
+review integrated calculations and frontend wording after implementation.
+
 
 1. Jopia: approve an additive V5 runtime contract. Preserve institution scope,
    immutable dataset/code/config/model/input/payload lineage, original requested
