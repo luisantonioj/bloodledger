@@ -141,3 +141,26 @@ its actual bytes identify the dataset. Python calls without a path use a canonic
 in-memory evidence hash. Execution time alone does not change replay identity.
 Institution, all immutable lineage and the requested window do change identity.
 All outputs remain simulation-only; historical V1 and frozen study results remain.
+
+## V5 isolated research evaluation
+
+The optional `bloodledger-v5-research` entry point evaluates an external V5
+workbook without reading observed sheets or accessing the application database.
+It does not replace `forecast-v4-runtime`. See
+[`ML-V5-EXPLORATION.md`](../../docs/ML-V5-EXPLORATION.md) for the frozen protocol
+and [`ML-V5-HANDOFF.md`](../../docs/ML-V5-HANDOFF.md) for evidence and activation boundaries.
+
+With the pinned forecasting environment installed, run from the repository root:
+
+```bash
+PYTHONPATH=services/forecasting/src python -m bloodledger_forecasting.v5_experiment \
+  --workbook /absolute/external/BloodLedger_ML_Research_Dataset_v5.xlsx \
+  --protocol docs/ML-V5-EXPLORATION.md \
+  --output /absolute/external/v5-results
+```
+
+Outputs are `evaluation.json`, `selected_model.json`, `test_predictions.csv`,
+`preview_bundle.json`, and `preview.html`. Keep row-level outputs and workbook
+sources outside Git. The preview is synthetic historical demonstration data,
+not live stock. The confusion matrix evaluates a separately defined any-demand
+classification and must not be presented as numeric forecast accuracy.
