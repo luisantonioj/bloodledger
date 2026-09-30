@@ -1919,6 +1919,10 @@
           },
           "stale": {
             "type": "boolean"
+          },
+          "forecastId": {
+            "type": "string",
+            "pattern": "^(FC|FCST)_[0-9A-F]{32,40}$"
           }
         }
       },

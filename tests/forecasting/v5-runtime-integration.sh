@@ -51,6 +51,9 @@ node_run=(docker run --rm --network "container:$probe_container" --env-file "$pr
   --user "$(id -u):$(id -g)" -v "$repository_root:/workspace" -w /workspace \
   --entrypoint node node:24.17.0-bookworm-slim)
 "${node_run[@]}" database/scripts/migrate.mjs | tail -1
+docker exec --interactive "$probe_container" psql -U postgres -d bloodledger_dev < "$repository_root/tests/forecasting/v4-verification-fixture.sql" >/dev/null
+docker exec "$probe_container" psql -U postgres -d bloodledger_dev -c \
+  "UPDATE app.v2_components SET expires_at='2026-10-31T00:00:00.000Z' WHERE component_id LIKE 'COMP_VERIFY_%'" >/dev/null
 forecast_run=(docker run --rm --network "container:$probe_container" --env-file "$probe_root/env" \
   --env "BLOODLEDGER_V5_APPROVED_BINDING_SHA256=$(cat "$probe_root/binding-hash")" \
   --user "$(id -u):$(id -g)" -v "$repository_root/services/forecasting:/workspace/repository:ro" \
@@ -101,5 +104,7 @@ docker exec "$probe_container" psql -U postgres -d bloodledger_dev -Atc \
   "SELECT has_table_privilege('bloodledger_app','app.forecast_runs','UPDATE')::text || ':' || has_table_privilege('bloodledger_app','app.demand_forecasts','DELETE')::text" \
   | grep -Fx 'false:false'
 "${node_run[@]}" node_modules/typescript/bin/tsc -p services/api/tsconfig.json
+"${node_run[@]}" node_modules/typescript/bin/tsc -p services/coordination/tsconfig.json
 "${node_run[@]}" tests/forecasting/v5-api-probe.mjs
+"${node_run[@]}" tests/forecasting/v5-coordination-probe.mjs
 echo 'V5 isolated database persistence passed'

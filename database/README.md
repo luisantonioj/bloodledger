@@ -315,3 +315,10 @@ unavailable attempt with zero series. The existing composite forecast/run instit
 foreign key remains authoritative; source-surplus evidence gains the same run/institution
 binding. Runs and evidence are append-only. V4 remains the active default until the
 recorded review and browser gates in `docs/ML-RUNTIME-INTEGRATION-V5.md` pass.
+
+Forward migration `20260930010000000_create-v5-surplus-evidence.js` adds a separate,
+append-only V5 source-surplus evidence table. Its forecast and internal-ML census
+foreign keys include source institution scope. A database insert guard checks the
+saved V5 run/model/payload, forecast series and current snapshot digest/time.
+Runtime grants remain SELECT/INSERT only. This is simulation evidence under the
+existing disabled `SYNTHETIC_OPTIMIZATION_V2_1` policy; it cannot approve transfers.

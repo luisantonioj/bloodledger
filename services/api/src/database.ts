@@ -195,6 +195,7 @@ export class PostgresScanRepository implements ScanRepository {
     `, [institutionId, datasetVersion, manilaDate]);
     const first = result.rows[0];
     const mappedForecasts = result.rows.filter((row) => row.forecast_id !== null && row.forecast_id !== undefined).map((row) => ({
+      forecastId: String(row.forecast_id),
       runKey: String(row.run_key),
       runId: String(row.run_id),
       institutionId: String(row.institution_id),
@@ -221,7 +222,7 @@ export class PostgresScanRepository implements ScanRepository {
     const v5Complete = !v5 || (
       mappedForecasts.length === 20 &&
       new Set(mappedForecasts.map((item) => `${item.bloodType}:${item.component}`)).size === 20 &&
-      mappedForecasts.every((item) => item.institutionId === institutionId && item.datasetVersion === datasetVersion &&
+      mappedForecasts.every((item) => /^FC_[0-9A-F]{40}$/.test(item.forecastId) && item.institutionId === institutionId && item.datasetVersion === datasetVersion &&
         item.forecastStatus === "AVAILABLE" && item.uncertaintyStatus === "UNCERTAINTY_UNAVAILABLE" &&
         item.lowerForecast === null && item.upperForecast === null && Number.isFinite(item.pointForecast) && item.pointForecast >= 0) &&
       String(first.model_version) === "bloodledger-v5-series-mean-1.0.0" &&
