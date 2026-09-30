@@ -296,3 +296,16 @@ accountable review is closed by these checks.
 ## ML V5 backend follow-up — 2026-09-30
 
 The user authorized Jopia-owned V5 backend implementation from PR #19. The [candidate integration contract](ML-RUNTIME-INTEGRATION-V5.md) and [implementation plan](ML-V5-JOPIA-IMPLEMENTATION-PLAN.md) track this work. V4 remains active until Buno calculation review, Lat frontend/browser validation, synthetic institution-binding decision and explicit activation. This does not close UAT or RQ-07.
+
+
+## PR #21 Jopia review follow-up — 2026-10-01
+
+The user authorized implementation of review findings plus the read-only internal
+ML census API and independent Lat frontend consumer. [The integration contract](ML-RUNTIME-INTEGRATION-V5.md#pr-21-follow-up--independent-browser-inventory-evidence)
+was updated before dependent evidence records. [Jopia self-validation](ML-V5-PR21-JOPIA-VALIDATION.md)
+records the reviewed head, grouped commits, API/web/coordination checks, real
+isolated producer/database/cookie/browser flow, security dispositions and
+remaining gates. It does not close BL-TST-02, RQ-07, RQ-14, physical OCR, full
+NFR-06 or human UAT. Lat retains resulting frontend review; Buno retains research
+and UAT coordination. V4 remains default, with no concrete binding, activation,
+DOH capture/export policy activation, autonomous recommendation or deployment.
