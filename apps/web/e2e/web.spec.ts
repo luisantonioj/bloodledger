@@ -15,7 +15,7 @@ const permissions = {
 const navigation: Record<RoleId, string[]> = {
   "ROLE-01": ["Dashboard", "Inventory", "Transfers", "Alerts", "Analytics", "Profile"],
   "ROLE-02": ["Dashboard", "Inventory", "Transfers", "Alerts", "Audit", "Analytics", "Profile"],
-  "ROLE-03": ["Dashboard", "Transfers", "Alerts", "Profile"],
+  "ROLE-03": ["Dashboard", "Transfers", "Alerts", "Analytics", "Profile"],
   "ROLE-04": ["Dashboard", "Inventory", "Transfers", "Alerts", "Network view", "Audit", "Reports", "Profile"],
   "ROLE-05": ["Dashboard", "Accounts", "Profile"],
   "ROLE-06": ["Dashboard", "Accounts", "Profile"],
@@ -187,7 +187,7 @@ test("PRC, DOH, and administrators receive truthful non-operational compositions
     if (roleId === "ROLE-04") {
       await expect(page.getByText("Ledger-confirmed", { exact: true })).toBeVisible();
       await expect(page.getByText("Non-clinical workspace", { exact: true })).toHaveCount(0);
-      await expect(page.getByRole("link", { name: "Analytics", exact: true })).toHaveCount(institutionId === "INST_SYNTH_PRC" ? 1 : 0);
+      await expect(page.getByRole("link", { name: "Analytics", exact: true })).toHaveCount(0);
     } else {
       await expect(page.getByText("Non-clinical workspace", { exact: true })).toBeVisible();
       await expect(page.getByText("Ledger-confirmed", { exact: true })).toHaveCount(0);
@@ -971,7 +971,7 @@ test("visual parity controls remain local previews without connected claims", as
 function v5Forecast(status: "CURRENT" | "STALE" | "UNAVAILABLE" = "CURRENT", unavailableReason: string | null = null) {
   const datasetVersion = "SYNTHETIC_FORECAST_V5_RUNTIME_V1";
   const modelVersion = "bloodledger-v5-series-mean-1.0.0";
-  return { ...forecastResponse, runId: "FRUN_SYNTH_BROWSER_01", datasetVersion, modelVersion, status, forecastStatus: status === "CURRENT" ? "AVAILABLE" : status, unavailableReason, trainingCutoffDate: "2025-06-30", lineage: { trainingCutoffDate: "2025-06-30", modelSha256: "a".repeat(64) }, forecasts: status === "UNAVAILABLE" ? [] : ["A_POSITIVE", "B_POSITIVE", "O_POSITIVE", "AB_POSITIVE"].flatMap(bloodType => ["WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_PLASMA", "PLATELETS", "CRYOPRECIPITATE"].map((component, index) => ({ ...forecastResponse.forecasts[0], bloodType, component, pointForecast: index + 0.25, datasetVersion, modelVersion, forecastId: "FC_" + (["A_POSITIVE", "B_POSITIVE", "O_POSITIVE", "AB_POSITIVE"].indexOf(bloodType) * 5 + index).toString(16).toUpperCase().padStart(40, "0"), stale: status === "STALE" }))) };
+  return { ...forecastResponse, runId: "FRUN_SYNTH_BROWSER_01", datasetVersion, modelVersion, status, forecastStatus: status === "CURRENT" ? "AVAILABLE" : status, unavailableReason, trainingCutoffDate: "2025-06-30", lineage: { trainingCutoffDate: "2025-06-30", modelSha256: "a".repeat(64) }, forecasts: status === "UNAVAILABLE" ? [] : ["A_POSITIVE", "B_POSITIVE", "O_POSITIVE", "AB_POSITIVE"].flatMap(bloodType => ["WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_PLASMA", "PLATELETS", "CRYOPRECIPITATE"].map((component, index) => ({ ...forecastResponse.forecasts[0], bloodType, component, pointForecast: index + 0.25, datasetVersion, modelVersion, forecastId: "FC_" + (["A_POSITIVE", "B_POSITIVE", "O_POSITIVE", "AB_POSITIVE"].indexOf(bloodType) * 5 + index).toString(16).toUpperCase().padStart(40, "0"), forecastStatus: status === "STALE" ? "STALE" : "AVAILABLE", stale: status === "STALE" }))) };
 }
 
 test("V4 default, keyboard V5 preview, twenty series and narrow provenance", async ({ page }) => {

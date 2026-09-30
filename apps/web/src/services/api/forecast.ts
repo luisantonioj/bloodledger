@@ -161,6 +161,16 @@ export function parseActiveForecast(value: unknown, dataset: ForecastDataset = A
     if (item.uncertaintyStatus === "UNCERTAINTY_UNAVAILABLE" ? item.lowerForecast !== null || item.upperForecast !== null : item.lowerForecast === null || item.upperForecast === null || item.lowerForecast > item.upperForecast) throw new Error("FORECAST_RESPONSE_INVALID");
     if (dataset === V5_FORECAST_DATASET && (!item.forecastId || item.uncertaintyStatus !== "UNCERTAINTY_UNAVAILABLE" || item.runId !== body.runId || item.horizonDate !== body.horizonDate || item.asOfDate !== body.asOfDate || item.generatedAt !== body.generatedAt)) throw new Error("FORECAST_RESPONSE_INVALID");
   }
+  if (dataset === V5_FORECAST_DATASET && status !== "UNAVAILABLE") {
+    const nextDay = typeof body.asOfDate === "string" ? new Date(body.asOfDate + "T00:00:00.000Z") : null;
+    nextDay?.setUTCDate(nextDay.getUTCDate() + 1);
+    if (forecasts.length !== 20 || body.modelVersion !== model || body.unavailableReason !== null ||
+        body.horizonDate !== nextDay?.toISOString().slice(0, 10) || body.horizonDate !== body.businessDate ||
+        body.trainingCutoffDate !== "2025-06-30" || new Set(forecasts.map(item => item.forecastId)).size !== 20 ||
+        forecasts.some(item => item.forecastStatus !== forecastStatus || item.runKey !== forecasts[0]?.runKey || item.institutionId !== forecasts[0]?.institutionId)) {
+      throw new Error("FORECAST_RESPONSE_INVALID");
+    }
+  }
   return {
     runId: nullableString(body.runId),
     generatedAt: nullableString(body.generatedAt),

@@ -1,11 +1,8 @@
 import type { Principal } from "../../auth/permissions";
 
-const prcPattern = /(?:^|[_\s-])PRC(?:$|[_\s-])|RED\s+CROSS/i;
-
+// FR-14 / FR-12: match the official cookie forecast endpoint.
 export function canViewAnalyticsPreview(principal: Principal): boolean {
-  if (["ROLE-01", "ROLE-02"].includes(principal.roleId)) return true;
-  if (principal.roleId !== "ROLE-04") return false;
-  return prcPattern.test(principal.institutionId) || prcPattern.test(principal.institutionDisplayName);
+  return ["ROLE-01", "ROLE-02", "ROLE-03"].includes(principal.roleId);
 }
 
 export function analyticsScopeLabel(principal: Principal): string {
