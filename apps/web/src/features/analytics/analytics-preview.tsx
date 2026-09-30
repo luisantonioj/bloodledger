@@ -1,3 +1,4 @@
+import { InventoryEvidencePanel } from "./inventory-evidence-panel";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Principal } from "../../auth/permissions";
 import { humanizeCode, statusClassName } from "../../components/ui/display";
@@ -20,12 +21,14 @@ export function AnalyticsPreview({ principal }: { principal: Principal }) {
   const [businessDate, setBusinessDate] = useState(() => manilaBusinessDate());
   const [dataset, setDataset] = useState<ForecastDataset>(ACTIVE_FORECAST_DATASET);
   const requestId = useRef(0);
+  const [inventoryRefresh, setInventoryRefresh] = useState(0);
   const [data, setData] = useState<ForecastResponse>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
     const id = ++requestId.current;
+    setInventoryRefresh(value => value + 1);
     setData(undefined);
     setError("");
     setBusy(true);
@@ -49,7 +52,7 @@ export function AnalyticsPreview({ principal }: { principal: Principal }) {
   }, [principal, refresh]);
 
   if (!canViewAnalyticsPreview(principal)) {
-    return <div className="analytics-preview-state unauthorized" role="alert"><span aria-hidden="true">!</span><div><strong>Analytics unavailable</strong><p>This composition is limited to blood-bank operational roles and the PRC institution. Backend authorization remains authoritative.</p></div></div>;
+    return <div className="analytics-preview-state unauthorized" role="alert"><span aria-hidden="true">!</span><div><strong>Analytics unavailable</strong><p>This composition is limited to the three authorized hospital roles. Backend authorization remains authoritative.</p></div></div>;
   }
 
   return <div className="analytics-preview">
@@ -66,6 +69,8 @@ export function AnalyticsPreview({ principal }: { principal: Principal }) {
 
     {error && <div className="analytics-api-state" role="alert"><span aria-hidden="true">!</span><div><strong>Forecast could not be loaded</strong><p>{error}</p></div></div>}
     {!data && busy && <div className="analytics-preview-state" role="status"><span aria-hidden="true">…</span><div><strong>Loading forecast</strong><p>Waiting for the backend forecast envelope.</p></div></div>}
+
+    <InventoryEvidencePanel businessDate={businessDate} institutionId={principal.institutionId} refreshKey={inventoryRefresh}/>
 
     {data && <>
       <div className="analytics-preview-metrics forecast-provenance">
@@ -96,11 +101,6 @@ export function AnalyticsPreview({ principal }: { principal: Principal }) {
           <td><span className="status warning">Disabled</span><small className="analytics-cell-note">DISABLED_UNAPPROVED_POLICY</small></td>
         </tr>)}</tbody></table></div>}
         <footer>Dataset {data.datasetVersion} · model {data.modelVersion ?? "unavailable"} · recommendation eligibility disabled by unapproved policy.</footer>
-      </section>
-
-      <section className="analytics-preview-panel">
-        <header><div><h3>Independent inventory evidence</h3><p>Forecast validity does not establish stock validity, shortage, surplus, reserves, or redistributability.</p></div></header>
-        <div className="analytics-preview-state"><span aria-hidden="true">⌕</span><div><strong>Inventory validity unavailable</strong><p>Current inventory, stale inventory, and verified zero stock cannot be established for this assessment from the available browser contracts. Unknown inventory remains unavailable, never zero. Stock-dependent recommendations remain disabled.</p></div></div>
       </section>
     </>}
   </div>;
