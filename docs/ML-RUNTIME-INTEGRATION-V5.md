@@ -25,3 +25,16 @@ V5 coordination uses a distinct [evidence schema](../contracts/source-surplus-ev
 ## Activation gates
 
 Backend test results, a versioned institution-binding decision, Buno freshness re-verification, Lat's compatible browser validation, and an explicit activation record are required before switching the active dataset. Buno's [independent technical review](ML-V5-BUNO-REVIEW.md) accepted the twenty means, their mapping, no-refit behavior and inventory separation; its completed freshness follow-up and Jopia's retarget verification are recorded in the [validation record](ML-V5-JOPIA-VALIDATION.md#merge-and-retarget-verification--2026-09-30). No concrete binding or activation is approved. RQ-07 remains open. Rollback selects V4 without deleting V5 evidence. This document does not claim human UAT, clinical accuracy, production readiness or deployment.
+
+## PR #21 follow-up — independent browser inventory evidence
+
+Jopia authorized the read-only internal ML census API and Lat consumer fixes on
+2026-10-01. OpenAPI V2 owns the HTTP contract at
+`GET /api/v2/analytics/inventory-evidence?businessDate=YYYY-MM-DD`. Official
+cookie roles 01–03 read only their own institution; this is separate from DOH
+reporting and export policy. Full persisted 40-series coverage, counts, versions
+and digest are validated before exposing verified zero. Missing rows never
+become zeros. The latest eligible snapshot is validated without older fallback.
+Same-day capture and evaluation mean CURRENT only within the synthetic scope;
+older valid snapshots are STALE, invalid/future evidence UNAVAILABLE. Reads
+never capture snapshots. V4 remains default and recommendations remain disabled.
