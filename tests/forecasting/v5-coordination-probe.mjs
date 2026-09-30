@@ -12,7 +12,7 @@ try {
   const institutionId = "INST_MEDIATRIX";
   const evaluationTime = "2026-09-30T04:00:00.000Z";
   const repository = new PostgresScanRepository(pool);
-  const forecastRead = await repository.readForecasts(institutionId, "2026-09-30", "SYNTHETIC_FORECAST_V5_RUNTIME_V1", "2026-09-30");
+  const forecastRead = await repository.readForecasts(institutionId, "2026-09-30", "SYNTHETIC_FORECAST_V5_RUNTIME_V1", new Date(evaluationTime));
   assert.equal(forecastRead.status, "CURRENT");
   const forecast = forecastRead.forecasts.find((item) => item.bloodType === "A_POSITIVE" && item.component === "CRYOPRECIPITATE");
   assert.ok(forecast);

@@ -37,15 +37,18 @@ try {
   assert.deepEqual(absent.forecasts, []);
   const v4Default = await app.inject({ method: "GET", url: "/api/v1/demand-forecasts?businessDate=2026-09-30", headers });
   assert.equal(v4Default.json().datasetVersion, "SYNTHETIC_FORECAST_V4_RUNTIME_V1");
-  const wrongInstitution = await repository.readForecasts("INST_OTHER", "2026-09-30", dataset, "2026-09-30");
+  const wrongInstitution = await repository.readForecasts("INST_OTHER", "2026-09-30", dataset, new Date("2026-09-30T04:00:00.000Z"));
   assert.equal(wrongInstitution.status, "UNAVAILABLE");
   assert.deepEqual(wrongInstitution.forecasts, []);
-  const historic = await repository.readForecasts("INST_MEDIATRIX", "2026-09-30", dataset, "2026-10-01");
+  const historic = await repository.readForecasts("INST_MEDIATRIX", "2026-09-30", dataset, new Date("2026-09-30T16:00:00.000Z"));
   assert.equal(historic.status, "STALE");
   assert.ok(historic.forecasts.every((row) => row.stale));
-  const early = await repository.readForecasts("INST_MEDIATRIX", "2026-09-30", dataset, "2026-09-29");
+  const early = await repository.readForecasts("INST_MEDIATRIX", "2026-09-30", dataset, new Date("2026-09-29T15:59:59.999Z"));
   assert.equal(early.status, "UNAVAILABLE");
   assert.deepEqual(early.forecasts, []);
+  const midnight = await repository.readForecasts("INST_MEDIATRIX", "2026-09-30", dataset, new Date("2026-09-29T16:00:00.000Z"));
+  assert.equal(midnight.status, "CURRENT");
+  assert.equal(midnight.forecasts.length, 20);
   console.log("V5 producer -> database -> authenticated API: current, unavailable, no fallback, scope and expiry passed");
 } finally {
   await app.close();

@@ -117,4 +117,10 @@ docker exec "$probe_container" psql -U postgres -d bloodledger_dev -Atc \
 "${node_run[@]}" node_modules/typescript/bin/tsc -p services/coordination/tsconfig.json
 "${node_run[@]}" tests/forecasting/v5-api-probe.mjs
 "${node_run[@]}" tests/forecasting/v5-coordination-probe.mjs
+"${forecast_run[@]}" -m bloodledger_forecasting.runtime_v5_cli \
+  --model /workspace/model.json --binding /workspace/tmp/binding.json \
+  --institution-id INST_MEDIATRIX --request-id V5_REQ_FUTURE_GENERATED \
+  --origin-date 2026-09-29 --generated-at 2026-09-30T15:00:00.000Z \
+  --output /workspace/tmp/future-generated.json --persist
+"${node_run[@]}" tests/forecasting/v5-freshness-probe.mjs
 echo 'V5 isolated database persistence passed'

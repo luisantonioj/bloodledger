@@ -36,7 +36,9 @@ test("FR-14 permits explicit V5 reads but rejects premature active selection", a
 test("FR-14 uses the trusted instant for V5 generation and Manila target boundaries", async () => {
   const repository = new MemoryRepository();
   repository.forecasts = [{
-    forecastId: `FC_${"A".repeat(40)}`, runKey: "V5_SYNTHETIC_RUN", runId: `RUN_${"A".repeat(32)}`,
+    forecastId: `FC_${"A".repeat(40)}`,
+    runKey: "synthetic",
+    runId: `RUN_${"A".repeat(32)}`,
     institutionId: "INST_MEDIATRIX", bloodType: "A_POSITIVE", component: "WHOLE_BLOOD",
     asOfDate: "2026-09-29", horizonDate: "2026-09-30", pointForecast: 1,
     lowerForecast: null, upperForecast: null, uncertaintyStatus: "UNCERTAINTY_UNAVAILABLE",
