@@ -1,6 +1,6 @@
 # ML V5 runtime integration — Jopia candidate
 
-**Status:** Inactive backend candidate; Buno accepted the frozen calculations and design but freshness re-verification, Lat browser validation, institution-binding approval and activation remain pending. **Classification:** `SIMULATION_ONLY`. **Requirements:** FR-14, BR-ALG-07. **Owners:** Jopia backend; Buno research review; Lat frontend.
+**Status:** Inactive backend candidate targeting `main`; Buno accepted the frozen calculations and design and completed freshness re-verification. Formal PR approval, Lat browser validation, institution-binding approval and activation remain pending. **Classification:** `SIMULATION_ONLY`. **Requirements:** FR-14, BR-ALG-07. **Owners:** Jopia backend; Buno research review; Lat frontend.
 
 This is an additive application adapter to the frozen [V5 research evaluation](ML-V5-EXPLORATION.md). The evaluated research code, 28-day preview gate and report are unchanged. The active application dataset remains `SYNTHETIC_FORECAST_V4_RUNTIME_V1`. The [Jopia plan](ML-V5-JOPIA-IMPLEMENTATION-PLAN.md) records source verification and owner gates. The [V4 integration](ML-RUNTIME-INTEGRATION-V4.md) remains authoritative for V4 behavior.
 
@@ -24,4 +24,4 @@ V5 coordination uses a distinct [evidence schema](../contracts/source-surplus-ev
 
 ## Activation gates
 
-Backend test results, a versioned institution-binding decision, Buno freshness re-verification, Lat's compatible browser validation, and an explicit activation record are required before switching the active dataset. Buno's [independent technical review](ML-V5-BUNO-REVIEW.md) accepted the twenty means, their mapping, no-refit behavior and inventory separation; it did not approve a concrete binding or activation. RQ-07 remains open. Rollback selects V4 without deleting V5 evidence. This document does not claim human UAT, clinical accuracy, production readiness or deployment.
+Backend test results, a versioned institution-binding decision, Buno freshness re-verification, Lat's compatible browser validation, and an explicit activation record are required before switching the active dataset. Buno's [independent technical review](ML-V5-BUNO-REVIEW.md) accepted the twenty means, their mapping, no-refit behavior and inventory separation; its completed freshness follow-up and Jopia's retarget verification are recorded in the [validation record](ML-V5-JOPIA-VALIDATION.md#merge-and-retarget-verification--2026-09-30). No concrete binding or activation is approved. RQ-07 remains open. Rollback selects V4 without deleting V5 evidence. This document does not claim human UAT, clinical accuracy, production readiness or deployment.
