@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -85,14 +86,28 @@ def persist_v5_runtime_bundle(
             ).fetchone()
             if inserted is None:
                 existing = connection.execute(
-                    "SELECT run_id, institution_id, payload_sha256 "
+                    "SELECT run_id, institution_id, payload_sha256, generated_at "
                     "FROM app.forecast_runs WHERE run_key=%s",
                     (run["runKey"],),
                 ).fetchone()
-                if existing != (run["runId"], run["institutionId"], lineage["payloadSha256"]):
+                if existing is None or existing[:3] != (
+                    run["runId"],
+                    run["institutionId"],
+                    lineage["payloadSha256"],
+                ):
                     raise ForecastingError(
                         "FORECAST_RUN_CONFLICT", "V5 run key has different content"
                     )
+                saved_at = existing[3]
+                if not isinstance(saved_at, datetime):
+                    raise ForecastingError(
+                        "FORECAST_PERSISTENCE_FAILED", "Saved V5 generation time is invalid"
+                    )
+                run["generatedAt"] = (
+                    saved_at.astimezone(UTC)
+                    .isoformat(timespec="milliseconds")
+                    .replace("+00:00", "Z")
+                )
                 return "EXISTING"
             if run["runStatus"] == "COMPLETED":
                 with connection.cursor() as cursor:

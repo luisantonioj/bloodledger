@@ -1,13 +1,14 @@
 // FR-14 / BR-ALG-07: actual V5 producer -> PostgreSQL -> authenticated API.
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
 import { buildApp } from "../../services/api/build/src/app.js";
 import { createPoolFromEnvironment, PostgresScanRepository } from "../../services/api/build/src/database.js";
 
 const dataset = "SYNTHETIC_FORECAST_V5_RUNTIME_V1";
 const config = {
   host: "127.0.0.1", port: 3000,
-  jwtSecret: "synthetic-v5-api-probe-secret-only",
-  operatorId: "USR_SYNTH_VERIFY", operatorCredential: "synthetic-v5-api-fixture",
+  jwtSecret: randomBytes(32).toString("hex"),
+  operatorId: "USR_SYNTH_VERIFY", operatorCredential: randomBytes(16).toString("hex"),
   workerConfigured: false, activeForecastDatasetVersion: "SYNTHETIC_FORECAST_V4_RUNTIME_V1",
 };
 const pool = createPoolFromEnvironment();
@@ -42,6 +43,9 @@ try {
   const historic = await repository.readForecasts("INST_MEDIATRIX", "2026-09-30", dataset, "2026-10-01");
   assert.equal(historic.status, "STALE");
   assert.ok(historic.forecasts.every((row) => row.stale));
+  const early = await repository.readForecasts("INST_MEDIATRIX", "2026-09-30", dataset, "2026-09-29");
+  assert.equal(early.status, "UNAVAILABLE");
+  assert.deepEqual(early.forecasts, []);
   console.log("V5 producer -> database -> authenticated API: current, unavailable, no fallback, scope and expiry passed");
 } finally {
   await app.close();

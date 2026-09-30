@@ -17,6 +17,10 @@ try {
   const forecast = forecastRead.forecasts.find((item) => item.bloodType === "A_POSITIVE" && item.component === "CRYOPRECIPITATE");
   assert.ok(forecast);
   const snapshotStore = new PostgresMlInventorySnapshotStore(pool);
+  const forecastReader = new PostgresV5ForecastEvidenceReader(pool);
+  const superseded = await pool.query("SELECT forecast_id FROM app.demand_forecasts WHERE horizon_date='2026-09-29'::date LIMIT 1");
+  assert.ok(superseded.rows[0]);
+  assert.equal(await forecastReader.get(superseded.rows[0].forecast_id, institutionId), null);
   const snapshot = await snapshotStore.capture(institutionId, new Date("2026-09-30T01:00:00.000Z"), "MANUAL", new Date(evaluationTime));
   assert.equal(snapshot.snapshotKind, "INTERNAL_ML");
   const stock = snapshot.groups.find((group) => group.componentType === "CRYOPRECIPITATE").bloodTypes.find((item) => item.bloodType === "A_POSITIVE");
@@ -25,7 +29,7 @@ try {
     sourceInstitutionId: institutionId, evaluationTime,
     forecastId: forecast.forecastId, inventorySnapshotId: snapshot.snapshotId,
     sourceProjectionDigest: snapshot.sourceProjectionDigest,
-    snapshotReader: snapshotStore, forecastReader: new PostgresV5ForecastEvidenceReader(pool),
+    snapshotReader: snapshotStore, forecastReader,
   };
   const evidence = await produceSourceSurplusEvidenceV5FromStore(inputs);
   assert.equal(evidence.surplusQuantity, Math.max(0, Math.floor(30 - forecast.pointForecast - 2 - 10)));

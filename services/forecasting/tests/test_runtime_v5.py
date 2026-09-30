@@ -7,6 +7,7 @@ import pytest
 
 from bloodledger_forecasting.errors import ForecastingError
 from bloodledger_forecasting.runtime_v5 import (
+    BLOOD_TYPE_MAP,
     COMPONENT_MAP,
     SERIES,
     V5_BINDING_VERSION,
@@ -103,7 +104,10 @@ def test_order_and_frozen_means_against_external_release(tmp_path: Path) -> None
     result = produce(model_path, binding(tmp_path))
     assert result["run"]["runStatus"] == "COMPLETED"
     assert len(result["forecasts"]) == 20
-    for row, (_, component), mean in zip(result["forecasts"], SERIES, model["means"], strict=True):
+    for row, (blood, component), mean in zip(
+        result["forecasts"], SERIES, model["means"], strict=True
+    ):
+        assert row["bloodType"] == BLOOD_TYPE_MAP[blood]
         assert row["component"] == COMPONENT_MAP[component]
         assert row["pointForecast"] == mean
         assert row["lowerForecast"] is None

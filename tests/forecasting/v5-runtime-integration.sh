@@ -50,7 +50,16 @@ done
 node_run=(docker run --rm --network "container:$probe_container" --env-file "$probe_root/env" \
   --user "$(id -u):$(id -g)" -v "$repository_root:/workspace" -w /workspace \
   --entrypoint node node:24.17.0-bookworm-slim)
+node_v4_run=(docker run --rm --network "container:$probe_container" --env-file "$probe_root/env" \
+  --env BLOODLEDGER_MIGRATION_COUNT=21 --user "$(id -u):$(id -g)" \
+  -v "$repository_root:/workspace" -w /workspace --entrypoint node node:24.17.0-bookworm-slim)
+"${node_v4_run[@]}" database/scripts/migrate.mjs | tail -1
+docker exec "$probe_container" psql -U postgres -d bloodledger_dev -c \
+  "INSERT INTO app.forecast_runs (run_id,institution_id,run_key,payload_sha256,dataset_version,generator_version,dataset_sha256,code_sha256,config_sha256,model_artifact_sha256,model_version,model_name,target_name,input_start_date,input_end_date,horizon_date,generated_at,classification,run_status,safe_error_code,lineage,selection_evidence) VALUES ('RUN_$(printf 'A%.0s' {1..32})','INST_MEDIATRIX','V4_UPGRADE_FIXTURE','$(printf 'a%.0s' {1..64})','SYNTHETIC_FORECAST_V4_RUNTIME_V1','runtime_v4','$(printf 'b%.0s' {1..64})','$(printf 'c%.0s' {1..64})','$(printf 'd%.0s' {1..64})','$(printf 'e%.0s' {1..64})','synthetic-v4-upgrade','synthetic_v4','requested_units','2026-09-28','2026-09-28','2026-09-29','2026-09-28T12:00:00.000Z','SIMULATION_ONLY','UNAVAILABLE','TEST_UNAVAILABLE','{}','{}')" >/dev/null
 "${node_run[@]}" database/scripts/migrate.mjs | tail -1
+docker exec "$probe_container" psql -U postgres -d bloodledger_dev -Atc \
+  "SELECT dataset_version || ':' || run_status FROM app.forecast_runs WHERE run_key='V4_UPGRADE_FIXTURE'" \
+  | grep -Fx 'SYNTHETIC_FORECAST_V4_RUNTIME_V1:UNAVAILABLE'
 docker exec --interactive "$probe_container" psql -U postgres -d bloodledger_dev < "$repository_root/tests/forecasting/v4-verification-fixture.sql" >/dev/null
 docker exec "$probe_container" psql -U postgres -d bloodledger_dev -c \
   "UPDATE app.v2_components SET expires_at='2026-10-31T00:00:00.000Z' WHERE component_id LIKE 'COMP_VERIFY_%'" >/dev/null
@@ -64,8 +73,9 @@ for hour in 12 13; do
     --model /workspace/model.json --binding /workspace/tmp/binding.json \
     --institution-id INST_MEDIATRIX --request-id V5_REQ_ISOLATED \
     --origin-date 2026-09-28 --generated-at "2026-09-28T${hour}:00:00.000Z" \
-    --output /workspace/tmp/forecast.json --persist
+    --output "/workspace/tmp/forecast-${hour}.json" --persist
  done
+cmp "$probe_root/forecast-12.json" "$probe_root/forecast-13.json"
 "${forecast_run[@]}" -m bloodledger_forecasting.runtime_v5_cli \
   --model /workspace/model.json --binding /workspace/tmp/binding.json \
   --institution-id INST_MEDIATRIX --request-id V5_REQ_CURRENT \
@@ -86,7 +96,7 @@ if "${forecast_run[@]}" -m bloodledger_forecasting.runtime_v5_cli \
   exit 1
 fi
 grep -F 'FORECAST_RUN_CONFLICT' "$probe_root/conflict.stderr" >/dev/null
-python3 - "$probe_root/forecast.json" "$probe_root/unavailable.json" <<'PY'
+python3 - "$probe_root/forecast-12.json" "$probe_root/unavailable.json" <<'PY'
 import json, sys
 available, unavailable = [json.load(open(path)) for path in sys.argv[1:]]
 assert len(available['forecasts']) == 20

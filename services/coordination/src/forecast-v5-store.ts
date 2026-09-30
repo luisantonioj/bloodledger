@@ -15,6 +15,13 @@ export class PostgresV5ForecastEvidenceReader implements TrustedV5ForecastReader
       FROM app.demand_forecasts df
       JOIN app.forecast_runs fr ON fr.run_id=df.run_id AND fr.institution_id=df.institution_id
       WHERE df.forecast_id=$1 AND df.institution_id=$2 AND fr.dataset_version='SYNTHETIC_FORECAST_V5_RUNTIME_V1'
+        AND fr.run_id = (
+          SELECT latest.run_id FROM app.forecast_runs latest
+          WHERE latest.institution_id=$2
+            AND latest.dataset_version='SYNTHETIC_FORECAST_V5_RUNTIME_V1'
+            AND latest.horizon_date=df.horizon_date
+          ORDER BY latest.generated_at DESC, latest.run_id DESC LIMIT 1
+        )
     `, [forecastId, institutionId]);
     const row = result.rows[0];
     if (!row) return null;

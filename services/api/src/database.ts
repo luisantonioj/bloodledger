@@ -177,6 +177,7 @@ export class PostgresScanRepository implements ScanRepository {
           AND fr.dataset_version = $2
           AND fr.horizon_date <= $3::date
           AND ($2 <> 'SYNTHETIC_FORECAST_V5_RUNTIME_V1' OR fr.horizon_date = $3::date)
+          AND ($2 <> 'SYNTHETIC_FORECAST_V5_RUNTIME_V1' OR fr.horizon_date <= $4::date)
         ORDER BY (fr.horizon_date = $3::date) DESC, fr.horizon_date DESC, fr.generated_at DESC, fr.run_id DESC
         LIMIT 1
       )
@@ -192,7 +193,7 @@ export class PostgresScanRepository implements ScanRepository {
       LEFT JOIN app.demand_forecasts df
         ON df.run_id = latest.run_id AND df.institution_id = $1
       ORDER BY df.blood_type, df.component
-    `, [institutionId, datasetVersion, manilaDate]);
+    `, [institutionId, datasetVersion, manilaDate, evaluatedManilaDate]);
     const first = result.rows[0];
     const mappedForecasts = result.rows.filter((row) => row.forecast_id !== null && row.forecast_id !== undefined).map((row) => ({
       forecastId: String(row.forecast_id),
