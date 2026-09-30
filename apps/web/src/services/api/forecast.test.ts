@@ -72,7 +72,7 @@ describe("active ML V4 frontend contract", () => {
 describe("versioned simulation forecast evidence", () => {
   function v5() {
     const original = response({ datasetVersion: V5_FORECAST_DATASET, modelVersion: V5_FORECAST_MODEL, trainingCutoffDate: "2025-06-30", lineage: { trainingCutoffDate: "2025-06-30" } });
-    return { ...original, forecasts: original.forecasts.map(item => ({ ...item, datasetVersion: V5_FORECAST_DATASET, modelVersion: V5_FORECAST_MODEL, forecastId: "FC_" + "A".repeat(40), lowerForecast: null as number | null })) };
+    return { ...original, forecasts: ACTIVE_FORECAST_BLOOD_TYPES.flatMap(bloodType => ACTIVE_FORECAST_COMPONENTS.map((component, index) => ({ ...original.forecasts[0]!, bloodType, component, datasetVersion: V5_FORECAST_DATASET, modelVersion: V5_FORECAST_MODEL, forecastId: "FC_" + (ACTIVE_FORECAST_BLOOD_TYPES.indexOf(bloodType) * 5 + index).toString(16).toUpperCase().padStart(40, "0"), lowerForecast: null as number | null }))) };
   }
   it("preserves explicit identifiers, cutoff and distinct origin, target and generation evidence", () => {
     const parsed = parseActiveForecast(v5(), V5_FORECAST_DATASET);
@@ -80,11 +80,11 @@ describe("versioned simulation forecast evidence", () => {
     expect(parsed.asOfDate).toBe("2026-09-17");
     expect(parsed.horizonDate).toBe("2026-09-18");
     expect(parsed.generatedAt).toBe("2026-09-17T16:00:00.000Z");
-    expect(parsed.forecasts[0]?.forecastId).toBe("FC_" + "A".repeat(40));
+    expect(parsed.forecasts[0]?.forecastId).toBe("FC_" + "0".repeat(40));
   });
   it("accepts all twenty explicit supported series in arbitrary order", () => {
     const body = v5();
-    body.forecasts = ACTIVE_FORECAST_BLOOD_TYPES.flatMap(bloodType => ACTIVE_FORECAST_COMPONENTS.map(component => ({ ...body.forecasts[0]!, bloodType, component }))).reverse();
+    body.forecasts.reverse();
     expect(parseActiveForecast(body, V5_FORECAST_DATASET).forecasts).toHaveLength(20);
   });
   it("rejects response/request mismatch, wrong models, duplicate series and fabricated uncertainty", () => {
@@ -100,7 +100,7 @@ describe("versioned simulation forecast evidence", () => {
     const body = v5();
     expect(parseActiveForecast({ ...body, status: "UNAVAILABLE", forecastStatus: "UNAVAILABLE", unavailableReason: "V5_FORECAST_FUTURE_GENERATED", forecasts: [] }, V5_FORECAST_DATASET).unavailableReason).toBe("V5_FORECAST_FUTURE_GENERATED");
     expect(() => parseActiveForecast({ ...body, status: "UNAVAILABLE", forecastStatus: "UNAVAILABLE" }, V5_FORECAST_DATASET)).toThrow();
-    body.forecasts[0]!.stale = true;
+    body.forecasts.forEach(item => { item.stale = true; item.forecastStatus = "STALE"; });
     expect(parseActiveForecast({ ...body, status: "STALE", forecastStatus: "STALE" }, V5_FORECAST_DATASET).status).toBe("STALE");
   });
   it("rejects malformed date, timestamp, classification and negative or unsupported evidence", () => {
@@ -124,6 +124,19 @@ describe("versioned simulation forecast evidence", () => {
       expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ credentials: "same-origin" });
       await expect(readActiveForecast("2026-09-19", V5_FORECAST_DATASET)).rejects.toThrow();
     } finally { vi.unstubAllGlobals(); }
+  });
+  it("rejects incomplete, mixed identity and contradictory completed V5 evidence", () => {
+    for (const mutate of [
+      (body: ReturnType<typeof v5>) => { body.forecasts.pop(); },
+      (body: ReturnType<typeof v5>) => { body.forecasts = []; },
+      (body: ReturnType<typeof v5>) => { body.forecasts[1]!.forecastId = body.forecasts[0]!.forecastId; },
+      (body: ReturnType<typeof v5>) => { body.forecasts[1]!.forecastStatus = "UNAVAILABLE"; },
+      (body: ReturnType<typeof v5>) => { body.forecasts[1]!.runKey = "OTHER"; },
+      (body: ReturnType<typeof v5>) => { body.horizonDate = "2026-09-19"; },
+    ]) {
+      const body = v5(); mutate(body);
+      expect(() => parseActiveForecast(body, V5_FORECAST_DATASET)).toThrow();
+    }
   });
   it("handles Manila midnight without conflating UTC generation date", () => {
     expect(manilaBusinessDate(new Date("2026-09-17T15:59:59.999Z"))).toBe("2026-09-17");

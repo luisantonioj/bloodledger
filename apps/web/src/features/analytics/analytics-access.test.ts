@@ -19,13 +19,9 @@ describe("analytics preview access", () => {
     expect(canViewAnalyticsPreview(principal("ROLE-02", "INST_MEDIATRIX", "Synthetic Blood Bank"))).toBe(true);
   });
 
-  it("distinguishes PRC from DOH within the combined regulatory role", () => {
-    expect(canViewAnalyticsPreview(principal("ROLE-04", "INST_SYNTH_PRC", "Synthetic PRC Chapter"))).toBe(true);
-    expect(canViewAnalyticsPreview(principal("ROLE-04", "INST_SYNTH_DOH", "Synthetic DOH Office"))).toBe(false);
-  });
-
-  it("excludes requestor and administrative roles", () => {
-    expect(canViewAnalyticsPreview(principal("ROLE-03", "INST_SECONDARY", "Synthetic Requestor"))).toBe(false);
-    expect(canViewAnalyticsPreview(principal("ROLE-06", "INST_MEDIATRIX", "Synthetic Blood Bank"))).toBe(false);
+  it("matches the official six-role forecast matrix regardless of institution name", () => {
+    for (const roleId of ["ROLE-01", "ROLE-02", "ROLE-03", "ROLE-04", "ROLE-05", "ROLE-06"] as const) {
+      expect(canViewAnalyticsPreview(principal(roleId, "INST_SYNTH_PRC", "Synthetic PRC Chapter"))).toBe(["ROLE-01", "ROLE-02", "ROLE-03"].includes(roleId));
+    }
   });
 });
