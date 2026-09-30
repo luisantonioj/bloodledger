@@ -1,6 +1,6 @@
-# Draft reply to Buno — ML V5
+# Jopia reply to Buno — ML V5
 
-**Status:** Ready for Jopia review and sending; no message or owner approval is recorded here. **Scope:** FR-14 / BR-ALG-07, `SIMULATION_ONLY`.
+**Status:** Posted on [PR #19](https://github.com/luisantonioj/bloodledger/pull/19#issuecomment-5903749515) after user approval on 2026-09-30. Buno's response and agreement are not recorded. **Scope:** FR-14 / BR-ALG-07, `SIMULATION_ONLY`.
 
 > I reviewed PR #19 and the updated V5 handoff as Jopia. I implemented an inactive backend candidate for the frozen selected model: a saved-mean runtime adapter, immutable V5 forecast persistence, an authenticated version-aware API read, and separate surplus/BROA evidence based on committed inventory. V4 remains the default. The research training, evaluation and preview protocol is unchanged.
 >

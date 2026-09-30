@@ -164,7 +164,7 @@ Buno should confirm ordered parameter interpretation, frozen artifact identity,
 no-history inference and the proposed target-window freshness wording. Jopia must
 record the synthetic institution binding and technical contract disposition.
 Lat should review the consumer contract and independent inventory presentation.
-No response from another owner is recorded here. The ready-to-send response is
+No response from another owner is recorded here. The posted Jopia review request is
 [ML-V5-JOPIA-REPLY.md](ML-V5-JOPIA-REPLY.md).
 
 The user clarified that essential Jopia-owned backend work should proceed.
