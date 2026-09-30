@@ -1,6 +1,6 @@
 # ML V5 — Jopia implementation plan
 
-Status: Backend candidate implementation authorized on 2026-09-30; joint review and activation pending.
+Status: Jopia full-backend implementation authorized on 2026-09-30; Buno/Lat review and activation pending.
 Active perspective and integration owner: Jopia. Research owner/reviewer: Buno.
 Frontend owner: Lat. Classification: SIMULATION_ONLY.
 This plan is not Buno agreement, activation approval, or completed integration.
@@ -25,7 +25,7 @@ ZIP code over GitHub code. The previous local branch
 connection reset; existing local PR objects match the head verified through the
 GitHub connector. Do not claim a successful fetch or assume other branches current.
 
-Use the same base for a later `codex/ml-v5-jopia-runtime` implementation branch.
+Implementation branch: `codex/ml-v5-jopia-runtime`, created from planning commit `ebaaf2a`.
 While #19 is unmerged, target its research branch for a stacked integration PR.
 After #19 merges, inspect the new main and retarget/reconcile before merging.
 Recheck remote heads and conflicting V4/frontend changes at implementation start.
@@ -166,7 +166,7 @@ No response from another owner is recorded here. The ready-to-send response is
 [ML-V5-JOPIA-REPLY.md](ML-V5-JOPIA-REPLY.md).
 
 The user clarified that essential Jopia-owned backend work should proceed.
-Implement groups 1–4 as an inactive candidate; groups 5–8 remain follow-up work.
+Implement groups 1–5 and backend verification as an inactive candidate; activation remains gated on Buno calculation review, Lat frontend/browser validation, a recorded binding decision, and an explicit activation record.
 No V5 coordination evidence or frontend activation is permitted by this slice.
 Freshness and binding are explicit candidate contracts for review, not joint acceptance. Existing research
 checks are Buno's reported evidence, not newly rerun validation. The institution

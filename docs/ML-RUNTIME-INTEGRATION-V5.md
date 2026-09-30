@@ -1,0 +1,25 @@
+# ML V5 runtime integration — Jopia candidate
+
+**Status:** Backend implementation in progress; Buno review, Lat browser validation, institution-binding approval and activation pending. **Classification:** `SIMULATION_ONLY`. **Requirements:** FR-14, BR-ALG-07. **Owners:** Jopia backend; Buno research review; Lat frontend.
+
+This is an additive application adapter to the frozen [V5 research evaluation](ML-V5-EXPLORATION.md). The evaluated research code, 28-day preview gate and report are unchanged. The active application dataset remains `SYNTHETIC_FORECAST_V4_RUNTIME_V1`. The [Jopia plan](ML-V5-JOPIA-IMPLEMENTATION-PLAN.md) records source verification and owner gates. The [V4 integration](ML-RUNTIME-INTEGRATION-V4.md) remains authoritative for V4 behavior.
+
+## Candidate contract
+
+`BLOODLEDGER_FORECAST_BUNDLE_V5_RUNTIME_V1` has an immutable run with twenty next-day requested-demand forecasts, or an explicit unavailable run with no forecast rows. The [JSON schema](../contracts/forecast-bundle-v5-runtime-v1.schema.json) owns the wire shape. Forecasting uses the evaluated `series_mean` parameter artifact. The release-pinned file and canonical parameter hashes are recorded in the plan; callers cannot replace the expected hashes. Model loading verifies exact name/version, twenty ordered finite nonnegative means, the file hash, and research canonical parameter hash. No recent history or workbook is needed for saved-mean inference. The research protocol still requires its original history for training, evaluation and preview.
+
+The research order is A+, B+, O+, AB+, each with WB, PRBC, FFP, PC and CRYO. The adapter maps each research position explicitly to a descriptive application code. Neither V4's different order nor negative-Rh and MWB series are inferred. Results have null uncertainty bounds and `UNCERTAINTY_UNAVAILABLE`. No stock value appears in the runtime bundle.
+
+The external binding JSON must name version `SYNTHETIC_V5_INSTITUTION_BINDING_V1`, research alias `SIM_INSTITUTION_01`, an `INST_` application institution, a unique binding ID, the evaluated canonical model hash, and `enabled: true`. No enabled binding ships in Git. An absent or invalid binding stops publication. This is a synthetic application mapping, not institutional authorization or a claim about operational hospital data.
+
+The request includes a caller-controlled idempotency key, origin date and generated-at UTC instant. Horizon is exactly origin plus one Manila calendar day. The saved target-day window begins at Manila midnight and expires at the following midnight. Generation or replay never refreshes the target or training evidence. The run records distinct workbook, research-code/protocol, model-file/model-parameter, adapter-code, binding/configuration, input and payload hashes. Training cutoff `2025-06-30` and test window remain research evidence; they are not a freshness claim. A missing/corrupt model creates a safe unavailable attempt once the request and binding are valid; a new attempt needs a new key. Identical retries return the original row, while changed content under a key conflicts.
+
+## Data and consumer boundary
+
+A forward migration adds V5 to forecast and source-surplus allowlists without altering applied migrations. Completed runs and twenty rows, or unavailable runs and zero rows, are inserted atomically under the existing `(run_id, institution_id)` foreign key and SELECT/INSERT runtime grants. V4 records and active defaults remain intact. The API accepts an explicit V5 dataset query under authenticated institution scope. V5 selects only the requested target date; an unavailable latest attempt stays unavailable and never falls back to older success or V4. The response exposes origin, horizon, generation time, training cutoff and hashes as separate evidence.
+
+V5 coordination uses a distinct evidence schema and validator. A trusted committed census snapshot must match institution, snapshot ID, projection digest and current Manila date. Null or stale inventory blocks surplus. Forecast evidence must match the current target day, version and run identity. The existing `SYNTHETIC_OPTIMIZATION_V2_1` formula is retained for simulation, with `DISABLED_UNAPPROVED_POLICY`; no transfer or clinical approval follows from a result.
+
+## Activation gates
+
+Backend test results, a versioned institution-binding decision, Buno calculation/freshness review, Lat's compatible browser validation, and an explicit activation record are required before switching the active dataset. RQ-07 remains open. Rollback selects V4 without deleting V5 evidence. This document does not claim human UAT, clinical accuracy, production readiness or deployment.

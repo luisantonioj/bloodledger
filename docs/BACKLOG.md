@@ -248,6 +248,8 @@ Audit the supplied sample, retain unknown coverage, run reproducible synthetic
 comparisons and prepare reviewable artifacts without requiring further data.
 No operational accuracy claim, runtime replacement, or RQ-07 closure is implied.
 
+The separate [Jopia V5 backend integration](ML-RUNTIME-INTEGRATION-V5.md) is authorized as an inactive candidate; activation awaits its recorded review gates.
+
 ## 7. EPIC-05 — Scan, middleware, and synchronization
 
 ### BL-SCN-01 — ISBT 128 scan parsing
