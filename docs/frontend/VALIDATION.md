@@ -158,3 +158,157 @@ regulatory, or production readiness.
 - All accounts, data, locations, reports, and outcomes remain synthetic and
   `SIMULATION_ONLY`; no clinical, regulatory, or production-readiness claim is
   supported.
+
+## Testing-phase V5 frontend integration — 2026-10-01 (Asia/Manila)
+
+Owner and technical validator: Yuri Benjamin Lat (LAT), with agent-assisted
+self-validation. Requirements: FR-14, BR-ALG-07; classification:
+`SIMULATION_ONLY`. This record does not accept Testing-phase completion, human
+UAT, an institution binding, or V5 activation.
+
+### Baseline and implementation
+
+Fetched `origin/main` at `b028515b0d48c4d4819f00c87ce8866163cdc0f7`.
+GitHub confirmed PR [#19](https://github.com/luisantonioj/bloodledger/pull/19)
+merged at `ecd682057ee49574fd57c2f4078208c2bafb8953`, PR
+[#20](https://github.com/luisantonioj/bloodledger/pull/20) merged at the main
+baseline, and Buno's final [approval](https://github.com/luisantonioj/bloodledger/pull/20#pullrequestreview-5367073735)
+covered `dfffe8aba7d02b0d109b2dbd27e240ddcbeb11d9`. These supersede historical
+approval-pending wording for those merges, without approving activation.
+
+The official checkout was clean on `codex/s6-frontend-integration` at `111681e`.
+The new `codex/ml-v5-frontend` branch starts from fetched main. Unrelated edits
+in `/home/yuri/projects/bloodledger` and the preview worktree at
+`/home/yuri/.codex/worktrees/s6-mediatrix-preview-tabs/bloodledger` were preserved.
+Polish commit `f61a60f` is not an ancestor of main; main has subsequent shell,
+visual-parity and V4/V2 integration changes. No polish commit was cherry-picked.
+Git author/committer is Yuri Benjamin Lat with the Yuri GitHub noreply address.
+
+Tested implementation commit: `16eaf27cf74f83f9e8480048c583c7d7a69c5311`
+(`feat(web): add explicit V5 simulation forecast preview`). The subsequent
+frontend documentation commit records these results without changing runtime
+code. The delivery PR identifies its exact final head.
+
+The authoritative HTTP shape remains [OpenAPI](../../services/api/openapi.json),
+not the producer bundle schema. The parser validates requested dataset/model,
+required envelope evidence, supported explicit series identifiers, dates, UTC
+instants, nonnegative finite quantities, null uncertainty, duplicate series,
+status consistency, simulation classification and disabled eligibility. It
+preserves forecast IDs and rejects foreign-institution rows in Analytics.
+V4 remains the default with no dataset query; V5 requires the explicit selector
+and query. Institution scope comes from the official cookie session. No token,
+credential, institution selector, backend default or deployment change ships.
+
+The UI clears evidence on selection/refresh, rejects outdated responses, renders
+stale history and unavailable reasons without fallback, and displays origin,
+target, generation UTC/Manila and frozen training cutoff separately. CURRENT
+means target-window eligibility at the backend instant; refresh does not retrain
+or renew freshness. V5 is next-day requested demand, with null uncertainty,
+not release counts, inventory or guaranteed supply. No quantity-accuracy claim
+is derived from the research secondary any-demand classification result.
+
+### Environment and actual command results
+
+Ubuntu 24.04.4 LTS under WSL2, Linux `6.18.33.2-microsoft-standard-WSL2`;
+Node `24.17.0`, npm `11.13.0`, existing approved workspace lockfile, Vitest
+`4.1.10`, Playwright `1.61.1`, Chromium `149.0.7827.55`, PostgreSQL `17.10`.
+The browser suite builds and serves the application at `127.0.0.1:4174`.
+
+| Command/scenario | Actual result | Evidence boundary |
+|---|---|---|
+| `npm run check:web` | PASS: TypeScript and Vite production build | Web workspace |
+| `npm run test:web` | PASS: 57 tests in 17 files | Unit evidence; 7 new forecast cases |
+| `npm run test:web:e2e` | PASS for executed tests: 36 passed, 7 skipped, 43 total | Mocked HTTP UI evidence; 14 new scenarios |
+| `npm run check:format` | PASS | Repository JSON formatting contract, not a general source formatter |
+| `npm run build --workspace @bloodledger/api` | PASS | Matching unchanged backend baseline compiled for live probe |
+| `git diff --check` | PASS | Whitespace validation |
+| `npm run scan:secrets` | FAIL: 11 historical findings; wrapper stops before index/candidate stages | Full-history findings remain untriaged; no full-scan pass claimed |
+| Separate Gitleaks `8.30.1` candidate directory scan | PASS: no leaks | Tracked and nonignored candidate files; excludes `.env` and generated artifacts |
+| Real Chromium without interception | PASS: login gate and explicit unauthenticated V5 HTTP 401 | Matching real API/PostgreSQL; no authenticated success claimed |
+| Official authenticated cookie-session browser flow | BLOCKED | Owner-only synthetic credential path unavailable in this session |
+| Producer → database → cookie-session browser V5 success | BLOCKED | External pinned `selected_model.json`, isolated synthetic binding/setup and synthetic web credential needed |
+| Verified census inventory combinations | BLOCKED | Missing sufficient browser census evidence described below |
+| Human UAT | NOT_RUN | Participant, consent, instrument/scoring and custody gates unchanged |
+
+The seven skipped cases are existing retired V1 transfer mutation fixtures,
+not successful tests. The first sandboxed browser run could not start its local
+server. The first executable browser run had two failures: an old fixture
+returned a different requested business date, and uncertainty text shared a
+cell with its note. Current-contract fixture echoing and a separate uncertainty
+text span corrected them. Final rerun: 36 passed, 7 skipped. Two initial fixture
+typing errors were corrected; final typecheck passed.
+
+Mocked cases cover V4 default, explicit V5 cookie-client request construction,
+model/version/malformed responses, twenty explicit combinations, null
+uncertainty, CURRENT/STALE/UNAVAILABLE/future-generation, no retained success or
+fallback, Manila midnight, distinct timestamps, HTTP 401/403, network failure,
+refresh, out-of-order selections, foreign institution rejection, keyboard
+selection and a 390 × 844 viewport without document overflow. Existing role
+allow/deny tests remain in the passing suites. The four inventory UI fixtures
+exercise current-looking, stale, zero-count and absent projections; all remain
+unverified for census assessment. They do not claim verified-zero support.
+
+### Real runtime reproduction and limits
+
+The existing untracked configuration used Compose hostname `postgres`. A host
+process initially returned health 503/database unavailable. Restarting the
+matching backend with a process-only loopback override made API/database READY;
+no configuration file, shared inventory or forecast data was changed.
+
+```bash
+npm run build --workspace @bloodledger/api
+POSTGRES_HOST=127.0.0.1 node --env-file=.env services/api/build/src/server.js
+npm run dev --workspace @bloodledger/web
+node tests/frontend/v5-live-browser.mjs
+```
+
+These commands were executed in this session. The probe uses actual Chromium
+and HTTP, without route interception. Safe evidence is at
+`/tmp/bloodledger-v5-live-browser.json`; command logs are
+`/tmp/v5-e2e.log`, `/tmp/v5-live-api-local.log`, `/tmp/v5-live-web.log` and
+`/tmp/v5-secrets.log` (local, uncommitted). The committed
+[probe](../../tests/frontend/v5-live-browser.mjs) produces a safe aggregate and
+never writes a screenshot, trace, cookie/storage state, credential or raw
+forecast payload. It accepts `BLOODLEDGER_BROWSER_CREDENTIAL_PATH` for an
+external owner-only JSON object containing `username` and `password`. No
+credential was supplied during this run. Its successful process exit proves
+only the executed unauthenticated boundary; its BLOCKED fields remain blocked.
+
+Observed live readiness: API/database READY, worker/Fabric DISABLED,
+forecastReadiness UNAVAILABLE, v2EncryptionKeys UNAVAILABLE. Existing Docker
+services were PostgreSQL, orderer and two CAs; no API or peer was initially
+running. Live inventory/transfers/alerts could not be inspected under an
+authenticated session, so no empty/populated claim is made. Buno/Jopia's previous
+backend probes do not replace this missing frontend evidence.
+
+For a successful producer scenario, use the documented disposable setup in
+[Jopia validation](../ML-V5-JOPIA-VALIDATION.md#reproduction-and-results)
+and `tests/forecasting/v5-runtime-integration.sh`, with the externally pinned
+model. The setup's temporary enabled binding is test-only and cannot approve a
+concrete institution binding. The supplied backend probe currently uses bearer
+API injection and disposes its database; it does not provision a browser cookie
+account or retain a browser-accessible server. Jopia must provide the matching
+isolated producer/DB server and approved synthetic session fixture for a full
+cookie-browser success rerun. Do not seed the shared development database to
+make Analytics appear populated.
+
+### Independent inventory dependency and remaining acceptance
+
+The V1 inventory/dashboard projections expose counts/status and projection
+instants; V2 components expose individual inventory versions. They do not expose
+a complete permission-scoped census snapshot index with snapshot identity,
+projection digest, recorded/evaluation Manila date, explicit completeness and
+freshness, and verified coverage including zero rows. No sufficient census HTTP
+read is in `services/api/openapi.json`; backend census storage or coordination
+readers are not browser APIs. Jopia owns exposing an authorized read of that
+evidence, including unambiguous current/stale/unavailable and verified-zero
+semantics. A policy-approved contract is needed before LAT implements that
+assessment; no freshness threshold is invented here.
+
+Until then Analytics states inventory validity unavailable for every forecast
+status. Unknown never becomes zero; projections cannot establish stock validity,
+shortage, surplus, reserves or redistributability. Browser BROA/surplus is absent;
+`SIMULATION_ONLY` and `DISABLED_UNAPPROVED_POLICY` remain visible. No autonomous
+clinical, transfer or release approval is enabled. FR-14 stock-dependent and full
+live integration acceptance remain incomplete. RQ-07, UAT, concrete institution
+binding and separate Jopia activation remain open.

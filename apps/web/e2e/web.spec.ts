@@ -59,6 +59,12 @@ const forecastResponse = {
   horizonDate: "2026-09-18",
   forecastStatus: "AVAILABLE",
   unavailableReason: null,
+  runId: "FRUN_SYNTH_001",
+  generatedAt: "2026-09-17T16:00:00.000Z",
+  lineage: null,
+  trainingCutoffDate: null,
+  classification: "SIMULATION_ONLY",
+  recommendationEligibility: "DISABLED_UNAPPROVED_POLICY",
   forecasts: [{
     runKey: "RUN_KEY_SYNTH_BROWSER",
     runId: "FRUN_SYNTH_BROWSER_01",
@@ -116,7 +122,7 @@ async function authenticatedApi(page: Page, roleId: RoleId, override?: (route: R
     if (override && await override(route, path)) return;
     if (path === "/api/v1/auth/session") return fulfillJson(route, { principal: activePrincipal });
     if (path === "/api/v1/reports/inventory.csv") return route.fulfill({ status: 200, contentType: "text/csv", body: "classification\nSIMULATION_ONLY\n" });
-    if (path === "/api/v1/demand-forecasts") return fulfillJson(route, forecastResponse);
+    if (path === "/api/v1/demand-forecasts") return fulfillJson(route, { ...forecastResponse, businessDate: new URL(route.request().url()).searchParams.get("businessDate") });
     if (path === "/api/v2/components") return fulfillJson(route, { scope: "INSTITUTION", components: [v2Component], classification: "SIMULATION_ONLY" });
     if (path === "/api/v2/reports/inbound-intake") return fulfillJson(route, { scope: "INSTITUTION", statuses: { QUEUED: 1 }, includedInventoryStatuses: ["COMMITTED"], excludedFromInventory: ["QUEUED", "FAILED", "CONFLICT"], classification: "SIMULATION_ONLY" });
     const body = responses[path];
@@ -711,7 +717,7 @@ test("latest visual baseline stays role-scoped while Sprint 6 integrations remai
   await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeVisible();
   await expect(page.getByText("Active ML V4 simulation", { exact: true })).toBeVisible();
   await expect(page.getByText("Uncertainty unavailable", { exact: false })).toBeVisible();
-  await expect(page.getByText("Intentionally unavailable", { exact: true })).toBeVisible();
+  await expect(page.getByText("Inventory validity unavailable", { exact: true })).toBeVisible();
   await expect(page.getByText("SYNTHETIC_FORECAST_V4_RUNTIME_V1", { exact: true }).first()).toBeVisible();
 
   await page.getByRole("link", { name: "Inventory", exact: true }).click();
@@ -959,4 +965,119 @@ test("visual parity controls remain local previews without connected claims", as
   await expect(page.locator(".shell")).toHaveClass(/preview-accent-green/);
   await page.getByRole("button", { name: "Compact" }).click();
   await expect(page.locator(".shell")).toHaveClass(/preview-compact/);
+});
+
+// FR-14 / BR-ALG-07: mocked HTTP UI evidence; no institution activation.
+function v5Forecast(status: "CURRENT" | "STALE" | "UNAVAILABLE" = "CURRENT", unavailableReason: string | null = null) {
+  const datasetVersion = "SYNTHETIC_FORECAST_V5_RUNTIME_V1";
+  const modelVersion = "bloodledger-v5-series-mean-1.0.0";
+  return { ...forecastResponse, runId: "FRUN_SYNTH_BROWSER_01", datasetVersion, modelVersion, status, forecastStatus: status === "CURRENT" ? "AVAILABLE" : status, unavailableReason, trainingCutoffDate: "2025-06-30", lineage: { trainingCutoffDate: "2025-06-30", modelSha256: "a".repeat(64) }, forecasts: status === "UNAVAILABLE" ? [] : ["A_POSITIVE", "B_POSITIVE", "O_POSITIVE", "AB_POSITIVE"].flatMap(bloodType => ["WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_PLASMA", "PLATELETS", "CRYOPRECIPITATE"].map((component, index) => ({ ...forecastResponse.forecasts[0], bloodType, component, pointForecast: index + 0.25, datasetVersion, modelVersion, forecastId: "FC_" + (["A_POSITIVE", "B_POSITIVE", "O_POSITIVE", "AB_POSITIVE"].indexOf(bloodType) * 5 + index).toString(16).toUpperCase().padStart(40, "0"), stale: status === "STALE" }))) };
+}
+
+test("V4 default, keyboard V5 preview, twenty series and narrow provenance", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await authenticatedApi(page, "ROLE-01", async (route, path) => {
+    if (path !== "/api/v1/demand-forecasts") return false;
+    const query = new URL(route.request().url()).searchParams;
+    expect(query.has("institutionId")).toBe(false);
+    const body = query.has("datasetVersion") ? v5Forecast() : forecastResponse;
+    await fulfillJson(route, { ...body, businessDate: query.get("businessDate") }); return true;
+  });
+  await page.goto("/analytics");
+  const choice = page.getByLabel("Forecast version");
+  await expect(choice).toHaveValue("SYNTHETIC_FORECAST_V4_RUNTIME_V1");
+  await expect(page.locator(".forecast-table tbody tr")).toHaveCount(1);
+  await choice.focus(); await choice.press("ArrowDown"); await choice.press("Enter");
+  await expect(choice).toHaveValue("SYNTHETIC_FORECAST_V5_RUNTIME_V1");
+  await expect(page.locator(".forecast-table tbody tr")).toHaveCount(20);
+  await expect(page.getByText("2025-06-30", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Uncertainty unavailable", { exact: true })).toHaveCount(20);
+  await expect(page.getByText("Inventory validity unavailable", { exact: true })).toBeVisible();
+  await expect(page.getByText("DISABLED_UNAPPROVED_POLICY", { exact: true }).first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+for (const scenario of ["STALE", "V5_FORECAST_FUTURE_GENERATED", "MODEL_ARTIFACT_UNAVAILABLE", "401", "403", "network", "malformed"] as const) {
+  test(`V5 ${scenario} clears earlier success and preserves safe state`, async ({ page }) => {
+    await authenticatedApi(page, "ROLE-01", async (route, path) => {
+      if (path !== "/api/v1/demand-forecasts") return false;
+      const query = new URL(route.request().url()).searchParams;
+      if (!query.has("datasetVersion")) { await fulfillJson(route, { ...forecastResponse, businessDate: query.get("businessDate") }); return true; }
+      if (scenario === "network") await route.abort();
+      else if (scenario === "401" || scenario === "403") await fulfillJson(route, { error: { message: "internal diagnostic must not render" } }, Number(scenario));
+      else {
+        const body = scenario === "STALE" ? v5Forecast("STALE") : scenario === "malformed" ? { ...v5Forecast(), modelVersion: "invalid" } : v5Forecast("UNAVAILABLE", scenario);
+        await fulfillJson(route, { ...body, businessDate: query.get("businessDate") });
+      }
+      return true;
+    });
+    await page.goto("/analytics");
+    await expect(page.locator(".forecast-table tbody tr")).toHaveCount(1);
+    await page.getByLabel("Forecast version").selectOption("SYNTHETIC_FORECAST_V5_RUNTIME_V1");
+    if (scenario === "STALE") { await expect(page.getByText("Forecast is stale", { exact: true })).toBeVisible(); await expect(page.locator(".forecast-table tbody tr")).toHaveCount(20); }
+    else {
+      await expect(page.locator(".forecast-table tbody tr")).toHaveCount(0);
+      if (scenario === "401") await expect(page.getByText("Your session has expired. Sign in again to view forecasts.")).toBeVisible();
+      else if (scenario === "403") await expect(page.getByText("Your session is not authorized to view this forecast.")).toBeVisible();
+      else if (["network", "malformed"].includes(scenario)) await expect(page.getByText("Unable to load validated forecast evidence. Please retry.")).toBeVisible();
+      else await expect(page.getByText("Forecast unavailable", { exact: true })).toBeVisible();
+    }
+    await expect(page.getByText("internal diagnostic must not render")).toHaveCount(0);
+  });
+}
+
+test("out-of-order date/version requests and refresh never restore old evidence", async ({ page }) => {
+  let release: (() => void) | undefined;
+  let entered = false;
+  let calls = 0;
+  await authenticatedApi(page, "ROLE-01", async (route, path) => {
+    if (path !== "/api/v1/demand-forecasts") return false;
+    const query = new URL(route.request().url()).searchParams; calls++;
+    if (!query.has("datasetVersion")) { entered = true; await new Promise<void>(resolve => { release = resolve; }); }
+    await fulfillJson(route, { ...(query.has("datasetVersion") ? v5Forecast("UNAVAILABLE", "V5_FORECAST_FUTURE_GENERATED") : forecastResponse), businessDate: query.get("businessDate") });
+    return true;
+  });
+  await page.goto("/analytics");
+  await expect.poll(() => entered).toBe(true);
+  await page.getByLabel("Forecast version").selectOption("SYNTHETIC_FORECAST_V5_RUNTIME_V1");
+  await expect(page.getByText("Forecast unavailable", { exact: true })).toBeVisible();
+  release?.();
+  await page.getByLabel("Business date").fill("2026-09-19");
+  await expect(page.getByText("2026-09-19", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Refresh forecast" }).click();
+  await expect(page.getByText("Forecast unavailable", { exact: true })).toBeVisible();
+  await expect(page.locator(".forecast-table tbody tr")).toHaveCount(0);
+  expect(calls).toBeGreaterThanOrEqual(4);
+});
+
+for (const inventoryCase of ["projection-current", "projection-stale", "projection-zero", "projection-missing"]) {
+  test(`forecast does not promote ${inventoryCase} into verified census evidence`, async ({ page }) => {
+    await authenticatedApi(page, "ROLE-01", async (route, path) => {
+      if (path === "/api/v1/dashboard") {
+        await fulfillJson(route, { ...dashboardFor("ROLE-01"), inventory: inventoryCase === "projection-missing" ? [] : [{ ...aggregate, confirmedCount: inventoryCase === "projection-zero" ? 0 : 3, lastProjectedAt: inventoryCase === "projection-stale" ? timestamp : "2026-09-18T04:00:00.000Z" }] });
+        return true;
+      }
+      if (path !== "/api/v1/demand-forecasts") return false;
+      await fulfillJson(route, { ...v5Forecast(), businessDate: new URL(route.request().url()).searchParams.get("businessDate") }); return true;
+    });
+    await page.goto("/");
+    await page.getByRole("link", { name: "Analytics", exact: true }).click();
+    // The default must reject an unsolicited V5 response rather than accept/fallback.
+    await expect(page.getByText("Unable to load validated forecast evidence. Please retry.")).toBeVisible();
+    await page.getByLabel("Forecast version").selectOption("SYNTHETIC_FORECAST_V5_RUNTIME_V1");
+    await expect(page.locator(".forecast-table tbody tr")).toHaveCount(20);
+    await expect(page.getByText("Inventory validity unavailable", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Unknown inventory remains unavailable, never zero/)).toBeVisible();
+  });
+}
+
+test("foreign institution evidence fails closed within authenticated Analytics", async ({ page }) => {
+  await authenticatedApi(page, "ROLE-01", async (route, path) => {
+    if (path !== "/api/v1/demand-forecasts") return false;
+    const body = { ...forecastResponse, businessDate: new URL(route.request().url()).searchParams.get("businessDate"), forecasts: forecastResponse.forecasts.map(item => ({ ...item, institutionId: "INST_OTHER" })) };
+    await fulfillJson(route, body); return true;
+  });
+  await page.goto("/analytics");
+  await expect(page.getByText("Unable to load validated forecast evidence. Please retry.")).toBeVisible();
+  await expect(page.locator(".forecast-table tbody tr")).toHaveCount(0);
 });
