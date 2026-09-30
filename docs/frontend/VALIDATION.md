@@ -312,3 +312,38 @@ shortage, surplus, reserves or redistributability. Browser BROA/surplus is absen
 clinical, transfer or release approval is enabled. FR-14 stock-dependent and full
 live integration acceptance remain incomplete. RQ-07, UAT, concrete institution
 binding and separate Jopia activation remain open.
+
+
+## Jopia PR #21 follow-up validation — 2026-10-01
+
+The user authorized Jopia to implement the census contract and frontend fixes
+on `codex/pr-21-jopia-review` from reviewed head
+`91500c9e250fdcbf545a1e0158f34f6b43067df7`. The tested implementation is
+`f13c2b0c2a69662d85b91a0bbd59e748f5944b0f`; [Jopia’s complete validation](../ML-V5-PR21-JOPIA-VALIDATION.md)
+records commands, source evidence, secret dispositions and limitations. Lat
+retains frontend ownership and resulting-change review. This is Jopia
+self-validation and does not replace Lat’s independent review or human UAT.
+
+Web build/typecheck and 59 unit tests passed; browser tests passed 43 with seven
+existing retired V1 cases skipped. The real isolated producer → PostgreSQL →
+official HttpOnly cookie → rendered Chromium flow passed without route
+interception. The [safe aggregate](v5-cookie-evidence-2026-10-01.json) proves
+twenty V5 results, forty complete persisted census combinations, verified zeros,
+tenant isolation, failure transitions and Manila-midnight staleness. The live
+probe uses the requested date and checks rendered quantities; unavailable latest
+evidence stays explicitly BLOCKED. The missing-model harness case is BLOCKED.
+
+The authorized [OpenAPI V2](../../services/api/openapi-v2.json) read supplies
+independent inventory evidence. This supersedes the prior missing-contract,
+verified-census and authenticated isolated-flow blockers for this follow-up.
+The original Lat checkpoint above remains historical. Runtime snapshots that
+are absent still return unavailable; the GET cannot capture them. History,
+redistribution, surplus calculations, reserve actions, BROA actions and
+operational recommendations remain disabled or deferred.
+
+Full history/index/candidate secret scanning now passes with exact demonstrated
+false-positive exceptions; dependency audit reports zero vulnerabilities after
+scoped updates. These supersede the earlier untriaged-secret statement for the
+validated follow-up. Binding, activation, RQ-07, UAT, physical OCR and full
+Fabric-to-browser NFR-06 remain open. Synthetic projection fixtures do not
+establish live Fabric or operational inventory validity.
