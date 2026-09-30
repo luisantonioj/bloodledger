@@ -556,6 +556,47 @@
           }
         }
       }
+    },
+    "/analytics/inventory-evidence": {
+      "get": {
+        "operationId": "readMlInventoryEvidence",
+        "description": "Official cookie roles 01–03; authenticated institution only. Read-only internal ML snapshots, independent of DOH export. CURRENT requires complete valid same-day capture and evaluation; stale history remains explicit. Missing/invalid/future snapshots return UNAVAILABLE with null evidence. Persisted zero rows are required; no older fallback after invalid selection.",
+        "parameters": [
+          {
+            "name": "businessDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Validated synthetic inventory evidence state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryEvidence"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query; tenant overrides prohibited"
+          },
+          "401": {
+            "description": "Official cookie session required"
+          },
+          "403": {
+            "description": "Role forbidden"
+          },
+          "503": {
+            "description": "Inventory infrastructure unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1430,6 +1471,210 @@
       },
       "Census": {
         "$ref": "../../contracts/doh-census-v2.schema.json"
+      },
+      "InventoryEvidence": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "institutionId",
+          "businessDate",
+          "evaluatedAt",
+          "evaluationDate",
+          "status",
+          "unavailableReason",
+          "snapshot",
+          "classification",
+          "recommendationEligibility"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "BLOODLEDGER_INVENTORY_EVIDENCE_V1"
+          },
+          "institutionId": {
+            "type": "string",
+            "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+          },
+          "businessDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "evaluatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "evaluationDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "enum": [
+              "CURRENT",
+              "STALE",
+              "UNAVAILABLE"
+            ]
+          },
+          "unavailableReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          },
+          "recommendationEligibility": {
+            "const": "DISABLED_UNAPPROVED_POLICY"
+          },
+          "snapshot": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "snapshotId": {
+                    "type": "string",
+                    "pattern": "^CENSUS_[A-Z0-9_-]{1,56}$"
+                  },
+                  "institutionId": {
+                    "type": "string",
+                    "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+                  },
+                  "snapshotKind": {
+                    "const": "INTERNAL_ML"
+                  },
+                  "schemaVersion": {
+                    "const": "BLOODLEDGER_ML_INVENTORY_SNAPSHOT_V1"
+                  },
+                  "reportPolicyVersion": {
+                    "const": "INTERVIEW_ML_INVENTORY_SNAPSHOT_V1"
+                  },
+                  "timezone": {
+                    "const": "Asia/Manila"
+                  },
+                  "scheduledFor": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "capturedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "sourceProjectionDigest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "projectionWatermark": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "coverage": {
+                    "const": "COMPLETE"
+                  },
+                  "expectedSeries": {
+                    "const": 40
+                  },
+                  "persistedSeries": {
+                    "const": 40
+                  },
+                  "classification": {
+                    "const": "SIMULATION_ONLY"
+                  },
+                  "groups": {
+                    "type": "array",
+                    "minItems": 5,
+                    "maxItems": 5,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "componentType",
+                        "bloodTypes"
+                      ],
+                      "properties": {
+                        "componentType": {
+                          "enum": [
+                            "WHOLE_BLOOD",
+                            "PACKED_RED_BLOOD_CELLS",
+                            "FRESH_FROZEN_PLASMA",
+                            "PLATELETS",
+                            "CRYOPRECIPITATE"
+                          ]
+                        },
+                        "bloodTypes": {
+                          "type": "array",
+                          "minItems": 8,
+                          "maxItems": 8,
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "bloodType",
+                              "availableCount",
+                              "reservedCount",
+                              "forecastEligibleAvailableCount",
+                              "reportableCount"
+                            ],
+                            "properties": {
+                              "bloodType": {
+                                "enum": [
+                                  "A_POSITIVE",
+                                  "A_NEGATIVE",
+                                  "B_POSITIVE",
+                                  "B_NEGATIVE",
+                                  "AB_POSITIVE",
+                                  "AB_NEGATIVE",
+                                  "O_POSITIVE",
+                                  "O_NEGATIVE"
+                                ]
+                              },
+                              "availableCount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "reservedCount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "forecastEligibleAvailableCount": {
+                                "type": "integer",
+                                "minimum": 0
+                              },
+                              "reportableCount": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "snapshotId",
+                  "institutionId",
+                  "snapshotKind",
+                  "schemaVersion",
+                  "reportPolicyVersion",
+                  "timezone",
+                  "scheduledFor",
+                  "capturedAt",
+                  "sourceProjectionDigest",
+                  "projectionWatermark",
+                  "coverage",
+                  "expectedSeries",
+                  "persistedSeries",
+                  "classification",
+                  "groups"
+                ]
+              }
+            ]
+          }
+        }
       }
     },
     "responses": {

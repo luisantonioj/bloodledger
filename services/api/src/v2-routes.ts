@@ -1,3 +1,4 @@
+import { readInventoryEvidence, validEvidenceDate, type MlInventoryEvidenceReader } from "./inventory-evidence.js";
 import { createHash } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { ApiFailure } from "./errors.js";
@@ -30,6 +31,7 @@ export interface V2RouteDependencies {
   restore: (request: FastifyRequest) => Promise<{ principal: WebPrincipal }>;
   keyring?: DonationKeyring;
   census?: CensusStore;
+  mlInventory?: MlInventoryEvidenceReader;
   projection?: V2ProjectionReader;
   webOrigin: string;
   clock: () => Date;
@@ -251,6 +253,15 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
   app.get("/api/v2/reconciliation/reasons", async (request) => {
     const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02"]);
     return { policyVersion: RECONCILIATION_POLICY_VERSION, reasons: RECONCILIATION_REASONS, effect: "RECONCILIATION_HOLD_ONLY", freeTextAllowed: false, classification: "SIMULATION_ONLY" as const };
+  });
+
+  app.get<{ Querystring: { businessDate?: string } }>("/api/v2/analytics/inventory-evidence", async (request) => {
+    const { principal } = await restore(request);
+    authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-03"]);
+    if (Object.keys(request.query).some(key => key !== "businessDate") || !validEvidenceDate(request.query.businessDate)) throw new ApiFailure(400, "INVALID_BUSINESS_DATE", "Only a valid businessDate is accepted.");
+    if (!dependencies.mlInventory) throw new ApiFailure(503, "ML_INVENTORY_UNAVAILABLE", "Inventory evidence is unavailable.");
+    try { return await readInventoryEvidence(dependencies.mlInventory, principal.institutionId, request.query.businessDate, dependencies.clock()); }
+    catch { throw new ApiFailure(503, "ML_INVENTORY_UNAVAILABLE", "Inventory evidence is unavailable."); }
   });
 
   app.post("/api/v2/reports/doh-census/catch-up", async (request, reply) => {
