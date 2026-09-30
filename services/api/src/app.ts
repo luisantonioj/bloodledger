@@ -579,7 +579,7 @@ export async function buildApp(
       institutionId = principalFrom(request, config.operatorId).institutionId;
     }
     if (repository.readForecasts) {
-      return repository.readForecasts(institutionId, requestedDate, requestedDataset);
+      return repository.readForecasts(institutionId, requestedDate, requestedDataset, manilaDate(clock()));
     }
     const forecasts = await repository.listForecasts(institutionId, requestedDate, requestedDataset);
     const status = forecasts.length === 0 ? "UNAVAILABLE" : forecasts.some((item) => item.stale) ? "STALE" : "CURRENT";
@@ -593,6 +593,12 @@ export async function buildApp(
       horizonDate: first?.horizonDate ?? null,
       forecastStatus: first?.forecastStatus ?? "UNAVAILABLE",
       unavailableReason: null,
+      runId: first?.runId ?? null,
+      generatedAt: first?.generatedAt ?? null,
+      lineage: null,
+      trainingCutoffDate: null,
+      classification: "SIMULATION_ONLY",
+      recommendationEligibility: "DISABLED_UNAPPROVED_POLICY",
       forecasts,
     };
   });

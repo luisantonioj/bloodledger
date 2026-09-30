@@ -75,10 +75,10 @@ export class MemoryRepository implements ScanRepository {
     return this.event?.eventId === eventId && this.event.institutionId === institutionId ? this.event : null;
   }
 
-  async readForecasts(_institutionId: string, businessDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1"): Promise<ForecastRead> {
-    const forecasts = this.forecasts.filter((forecast) => forecast.datasetVersion === datasetVersion);
+  async readForecasts(institutionId: string, businessDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1", evaluatedManilaDate = businessDate): Promise<ForecastRead> {
+    const forecasts = this.forecasts.filter((forecast) => forecast.datasetVersion === datasetVersion && forecast.institutionId === institutionId && (datasetVersion !== "SYNTHETIC_FORECAST_V5_RUNTIME_V1" || forecast.horizonDate === businessDate));
     const first = forecasts[0];
-    const status = forecasts.length === 0 ? "UNAVAILABLE" : forecasts.some((forecast) => forecast.stale) ? "STALE" : "CURRENT";
+    const status = forecasts.length === 0 ? "UNAVAILABLE" : forecasts.some((forecast) => forecast.stale) || (datasetVersion === "SYNTHETIC_FORECAST_V5_RUNTIME_V1" && businessDate !== evaluatedManilaDate) ? "STALE" : "CURRENT";
     return {
       businessDate,
       status,
@@ -88,6 +88,12 @@ export class MemoryRepository implements ScanRepository {
       horizonDate: first?.horizonDate ?? null,
       forecastStatus: first?.forecastStatus ?? "UNAVAILABLE",
       unavailableReason: first ? null : "NO_APPLICABLE_FORECAST",
+      runId: first?.runId ?? null,
+      generatedAt: first?.generatedAt ?? null,
+      lineage: null,
+      trainingCutoffDate: null,
+      classification: "SIMULATION_ONLY",
+      recommendationEligibility: "DISABLED_UNAPPROVED_POLICY",
       forecasts,
     };
   }

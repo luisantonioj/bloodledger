@@ -166,12 +166,13 @@
             "name": "datasetVersion",
             "in": "query",
             "required": false,
-            "description": "Allowlisted historical dataset identity. Omission selects the active V4 runtime dataset.",
+            "description": "Allowlisted dataset identity. Omission selects the active V4 runtime dataset; V5 is explicit-only until activation.",
             "schema": {
               "type": "string",
               "enum": [
                 "SYNTHETIC_FORECAST_V1",
-                "SYNTHETIC_FORECAST_V4_RUNTIME_V1"
+                "SYNTHETIC_FORECAST_V4_RUNTIME_V1",
+                "SYNTHETIC_FORECAST_V5_RUNTIME_V1"
               ]
             }
           }
@@ -1690,7 +1691,13 @@
           "horizonDate",
           "forecastStatus",
           "unavailableReason",
-          "forecasts"
+          "forecasts",
+          "runId",
+          "generatedAt",
+          "lineage",
+          "trainingCutoffDate",
+          "classification",
+          "recommendationEligibility"
         ],
         "properties": {
           "businessDate": {
@@ -1709,7 +1716,8 @@
             "type": "string",
             "enum": [
               "SYNTHETIC_FORECAST_V1",
-              "SYNTHETIC_FORECAST_V4_RUNTIME_V1"
+              "SYNTHETIC_FORECAST_V4_RUNTIME_V1",
+              "SYNTHETIC_FORECAST_V5_RUNTIME_V1"
             ]
           },
           "modelVersion": {
@@ -1752,6 +1760,39 @@
             "items": {
               "$ref": "#/components/schemas/ForecastItem"
             }
+          },
+          "runId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "generatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "lineage": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": true
+          },
+          "trainingCutoffDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          },
+          "recommendationEligibility": {
+            "const": "DISABLED_UNAPPROVED_POLICY"
           }
         }
       },

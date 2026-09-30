@@ -31,7 +31,7 @@ os.chmod(sys.argv[1], 0o600)
 binding = {
   'schemaVersion': 'SYNTHETIC_V5_INSTITUTION_BINDING_V1',
   'bindingId': 'V5_BIND_ISOLATED_TEST', 'researchInstitutionId': 'SIM_INSTITUTION_01',
-  'institutionId': 'INST_SYNTHETIC',
+  'institutionId': 'INST_MEDIATRIX',
   'modelSha256': 'ceb0e74b2eb2f8af7fcafabb3619f2a23681c38eac65998816e7daf40b5afb86',
   'enabled': True,
 }
@@ -48,7 +48,7 @@ for attempt in {1..40}; do
   sleep 1
 done
 node_run=(docker run --rm --network "container:$probe_container" --env-file "$probe_root/env" \
-  --user "$(id -u):$(id -g)" -v "$repository_root:/workspace:ro" -w /workspace \
+  --user "$(id -u):$(id -g)" -v "$repository_root:/workspace" -w /workspace \
   --entrypoint node node:24.17.0-bookworm-slim)
 "${node_run[@]}" database/scripts/migrate.mjs | tail -1
 forecast_run=(docker run --rm --network "container:$probe_container" --env-file "$probe_root/env" \
@@ -59,19 +59,24 @@ forecast_run=(docker run --rm --network "container:$probe_container" --env-file 
 for hour in 12 13; do
   "${forecast_run[@]}" -m bloodledger_forecasting.runtime_v5_cli \
     --model /workspace/model.json --binding /workspace/tmp/binding.json \
-    --institution-id INST_SYNTHETIC --request-id V5_REQ_ISOLATED \
+    --institution-id INST_MEDIATRIX --request-id V5_REQ_ISOLATED \
     --origin-date 2026-09-28 --generated-at "2026-09-28T${hour}:00:00.000Z" \
     --output /workspace/tmp/forecast.json --persist
  done
 "${forecast_run[@]}" -m bloodledger_forecasting.runtime_v5_cli \
+  --model /workspace/model.json --binding /workspace/tmp/binding.json \
+  --institution-id INST_MEDIATRIX --request-id V5_REQ_CURRENT \
+  --origin-date 2026-09-29 --generated-at 2026-09-29T12:00:00.000Z \
+  --output /workspace/tmp/current.json --persist
+"${forecast_run[@]}" -m bloodledger_forecasting.runtime_v5_cli \
   --model /workspace/tmp/missing.json --binding /workspace/tmp/binding.json \
-  --institution-id INST_SYNTHETIC --request-id V5_REQ_UNAVAILABLE \
+  --institution-id INST_MEDIATRIX --request-id V5_REQ_UNAVAILABLE \
   --origin-date 2026-09-28 --generated-at 2026-09-28T14:00:00.000Z \
   --output /workspace/tmp/unavailable.json --persist
 # The same idempotency key with a changed origin must not overwrite the saved run.
 if "${forecast_run[@]}" -m bloodledger_forecasting.runtime_v5_cli \
   --model /workspace/model.json --binding /workspace/tmp/binding.json \
-  --institution-id INST_SYNTHETIC --request-id V5_REQ_ISOLATED \
+  --institution-id INST_MEDIATRIX --request-id V5_REQ_ISOLATED \
   --origin-date 2026-09-27 --generated-at 2026-09-28T15:00:00.000Z \
   --output /workspace/tmp/conflict.json --persist >"$probe_root/conflict.stdout" 2>"$probe_root/conflict.stderr"; then
   echo 'Expected V5 idempotency conflict' >&2
@@ -88,11 +93,13 @@ assert unavailable['forecasts'] == []
 PY
 docker exec "$probe_container" psql -U postgres -d bloodledger_dev -Atc \
   "SELECT run_status || ':' || count(*) FROM app.forecast_runs WHERE dataset_version='SYNTHETIC_FORECAST_V5_RUNTIME_V1' GROUP BY run_status ORDER BY run_status" \
-  | grep -Fx 'COMPLETED:1'
+  | grep -Fx 'COMPLETED:2'
 docker exec "$probe_container" psql -U postgres -d bloodledger_dev -Atc \
-  "SELECT count(*) FROM app.demand_forecasts WHERE institution_id='INST_SYNTHETIC'" \
-  | grep -Fx '20'
+  "SELECT count(*) FROM app.demand_forecasts WHERE institution_id='INST_MEDIATRIX'" \
+  | grep -Fx '40'
 docker exec "$probe_container" psql -U postgres -d bloodledger_dev -Atc \
   "SELECT has_table_privilege('bloodledger_app','app.forecast_runs','UPDATE')::text || ':' || has_table_privilege('bloodledger_app','app.demand_forecasts','DELETE')::text" \
   | grep -Fx 'false:false'
+"${node_run[@]}" node_modules/typescript/bin/tsc -p services/api/tsconfig.json
+"${node_run[@]}" tests/forecasting/v5-api-probe.mjs
 echo 'V5 isolated database persistence passed'

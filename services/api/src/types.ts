@@ -108,6 +108,12 @@ export interface ForecastRead {
   horizonDate: string | null;
   forecastStatus: "AVAILABLE" | "STALE" | "UNAVAILABLE";
   unavailableReason: string | null;
+  runId: string | null;
+  generatedAt: string | null;
+  lineage: Record<string, unknown> | null;
+  trainingCutoffDate: string | null;
+  classification: "SIMULATION_ONLY";
+  recommendationEligibility: "DISABLED_UNAPPROVED_POLICY";
   forecasts: ForecastRecord[];
 }
 
