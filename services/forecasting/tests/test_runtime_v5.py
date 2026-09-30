@@ -11,6 +11,7 @@ from bloodledger_forecasting.runtime_v5 import (
     SERIES,
     V5_BINDING_VERSION,
     V5_MODEL_SHA256,
+    canonical_hash,
     create_v5_runtime_bundle,
     read_model,
 )
@@ -43,6 +44,7 @@ def produce(model_path: Path, binding_path: Path, **changes: str) -> dict:
         "institution_id": "INST_SYNTHETIC",
     }
     args.update(changes)
+    args["approved_binding_sha256"] = canonical_hash(json.loads(binding_path.read_text()))
     return create_v5_runtime_bundle(**args)
 
 
@@ -62,6 +64,20 @@ def test_bad_binding_fails_closed(tmp_path: Path) -> None:
         produce(tmp_path / "missing.json", path)
     with pytest.raises(ForecastingError, match="V5_INSTITUTION_SCOPE_INVALID"):
         produce(tmp_path / "missing.json", binding(tmp_path), institution_id="INST_OTHER")
+
+
+def test_unapproved_binding_hash_fails(tmp_path: Path) -> None:
+    path = binding(tmp_path)
+    with pytest.raises(ForecastingError, match="V5_BINDING_HASH_INVALID"):
+        create_v5_runtime_bundle(
+            model_path=tmp_path / "missing.json",
+            binding_path=path,
+            request_id="V5_REQ_TEST",
+            origin_date="2026-09-28",
+            generated_at="2026-09-28T12:00:00.000Z",
+            institution_id="INST_SYNTHETIC",
+            approved_binding_sha256="0" * 64,
+        )
 
 
 def test_invalid_origin_or_instant_fails(tmp_path: Path) -> None:

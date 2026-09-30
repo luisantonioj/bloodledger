@@ -83,12 +83,14 @@ def _strict_instant(value: str) -> str:
     return normalized
 
 
-def read_binding(path: Path) -> dict[str, Any]:
+def read_binding(path: Path, approved_sha256: str) -> dict[str, Any]:
     """External, explicitly enabled synthetic mapping; never infer from alias."""
     try:
         binding = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         raise ForecastingError("V5_BINDING_UNAVAILABLE", "Binding is unavailable") from error
+    if not re.fullmatch(r"[0-9a-f]{64}", approved_sha256):
+        raise ForecastingError("V5_BINDING_APPROVAL_MISSING", "Approved binding hash is required")
     if not isinstance(binding, dict) or set(binding) != {
         "schemaVersion",
         "bindingId",
@@ -109,6 +111,8 @@ def read_binding(path: Path) -> dict[str, Any]:
         or binding["enabled"] is not True
     ):
         raise ForecastingError("V5_BINDING_INVALID", "Binding is not enabled for this model")
+    if canonical_hash(binding) != approved_sha256:
+        raise ForecastingError("V5_BINDING_HASH_INVALID", "Binding does not match approval")
     return binding
 
 
@@ -162,9 +166,10 @@ def create_v5_runtime_bundle(
     origin_date: str,
     generated_at: str,
     institution_id: str,
+    approved_binding_sha256: str,
 ) -> dict[str, Any]:
     """Forecast from frozen means only; inventory is never an input or output."""
-    binding = read_binding(binding_path)
+    binding = read_binding(binding_path, approved_binding_sha256)
     if institution_id != binding["institutionId"]:
         raise ForecastingError("V5_INSTITUTION_SCOPE_INVALID", "Request institution is not bound")
     if not re.fullmatch(r"V5_REQ_[A-Z0-9_-]{1,48}", request_id):

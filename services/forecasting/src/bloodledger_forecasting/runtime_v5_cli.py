@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -34,6 +35,7 @@ def main(argv: list[str] | None = None) -> int:
             origin_date=args.origin_date,
             generated_at=generated_at,
             institution_id=args.institution_id,
+            approved_binding_sha256=os.environ.get("BLOODLEDGER_V5_APPROVED_BINDING_SHA256", ""),
         )
         if args.persist:
             from .persistence import app_database_config_from_environment, connect_as_runtime
@@ -41,7 +43,11 @@ def main(argv: list[str] | None = None) -> int:
 
             with connect_as_runtime(app_database_config_from_environment()) as connection:
                 persistence = persist_v5_runtime_bundle(
-                    connection, bundle, args.model, args.binding
+                    connection,
+                    bundle,
+                    args.model,
+                    args.binding,
+                    os.environ.get("BLOODLEDGER_V5_APPROVED_BINDING_SHA256", ""),
                 )
         else:
             persistence = None
