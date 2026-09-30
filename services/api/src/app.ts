@@ -1,3 +1,4 @@
+import type { MlInventoryEvidenceReader } from "./inventory-evidence.js";
 import { timingSafeEqual } from "node:crypto";
 import { existsSync } from "node:fs";
 import fastifyStatic from "@fastify/static";
@@ -115,7 +116,7 @@ export async function buildApp(
   sessions?: SessionRepository,
   applicationReads?: ApplicationReadRepository,
   applicationWrites?: ApplicationWriteRepository,
-  v2?: { store: V2CommandStore; keyring?: DonationKeyring; census?: CensusStore; projection?: V2ProjectionReader; enabledIssuerInstitutionIds?: readonly string[] },
+  v2?: { store: V2CommandStore; keyring?: DonationKeyring; census?: CensusStore; mlInventory?: MlInventoryEvidenceReader; projection?: V2ProjectionReader; enabledIssuerInstitutionIds?: readonly string[] },
 ): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
@@ -636,7 +637,7 @@ export async function buildApp(
     app.get("/capture/*", (_request, reply) => reply.sendFile("index.html", captureDist));
   }
   if (webDist) {
-    for (const route of ["/inventory", "/alerts", "/transfers", "/consortium", "/audit", "/reporting", "/profile"]) {
+    for (const route of ["/inventory", "/alerts", "/transfers", "/consortium", "/audit", "/reporting", "/profile", "/analytics"]) {
       app.get(route, (_request, reply) => reply.sendFile("index.html", webDist));
     }
   }

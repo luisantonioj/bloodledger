@@ -1,6 +1,6 @@
 # ML V5 runtime integration — Jopia candidate
 
-**Status:** Inactive backend candidate targeting `main`; Buno accepted the frozen calculations and design and completed freshness re-verification. Formal PR approval, Lat browser validation, institution-binding approval and activation remain pending. **Classification:** `SIMULATION_ONLY`. **Requirements:** FR-14, BR-ALG-07. **Owners:** Jopia backend; Buno research review; Lat frontend.
+**Status:** Inactive simulation backend merged in PR #20 after Buno’s formal approval of `dfffe8aba7d02b0d109b2dbd27e240ddcbeb11d9`. PR #21 and its Jopia follow-up add an explicit browser preview and independent census evidence. Lat’s resulting frontend review, institution-binding approval and activation remain pending. **Classification:** `SIMULATION_ONLY`. **Requirements:** FR-14, BR-ALG-07. **Owners:** Jopia backend; Buno research review; Lat frontend.
 
 This is an additive application adapter to the frozen [V5 research evaluation](ML-V5-EXPLORATION.md). The evaluated research code, 28-day preview gate and report are unchanged. The active application dataset remains `SYNTHETIC_FORECAST_V4_RUNTIME_V1`. The [Jopia plan](ML-V5-JOPIA-IMPLEMENTATION-PLAN.md) records source verification and owner gates. The [V4 integration](ML-RUNTIME-INTEGRATION-V4.md) remains authoritative for V4 behavior.
 
@@ -25,3 +25,33 @@ V5 coordination uses a distinct [evidence schema](../contracts/source-surplus-ev
 ## Activation gates
 
 Backend test results, a versioned institution-binding decision, Buno freshness re-verification, Lat's compatible browser validation, and an explicit activation record are required before switching the active dataset. Buno's [independent technical review](ML-V5-BUNO-REVIEW.md) accepted the twenty means, their mapping, no-refit behavior and inventory separation; its completed freshness follow-up and Jopia's retarget verification are recorded in the [validation record](ML-V5-JOPIA-VALIDATION.md#merge-and-retarget-verification--2026-09-30). No concrete binding or activation is approved. RQ-07 remains open. Rollback selects V4 without deleting V5 evidence. This document does not claim human UAT, clinical accuracy, production readiness or deployment.
+
+## PR #21 follow-up — independent browser inventory evidence
+
+Jopia authorized the read-only internal ML census API and Lat consumer fixes on
+2026-10-01. [OpenAPI V2](../services/api/openapi-v2.json) owns the HTTP contract at
+`GET /api/v2/analytics/inventory-evidence?businessDate=YYYY-MM-DD`. Official
+cookie roles 01–03 read only their own institution; this is separate from DOH
+reporting and export policy. Full persisted 40-series coverage, counts, versions
+and digest are validated before exposing verified zero. Missing rows never
+become zeros. The latest eligible snapshot is validated without older fallback.
+Same-day capture and evaluation mean CURRENT only within the synthetic scope;
+older valid snapshots are STALE, invalid/future evidence UNAVAILABLE. Reads
+never capture snapshots. V4 remains default and recommendations remain disabled.
+
+The requested Manila day ends at the following midnight (exclusive). Selection
+orders capture time then snapshot ID descending; a corrupt or future selected
+snapshot cannot revive older evidence. Infrastructure failure returns a safe
+503, while valid CURRENT/STALE/UNAVAILABLE decisions return 200. A persisted
+zero is usable only within the complete validated 40-series snapshot. CURRENT
+also requires the requested date to equal the trusted server Manila date.
+No capture scheduler or new clinical freshness threshold is introduced.
+
+The frontend checks complete, unique twenty-series V5 results and consistent
+run, institution, model, origin, target, generation and cutoff evidence. Invalid
+successful envelopes cannot render quantities. Roles 01–03 match the official
+forecast and census authorization. Independent inventory reads clear prior
+counts during date changes, refresh, errors and logout; stale counts remain
+explicitly historical. Surplus calculations, reserves and BROA actions remain
+disabled. [Jopia’s PR #21 validation](ML-V5-PR21-JOPIA-VALIDATION.md) records the
+exact implementation, security dispositions and isolated browser evidence.

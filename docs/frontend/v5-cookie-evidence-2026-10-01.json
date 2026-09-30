@@ -1,0 +1,26 @@
+{
+  "classification": "SIMULATION_ONLY",
+  "interception": false,
+  "commit": "f13c2b0c2a69662d85b91a0bbd59e748f5944b0f",
+  "node": "v24.17.0",
+  "database": "postgres:17.10",
+  "browser": "149.0.7827.55",
+  "forecastingImage": "sha256:dcb2ccd36834bcec33e3d5cb8158f2b7a75b0881f695821cc705764667fba4c1",
+  "businessDate": "2026-10-01",
+  "cookieFlow": "PASS",
+  "v5Success": "PASS: twenty real rendered series",
+  "census": "PASS: complete forty persisted series and verified zeros",
+  "isolation": "PASS",
+  "failureTransitions": "PASS: unavailable latest clears forecast, inventory independent, midnight stale, logout denied",
+  "humanUat": "NOT_RUN",
+  "binding": "DISPOSABLE_TEST_ONLY",
+  "ledger": "SYNTHETIC_COMMITTED_PROJECTION_FIXTURE",
+  "inventoryHttp": {
+    "status": 200,
+    "evidenceStatus": "CURRENT",
+    "reason": null,
+    "coverage": "COMPLETE",
+    "series": 40
+  },
+  "liveProbe": "PASS: authenticated twenty-series HTTP and browser assertions; unavailable latest stays BLOCKED"
+}
