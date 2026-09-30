@@ -9,3 +9,31 @@ condition = "AND"
 paths = ['''(^|/)chaincode/test/interview-core-contract\.test\.ts$''']
 regexTarget = "secret"
 regexes = ['''^IDEM_RESOLVE_03[12]$''']
+
+[[allowlists]]
+description = "Reviewed historical V5 synthetic run ID; not an authentication credential"
+condition = "AND"
+paths = ['''(^|/)services/api/test/v5-forecast\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^V5_SYNTHETIC_RUN$''']
+
+[[allowlists]]
+description = "Reviewed historical in-process V5 probe credential; never used by a deployed account"
+condition = "AND"
+paths = ['''(^|/)tests/forecasting/v5-api-probe\.mjs$''']
+regexTarget = "secret"
+regexes = ['''^synthetic-v5-api-fixture$''']
+
+[[allowlists]]
+description = "Reviewed historical synthetic workflow idempotency IDs; no authentication capability"
+condition = "AND"
+paths = ['''(^|/)services/api/test/sprint-6-integration-probe\.mjs$''']
+regexTarget = "secret"
+regexes = ['''^IDEM_S6_INTEGRATION_(PREPARE|COMPROMISE|RESERVE)$''']
+
+[[allowlists]]
+description = "Reviewed historical in-process test signing keys and workflow IDs; never deployed"
+condition = "AND"
+paths = ['''(^|/)services/api/test/v2-contract-boundary\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^(v2-census-test-secret-that-is-long-enough|v2-reconciliation-test-secret-long-enough|v2-reservation-test-secret-that-is-long-enough|IDEM_RECONCILIATION_001|IDEM_RESERVATION_CANCEL_001)$''']
