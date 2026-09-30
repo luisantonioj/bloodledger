@@ -637,7 +637,7 @@ export async function buildApp(
     app.get("/capture/*", (_request, reply) => reply.sendFile("index.html", captureDist));
   }
   if (webDist) {
-    for (const route of ["/inventory", "/alerts", "/transfers", "/consortium", "/audit", "/reporting", "/profile"]) {
+    for (const route of ["/inventory", "/alerts", "/transfers", "/consortium", "/audit", "/reporting", "/profile", "/analytics"]) {
       app.get(route, (_request, reply) => reply.sendFile("index.html", webDist));
     }
   }

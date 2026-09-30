@@ -12,7 +12,7 @@ import { MemoryRepository } from "./test-support.js";
 import { deriveVerifier, type CredentialRecord } from "../src/session.js";
 
 const now = new Date("2026-10-01T04:00:00.000Z");
-const base = buildCensusSnapshot({ snapshotId: "CENSUS_TEST_EVIDENCE", scheduledFor: "2026-10-01T01:00:00.000Z", capturedAt: now.toISOString(), reportPolicyVersion: INTERNAL_ML_SNAPSHOT_POLICY_VERSION, componentTypes: V2_1_COMPONENT_TYPES, rows: [] });
+const base = buildCensusSnapshot({ snapshotId: "CENSUS_TEST_EVIDENCE", scheduledFor: "2026-10-01T01:00:00.123Z", capturedAt: now.toISOString(), reportPolicyVersion: INTERNAL_ML_SNAPSHOT_POLICY_VERSION, componentTypes: V2_1_COMPONENT_TYPES, rows: [] });
 const snapshot: MlInventorySnapshot = { ...base, institutionId: "INST_MEDIATRIX", snapshotKind: "INTERNAL_ML" as const, schemaVersion: INTERNAL_ML_SNAPSHOT_SCHEMA_VERSION, projectionWatermark: 0 };
 const counts = base.groups.flatMap(group => group.bloodTypes.map(item => ({ component_type: group.componentType, blood_type: item.bloodType, available_count: item.availableCount, reserved_count: item.reservedCount, forecast_eligible_available_count: item.forecastEligibleAvailableCount, reportable_count: item.reportableCount })));
 
@@ -26,7 +26,7 @@ test("complete persisted zeros are valid; absent, duplicate and invalid rows nev
 });
 
 test("persisted reader checks coverage before reconstruction and digest independently", async () => {
-  const header = { snapshot_id: snapshot.snapshotId, institution_id: snapshot.institutionId, scheduled_for: snapshot.scheduledFor, captured_at: snapshot.capturedAt, policy_version: snapshot.reportPolicyVersion, schema_version: snapshot.schemaVersion, projection_watermark: 0, source_projection_digest: snapshot.sourceProjectionDigest };
+  const header = { snapshot_id: snapshot.snapshotId, institution_id: snapshot.institutionId, scheduled_for: new Date(snapshot.scheduledFor), captured_at: new Date(snapshot.capturedAt), policy_version: snapshot.reportPolicyVersion, schema_version: snapshot.schemaVersion, projection_watermark: 0, source_projection_digest: snapshot.sourceProjectionDigest, timezone: "Asia/Manila", snapshot_kind: "INTERNAL_ML", classification: "SIMULATION_ONLY" };
   let storedCounts = counts;
   let storedHeader = header;
   const pool = { async query(sql: string) { return { rows: sql.includes("FROM app.ml_inventory_snapshot_counts") ? storedCounts : [storedHeader] }; } } as unknown as Pool;
@@ -37,6 +37,12 @@ test("persisted reader checks coverage before reconstruction and digest independ
   storedCounts = counts;
   storedHeader = { ...header, source_projection_digest: "f".repeat(64) };
   await assert.rejects(() => store.get(snapshot.snapshotId, snapshot.institutionId), /DIGEST/);
+  storedHeader = { ...header, scheduled_for: new Date("invalid") };
+  await assert.rejects(() => store.get(snapshot.snapshotId, snapshot.institutionId), /HEADER/);
+  storedHeader = { ...header, timezone: "UTC" };
+  await assert.rejects(() => store.get(snapshot.snapshotId, snapshot.institutionId), /HEADER/);
+  storedHeader = { ...header, policy_version: "UNKNOWN_POLICY" };
+  await assert.rejects(() => store.get(snapshot.snapshotId, snapshot.institutionId), /VERSION/);
 });
 
 test("same-day, historical, future and unavailable inventory remain independent of forecasts", async () => {
@@ -78,4 +84,33 @@ test("official cookie all-role matrix, institution binding, query rejection and 
       assert.equal((await app.inject({ method: "GET", url, headers: { cookie, authorization: "Bearer ignored" } })).statusCode, 401);
     } finally { await app.close(); }
   }
+});
+
+test("latest census uses requested-day cutoff and stable ordering without older fallback", async () => {
+  const calls: string[] = [];
+  const pool = { async query(sql: string, values: unknown[]) {
+    calls.push(sql);
+    if (sql.startsWith("SELECT snapshot_id FROM")) {
+      assert.match(sql, /institution_id=\$1 AND captured_at<\$2 ORDER BY captured_at DESC,snapshot_id DESC LIMIT 1/);
+      assert.deepEqual(values, ["INST_MEDIATRIX", "2026-10-01T16:00:00.000Z"]);
+      return { rows: [{ snapshot_id: "CENSUS_LATEST_INVALID" }] };
+    }
+    if (sql.includes("FROM app.ml_inventory_snapshot_counts")) return { rows: counts.slice(1) };
+    assert.equal(values[0], "CENSUS_LATEST_INVALID");
+    return { rows: [{ snapshot_id: "CENSUS_LATEST_INVALID", institution_id: "INST_MEDIATRIX", policy_version: INTERNAL_ML_SNAPSHOT_POLICY_VERSION, schema_version: INTERNAL_ML_SNAPSHOT_SCHEMA_VERSION }] };
+  } } as unknown as Pool;
+  const result = await readInventoryEvidence(new PostgresMlInventorySnapshotStore(pool), "INST_MEDIATRIX", "2026-10-01", now);
+  assert.equal(result.status, "UNAVAILABLE"); assert.equal(result.snapshot, null);
+  assert.equal(calls.length, 3);
+});
+
+test("inventory storage outage produces safe 503 without database diagnostics", async () => {
+  const record: CredentialRecord = { userId: "USR_SYNTH_EVIDENCE", username: "synth_evidence", displayName: "Synthetic Evidence User", institutionId: "INST_MEDIATRIX", institutionDisplayName: "Synthetic Evidence Institution", institutionCategory: "HOSPITAL", roleId: "ROLE-01", saltHex: "0".repeat(32), verifierHex: "0".repeat(128) };
+  const app = await buildApp(new MemoryRepository(), { host: "127.0.0.1", port: 3000, jwtSecret: randomBytes(32).toString("hex"), operatorId: "USR_SYNTH_CAPTURE", operatorCredential: randomBytes(24).toString("hex"), workerConfigured: false }, () => now, { async findCredential() { return record; }, async createSession() {}, async restoreSession() { return record; }, async revokeSession() {} }, undefined, undefined, { store: new InMemoryV2CommandStore(), mlInventory: { async latest() { throw new Error("DATABASE_INTERNAL_DIAGNOSTIC"); } } });
+  try {
+    const token = app.jwt.sign({ userId: record.userId, institutionId: record.institutionId, roleId: record.roleId, sessionId: "SESS_SYNTH_OUTAGE", binding: "a".repeat(64), policyVersion: "SYNTHETIC_WEB_ACCESS_V1" });
+    const response = await app.inject({ method: "GET", url: "/api/v2/analytics/inventory-evidence?businessDate=2026-10-01", headers: { cookie: `bloodledger_session=${token}` } });
+    assert.equal(response.statusCode, 503); assert.equal(response.json().error.code, "ML_INVENTORY_UNAVAILABLE");
+    assert.doesNotMatch(response.body, /DATABASE_INTERNAL_DIAGNOSTIC/);
+  } finally { await app.close(); }
 });
