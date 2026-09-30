@@ -1,14 +1,15 @@
 # ML V5 — Jopia implementation plan
 
-Status: Jopia full-backend implementation authorized on 2026-09-30; Buno/Lat review and activation pending.
+Status: Jopia full-backend inactive candidate implemented on 2026-09-30; Buno/Lat review and activation pending. Validation is recorded in [Jopia's evidence](ML-V5-JOPIA-VALIDATION.md).
 Active perspective and integration owner: Jopia. Research owner/reviewer: Buno.
 Frontend owner: Lat. Classification: SIMULATION_ONLY.
 This plan is not Buno agreement, activation approval, or completed integration.
 
 ## Source and branch decision
 
-The user requested an implementation plan, a reply to Buno, a new branch and
-grouped commits. Attached handoff instructions are reference proposals, not
+The user requested an implementation plan and then authorized its Jopia backend
+implementation, a reply to Buno for review, a new branch and grouped commits.
+Attached handoff instructions are reference proposals, not
 independent authority to publish messages, merge, activate, or record acceptance.
 
 GitHub PR [#19](https://github.com/luisantonioj/bloodledger/pull/19) was checked on
@@ -77,10 +78,11 @@ the reviewed release manifest, not through a caller-supplied replacement hash.
 ## Implementation groups and affected files
 
 Each group is a coherent commit, with requirement/phase/owner/classification in
-its body. Finalize contract decisions before dependent code. Names below for new
-files and versions are proposed, not claims that the files already exist.
+its body. The contract remains a candidate until owner review. The list below
+records the implementation sequence; [validation](ML-V5-JOPIA-VALIDATION.md)
+identifies what ran and which gates remain open.
 
-1. `docs(ml): agree V5 runtime integration contract` — record actual decisions in
+1. `docs(ml): define V5 runtime integration contract` — record candidate decisions in
    a new `docs/ML-RUNTIME-INTEGRATION-V5.md`; link it from the phase/backlog and
    handoff without changing research protocol/results. Add an additive
    `contracts/forecast-bundle-v5-runtime-v1.schema.json` and a versioned synthetic
@@ -147,14 +149,14 @@ files and versions are proposed, not claims that the files already exist.
 | Integration/presentation | Actual producer output passes DB and authenticated API, then browser; null intervals, unavailable attempts and separate inventory state survive every boundary. |
 | Claim boundary | SIMULATION_ONLY and DISABLED_UNAPPROVED_POLICY preserved; no 100-minus-WAPE accuracy or 85.27% quantity-accuracy label; no UAT, clinical or production claim. |
 
-Planned checks (not executed by this planning change): `npm run check:forecasting`,
+Validation checks: `npm run check:forecasting`,
 `npm run test:forecasting`, `npm run check:database`, relevant isolated V5 DB probe,
 `npm run check:api`, `npm run test:api`, `npm run check:coordination`,
 `npm run test:coordination`, `npm run check:web`, `npm run test:web`,
 `npm run test:web:e2e`, `npm run scan:secrets`, and `git diff --check`.
 Use the pinned supported environment and existing safe isolated-database rules;
-never reset the shared development database to obtain evidence. Add the V5 probe
-command when implemented rather than describing an untested command as working.
+never reset the shared development database to obtain evidence. Executed commands
+and results are recorded in [Jopia's validation](ML-V5-JOPIA-VALIDATION.md).
 
 ## Review and remaining decisions
 
@@ -167,7 +169,8 @@ No response from another owner is recorded here. The ready-to-send response is
 
 The user clarified that essential Jopia-owned backend work should proceed.
 Implement groups 1–5 and backend verification as an inactive candidate; activation remains gated on Buno calculation review, Lat frontend/browser validation, a recorded binding decision, and an explicit activation record.
-No V5 coordination evidence or frontend activation is permitted by this slice.
+V5 coordination evidence is included in this inactive backend candidate; Lat owns
+frontend integration and browser validation before activation.
 Freshness and binding are explicit candidate contracts for review, not joint acceptance. Existing research
 checks are Buno's reported evidence, not newly rerun validation. The institution
 binding and agreed freshness contract are unresolved integration decisions;

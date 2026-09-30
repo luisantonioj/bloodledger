@@ -308,12 +308,12 @@ disabled unless explicitly enabled, and the migration is forward-only.
 ## 15. ML V5 frozen-model runtime candidate
 
 Forward migration `20260930000000000_add-v5-forecast-runtime.js` adds the distinct
-`SYNTHETIC_FORECAST_V5_RUNTIME_V1` dataset to the existing forecast and source-surplus
-version allowlists, retaining V1/V4 rows and existing runtime SELECT/INSERT grants.
+`SYNTHETIC_FORECAST_V5_RUNTIME_V1` dataset to the forecast-run version allowlist,
+retaining V1/V4 rows and existing runtime SELECT/INSERT grants. The older V2
+source-surplus table does not accept V5 evidence.
 The V5 producer inserts a completed run and twenty scoped series atomically, or an
 unavailable attempt with zero series. The existing composite forecast/run institution
-foreign key remains authoritative; source-surplus evidence gains the same run/institution
-binding. Runs and evidence are append-only. V4 remains the active default until the
+foreign key remains authoritative. Runs and evidence are append-only. V4 remains the active default until the
 recorded review and browser gates in `docs/ML-RUNTIME-INTEGRATION-V5.md` pass.
 
 Forward migration `20260930010000000_create-v5-surplus-evidence.js` adds a separate,
