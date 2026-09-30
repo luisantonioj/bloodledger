@@ -75,10 +75,15 @@ export class MemoryRepository implements ScanRepository {
     return this.event?.eventId === eventId && this.event.institutionId === institutionId ? this.event : null;
   }
 
-  async readForecasts(institutionId: string, businessDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1", evaluatedManilaDate = businessDate): Promise<ForecastRead> {
+  async readForecasts(institutionId: string, businessDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1", evaluationInstant = new Date()): Promise<ForecastRead> {
+    const evaluatedManilaDate = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(evaluationInstant);
     const forecasts = this.forecasts.filter((forecast) => forecast.datasetVersion === datasetVersion && forecast.institutionId === institutionId && (datasetVersion !== "SYNTHETIC_FORECAST_V5_RUNTIME_V1" || forecast.horizonDate === businessDate));
     const first = forecasts[0];
-    const status = forecasts.length === 0 ? "UNAVAILABLE" : forecasts.some((forecast) => forecast.stale) || (datasetVersion === "SYNTHETIC_FORECAST_V5_RUNTIME_V1" && businessDate !== evaluatedManilaDate) ? "STALE" : "CURRENT";
+    const futureGenerated = datasetVersion === "SYNTHETIC_FORECAST_V5_RUNTIME_V1" && first && new Date(first.generatedAt).getTime() > evaluationInstant.getTime();
+    const visibleForecasts = futureGenerated ? [] : forecasts;
+    const status = visibleForecasts.length === 0 ? "UNAVAILABLE" : visibleForecasts.some((forecast) => forecast.stale) || (datasetVersion === "SYNTHETIC_FORECAST_V5_RUNTIME_V1" && businessDate !== evaluatedManilaDate) ? "STALE" : "CURRENT";
     return {
       businessDate,
       status,
@@ -86,15 +91,15 @@ export class MemoryRepository implements ScanRepository {
       modelVersion: first?.modelVersion ?? null,
       asOfDate: first?.asOfDate ?? null,
       horizonDate: first?.horizonDate ?? null,
-      forecastStatus: first?.forecastStatus ?? "UNAVAILABLE",
-      unavailableReason: first ? null : "NO_APPLICABLE_FORECAST",
+      forecastStatus: futureGenerated ? "UNAVAILABLE" : first?.forecastStatus ?? "UNAVAILABLE",
+      unavailableReason: futureGenerated ? "V5_FORECAST_FUTURE_GENERATED" : first ? null : "NO_APPLICABLE_FORECAST",
       runId: first?.runId ?? null,
       generatedAt: first?.generatedAt ?? null,
       lineage: null,
       trainingCutoffDate: null,
       classification: "SIMULATION_ONLY",
       recommendationEligibility: "DISABLED_UNAPPROVED_POLICY",
-      forecasts,
+      forecasts: visibleForecasts,
     };
   }
   async listForecasts(institutionId: string, businessDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1"): Promise<ForecastRecord[]> {

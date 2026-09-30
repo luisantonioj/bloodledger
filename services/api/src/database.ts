@@ -168,7 +168,10 @@ export class PostgresScanRepository implements ScanRepository {
     return result.rows[0] ? mapScan(result.rows[0]) : null;
   }
 
-  async readForecasts(institutionId: string, manilaDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1", evaluatedManilaDate = manilaDate): Promise<ForecastRead> {
+  async readForecasts(institutionId: string, manilaDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1", evaluationInstant = new Date()): Promise<ForecastRead> {
+    const evaluatedManilaDate = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(evaluationInstant);
     const result = await this.pool.query<Row>(`
       WITH latest AS (
         SELECT fr.*
@@ -230,7 +233,9 @@ export class PostgresScanRepository implements ScanRepository {
       lineage?.trainingCutoffDate === "2025-06-30" &&
       typeof lineage.modelSha256 === "string" && /^[0-9a-f]{64}$/.test(lineage.modelSha256)
     );
-    const forecasts = String(first?.run_status) === "COMPLETED" && v5Complete ? mappedForecasts : [];
+    // Select the latest attempt first. A future-generated attempt must not revive an older success.
+    const futureGenerated = v5 && first && new Date(iso(first.run_generated_at)).getTime() > evaluationInstant.getTime();
+    const forecasts = String(first?.run_status) === "COMPLETED" && v5Complete && !futureGenerated ? mappedForecasts : [];
     const runAvailable = first && String(first.run_status) === "COMPLETED" && forecasts.length > 0;
     const stale = forecasts.some((item) => item.stale);
     return {
@@ -242,6 +247,7 @@ export class PostgresScanRepository implements ScanRepository {
       horizonDate: first ? String(first.run_horizon_date_text).slice(0, 10) : null,
       forecastStatus: !runAvailable ? "UNAVAILABLE" : stale ? "STALE" : "AVAILABLE",
       unavailableReason: first && String(first.run_status) !== "COMPLETED" ? nullableString(first.safe_error_code)
+        : futureGenerated ? "V5_FORECAST_FUTURE_GENERATED"
         : first && v5 && !v5Complete ? "V5_FORECAST_INCOMPLETE" : null,
       runId: first ? String(first.run_id) : null,
       generatedAt: first ? iso(first.run_generated_at) : null,

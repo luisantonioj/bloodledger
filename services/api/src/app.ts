@@ -579,7 +579,7 @@ export async function buildApp(
       institutionId = principalFrom(request, config.operatorId).institutionId;
     }
     if (repository.readForecasts) {
-      return repository.readForecasts(institutionId, requestedDate, requestedDataset, manilaDate(clock()));
+      return repository.readForecasts(institutionId, requestedDate, requestedDataset, clock());
     }
     const forecasts = await repository.listForecasts(institutionId, requestedDate, requestedDataset);
     const status = forecasts.length === 0 ? "UNAVAILABLE" : forecasts.some((item) => item.stale) ? "STALE" : "CURRENT";

@@ -179,7 +179,7 @@
         ],
         "responses": {
           "200": {
-            "description": "CURRENT, STALE, or UNAVAILABLE forecast state",
+            "description": "CURRENT, STALE, or UNAVAILABLE forecast state. V5 CURRENT means target-day eligibility at the trusted API instant; a latest V5 attempt generated in the future is UNAVAILABLE with no forecasts and reason V5_FORECAST_FUTURE_GENERATED.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1752,7 +1752,8 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "For V5, V5_FORECAST_FUTURE_GENERATED means the selected latest attempt was generated after the trusted API evaluation instant. A latest unavailable attempt retains its recorded safe error code."
           },
           "forecasts": {
             "type": "array",
