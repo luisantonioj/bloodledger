@@ -86,7 +86,7 @@ evidence unless a selected task explicitly requires them.
 | Python | 3.13.14 | Not specified | Conservative supported line for later ML work |
 | Fabric Gateway client | `@hyperledger/fabric-gateway` 1.11.0 | Fabric SDK Node 2.5.x | Use the Gateway client API, not the legacy SDK label |
 | React | 19.2.8 | 18.x or higher | Sprint 4 capture PWA; exact version locked and build-verified |
-| Fastify / static plugin | 5.10.0 / 10.1.3 | Not specified | Sprint 4 HTTP boundary; static plugin security update supersedes the initially selected 9.1.3 |
+| Fastify / static plugin | 5.12.5 / 10.1.3 | Not specified | Sprint 4 HTTP boundary; static plugin security update supersedes the initially selected 9.1.3 |
 | Tesseract.js | 7.0.0 | Not specified | On-device synthetic OCR under `PA-S4-01`; worker/core/language assets are served locally at runtime |
 | ZXing browser | 0.2.1 | Not specified | Code 128/Data Matrix/synthetic QR fallback decoder |
 | Vite / PWA plugin | 8.1.5 / 1.3.0 | Not specified | Sprint 4 PWA build and offline application shell |
