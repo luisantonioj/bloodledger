@@ -168,7 +168,10 @@ export class PostgresScanRepository implements ScanRepository {
     return result.rows[0] ? mapScan(result.rows[0]) : null;
   }
 
-  async readForecasts(institutionId: string, manilaDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1"): Promise<ForecastRead> {
+  async readForecasts(institutionId: string, manilaDate: string, datasetVersion = "SYNTHETIC_FORECAST_V4_RUNTIME_V1", evaluationInstant = new Date()): Promise<ForecastRead> {
+    const evaluatedManilaDate = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(evaluationInstant);
     const result = await this.pool.query<Row>(`
       WITH latest AS (
         SELECT fr.*
@@ -176,13 +179,15 @@ export class PostgresScanRepository implements ScanRepository {
         WHERE fr.institution_id = $1
           AND fr.dataset_version = $2
           AND fr.horizon_date <= $3::date
+          AND ($2 <> 'SYNTHETIC_FORECAST_V5_RUNTIME_V1' OR fr.horizon_date = $3::date)
+          AND ($2 <> 'SYNTHETIC_FORECAST_V5_RUNTIME_V1' OR fr.horizon_date <= $4::date)
         ORDER BY (fr.horizon_date = $3::date) DESC, fr.horizon_date DESC, fr.generated_at DESC, fr.run_id DESC
         LIMIT 1
       )
       SELECT latest.run_key, latest.run_id, latest.dataset_version, latest.model_version,
         latest.input_end_date, latest.horizon_date AS run_horizon_date,
         latest.generated_at AS run_generated_at, latest.run_status,
-        latest.safe_error_code, df.*,
+        latest.safe_error_code, latest.lineage AS run_lineage, df.*,
         to_char(df.horizon_date, 'YYYY-MM-DD') AS forecast_horizon_date,
         to_char(df.stale_after, 'YYYY-MM-DD') AS stale_after_text,
         to_char(latest.input_end_date, 'YYYY-MM-DD') AS as_of_date_text,
@@ -191,9 +196,10 @@ export class PostgresScanRepository implements ScanRepository {
       LEFT JOIN app.demand_forecasts df
         ON df.run_id = latest.run_id AND df.institution_id = $1
       ORDER BY df.blood_type, df.component
-    `, [institutionId, datasetVersion, manilaDate]);
+    `, [institutionId, datasetVersion, manilaDate, evaluatedManilaDate]);
     const first = result.rows[0];
-    const forecasts = result.rows.filter((row) => row.forecast_id !== null && row.forecast_id !== undefined).map((row) => ({
+    const mappedForecasts = result.rows.filter((row) => row.forecast_id !== null && row.forecast_id !== undefined).map((row) => ({
+      forecastId: String(row.forecast_id),
       runKey: String(row.run_key),
       runId: String(row.run_id),
       institutionId: String(row.institution_id),
@@ -212,8 +218,24 @@ export class PostgresScanRepository implements ScanRepository {
       classification: "SIMULATION_ONLY" as const,
       recommendationEligibility: "DISABLED_UNAPPROVED_POLICY" as const,
       generatedAt: iso(row.generated_at),
-      stale: String(row.forecast_horizon_date ?? row.horizon_date) !== manilaDate || String(row.forecast_status) !== "AVAILABLE" || String(row.stale_after_text ?? row.stale_after) < manilaDate,
+      stale: String(row.forecast_horizon_date ?? row.horizon_date) !== manilaDate || String(row.forecast_status) !== "AVAILABLE" || String(row.stale_after_text ?? row.stale_after) < manilaDate || (datasetVersion === "SYNTHETIC_FORECAST_V5_RUNTIME_V1" && manilaDate !== evaluatedManilaDate),
     }));
+    const v5 = datasetVersion === "SYNTHETIC_FORECAST_V5_RUNTIME_V1";
+    const lineage = first && first.run_lineage && typeof first.run_lineage === "object" && !Array.isArray(first.run_lineage)
+      ? first.run_lineage as Record<string, unknown> : null;
+    const v5Complete = !v5 || (
+      mappedForecasts.length === 20 &&
+      new Set(mappedForecasts.map((item) => `${item.bloodType}:${item.component}`)).size === 20 &&
+      mappedForecasts.every((item) => /^FC_[0-9A-F]{40}$/.test(item.forecastId) && item.institutionId === institutionId && item.datasetVersion === datasetVersion &&
+        item.forecastStatus === "AVAILABLE" && item.uncertaintyStatus === "UNCERTAINTY_UNAVAILABLE" &&
+        item.lowerForecast === null && item.upperForecast === null && Number.isFinite(item.pointForecast) && item.pointForecast >= 0) &&
+      String(first.model_version) === "bloodledger-v5-series-mean-1.0.0" &&
+      lineage?.trainingCutoffDate === "2025-06-30" &&
+      typeof lineage.modelSha256 === "string" && /^[0-9a-f]{64}$/.test(lineage.modelSha256)
+    );
+    // Select the latest attempt first. A future-generated attempt must not revive an older success.
+    const futureGenerated = v5 && first && new Date(iso(first.run_generated_at)).getTime() > evaluationInstant.getTime();
+    const forecasts = String(first?.run_status) === "COMPLETED" && v5Complete && !futureGenerated ? mappedForecasts : [];
     const runAvailable = first && String(first.run_status) === "COMPLETED" && forecasts.length > 0;
     const stale = forecasts.some((item) => item.stale);
     return {
@@ -224,7 +246,15 @@ export class PostgresScanRepository implements ScanRepository {
       asOfDate: first ? String(first.as_of_date_text).slice(0, 10) : null,
       horizonDate: first ? String(first.run_horizon_date_text).slice(0, 10) : null,
       forecastStatus: !runAvailable ? "UNAVAILABLE" : stale ? "STALE" : "AVAILABLE",
-      unavailableReason: first && String(first.run_status) !== "COMPLETED" ? nullableString(first.safe_error_code) : null,
+      unavailableReason: first && String(first.run_status) !== "COMPLETED" ? nullableString(first.safe_error_code)
+        : futureGenerated ? "V5_FORECAST_FUTURE_GENERATED"
+        : first && v5 && !v5Complete ? "V5_FORECAST_INCOMPLETE" : null,
+      runId: first ? String(first.run_id) : null,
+      generatedAt: first ? iso(first.run_generated_at) : null,
+      lineage,
+      trainingCutoffDate: v5 && lineage?.trainingCutoffDate === "2025-06-30" ? "2025-06-30" : null,
+      classification: "SIMULATION_ONLY",
+      recommendationEligibility: "DISABLED_UNAPPROVED_POLICY",
       forecasts,
     };
   }

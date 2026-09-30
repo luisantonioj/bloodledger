@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bloodledger.local/contracts/source-surplus-evidence-v5.schema.json",
+  "title": "BloodLedger V5 Simulation Source Surplus Evidence",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "evidenceId",
+    "sourceInstitutionId",
+    "bloodType",
+    "componentType",
+    "surplusQuantity",
+    "asOf",
+    "inventoryAsOf",
+    "originDate",
+    "horizonDate",
+    "forecastStatus",
+    "datasetVersion",
+    "forecastRunId",
+    "forecastId",
+    "modelVersion",
+    "modelSha256",
+    "forecastPayloadSha256",
+    "optimizationPolicyVersion",
+    "configurationSha256",
+    "inventorySnapshotId",
+    "sourceProjectionDigest",
+    "classification",
+    "recommendationEligibility"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "SOURCE_SURPLUS_EVIDENCE_V5_SIMULATION_V1"
+    },
+    "evidenceId": {
+      "type": "string",
+      "pattern": "^SURP_[0-9A-F]{40}$"
+    },
+    "sourceInstitutionId": {
+      "type": "string",
+      "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+    },
+    "bloodType": {
+      "enum": [
+        "A_POSITIVE",
+        "B_POSITIVE",
+        "O_POSITIVE",
+        "AB_POSITIVE"
+      ]
+    },
+    "componentType": {
+      "enum": [
+        "WHOLE_BLOOD",
+        "PACKED_RED_BLOOD_CELLS",
+        "FRESH_FROZEN_PLASMA",
+        "PLATELETS",
+        "CRYOPRECIPITATE"
+      ]
+    },
+    "surplusQuantity": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "asOf": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "inventoryAsOf": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "originDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "horizonDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "forecastStatus": {
+      "const": "AVAILABLE"
+    },
+    "datasetVersion": {
+      "const": "SYNTHETIC_FORECAST_V5_RUNTIME_V1"
+    },
+    "forecastRunId": {
+      "type": "string",
+      "pattern": "^RUN_[0-9A-F]{32}$"
+    },
+    "forecastId": {
+      "type": "string",
+      "pattern": "^FC_[0-9A-F]{40}$"
+    },
+    "modelVersion": {
+      "const": "bloodledger-v5-series-mean-1.0.0"
+    },
+    "modelSha256": {
+      "const": "ceb0e74b2eb2f8af7fcafabb3619f2a23681c38eac65998816e7daf40b5afb86"
+    },
+    "forecastPayloadSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "optimizationPolicyVersion": {
+      "const": "INTERVIEW_DERIVED_OPTIMIZATION_V2_1"
+    },
+    "configurationSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "inventorySnapshotId": {
+      "type": "string",
+      "pattern": "^CENSUS_[A-Z0-9_-]{1,56}$"
+    },
+    "sourceProjectionDigest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "classification": {
+      "const": "SIMULATION_ONLY"
+    },
+    "recommendationEligibility": {
+      "const": "DISABLED_UNAPPROVED_POLICY"
+    }
+  },
+  "additionalProperties": false
+}

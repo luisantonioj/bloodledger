@@ -166,19 +166,20 @@
             "name": "datasetVersion",
             "in": "query",
             "required": false,
-            "description": "Allowlisted historical dataset identity. Omission selects the active V4 runtime dataset.",
+            "description": "Allowlisted dataset identity. Omission selects the active V4 runtime dataset; V5 is explicit-only until activation.",
             "schema": {
               "type": "string",
               "enum": [
                 "SYNTHETIC_FORECAST_V1",
-                "SYNTHETIC_FORECAST_V4_RUNTIME_V1"
+                "SYNTHETIC_FORECAST_V4_RUNTIME_V1",
+                "SYNTHETIC_FORECAST_V5_RUNTIME_V1"
               ]
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "CURRENT, STALE, or UNAVAILABLE forecast state",
+            "description": "CURRENT, STALE, or UNAVAILABLE forecast state. V5 CURRENT means target-day eligibility at the trusted API instant; a latest V5 attempt generated in the future is UNAVAILABLE with no forecasts and reason V5_FORECAST_FUTURE_GENERATED.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1690,7 +1691,13 @@
           "horizonDate",
           "forecastStatus",
           "unavailableReason",
-          "forecasts"
+          "forecasts",
+          "runId",
+          "generatedAt",
+          "lineage",
+          "trainingCutoffDate",
+          "classification",
+          "recommendationEligibility"
         ],
         "properties": {
           "businessDate": {
@@ -1709,7 +1716,8 @@
             "type": "string",
             "enum": [
               "SYNTHETIC_FORECAST_V1",
-              "SYNTHETIC_FORECAST_V4_RUNTIME_V1"
+              "SYNTHETIC_FORECAST_V4_RUNTIME_V1",
+              "SYNTHETIC_FORECAST_V5_RUNTIME_V1"
             ]
           },
           "modelVersion": {
@@ -1744,7 +1752,8 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "For V5, V5_FORECAST_FUTURE_GENERATED means the selected latest attempt was generated after the trusted API evaluation instant. A latest unavailable attempt retains its recorded safe error code."
           },
           "forecasts": {
             "type": "array",
@@ -1752,6 +1761,39 @@
             "items": {
               "$ref": "#/components/schemas/ForecastItem"
             }
+          },
+          "runId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "generatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "lineage": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": true
+          },
+          "trainingCutoffDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          },
+          "recommendationEligibility": {
+            "const": "DISABLED_UNAPPROVED_POLICY"
           }
         }
       },
@@ -1878,6 +1920,10 @@
           },
           "stale": {
             "type": "boolean"
+          },
+          "forecastId": {
+            "type": "string",
+            "pattern": "^(FC|FCST)_[0-9A-F]{32,40}$"
           }
         }
       },

@@ -304,3 +304,21 @@ and printed expiry later than collection. Intake rows can be counted by
 `QUEUED`, `COMMITTED`, `ALREADY_REGISTERED`, `CONFLICT`, or `FAILED` without
 including non-committed rows in census inventory totals. Issuer policies are
 disabled unless explicitly enabled, and the migration is forward-only.
+
+## 15. ML V5 frozen-model runtime candidate
+
+Forward migration `20260930000000000_add-v5-forecast-runtime.js` adds the distinct
+`SYNTHETIC_FORECAST_V5_RUNTIME_V1` dataset to the forecast-run version allowlist,
+retaining V1/V4 rows and existing runtime SELECT/INSERT grants. The older V2
+source-surplus table does not accept V5 evidence.
+The V5 producer inserts a completed run and twenty scoped series atomically, or an
+unavailable attempt with zero series. The existing composite forecast/run institution
+foreign key remains authoritative. Runs and evidence are append-only. V4 remains the active default until the
+recorded review and browser gates in `docs/ML-RUNTIME-INTEGRATION-V5.md` pass.
+
+Forward migration `20260930010000000_create-v5-surplus-evidence.js` adds a separate,
+append-only V5 source-surplus evidence table. Its forecast and internal-ML census
+foreign keys include source institution scope. A database insert guard checks the
+saved V5 run/model/payload, forecast series and current snapshot digest/time.
+Runtime grants remain SELECT/INSERT only. This is simulation evidence under the
+existing disabled `SYNTHETIC_OPTIMIZATION_V2_1` policy; it cannot approve transfers.

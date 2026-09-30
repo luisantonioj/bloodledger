@@ -292,3 +292,7 @@ small application compatibility fixes are recorded in
 [ML thesis exploration](ML-THESIS-EXPLORATION.md#v4-verification-evidence).
 The 20-series study remains offline; no operational forecast gate, UAT gate or
 accountable review is closed by these checks.
+
+## ML V5 backend follow-up — 2026-09-30
+
+The user authorized Jopia-owned V5 backend implementation from PR #19. The [candidate integration contract](ML-RUNTIME-INTEGRATION-V5.md) and [implementation plan](ML-V5-JOPIA-IMPLEMENTATION-PLAN.md) track this work. V4 remains active until Buno calculation review, Lat frontend/browser validation, synthetic institution-binding decision and explicit activation. This does not close UAT or RQ-07.

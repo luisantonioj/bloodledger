@@ -17,6 +17,11 @@ export interface ApiConfig {
 export const FORECAST_DATASET_VERSIONS = [
   "SYNTHETIC_FORECAST_V1",
   "SYNTHETIC_FORECAST_V4_RUNTIME_V1",
+  "SYNTHETIC_FORECAST_V5_RUNTIME_V1",
+] as const;
+export const ACTIVE_FORECAST_DATASET_VERSIONS = [
+  "SYNTHETIC_FORECAST_V1",
+  "SYNTHETIC_FORECAST_V4_RUNTIME_V1",
 ] as const;
 export type ForecastDatasetVersion = (typeof FORECAST_DATASET_VERSIONS)[number];
 
@@ -28,7 +33,7 @@ export function readApiConfig(environment: NodeJS.ProcessEnv = process.env): Api
   if (operatorCredential.length < 12) throw new Error("SPRINT4_OPERATOR_CREDENTIAL must contain at least 12 characters");
   if (!/^USR_[A-Z0-9_-]{1,48}$/.test(operatorId)) throw new Error("SPRINT4_OPERATOR_ID is invalid");
   const activeForecastDatasetVersion = environment.BLOODLEDGER_ACTIVE_FORECAST_DATASET_VERSION ?? "SYNTHETIC_FORECAST_V4_RUNTIME_V1";
-  if (!(FORECAST_DATASET_VERSIONS as readonly string[]).includes(activeForecastDatasetVersion)) {
+  if (!(ACTIVE_FORECAST_DATASET_VERSIONS as readonly string[]).includes(activeForecastDatasetVersion)) {
     throw new Error("BLOODLEDGER_ACTIVE_FORECAST_DATASET_VERSION is not allowlisted");
   }
   return {

@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bloodledger.local/contracts/forecast-bundle-v5-runtime-v1.schema.json",
+  "title": "BloodLedger V5 Runtime Forecast Bundle V1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "run",
+    "forecasts"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "BLOODLEDGER_FORECAST_BUNDLE_V5_RUNTIME_V1"
+    },
+    "run": {
+      "type": "object",
+      "required": [
+        "runId",
+        "runKey",
+        "requestId",
+        "institutionId",
+        "originDate",
+        "horizonDate",
+        "generatedAt",
+        "datasetVersion",
+        "modelVersion",
+        "modelName",
+        "target",
+        "runStatus",
+        "unavailableReason",
+        "classification",
+        "recommendationEligibility",
+        "lineage"
+      ],
+      "properties": {
+        "runId": {
+          "type": "string",
+          "pattern": "^RUN_[0-9A-F]{32}$"
+        },
+        "runKey": {
+          "type": "string",
+          "pattern": "^RUNKEY_[0-9A-F]{32}$"
+        },
+        "requestId": {
+          "type": "string",
+          "pattern": "^V5_REQ_[A-Z0-9_-]{1,48}$"
+        },
+        "institutionId": {
+          "type": "string",
+          "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+        },
+        "originDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "horizonDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "datasetVersion": {
+          "const": "SYNTHETIC_FORECAST_V5_RUNTIME_V1"
+        },
+        "modelVersion": {
+          "const": "bloodledger-v5-series-mean-1.0.0"
+        },
+        "modelName": {
+          "const": "series_mean"
+        },
+        "target": {
+          "const": "requested_units"
+        },
+        "runStatus": {
+          "enum": [
+            "COMPLETED",
+            "UNAVAILABLE"
+          ]
+        },
+        "unavailableReason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 64
+        },
+        "classification": {
+          "const": "SIMULATION_ONLY"
+        },
+        "recommendationEligibility": {
+          "const": "DISABLED_UNAPPROVED_POLICY"
+        },
+        "lineage": {
+          "type": "object",
+          "required": [
+            "datasetSha256",
+            "researchCodeSha256",
+            "protocolSha256",
+            "runtimeCodeSha256",
+            "modelFileSha256",
+            "modelSha256",
+            "bindingSha256",
+            "configurationSha256",
+            "inputSha256",
+            "payloadSha256",
+            "trainingCutoffDate"
+          ],
+          "properties": {
+            "datasetSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "researchCodeSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "protocolSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "runtimeCodeSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "modelFileSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "modelSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "bindingSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "configurationSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "inputSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "payloadSha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "trainingCutoffDate": {
+              "const": "2025-06-30"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "forecasts": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": [
+          "forecastId",
+          "institutionId",
+          "bloodType",
+          "component",
+          "asOfDate",
+          "horizonDate",
+          "pointForecast",
+          "lowerForecast",
+          "upperForecast",
+          "uncertaintyStatus",
+          "uncertaintyNote",
+          "forecastStatus",
+          "staleAfter",
+          "classification",
+          "recommendationEligibility"
+        ],
+        "properties": {
+          "forecastId": {
+            "type": "string",
+            "pattern": "^FC_[0-9A-F]{40}$"
+          },
+          "institutionId": {
+            "type": "string",
+            "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+          },
+          "bloodType": {
+            "enum": [
+              "A_POSITIVE",
+              "B_POSITIVE",
+              "O_POSITIVE",
+              "AB_POSITIVE"
+            ]
+          },
+          "component": {
+            "enum": [
+              "WHOLE_BLOOD",
+              "PACKED_RED_BLOOD_CELLS",
+              "FRESH_FROZEN_PLASMA",
+              "PLATELETS",
+              "CRYOPRECIPITATE"
+            ]
+          },
+          "asOfDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "horizonDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "pointForecast": {
+            "type": "number",
+            "minimum": 0
+          },
+          "lowerForecast": {
+            "type": "null"
+          },
+          "upperForecast": {
+            "type": "null"
+          },
+          "uncertaintyStatus": {
+            "const": "UNCERTAINTY_UNAVAILABLE"
+          },
+          "uncertaintyNote": {
+            "const": "UNCERTAINTY_UNAVAILABLE_NOT_CALIBRATED"
+          },
+          "forecastStatus": {
+            "const": "AVAILABLE"
+          },
+          "staleAfter": {
+            "type": "string",
+            "format": "date"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          },
+          "recommendationEligibility": {
+            "const": "DISABLED_UNAPPROVED_POLICY"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

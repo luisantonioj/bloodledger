@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bloodledger.local/contracts/v5-institution-binding-v1.schema.json",
+  "title": "V5 Synthetic Institution Binding",
+  "description": "External, explicitly reviewed simulation binding. This schema does not authorize or enable any institution mapping.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "bindingId",
+    "researchInstitutionId",
+    "institutionId",
+    "modelSha256",
+    "enabled"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "SYNTHETIC_V5_INSTITUTION_BINDING_V1"
+    },
+    "bindingId": {
+      "type": "string",
+      "pattern": "^V5_BIND_[A-Z0-9_-]{1,48}$"
+    },
+    "researchInstitutionId": {
+      "const": "SIM_INSTITUTION_01"
+    },
+    "institutionId": {
+      "type": "string",
+      "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+    },
+    "modelSha256": {
+      "const": "ceb0e74b2eb2f8af7fcafabb3619f2a23681c38eac65998816e7daf40b5afb86"
+    },
+    "enabled": {
+      "const": true
+    }
+  }
+}
