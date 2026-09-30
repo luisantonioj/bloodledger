@@ -25,6 +25,7 @@ dev = [
 
 [project.scripts]
 bloodledger-forecasting = "bloodledger_forecasting.cli:main"
+bloodledger-v5-research = "bloodledger_forecasting.v5_experiment:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
