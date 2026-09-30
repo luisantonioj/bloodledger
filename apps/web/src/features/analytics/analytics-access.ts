@@ -9,7 +9,5 @@ export function canViewAnalyticsPreview(principal: Principal): boolean {
 }
 
 export function analyticsScopeLabel(principal: Principal): string {
-  return principal.roleId === "ROLE-04"
-    ? "PRC-authorized consortium aggregate preview"
-    : `${principal.institutionDisplayName} · institution-only preview`;
+  return `${principal.institutionDisplayName} · institution-only preview`;
 }
