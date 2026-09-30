@@ -16,9 +16,9 @@ describe("permission-filtered navigation", () => {
     expect(visibleNavigation(principal(["profile:read"], "ROLE-01")).map((item) => item.href)).toEqual(["/", "/analytics", "/profile"]);
   });
 
-  it("shows analytics only to blood-bank roles and the PRC regulatory institution", () => {
+  it("shows analytics only to authorized blood-bank roles", () => {
     expect(visibleNavigation(principal([], "ROLE-02")).map((item) => item.href)).toEqual(["/", "/analytics"]);
-    expect(visibleNavigation(principal([], "ROLE-04", "INST_SYNTH_PRC", "Synthetic PRC Chapter")).map((item) => item.href)).toEqual(["/", "/analytics"]);
+    expect(visibleNavigation(principal([], "ROLE-04", "INST_SYNTH_PRC", "Synthetic PRC Chapter")).map((item) => item.href)).toEqual(["/"]);
     expect(visibleNavigation(principal([], "ROLE-04", "INST_SYNTH_DOH", "Synthetic DOH Office")).map((item) => item.href)).toEqual(["/"]);
     expect(visibleNavigation(principal([], "ROLE-03")).map((item) => item.href)).toEqual(["/"]);
   });

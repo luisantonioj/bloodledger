@@ -19,8 +19,8 @@ describe("analytics preview access", () => {
     expect(canViewAnalyticsPreview(principal("ROLE-02", "INST_MEDIATRIX", "Synthetic Blood Bank"))).toBe(true);
   });
 
-  it("distinguishes PRC from DOH within the combined regulatory role", () => {
-    expect(canViewAnalyticsPreview(principal("ROLE-04", "INST_SYNTH_PRC", "Synthetic PRC Chapter"))).toBe(true);
+  it("excludes regulatory viewers because the forecast cookie route has no aggregate view", () => {
+    expect(canViewAnalyticsPreview(principal("ROLE-04", "INST_SYNTH_PRC", "Synthetic PRC Chapter"))).toBe(false);
     expect(canViewAnalyticsPreview(principal("ROLE-04", "INST_SYNTH_DOH", "Synthetic DOH Office"))).toBe(false);
   });
 

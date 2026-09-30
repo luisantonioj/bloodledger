@@ -396,25 +396,6 @@
       }
     },
     "/reconciliation": {
-      "get": {
-        "operationId": "listReconciliationReasons",
-        "description": "Return the active synthetic hold-reason policy for ROLE-01 and ROLE-02.",
-        "responses": {
-          "200": {
-            "description": "Versioned reconciliation reason policy",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReconciliationReasonPolicy"
-                }
-              }
-            }
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      },
       "post": {
         "operationId": "placeReconciliationHold",
         "description": "Queue a reconciliation hold. ROLE-01 and ROLE-02 only.",
@@ -439,6 +420,27 @@
                 "$ref": "#/components/schemas/ReconciliationRequest"
               }
             }
+          }
+        }
+      }
+    },
+    "/reconciliation/reasons": {
+      "get": {
+        "operationId": "listReconciliationReasons",
+        "description": "Return the active synthetic hold-reason policy for ROLE-01 and ROLE-02.",
+        "responses": {
+          "200": {
+            "description": "Versioned reconciliation reason policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationReasonPolicy"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
@@ -553,6 +555,27 @@
                 "$ref": "#/components/schemas/ReservationActionRequest"
               }
             }
+          }
+        }
+      }
+    },
+    "/reservations/compromise-reasons": {
+      "get": {
+        "operationId": "listCompromiseReasons",
+        "description": "Return the active simulation-only quarantine reason policy for ROLE-01, ROLE-02 and ROLE-03.",
+        "responses": {
+          "200": {
+            "description": "Versioned compromise reason policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompromiseReasonPolicy"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
@@ -1042,7 +1065,12 @@
           },
           "reasonCode": {
             "type": "string",
-            "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+            "enum": [
+              "TEMPERATURE_EXCURSION_REPORTED",
+              "CONTAINER_DAMAGE_OR_LEAK_REPORTED",
+              "VISIBLE_COMPONENT_ABNORMALITY_REPORTED",
+              "HANDLING_OR_CUSTODY_DEVIATION_REPORTED"
+            ]
           }
         },
         "additionalProperties": false
@@ -1430,6 +1458,57 @@
       },
       "Census": {
         "$ref": "../../contracts/doh-census-v2.schema.json"
+      },
+      "CompromiseReasonPolicy": {
+        "type": "object",
+        "required": [
+          "policyVersion",
+          "reasons",
+          "effect",
+          "freeTextAllowed",
+          "classification"
+        ],
+        "properties": {
+          "policyVersion": {
+            "const": "SYNTHETIC_COMPROMISE_REASONS_V1"
+          },
+          "reasons": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "object",
+              "required": [
+                "code",
+                "label"
+              ],
+              "properties": {
+                "code": {
+                  "enum": [
+                    "TEMPERATURE_EXCURSION_REPORTED",
+                    "CONTAINER_DAMAGE_OR_LEAK_REPORTED",
+                    "VISIBLE_COMPONENT_ABNORMALITY_REPORTED",
+                    "HANDLING_OR_CUSTODY_DEVIATION_REPORTED"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "effect": {
+            "const": "QUARANTINE_PENDING_MANUAL_REVIEW"
+          },
+          "freeTextAllowed": {
+            "const": false
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        },
+        "additionalProperties": false
       }
     },
     "responses": {

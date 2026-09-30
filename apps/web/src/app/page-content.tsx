@@ -9,7 +9,7 @@ const pages: Record<string, [string, string, string]> = {
   "/consortium": ["Approved aggregate", "Network view", "Read-only synthetic city-wide summaries without fabricated peer ownership."],
   "/audit": ["Safe provenance", "Audit", "Permission-scoped events with redacted evidence identifiers."],
   "/reporting": ["Simulation evidence", "Reports", "Approved read-only synthetic summaries and exports."],
-  "/analytics": ["Simulation decision support", "Analytics", "Active ML V4 demand forecasts with explicit freshness, uncertainty, provenance, and disabled operational recommendations."],
+  "/analytics": ["Simulation decision support", "Analytics", "One-day forecasts of recorded blood requests, with explicit freshness, uncertainty, provenance, and disabled operational recommendations."],
   "/accounts": ["Frontend parity preview", "System administration", "Visual-only application, institution, and account-management workspace."],
   "/profile": ["Session context", "Profile", "Safe principal and institution metadata assigned by the server."],
 };

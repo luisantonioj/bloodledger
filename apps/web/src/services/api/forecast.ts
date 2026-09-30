@@ -148,5 +148,7 @@ export function manilaBusinessDate(now = new Date()): string {
 
 export async function readActiveForecast(businessDate: string): Promise<ForecastResponse> {
   const path = "/api/v1/demand-forecasts?businessDate=" + encodeURIComponent(businessDate);
-  return parseActiveForecast(await requestJson<unknown>(path, {}, "Active V4 forecast data is unavailable."));
+  const forecast = parseActiveForecast(await requestJson<unknown>(path, {}, "Active V4 forecast data is unavailable."));
+  if (forecast.businessDate !== businessDate) throw new Error("FORECAST_RESPONSE_DATE_MISMATCH");
+  return forecast;
 }

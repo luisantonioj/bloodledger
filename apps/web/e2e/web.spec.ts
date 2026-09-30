@@ -119,6 +119,10 @@ async function authenticatedApi(page: Page, roleId: RoleId, override?: (route: R
     if (path === "/api/v1/demand-forecasts") return fulfillJson(route, forecastResponse);
     if (path === "/api/v2/components") return fulfillJson(route, { scope: "INSTITUTION", components: [v2Component], classification: "SIMULATION_ONLY" });
     if (path === "/api/v2/reports/inbound-intake") return fulfillJson(route, { scope: "INSTITUTION", statuses: { QUEUED: 1 }, includedInventoryStatuses: ["COMMITTED"], excludedFromInventory: ["QUEUED", "FAILED", "CONFLICT"], classification: "SIMULATION_ONLY" });
+    if (path === "/api/v2/reservations") return fulfillJson(route, { scope: roleId === "ROLE-03" ? "DESTINATION_INSTITUTION" : "SOURCE_INSTITUTION", reservations: [], nextCursor: null, classification: "SIMULATION_ONLY" });
+    if (path === "/api/v2/reconciliation/reasons") return fulfillJson(route, { policyVersion: "SYNTHETIC_RECONCILIATION_REASONS_V1", reasons: [{ code: "LABEL_RECORD_MISMATCH", label: "Label and record do not match" }], effect: "RECONCILIATION_HOLD_ONLY", freeTextAllowed: false, classification: "SIMULATION_ONLY" });
+    if (path === "/api/v2/commands") return fulfillJson(route, { scope: "ACTOR_INSTITUTION", commands: [], nextCursor: null, classification: "SIMULATION_ONLY" });
+    if (path === "/api/v2/reports/doh-census") return fulfillJson(route, { scope: roleId === "ROLE-04" ? "REGULATORY_AGGREGATE" : "INSTITUTION", displayPolicyVersion: "DOH_CENSUS_COLUMN_ORDER_V1", displayBloodTypeOrder: ["O_POSITIVE", "A_POSITIVE", "B_POSITIVE", "AB_POSITIVE", "O_NEGATIVE", "A_NEGATIVE", "B_NEGATIVE", "AB_NEGATIVE"], totalColumn: "CALCULATED", reportAvailability: "EXPORT_DISABLED_PENDING_FORMAT", snapshots: [], nextCursor: null, exportAvailable: false, classification: "SIMULATION_ONLY" });
     const body = responses[path];
     if (path === "/api/v1/dashboard") return fulfillJson(route, dashboardFor(roleId));
     if (body) return fulfillJson(route, body);
@@ -181,7 +185,7 @@ test("PRC, DOH, and administrators receive truthful non-operational compositions
     if (roleId === "ROLE-04") {
       await expect(page.getByText("Ledger-confirmed", { exact: true })).toBeVisible();
       await expect(page.getByText("Non-clinical workspace", { exact: true })).toHaveCount(0);
-      await expect(page.getByRole("link", { name: "Analytics", exact: true })).toHaveCount(institutionId === "INST_SYNTH_PRC" ? 1 : 0);
+      await expect(page.getByRole("link", { name: "Analytics", exact: true })).toHaveCount(0);
     } else {
       await expect(page.getByText("Non-clinical workspace", { exact: true })).toBeVisible();
       await expect(page.getByText("Ledger-confirmed", { exact: true })).toHaveCount(0);
@@ -233,6 +237,36 @@ test("login fails safely, then accepts only the server-returned principal and ca
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page.getByRole("heading", { name: "Sign in to BloodLedger" })).toBeVisible();
   expect(revoked).toBe(true);
+});
+
+test("ROLE-02 prepares a committed V2.1 reservation from its returned ID and version", async ({ page }) => {
+  const reservation = { reservationId: "RES_SYNTH_BROWSER_001", purpose: "TRANSFER", status: "ACTIVE", version: 3, sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_SYNTH_SECONDARY", transferId: "TRF_SYNTH_BROWSER_001", localReleaseId: null, preparedAt: null, preparedEvidencePresent: false, updatedAt: timestamp, components: [{ componentId: "CMP_SYNTH_BROWSER_01", componentType: "CRYOPRECIPITATE", inventoryStatus: "RESERVED", inventoryVersion: 2 }], classification: "SIMULATION_ONLY" };
+  let submissions = 0;
+  await authenticatedApi(page, "ROLE-02", async (route, path) => {
+    if (path === "/api/v2/reservations" && route.request().method() === "GET") {
+      expect(route.request().headers()["x-bloodledger-contract-version"]).toBe("V2.1");
+      await fulfillJson(route, { scope: "SOURCE_INSTITUTION", reservations: [reservation], nextCursor: null, classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path === `/api/v2/reservations/${reservation.reservationId}` && route.request().method() === "GET") { await fulfillJson(route, reservation); return true; }
+    if (path === `/api/v2/reservations/${reservation.reservationId}/prepare`) {
+      submissions += 1;
+      expect(route.request().headers()["x-bloodledger-contract-version"]).toBe("V2.1");
+      expect(route.request().postDataJSON()).toMatchObject({ expectedVersion: 3, preparedEvidenceId: "EVD_SYNTH_BROWSER_001", preparedEvidenceDigest: "a".repeat(64) });
+      await fulfillJson(route, { commandId: "CMD_SYNTH_PREPARE_001", resourceType: "TRANSFER", resourceId: reservation.reservationId, status: "QUEUED", statusUrl: "/api/v2/commands/CMD_SYNTH_PREPARE_001", acceptedAt: timestamp, correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF", safeErrorCode: null, classification: "SIMULATION_ONLY", replayed: false }, 202);
+      return true;
+    }
+    if (path === "/api/v2/commands/CMD_SYNTH_PREPARE_001") { await fulfillJson(route, { commandId: "CMD_SYNTH_PREPARE_001", resourceType: "TRANSFER", resourceId: reservation.reservationId, status: "COMMITTED", statusUrl: "/api/v2/commands/CMD_SYNTH_PREPARE_001", acceptedAt: timestamp, correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF", safeErrorCode: null, classification: "SIMULATION_ONLY", replayed: false }); return true; }
+    return false;
+  });
+  await page.goto("/transfers");
+  await page.getByRole("button", { name: "Review", exact: true }).click();
+  await page.getByLabel("Action").selectOption("prepare");
+  await page.getByLabel("Approved evidence ID").fill("EVD_SYNTH_BROWSER_001");
+  await page.getByLabel("Evidence SHA-256 digest").fill("a".repeat(64));
+  await page.getByRole("button", { name: "Confirm action" }).click();
+  await expect(page.getByRole("heading", { name: "Committed" })).toBeVisible({ timeout: 10_000 });
+  expect(submissions).toBe(1);
 });
 
 // Historical V1 transfer mutation fixtures are retained temporarily as migration evidence.
@@ -616,9 +650,9 @@ test("legacy V1 transfer mutations stay unavailable while canonical V2 entry poi
     await page.goto("/");
     await page.getByRole("link", { name: "Transfers", exact: true }).click();
     await expect(page.getByRole("button", { name: canonicalButton, exact: true })).toBeVisible();
-    await expect(page.getByText("Canonical reservation actions unavailable", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Reservations and custody" })).toBeVisible();
     await expect(page.getByRole("button", { name: /Submit request|Approve FEFO selection|Reject request|Cancel transfer|Record dispatch|Start transit|Record receipt/ })).toHaveCount(0);
-    if (roleId === "ROLE-02") await expect(page.getByText("Reconciliation reason policy unavailable", { exact: true })).toBeVisible();
+    if (roleId === "ROLE-02") await expect(page.getByRole("heading", { name: "Request reconciliation hold" })).toBeVisible();
     await context.close();
   }
 });
@@ -709,6 +743,7 @@ test("latest visual baseline stays role-scoped while Sprint 6 integrations remai
 
   await page.getByRole("link", { name: "Analytics", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeVisible();
+  await page.getByLabel("Business date").fill("2026-09-18");
   await expect(page.getByText("Active ML V4 simulation", { exact: true })).toBeVisible();
   await expect(page.getByText("Uncertainty unavailable", { exact: false })).toBeVisible();
   await expect(page.getByText("Intentionally unavailable", { exact: true })).toBeVisible();
@@ -959,4 +994,71 @@ test("visual parity controls remain local previews without connected claims", as
   await expect(page.locator(".shell")).toHaveClass(/preview-accent-green/);
   await page.getByRole("button", { name: "Compact" }).click();
   await expect(page.locator(".shell")).toHaveClass(/preview-compact/);
+});
+
+test("approved compromise policy requires reason and quarantine confirmation without resubmission", async ({ page }) => {
+  const reservation = { reservationId: "RES_SYNTH_COMPROMISE_BROWSER", purpose: "TRANSFER", status: "DISPATCHED", version: 3, sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_SYNTH_SECONDARY", transferId: "TRF_SYNTH_COMPROMISE_BROWSER", localReleaseId: null, preparedAt: timestamp, preparedEvidencePresent: true, updatedAt: timestamp, components: [{ componentId: "COMP_SYNTH_COMPROMISE_BROWSER", componentType: "PACKED_RED_BLOOD_CELLS", inventoryStatus: "DISPATCHED", inventoryVersion: 3 }], classification: "SIMULATION_ONLY" };
+  let submissions = 0;
+  let polls = 0;
+  await authenticatedApi(page, "ROLE-02", async (route, path) => {
+    if (path === "/api/v2/reservations") { await fulfillJson(route, { scope: "SOURCE_INSTITUTION", reservations: [reservation], nextCursor: null, classification: "SIMULATION_ONLY" }); return true; }
+    if (path === `/api/v2/reservations/${reservation.reservationId}`) { await fulfillJson(route, reservation); return true; }
+    if (path === "/api/v2/reservations/compromise-reasons") { await fulfillJson(route, { policyVersion: "SYNTHETIC_COMPROMISE_REASONS_V1", reasons: ["TEMPERATURE_EXCURSION_REPORTED", "CONTAINER_DAMAGE_OR_LEAK_REPORTED", "VISIBLE_COMPONENT_ABNORMALITY_REPORTED", "HANDLING_OR_CUSTODY_DEVIATION_REPORTED"].map((code) => ({ code, label: code })), effect: "QUARANTINE_PENDING_MANUAL_REVIEW", freeTextAllowed: false, classification: "SIMULATION_ONLY" }); return true; }
+    if (path === `/api/v2/reservations/${reservation.reservationId}/compromise` && route.request().method() === "POST") {
+      submissions += 1;
+      expect(route.request().postDataJSON()).toMatchObject({ expectedVersion: 3, reasonCode: "TEMPERATURE_EXCURSION_REPORTED" });
+      await fulfillJson(route, { commandId: "CMD_SYNTH_COMPROMISE_BROWSER", resourceType: "TRANSFER", resourceId: reservation.reservationId, status: "QUEUED", statusUrl: "/api/v2/commands/CMD_SYNTH_COMPROMISE_BROWSER", acceptedAt: timestamp, correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF", safeErrorCode: null, classification: "SIMULATION_ONLY", replayed: false }, 202); return true;
+    }
+    if (path === "/api/v2/commands/CMD_SYNTH_COMPROMISE_BROWSER") {
+      polls += 1;
+      await fulfillJson(route, { commandId: "CMD_SYNTH_COMPROMISE_BROWSER", resourceType: "TRANSFER", resourceId: reservation.reservationId, status: polls === 1 ? "LEDGER_COMMITTED_PROJECTION_PENDING" : "COMMITTED", statusUrl: "/api/v2/commands/CMD_SYNTH_COMPROMISE_BROWSER", acceptedAt: timestamp, correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF", safeErrorCode: null, classification: "SIMULATION_ONLY", replayed: false }); return true;
+    }
+    return false;
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("button", { name: "Review", exact: true }).click();
+  await page.getByLabel("Action").selectOption("compromise");
+  await expect(page.getByRole("button", { name: "Confirm action" })).toBeDisabled();
+  await page.getByLabel("Reported incident reason").selectOption("TEMPERATURE_EXCURSION_REPORTED");
+  await page.getByRole("checkbox", { name: /quarantines the selected components pending manual review/ }).check();
+  await page.getByRole("button", { name: "Confirm action" }).click();
+  await expect(page.getByRole("heading", { name: "Committed", exact: true })).toBeVisible({ timeout: 10_000 });
+  expect(submissions).toBe(1); expect(polls).toBe(2);
+});
+
+test("unavailable compromise policy leaves the custody action disabled", async ({ page }) => {
+  const reservation = { reservationId: "RES_SYNTH_POLICY_UNAVAILABLE", purpose: "TRANSFER", status: "DISPATCHED", version: 3, sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_SYNTH_SECONDARY", transferId: "TRF_SYNTH_POLICY_UNAVAILABLE", localReleaseId: null, preparedAt: timestamp, preparedEvidencePresent: true, updatedAt: timestamp, components: [], classification: "SIMULATION_ONLY" };
+  await authenticatedApi(page, "ROLE-02", async (route, path) => {
+    if (path === "/api/v2/reservations") { await fulfillJson(route, { scope: "SOURCE_INSTITUTION", reservations: [reservation], nextCursor: null, classification: "SIMULATION_ONLY" }); return true; }
+    if (path === `/api/v2/reservations/${reservation.reservationId}`) { await fulfillJson(route, reservation); return true; }
+    if (path === "/api/v2/reservations/compromise-reasons") { await fulfillJson(route, { error: { code: "POLICY_UNAVAILABLE" } }, 503); return true; }
+    return false;
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("button", { name: "Review", exact: true }).click();
+  await expect(page.getByText("Compromise reasons are unavailable. The action is disabled.")).toBeVisible();
+  await expect(page.getByRole("option", { name: "Compromise" })).toHaveCount(0);
+});
+
+
+test("Analytics clears old requested-unit values when a later date cannot be loaded", async ({ page }) => {
+  await authenticatedApi(page, "ROLE-01", async (route, path) => {
+    if (path !== "/api/v1/demand-forecasts") return false;
+    const date = new URL(route.request().url()).searchParams.get("businessDate");
+    if (date === "2026-09-19") {
+      await fulfillJson(route, { error: { code: "PROJECTION_UNAVAILABLE", message: "Forecast unavailable for this date." } }, 503);
+    } else {
+      await fulfillJson(route, { ...forecastResponse, businessDate: date, horizonDate: date });
+    }
+    return true;
+  });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Analytics", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "One-day recorded-request forecast" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "2.00 units" })).toBeVisible();
+  await page.getByLabel("Business date").fill("2026-09-19");
+  await expect(page.getByText("Forecast unavailable for this date.")).toBeVisible();
+  await expect(page.getByRole("cell", { name: "2.00 units" })).toHaveCount(0);
 });

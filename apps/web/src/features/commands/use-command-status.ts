@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { readCommand, type V2Command } from "../../services/api/v2";
+import { ApiRequestError } from "../../services/api/client";
 import { COMMAND_PRESENTATION } from "./command-state";
 
 export function useCommandStatus(onTerminal?: () => void) {
@@ -36,6 +37,10 @@ export function useCommandStatus(onTerminal?: () => void) {
         if (COMMAND_PRESENTATION[next.status].terminal) callback.current?.();
         if (!COMMAND_PRESENTATION[next.status].terminal) timer = setTimeout(() => void poll(), 2_000);
       } catch (error) {
+        if (error instanceof ApiRequestError && error.status === 401) {
+          setPollError("Session ended. Sign in to recover this command.");
+          return;
+        }
         failures += 1;
         setPollError(error instanceof Error ? error.message : "Command status is unavailable.");
         timer = setTimeout(() => void poll(), Math.min(30_000, 2_000 * (2 ** failures)));

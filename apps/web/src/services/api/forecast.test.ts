@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { ACTIVE_FORECAST_DATASET, ACTIVE_FORECAST_MODEL, manilaBusinessDate, parseActiveForecast } from "./forecast";
+import { describe, expect, it, vi } from "vitest";
+import { requestJson } from "./client";
+import { ACTIVE_FORECAST_DATASET, ACTIVE_FORECAST_MODEL, manilaBusinessDate, parseActiveForecast, readActiveForecast } from "./forecast";
+
+vi.mock("./client", () => ({ requestJson: vi.fn() }));
 
 function response(overrides: Record<string, unknown> = {}) {
   return {
@@ -55,6 +58,11 @@ describe("active ML V4 frontend contract", () => {
     const unsupported = response();
     (unsupported.forecasts as Array<Record<string, unknown>>)[0]!.modelVersion = "unapproved-model";
     expect(() => parseActiveForecast(unsupported)).toThrowError("FORECAST_MODEL_UNSUPPORTED");
+  });
+
+  it("rejects a result for another requested business date", async () => {
+    vi.mocked(requestJson).mockResolvedValueOnce(response({ businessDate: "2026-09-19" }));
+    await expect(readActiveForecast("2026-09-18")).rejects.toThrowError("FORECAST_RESPONSE_DATE_MISMATCH");
   });
 
   it("derives the business date in Asia/Manila", () => {

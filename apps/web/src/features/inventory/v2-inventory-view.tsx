@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BloodTypeBadge } from "../../components/ui/aggregate-tables";
 import { formatManilaDateTime, humanizeCode, statusClassName } from "../../components/ui/display";
 import type { Principal } from "../../auth/permissions";
+import { CensusDiscovery } from "../reporting/census-discovery";
 import {
   readInboundIntake,
   readV2Components,
@@ -84,5 +85,6 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
       </tr>)}</tbody></table></div>
       <p className="v2-freshness">Last successful browser refresh: {refreshedAt ? formatManilaDateTime(refreshedAt) : "Unavailable"} · {version} · SIMULATION_ONLY</p>
     </>}
+    {canReadIntake && <CensusDiscovery/>}
   </div>;
 }

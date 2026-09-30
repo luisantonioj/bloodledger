@@ -1,21 +1,83 @@
 {
   "classification": "SIMULATION_ONLY",
   "policyVersion": "INTERVIEW_DERIVED_CORE_V2_1",
-  "allowedIssuerInstitutionIds": ["INST_MEDIATRIX"],
-  "issuerRules": {"INST_MEDIATRIX": {"ruleKind": "MEDIATRIX_MMYY_MONTH_SEQ", "pattern": "^MM[0-9]{2}-(0[1-9]|1[0-2])-[0-9]{4}$", "enabled": true}},
-  "bloodTypes": ["A_POSITIVE", "A_NEGATIVE", "B_POSITIVE", "B_NEGATIVE", "AB_POSITIVE", "AB_NEGATIVE", "O_POSITIVE", "O_NEGATIVE"],
-  "componentTypes": ["WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_PLASMA", "PLATELETS", "CRYOPRECIPITATE"],
+  "allowedIssuerInstitutionIds": [
+    "INST_MEDIATRIX"
+  ],
+  "issuerRules": {
+    "INST_MEDIATRIX": {
+      "ruleKind": "MEDIATRIX_MMYY_MONTH_SEQ",
+      "pattern": "^MM[0-9]{2}-(0[1-9]|1[0-2])-[0-9]{4}$",
+      "enabled": true
+    }
+  },
+  "bloodTypes": [
+    "A_POSITIVE",
+    "A_NEGATIVE",
+    "B_POSITIVE",
+    "B_NEGATIVE",
+    "AB_POSITIVE",
+    "AB_NEGATIVE",
+    "O_POSITIVE",
+    "O_NEGATIVE"
+  ],
+  "componentTypes": [
+    "WHOLE_BLOOD",
+    "PACKED_RED_BLOOD_CELLS",
+    "FRESH_FROZEN_PLASMA",
+    "PLATELETS",
+    "CRYOPRECIPITATE"
+  ],
   "nearExpiryEnabled": false,
   "reconciliationPolicyVersion": "SYNTHETIC_RECONCILIATION_REASONS_V1",
-  "reconciliationReasonCodes": ["LABEL_RECORD_MISMATCH", "POSSIBLE_DUPLICATE", "COMPONENT_TYPE_MISMATCH", "BLOOD_TYPE_MISMATCH", "DATE_MISMATCH", "CUSTODY_MISMATCH", "STATUS_MISMATCH"],
+  "reconciliationReasonCodes": [
+    "LABEL_RECORD_MISMATCH",
+    "POSSIBLE_DUPLICATE",
+    "COMPONENT_TYPE_MISMATCH",
+    "BLOOD_TYPE_MISMATCH",
+    "DATE_MISMATCH",
+    "CUSTODY_MISMATCH",
+    "STATUS_MISMATCH"
+  ],
   "actors": {
-    "USR_MEDIATRIX_ADMIN": {"institutionId": "INST_MEDIATRIX", "role": "ROLE_01"},
-    "USR_MEDIATRIX_TECH": {"institutionId": "INST_MEDIATRIX", "role": "ROLE_02"},
-    "USR_DIVINE_LOVE": {"institutionId": "INST_DIVINE_LOVE", "role": "ROLE_03"},
-    "USR_LIPA_CITY_DISTRICT": {"institutionId": "INST_LIPA_CITY_DISTRICT", "role": "ROLE_03"},
-    "USR_METRO_LIPA": {"institutionId": "INST_METRO_LIPA", "role": "ROLE_03"},
-    "USR_OSPITAL_NG_LIPA": {"institutionId": "INST_OSPITAL_NG_LIPA", "role": "ROLE_03"},
-    "USR_SAN_ANTONIO": {"institutionId": "INST_SAN_ANTONIO", "role": "ROLE_03"},
-    "USR_DOH_VIEWER": {"institutionId": "INST_MEDIATRIX", "role": "ROLE_04"}
-  }
+    "USR_MEDIATRIX_ADMIN": {
+      "institutionId": "INST_MEDIATRIX",
+      "role": "ROLE_01"
+    },
+    "USR_MEDIATRIX_TECH": {
+      "institutionId": "INST_MEDIATRIX",
+      "role": "ROLE_02"
+    },
+    "USR_DIVINE_LOVE": {
+      "institutionId": "INST_DIVINE_LOVE",
+      "role": "ROLE_03"
+    },
+    "USR_LIPA_CITY_DISTRICT": {
+      "institutionId": "INST_LIPA_CITY_DISTRICT",
+      "role": "ROLE_03"
+    },
+    "USR_METRO_LIPA": {
+      "institutionId": "INST_METRO_LIPA",
+      "role": "ROLE_03"
+    },
+    "USR_OSPITAL_NG_LIPA": {
+      "institutionId": "INST_OSPITAL_NG_LIPA",
+      "role": "ROLE_03"
+    },
+    "USR_SAN_ANTONIO": {
+      "institutionId": "INST_SAN_ANTONIO",
+      "role": "ROLE_03"
+    },
+    "USR_DOH_VIEWER": {
+      "institutionId": "INST_MEDIATRIX",
+      "role": "ROLE_04"
+    }
+  },
+  "compromisePolicyVersion": "SYNTHETIC_COMPROMISE_REASONS_V1",
+  "compromiseReasonCodes": [
+    "TEMPERATURE_EXCURSION_REPORTED",
+    "CONTAINER_DAMAGE_OR_LEAK_REPORTED",
+    "VISIBLE_COMPONENT_ABNORMALITY_REPORTED",
+    "HANDLING_OR_CUSTODY_DEVIATION_REPORTED"
+  ]
 }

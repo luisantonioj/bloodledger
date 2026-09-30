@@ -1,6 +1,7 @@
 import { AggregateTable, AlertAggregateTable, TransferSummaryTable } from "../../components/ui/aggregate-tables";
 import { formatManilaDateTime } from "../../components/ui/display";
 import type { Report } from "../../services/api/types";
+import { CensusDiscovery } from "./census-discovery";
 
 export function ReportView({ data }: { data: Report }) {
   const units = data.inventory.reduce((sum, item) => sum + item.confirmedCount, 0);
@@ -12,11 +13,7 @@ export function ReportView({ data }: { data: Report }) {
       <div><span>Prototype evidence package</span><h3>City inventory summary</h3><p>{data.disclaimer}</p><small>Generated {formatManilaDateTime(data.generatedAt)} · Asia/Manila display</small></div>
       <div className="report-export-actions"><a className="button primary" href="/api/v1/reports/inventory.csv" download>Download simulation CSV</a><button className="button" disabled title="Official PDF generator is not connected">Export fixed-layout PDF</button><small>PDF generator not connected</small></div>
     </div>
-    <section className="v2-blocked-workflow">
-      <span aria-hidden="true">!</span>
-      <div><strong>V2 census lookup requires a known snapshot ID</strong><p>The backend exposes snapshot detail, component TSV, and authorized manual catch-up, but no permission-scoped snapshot index. Official DOH copy order is also unapproved, so this frontend does not guess a snapshot or activate copy output.</p></div>
-      <b>NOT CONNECTED</b>
-    </section>
+    <CensusDiscovery/>
     <div className="stats report-summary"><article><span>Confirmed units</span><strong>{units}</strong></article><article><span>Aggregate alerts</span><strong>{alerts}</strong></article><article><span>Transfers</span><strong>{transfers}</strong></article><article><span>Classification</span><strong className="scope">Simulation only</strong></article></div>
     <section className="evidence-section"><header><div><h3>Inventory aggregate</h3><p>Approved committed inventory summary included in the export.</p></div><span>JSON + CSV</span></header><AggregateTable items={data.inventory}/></section>
     <section className="evidence-section"><header><div><h3>Alert aggregate</h3><p>Approved alert summary included as prototype evidence.</p></div><span>Read only</span></header><AlertAggregateTable items={data.alerts}/></section>

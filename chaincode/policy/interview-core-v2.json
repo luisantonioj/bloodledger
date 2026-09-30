@@ -71,5 +71,12 @@
       "institutionId": "INST_MEDIATRIX",
       "role": "ROLE_04"
     }
-  }
+  },
+  "compromisePolicyVersion": "SYNTHETIC_COMPROMISE_REASONS_V1",
+  "compromiseReasonCodes": [
+    "TEMPERATURE_EXCURSION_REPORTED",
+    "CONTAINER_DAMAGE_OR_LEAK_REPORTED",
+    "VISIBLE_COMPONENT_ABNORMALITY_REPORTED",
+    "HANDLING_OR_CUSTODY_DEVIATION_REPORTED"
+  ]
 }
