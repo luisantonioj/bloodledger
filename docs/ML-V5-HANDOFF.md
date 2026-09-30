@@ -10,7 +10,7 @@ application's active V4 model or to merge as an application activation release.
 ## Publication status — updated 2026-09-29
 
 The research implementation was committed and pushed at `82d9feb` on
-`codex/ml-v5-exploration`. Draft PR [#19](https://github.com/luisantonioj/bloodledger/pull/19)
+`codex/ml-v5-exploration`. PR [#19](https://github.com/luisantonioj/bloodledger/pull/19)
 is open against `main` for technical review. It has not been merged and does not
 activate V5 in the application. Follow-up documentation commits may advance the
 PR head; `82d9feb` identifies the original research implementation commit.
@@ -99,9 +99,9 @@ Exact workbook, executable code and pre-evaluation protocol hashes are in
 `docs/research/ML-V5-EVALUATION.json`. Do not overwrite that report after changing
 code or protocol without rerunning the evaluation.
 
-## Proposed integration decisions — for agreement with Jopia
+## Integration decisions — review status updated 2026-09-30
 
-Status: **PROPOSED; not yet agreed with Jopia or implemented in application code.**
+Status: The original proposals below are retained for history. The [Buno technical review](ML-V5-BUNO-REVIEW.md) records current point-by-point agreement, the API freshness change request, and deferred binding/activation decisions. PR #20 contains an inactive candidate; V4 remains default.
 This addendum updates the handoff only. It does not change the frozen research
 protocol, evaluation, selected parameters, or the current preview's 28-day gate.
 
@@ -127,7 +127,7 @@ protocol, evaluation, selected parameters, or the current preview's 28-day gate.
    Unavailable inventory must prevent stock-dependent conclusions even when the
    model can calculate a numeric demand forecast.
 
-**Sequence:** send this handoff now. Buno and Jopia should record agreement or an
+**Original proposed sequence (superseded by the review status above):** send this handoff now. Buno and Jopia should record agreement or an
 alternative before implementing the application inference/refit behavior. Jopia
 then implements the agreed contract; Lat reflects its independent forecast and
 inventory states; Buno reviews calculations and wording after integration.
@@ -141,7 +141,7 @@ handoff update.
 
 ## Developer review and next application activation handoff
 
-Jopia and Lat: read this handoff and review draft PR #19. The ZIP package includes
+Jopia and Lat: read this handoff and review PR #19. The ZIP package includes
 this same handoff, explanatory documents, selected model, evaluation outputs and
 standalone preview. The PR contains code and aggregate research evidence, not
 the institutional source workbook. Buno will clarify the proposed decisions and
