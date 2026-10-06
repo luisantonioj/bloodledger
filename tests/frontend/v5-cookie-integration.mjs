@@ -17,13 +17,34 @@ import { PostgresMlInventorySnapshotStore } from '../../services/api/build/src/c
 import { provisionSyntheticAccount } from '../../services/api/build/src/synthetic-account.js';
 
 const modelPath = process.env.BLOODLEDGER_V5_MODEL_TEST_PATH;
-if (!modelPath) { console.log(JSON.stringify({ classification: 'SIMULATION_ONLY', v5Success: 'BLOCKED', reason: 'External pinned model path required' })); process.exit(2); }
-assert.equal(createHash('sha256').update(await readFile(modelPath)).digest('hex'), '1e0f0c240109e49e8f1a89a713021afae07c2f5fae5b0e2bc8e3904610fb9764');
+async function blocked(reason) {
+  const evidence = { classification: 'SIMULATION_ONLY', cookieFlow: 'BLOCKED', v5Success: 'BLOCKED', reason };
+  console.log(JSON.stringify(evidence));
+  await writeFile(process.env.BLOODLEDGER_BROWSER_EVIDENCE_PATH ?? '/tmp/bloodledger-pr21-cookie-evidence.json', JSON.stringify(evidence, null, 2) + '\n', { mode: 0o600 });
+  process.exit(2);
+}
+if (!modelPath) await blocked('External pinned model path required');
+let modelBytes;
+try { modelBytes = await readFile(modelPath); }
+catch (error) {
+  if (['ENOENT', 'EACCES'].includes(error.code)) await blocked('External pinned model unavailable');
+  throw error;
+}
+assert.equal(createHash('sha256').update(modelBytes).digest('hex'), '1e0f0c240109e49e8f1a89a713021afae07c2f5fae5b0e2bc8e3904610fb9764');
+const forecastingImage = 'sha256:dcb2ccd36834bcec33e3d5cb8158f2b7a75b0881f695821cc705764667fba4c1';
+try { execFileSync('docker', ['info'], { stdio: 'pipe' }); }
+catch { await blocked('Docker runtime unavailable'); }
+for (const image of [forecastingImage, 'postgres:17.10']) {
+  try { execFileSync('docker', ['image', 'inspect', image], { stdio: 'pipe' }); }
+  catch { await blocked(image === forecastingImage ? 'Pinned forecasting image unavailable' : 'PostgreSQL image unavailable'); }
+}
+try { const preflightBrowser = await chromium.launch({ headless: true }); await preflightBrowser.close(); }
+catch { await blocked('Pinned Chromium runtime unavailable'); }
 const root = resolve('.');
 const work = await mkdtemp(resolve(tmpdir(), 'bloodledger-pr21-'));
 const container = 'bloodledger-pr21-' + randomBytes(6).toString('hex');
 const docker = (...args) => execFileSync('docker', args, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
-const evidence = { classification: 'SIMULATION_ONLY', interception: false, commit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), node: process.version, database: 'postgres:17.10', browser: null, forecastingImage: 'sha256:dcb2ccd36834bcec33e3d5cb8158f2b7a75b0881f695821cc705764667fba4c1', businessDate: null, cookieFlow: 'NOT_RUN', v5Success: 'NOT_RUN', census: 'NOT_RUN', isolation: 'NOT_RUN', failureTransitions: 'NOT_RUN', humanUat: 'NOT_RUN', binding: 'DISPOSABLE_TEST_ONLY', ledger: 'SYNTHETIC_COMMITTED_PROJECTION_FIXTURE' };
+const evidence = { classification: 'SIMULATION_ONLY', interception: false, commit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), node: process.version, database: 'postgres:17.10', browser: null, forecastingImage, businessDate: null, cookieFlow: 'NOT_RUN', v5Success: 'NOT_RUN', census: 'NOT_RUN', isolation: 'NOT_RUN', failureTransitions: 'NOT_RUN', humanUat: 'NOT_RUN', binding: 'DISPOSABLE_TEST_ONLY', ledger: 'SYNTHETIC_COMMITTED_PROJECTION_FIXTURE' };
 let created = false, app, pool, owner, browser;
 try {
   const dbEnv = { POSTGRES_USER: 'postgres', POSTGRES_DB: 'bloodledger_dev', POSTGRES_MIGRATOR_USER: 'bloodledger_migrator', POSTGRES_APP_USER: 'bloodledger_app', POSTGRES_PASSWORD: randomBytes(24).toString('hex'), POSTGRES_MIGRATOR_PASSWORD: randomBytes(24).toString('hex'), POSTGRES_APP_PASSWORD: randomBytes(24).toString('hex'), POSTGRES_HOST: '127.0.0.1' };
