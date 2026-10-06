@@ -335,3 +335,16 @@ repository/security checks. This scoped evidence does not complete BL-TST-01,
 TP-02's full integrated baseline, human UAT or Testing-phase acceptance. Groupmate
 handoff responses are reserved for subsequent work; real V5, physical OCR,
 full Fabric-to-browser latency and owner/research gates remain open.
+## Jopia PR #21 incorporation re-review — 2026-10-07
+
+[Jopia’s source re-review, native validation and runtime handoff](ML-V5-PR21-JOPIA-VALIDATION.md#jopia-incorporation-re-review-and-runtime-prerequisites--2026-10-07)
+record identical incorporated patches and implementation
+`60fd148740c9ce45b379bec1633923fceef39d11`. Native prerequisite/regression,
+117-test forecasting, census, producer and real cookie/Chromium checks passed.
+The original frozen model and exact pinned image were recovered, verified,
+exported and reimported; the external transfer package and safe aggregates are
+recorded there. Current audit and secret scanning passed. Grouped publication
+is tracked by the follow-up draft PR. These are Jopia’s disclosed self-validation;
+prior owner evidence retains its attribution. Lat’s own real browser rerun and
+frontend decision remain pending, so complete live V5 acceptance remains BLOCKED.
+No Testing-phase exit, binding/activation, RQ-07/RQ-14 or UAT gate is closed.

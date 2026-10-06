@@ -1,0 +1,11 @@
+{
+  "classification": "SIMULATION_ONLY",
+  "commit": "60fd148740c9ce45b379bec1633923fceef39d11",
+  "node": "v24.17.0",
+  "database": "postgres:17.10",
+  "ledger": "SYNTHETIC_COMMITTED_PROJECTION_FIXTURE",
+  "migrations": "PASS: 23 forward migrations, idempotent reapply and runtime grants",
+  "apiDatabase": "PASS: existing API persistence and Sprint 6 probes",
+  "coordinationDatabase": "PASS: persisted replay, conflict, disabled recommendation evidence and scoped purge",
+  "census": "PASS: forty persisted combinations, verified zero, fractional timestamps/digest, tenant isolation, future/stale states, immutability and fault-injected missing latest row without fallback"
+}

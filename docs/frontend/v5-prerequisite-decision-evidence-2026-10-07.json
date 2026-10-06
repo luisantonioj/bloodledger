@@ -1,0 +1,243 @@
+{
+  "classification": "SIMULATION_ONLY",
+  "baselineCommit": "0f2f1f42d735f606aabf1a754bb6cca261b117e4",
+  "reviewedSourceCommit": "6c2d1483e65dca1ae2c91e69f939b931396e0ecc",
+  "implementationCommit": "60fd148740c9ce45b379bec1633923fceef39d11",
+  "implementationState": "COMMITTED_NATIVE_VALIDATED",
+  "executor": "Codex assisting Jopia; self-validation",
+  "decisionLogic": {
+    "runtime": "Node v24.17.0",
+    "mode": "NATIVE_NODE_TEST_RUNNER_WITH_INJECTED_FAILURES_AND_NATIVE_ADAPTERS",
+    "passed": 20,
+    "failed": 0,
+    "nativeNodeAdapters": "PASS",
+    "cases": [
+      {
+        "name": "missing model stops before Docker or image inspection",
+        "status": "PASS"
+      },
+      {
+        "name": "ENOENT model read is BLOCKED before resources",
+        "status": "PASS"
+      },
+      {
+        "name": "EACCES model read is BLOCKED before resources",
+        "status": "PASS"
+      },
+      {
+        "name": "EPERM model read is BLOCKED before resources",
+        "status": "PASS"
+      },
+      {
+        "name": "EISDIR model read is BLOCKED before resources",
+        "status": "PASS"
+      },
+      {
+        "name": "ENOTDIR model read is BLOCKED before resources",
+        "status": "PASS"
+      },
+      {
+        "name": "unexpected model I/O failure is FAIL with safe diagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "corrupt model fails instead of becoming a missing-prerequisite result",
+        "status": "PASS"
+      },
+      {
+        "name": "missing producer Python is BLOCKED before Docker",
+        "status": "PASS"
+      },
+      {
+        "name": "unavailable Docker is BLOCKED without copying child diagnostics",
+        "status": "PASS"
+      },
+      {
+        "name": "missing sha256:dcb2ccd36834bcec33e3d5cb8158f2b7a75b0881f695821cc705764667fba4c1 is BLOCKED without implicit pull",
+        "status": "PASS"
+      },
+      {
+        "name": "missing postgres:17.10 is BLOCKED without implicit pull",
+        "status": "PASS"
+      },
+      {
+        "name": "missing node:24.17.0-bookworm-slim is BLOCKED without implicit pull",
+        "status": "PASS"
+      },
+      {
+        "name": "unexpected forecasting image identity is FAIL",
+        "status": "PASS"
+      },
+      {
+        "name": "unavailable Chromium is BLOCKED after model and image checks",
+        "status": "PASS"
+      },
+      {
+        "name": "missing image short circuits browser launch",
+        "status": "PASS"
+      },
+      {
+        "name": "cookie prerequisites pass only after browser launch",
+        "status": "PASS"
+      },
+      {
+        "name": "producer prerequisites include Python and all three images",
+        "status": "PASS"
+      },
+      {
+        "name": "native CLI verifies file access, hashes and safe exit codes",
+        "status": "PASS"
+      },
+      {
+        "name": "native CLI rejects unsupported arguments with safe diagnostics",
+        "status": "PASS"
+      }
+    ]
+  },
+  "nativeUnitTests": {
+    "status": "PASS",
+    "passed": 20,
+    "failed": 0,
+    "skipped": 0
+  },
+  "nativeRegressions": [
+    {
+      "command": "npm run check:foundation",
+      "exitCode": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "npm run check:api",
+      "exitCode": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "npm run test:api",
+      "exitCode": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "npm run check:web",
+      "exitCode": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "npm run test:web",
+      "exitCode": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "npm run check:coordination",
+      "exitCode": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "npm run test:coordination",
+      "exitCode": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "npm run check:database",
+      "exitCode": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "npm run test:capture",
+      "exitCode": 0,
+      "status": "PASS"
+    }
+  ],
+  "artifactRecovery": "PASS",
+  "artifactDelivery": "VERIFIED_LOCAL_TRANSFER_PACKAGE",
+  "producerIntegration": {
+    "status": "PASS",
+    "exitCode": 0,
+    "commit": "60fd148740c9ce45b379bec1633923fceef39d11"
+  },
+  "cookieBrowserIntegration": {
+    "status": "PASS",
+    "exitCode": 0,
+    "commit": "60fd148740c9ce45b379bec1633923fceef39d11"
+  },
+  "latRerun": "PENDING_LAT_OWN_VALIDATION",
+  "humanUat": "NOT_RUN",
+  "blockers": [],
+  "recommendations": "DISABLED_UNAPPROVED_POLICY",
+  "nativeHarnessFailureScenarios": [
+    {
+      "scenario": "missing",
+      "expectedExit": 2,
+      "exitCode": 2,
+      "status": "PASS"
+    },
+    {
+      "scenario": "nonexistent",
+      "expectedExit": 2,
+      "exitCode": 2,
+      "status": "PASS"
+    },
+    {
+      "scenario": "directory",
+      "expectedExit": 2,
+      "exitCode": 2,
+      "status": "PASS"
+    },
+    {
+      "scenario": "unreadable",
+      "expectedExit": 2,
+      "exitCode": 2,
+      "status": "PASS"
+    },
+    {
+      "scenario": "corrupt",
+      "expectedExit": 1,
+      "exitCode": 1,
+      "status": "PASS"
+    },
+    {
+      "scenario": "browser-unavailable",
+      "expectedExit": 2,
+      "exitCode": 2,
+      "status": "PASS"
+    }
+  ],
+  "security": {
+    "npmAudit": {
+      "exitCode": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "gitleaks": {
+      "exitCode": 0,
+      "historyIndexCandidate": "PASS",
+      "priorElevenFindings": "EXACT_SYNTHETIC_FALSE_POSITIVE_EXCEPTIONS_PRESERVED"
+    }
+  },
+  "mockedBrowser": {
+    "exitCode": 0,
+    "passed": 43,
+    "skipped": 7,
+    "skipReason": "Existing retired V1 mutation cases"
+  },
+  "forecastingQuality": {
+    "exitCode": 0,
+    "formattedFiles": 31,
+    "mypyFiles": 18,
+    "pytestPassed": 117,
+    "pytestSkipped": 0,
+    "frozenExternalModelTest": "PASS"
+  },
+  "cleanup": {
+    "status": "PASS",
+    "harnessContainersRemaining": 0,
+    "sharedServices": "UNCHANGED",
+    "modelFileHashAfter": "1e0f0c240109e49e8f1a89a713021afae07c2f5fae5b0e2bc8e3904610fb9764"
+  },
+  "publication": "See published follow-up PR and Git commit history; this aggregate precedes the evidence-only commit."
+}

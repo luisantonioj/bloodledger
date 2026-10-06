@@ -1,0 +1,53 @@
+{
+  "classification": "SIMULATION_ONLY",
+  "validator": "Jopia, Codex-assisted self-validation",
+  "implementationCommit": "60fd148740c9ce45b379bec1633923fceef39d11",
+  "externalDirectory": "/home/luisantonioj/bloodledger-handoffs/2026-10-07-pr21",
+  "model": {
+    "file": "selected_model.json",
+    "fileSha256": "1e0f0c240109e49e8f1a89a713021afae07c2f5fae5b0e2bc8e3904610fb9764",
+    "canonicalParameterSha256": "ceb0e74b2eb2f8af7fcafabb3619f2a23681c38eac65998816e7daf40b5afb86",
+    "loader": "UNCHANGED_PINNED_RUNTIME_V5",
+    "approvedMeans": 20,
+    "mapping": "UNCHANGED",
+    "source": "Original BloodLedger_V5_Handoff_Package.zip; only selected_model.json extracted"
+  },
+  "forecastingImage": {
+    "imageId": "sha256:dcb2ccd36834bcec33e3d5cb8158f2b7a75b0881f695821cc705764667fba4c1",
+    "archive": "forecasting-image.tar",
+    "archiveSha256": "aa1ab6e460911f91cba6164116302015d76fb5c6e591c5208a0835bb40cd0b26",
+    "exportChecksumAndReload": "PASS",
+    "replacementBuilt": false,
+    "platform": "linux/amd64",
+    "python": "3.13.11",
+    "repositoryDockerfileBase": "python:3.13.11-slim@sha256:2b9c9803c6a287cafa0a8c917211dddd23dcd2016f049690ee5219f5d3f1636e",
+    "requirementsLockSha256": "67899a9f908fef2fd2177ca05032c8c6fad8456a97d3c051dc30154b52972a88",
+    "historicalImageBuildCommit": "NOT_EMBEDDED_IN_IMAGE_LABELS; original identity preserved",
+    "validatedMountedSourceCommit": "60fd148740c9ce45b379bec1633923fceef39d11"
+  },
+  "versions": {
+    "node": "24.17.0",
+    "npm": "11.13.0",
+    "postgresql": "17.10",
+    "playwright": "1.61.1",
+    "chromium": "149.0.7827.55"
+  },
+  "browserLibraries": {
+    "sourceImage": "mcr.microsoft.com/playwright:v1.61.1-noble",
+    "sourceImageId": "sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48",
+    "directory": "browser-libs",
+    "checksums": {
+      "libasound.so.2": "a5b8423c25ef1767398543f1ab152c104950d1b74d6c7e791192aef371c6bc7a",
+      "libasound.so.2.0.0": "a5b8423c25ef1767398543f1ab152c104950d1b74d6c7e791192aef371c6bc7a",
+      "libnspr4.so": "c32583a53640c144757419b977a76976ee3dbda7b905a0af1046ace3c570ae98",
+      "libnss3.so": "bf3c472a1baac49b62b98936a5c2d13092abd89978164fb507fe32daf6993100",
+      "libnssutil3.so": "6684278f34146b89c3e89457dae5a44ebb83aa7047986db8524bc9e4e09c9b9d",
+      "libplc4.so": "f68520b4a9ba6190c67ce96511192f9af31dd96d91f18fd64cca48ffe08f7deb",
+      "libplds4.so": "403f3c1ec489de93d04b5a386d2e659af6da0a41e09ffb90a280b6d68eeb1617"
+    }
+  },
+  "rawArtifactsCommitted": false,
+  "bunoRecoveryNeeded": false,
+  "bunoNewCalculationReviewNeeded": false,
+  "latOwnRealRerun": "PENDING"
+}
