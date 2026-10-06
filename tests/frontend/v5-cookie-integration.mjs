@@ -1,5 +1,6 @@
 // FR-12 / FR-14 / BR-ALG-07: real producer -> isolated DB -> official cookie -> Chromium.
 import assert from 'node:assert/strict';
+import { checkV5Prerequisites, V5_FORECASTING_IMAGE } from '../forecasting/v5-runtime-prerequisites.mjs';
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { randomBytes, createHash } from 'node:crypto';
@@ -23,23 +24,15 @@ async function blocked(reason) {
   await writeFile(process.env.BLOODLEDGER_BROWSER_EVIDENCE_PATH ?? '/tmp/bloodledger-pr21-cookie-evidence.json', JSON.stringify(evidence, null, 2) + '\n', { mode: 0o600 });
   process.exit(2);
 }
-if (!modelPath) await blocked('External pinned model path required');
-let modelBytes;
-try { modelBytes = await readFile(modelPath); }
-catch (error) {
-  if (['ENOENT', 'EACCES'].includes(error.code)) await blocked('External pinned model unavailable');
-  throw error;
-}
-assert.equal(createHash('sha256').update(modelBytes).digest('hex'), '1e0f0c240109e49e8f1a89a713021afae07c2f5fae5b0e2bc8e3904610fb9764');
-const forecastingImage = 'sha256:dcb2ccd36834bcec33e3d5cb8158f2b7a75b0881f695821cc705764667fba4c1';
-try { execFileSync('docker', ['info'], { stdio: 'pipe' }); }
-catch { await blocked('Docker runtime unavailable'); }
-for (const image of [forecastingImage, 'postgres:17.10']) {
-  try { execFileSync('docker', ['image', 'inspect', image], { stdio: 'pipe' }); }
-  catch { await blocked(image === forecastingImage ? 'Pinned forecasting image unavailable' : 'PostgreSQL image unavailable'); }
-}
-try { const preflightBrowser = await chromium.launch({ headless: true }); await preflightBrowser.close(); }
-catch { await blocked('Pinned Chromium runtime unavailable'); }
+const forecastingImage = V5_FORECASTING_IMAGE;
+const prerequisites = await checkV5Prerequisites(modelPath, {
+  async checkBrowser() {
+    const preflightBrowser = await chromium.launch({ headless: true });
+    await preflightBrowser.close();
+  },
+});
+if (prerequisites.status === 'BLOCKED') await blocked(prerequisites.reason);
+if (prerequisites.status === 'FAIL') throw new Error(prerequisites.reason);
 const root = resolve('.');
 const work = await mkdtemp(resolve(tmpdir(), 'bloodledger-pr21-'));
 const container = 'bloodledger-pr21-' + randomBytes(6).toString('hex');
