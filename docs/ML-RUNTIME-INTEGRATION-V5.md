@@ -1,6 +1,6 @@
 # ML V5 runtime integration — Jopia candidate
 
-**Status:** Inactive simulation backend merged in PR #20 after Buno’s formal approval of `dfffe8aba7d02b0d109b2dbd27e240ddcbeb11d9`. PR #21 and its Jopia follow-up add an explicit browser preview and independent census evidence. Lat’s resulting frontend review, institution-binding approval and activation remain pending. **Classification:** `SIMULATION_ONLY`. **Requirements:** FR-14, BR-ALG-07. **Owners:** Jopia backend; Buno research review; Lat frontend.
+**Status:** Inactive simulation backend merged in PR #20 after Buno’s formal approval of `dfffe8aba7d02b0d109b2dbd27e240ddcbeb11d9`. PR #21 and its Jopia follow-up add an explicit browser preview and independent census evidence. Lat completed the resulting code review and incorporated the grouped fixes in PR #21 on 2026-10-07; Lat’s complete real producer/cookie/browser rerun is BLOCKED by unavailable pinned prerequisites. Institution-binding approval and activation remain pending. **Classification:** `SIMULATION_ONLY`. **Requirements:** FR-14, BR-ALG-07. **Owners:** Jopia backend; Buno research review; Lat frontend.
 
 This is an additive application adapter to the frozen [V5 research evaluation](ML-V5-EXPLORATION.md). The evaluated research code, 28-day preview gate and report are unchanged. The active application dataset remains `SYNTHETIC_FORECAST_V4_RUNTIME_V1`. The [Jopia plan](ML-V5-JOPIA-IMPLEMENTATION-PLAN.md) records source verification and owner gates. The [V4 integration](ML-RUNTIME-INTEGRATION-V4.md) remains authoritative for V4 behavior.
 
@@ -55,3 +55,11 @@ counts during date changes, refresh, errors and logout; stale counts remain
 explicitly historical. Surplus calculations, reserves and BROA actions remain
 disabled. [Jopia’s PR #21 validation](ML-V5-PR21-JOPIA-VALIDATION.md) records the
 exact implementation, security dispositions and isolated browser evidence.
+
+
+Lat's [2026-10-07 incorporation review](frontend/VALIDATION.md#lat-pr-22-incorporation-review--2026-10-07)
+accepts the grouped code changes with a scoped current-audit remediation and
+records passing mocked browser and isolated persisted-census checks. The
+complete real producer/cookie/browser rerun on Lat's host remains BLOCKED;
+Jopia's prior success remains separate self-validation evidence. No binding,
+activation, surplus policy or deployment gate is closed.

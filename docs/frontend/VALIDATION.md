@@ -347,3 +347,204 @@ scoped updates. These supersede the earlier untriaged-secret statement for the
 validated follow-up. Binding, activation, RQ-07, UAT, physical OCR and full
 Fabric-to-browser NFR-06 remain open. Synthetic projection fixtures do not
 establish live Fabric or operational inventory validity.
+
+
+## Lat PR #22 incorporation review — 2026-10-07
+
+**Decision: BLOCKED for complete live V5 acceptance.** The grouped follow-up
+code is accepted and incorporated into PR #21; formal approval is withheld
+while this host's real producer → database → official cookie → browser rerun
+is blocked. This is a completed code review with an explicit incomplete
+integration result, not a request to activate V5 or an assertion that Jopia's
+prior passing evidence failed.
+
+Perspective/owner: Lat. Executor: Codex assisting Yuri Benjamin Lat;
+agent-assisted self-validation on Lat's host, not independent human validation
+or UAT. Authenticated GitHub account verified through `/user`:
+`Yuri-Benjamin-Lat`. Jopia retains the census/API/database dependency, Buno the
+frozen model/calculation boundary. FR-12/FR-14, BR-ALG-07 and
+NFR-01/09/10/11; classification `SIMULATION_ONLY`.
+
+### Refreshed sources and delivered revisions
+
+Git fetch and authenticated GitHub reads confirmed PR #21 OPEN at
+`91500c9e250fdcbf545a1e0158f34f6b43067df7`, with Jopia CHANGES_REQUESTED,
+and PR #22 OPEN at `6c2d1483e65dca1ae2c91e69f939b931396e0ecc`, targeting
+`codex/ml-v5-frontend`. A second read before delivery found no intervening head
+change. Buno's APPROVED review on PR #20 at
+`dfffe8aba7d02b0d109b2dbd27e240ddcbeb11d9` was independently re-read through
+GitHub; its ML evidence remains Buno's prior evidence.
+
+The initial local fast-forward and security checkpoint are preserved on
+`codex/lat-pr22-preserved`. Delivery instead uses source-linked `cherry-pick -x`
+after `b90d0c1`, preserving Jopia's authorship, grouping and original commit
+references without making PR #22's exact head an ancestor of its target.
+Neither GitHub PR is merged. The original working tree was clean; unrelated
+work and shared services were preserved.
+
+| Jopia source | Incorporated commit | Group |
+|---|---|---|
+| `e5e52bf` | `bfa2e85` | Official roles and complete V5 envelope |
+| `8e84bdc` | `0f390e5` | Scoped census API and persisted validation |
+| `9883e0b` | `7ae75b8` | Independent census presentation |
+| `9fda19c` | `b30dd6c` | Timestamp precision and Analytics deep link |
+| `9bd06b3` | `dc2a779` | Real cookie/browser harness |
+| `f13c2b0` | `4e21b66` | Exact synthetic secret exceptions and dependency pins |
+| `6c2d148` | `41535d6` | Jopia evidence and cross-references |
+
+Additional Lat commits: `dbea2ec` fixes the current dependency advisory;
+`0b7833e88bd7f4b192cb25cb23ba14645fbc1257` adds the isolated database harness
+and is the exact application/database rerun SHA tested below.
+`a409188dd31843f709408074bbf0f2e14450d633` subsequently changes only the real
+cookie harness prerequisite handling; its focused checks are recorded below.
+A final record-only commit changes no application, dependency or test behavior.
+Earlier local checks at `984abaec87e0e2a66be70d3a7ab49102a9e81dc6` have an
+identical tracked tree to `dbea2ec`; final delivery checks were nevertheless
+rerun at `0b7833e` to remove ambiguity about the delivered revision.
+
+### Review findings and dispositions
+
+The complete 36-file follow-up was reviewed against AGENTS, the Testing phase,
+requirements/design, runtime contract and Jopia evidence. Roles 01–03 match the
+cookie authorization; regulatory and administrative roles remain denied.
+Successful V5 parsing requires all twenty unique supported series, unique IDs,
+consistent run/model/origin/target/generation metadata, frozen cutoff and null
+uncertainty. Institution mismatches fail closed. Inventory independently
+validates forty persisted combinations, counts, policy/header metadata and
+digest before verified-zero claims; latest invalid evidence cannot fall back.
+Current, historical stale and unavailable presentations are distinct. Date and
+version changes, refresh, failures, races and logout clear affected prior usable
+evidence. Independent forecast failure does not invalidate an otherwise valid
+census read. Keyboard and narrow-viewport scenarios follow DESIGN.
+
+The timestamp change preserves PostgreSQL milliseconds for digest verification;
+the Analytics deep link returns the application shell. Exact-path AND
+exact-value scanner exceptions were inspected against the historical synthetic
+run/idempotency identifiers and in-process test keys; no broad detector, path
+or history suppression was introduced. V4 stays default. No surplus, reserve,
+BROA action or operational recommendation is enabled.
+
+**LAT-V5-01 — resolved, high, NFR-01/09:** the fresh audit of the inherited
+lockfile found `source-map-js@1.2.1`, unlike Jopia's time-specific zero finding.
+[GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q)
+identifies the patched version as 1.2.2. `npm update source-map-js
+--package-lock-only` changed only that package's version, URL and integrity.
+`dbea2ec` records the fix; a clean `npm ci`, audit and affected checks passed.
+No unrelated package update or architecture change was made.
+
+The new database harness initially encountered two test-setup failures, not
+application defects: existing recovery probes intentionally leave pending
+commands, and immutable snapshot guards reject deletion even by the owner.
+The final harness uses a separate fresh census database, proves the delete
+rejection, then injects one missing count at the database-read boundary.
+It never disables guards or rewrites persisted evidence. Its final rerun passed.
+The missing-row case is fault-injection evidence, not naturally corrupt storage.
+
+**LAT-V5-02 — resolved, medium, FR-14/Testing-phase evidence:** the inherited
+real cookie harness classified missing image/Docker/browser prerequisites as
+generic integration failures, and a nonexistent model path escaped the initial
+BLOCKED branch. `a409188` adds safe preflight decisions before creating test
+resources. Absent/unreadable model, unavailable Docker, pinned images or
+Chromium now exit 2/BLOCKED; a corrupt supplied model hash remains a failure.
+Absent-model and nonexistent-model-path runs at that exact commit both exited
+2/BLOCKED; syntax checks passed. Image/browser failure paths were source-reviewed
+but not executed because the real pinned model is unavailable. The successful
+producer path remains BLOCKED, not a passing regression of this change.
+
+### Commands and observed results
+
+Ubuntu 24.04.4 / WSL2 Linux `6.18.33.2-microsoft-standard-WSL2`, Node
+24.17.0, npm 11.13.0, Vitest 4.1.11, Playwright 1.61.1 and Chromium
+149.0.7827.55. PostgreSQL `postgres:17.10`; synthetic fixture
+`tests/forecasting/v4-verification-fixture.sql`, fixed census date 2026-10-07,
+scheduled/captured fractional instants in the committed harness. No external
+model was used. Builds used the corrected committed lockfile.
+
+| Command at delivery implementation `0b7833e` | Result / exit |
+|---|---|
+| `npm run check:foundation` | PASS / 0: format, workspace, versions, ignore, safe env |
+| `npm run check:web` / `npm run test:web` | PASS / 0; type/build, 59 tests in 18 files |
+| `npm run test:web:e2e` | PASS / 0 for executed mocked HTTP UI cases: 43 passed, 7 existing retired V1 cases skipped, 50 total |
+| `npm run check:api` / `npm run test:api` | PASS / 0; type/static, 106 tests, no skips |
+| `npm run check:coordination` / `npm run test:coordination` | PASS / 0; type/static, 19 tests, no skips |
+| `npm run check:database` | PASS / 0; static migration/schema boundary |
+| `npm run test:capture` | PASS / 0; 14 tests after shared test-runner updates |
+| `npm run build --workspace @bloodledger/coordination` | PASS / 0; prerequisite build |
+| `node tests/api/v5-census-integration.mjs` | PASS / 0; real isolated database results below |
+| `node tests/frontend/v5-cookie-integration.mjs` | BLOCKED / 2: external pinned model path unavailable |
+| `bash tests/forecasting/v5-runtime-integration.sh` | BLOCKED / 2: external selected model unavailable |
+| `npm audit --json` | PASS / 0; zero current production/development findings after 1.2.2 fix |
+| `npm run scan:secrets` | PASS / 0; Gitleaks 8.30.1, 231 history commits, index and candidate |
+| `node --check` on the database and both browser harnesses / `git diff --check` | PASS / 0 |
+
+Foundation/type/unit/build commands were rerun at `0b7833e`.
+`a409188` changes only the blocked-prerequisite harness, not those tested
+application files, lockfile, mocked suite or database harness.
+The coordination build and dependency audit were also rerun at that SHA.
+Secret scanning included the committed database test. A final scan at
+`a409188`, including candidate validation records, passed history (232
+commits), index and candidate; `/tmp/lat-v5-record-secrets.log` records it. Gitleaks digest:
+`sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f`.
+All results above are this session's reruns, separate from Jopia's reported
+106/59/43 and real-cookie results. The final mocked suite completed with 43 passes and seven pre-existing
+retired V1 skips; skips are not passing evidence. The first sandboxed browser
+run could not start its server; the permitted rerun and final delivery run
+both passed. Mocked cases cover keyboard, 390 × 844 viewport, date/version
+races, refresh/error clearing, role denial, complete V5 and independent
+census states. They cannot establish producer/cookie success.
+
+The [safe database aggregate](v5-census-evidence-2026-10-07.json) records the exact
+SHA. It proves 23 forward migrations, idempotent reapplication, runtime grants,
+existing API/Sprint 6 persistence probes, coordination replay/conflict/purge and
+disabled-policy evidence, forty persisted census counts, explicit zeros,
+fractional timestamps/digest, tenant scope, future/unavailable and midnight
+stale states, immutability and missing-latest-row fault injection without fallback.
+This directly calls the census service/store; it is not a real cookie/browser
+flow or a live Fabric commit. The harness creates one random container with an
+ephemeral loopback port and two disposable databases; final cleanup removed only
+that container and its own temporary directory. Shared development data was
+neither seeded nor migrated. The historical bootstrap-only `test:database`
+script expects four migrations and writes the shared database, so it was not
+used; current isolated apply/reapply/status/grant checks replace that unsafe,
+outdated setup for this task. Shared Compose-based API/coordination wrappers
+were likewise replaced by their existing probes within the disposable harness.
+
+### Remaining blockers and reproduction
+
+The pinned external model with file hash
+`1e0f0c240109e49e8f1a89a713021afae07c2f5fae5b0e2bc8e3904610fb9764`
+is unavailable. Docker image inspection also found no matching forecasting
+image `sha256:dcb2ccd36834bcec33e3d5cb8158f2b7a75b0881f695821cc705764667fba4c1`.
+The host browser is available and passed mocked tests; Jopia's browser-library
+workaround was not needed. Missing prerequisites remain BLOCKED, not PASS.
+No enabled institution binding was supplied or approved.
+
+Reproduce model-free database checks with:
+
+```bash
+npm ci
+npm run test:api
+npm run check:web
+npm run build --workspace @bloodledger/coordination
+node tests/api/v5-census-integration.mjs
+npm run test:web:e2e
+npm audit --json
+npm run scan:secrets
+git diff --check
+```
+
+With the documented external model and pinned Docker/browser prerequisites,
+run `BLOODLEDGER_V5_MODEL_TEST_PATH=/absolute/path/to/selected_model.json node
+tests/frontend/v5-cookie-integration.mjs` and the producer script. Their
+test-only binding is disposable evidence, not institutional approval.
+Local uncommitted logs are `/tmp/lat-v5-delivery-*.log`,
+`/tmp/lat-v5-census-integration-final.log`, `/tmp/lat-v5-cookie-blocked-final.log`, `/tmp/lat-v5-cookie-missing-final.log`,
+`/tmp/lat-v5-producer-blocked.log`, `/tmp/lat-v5-delivery-audit.json` and
+`/tmp/lat-v5-final-secrets.log`. No credential, cookie, raw application payload,
+model, enabled binding, image or browser storage artifact is committed.
+
+SIMULATION_ONLY, concrete institution binding, explicit activation, RQ-07,
+RQ-14/onboarding, UAT participant/consent/instrument/custody, physical Android
+OCR and full Fabric-to-browser NFR-06 gates remain unchanged. Human UAT is
+NOT_RUN. No deployment, operational recommendation, clinical/regulatory claim
+or Testing-phase completion is authorized by this review.

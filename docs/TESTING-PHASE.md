@@ -309,3 +309,15 @@ remaining gates. It does not close BL-TST-02, RQ-07, RQ-14, physical OCR, full
 NFR-06 or human UAT. Lat retains resulting frontend review; Buno retains research
 and UAT coordination. V4 remains default, with no concrete binding, activation,
 DOH capture/export policy activation, autonomous recommendation or deployment.
+
+
+## Lat PR #22 incorporation review — 2026-10-07
+
+Lat's [authoritative frontend review and reruns](frontend/VALIDATION.md#lat-pr-22-incorporation-review--2026-10-07)
+record accepted grouped fixes in PR #21, a scoped dependency audit fix, passing
+API/web/coordination/static/security checks, 43 mocked browser passes with seven
+existing skips, and disposable database evidence. Complete real producer →
+cookie → browser acceptance is BLOCKED by unavailable external pinned model and
+forecasting image; Jopia's previous success is not Lat's rerun. Both GitHub PRs
+remain unmerged. SIMULATION_ONLY and binding/activation, RQ-07/RQ-14, UAT,
+physical OCR and full Fabric-to-browser NFR-06 gates remain unchanged.
