@@ -35,3 +35,9 @@ test("FR-13 authorization, approval, unknown member and final membership corrupt
   const key=[...f.state.keys()].find(key=>key.includes(":unit:"))!; const corrupted=JSON.parse(f.state.get(key)!.toString()); corrupted.snapshotStatus="EXPIRED";f.state.set(key,Buffer.from(JSON.stringify(corrupted)));
   await assert.rejects(()=>f.contract.FinalizeSnapshot(f.ctx,f.finish),/MEMBER_CONFLICT/);
 });
+test("FR-14 zero stock preserves twenty series and completes without generated units",async()=>{
+  const f=fixture();const manifest=makeHistoricalManifest({...f.manifest,counts:f.manifest.counts.map(c=>({...c,available:0,reserved:0,closing:0}))});
+  await f.contract.BeginSnapshot(f.ctx,JSON.stringify({manifest,actorUserId:HISTORICAL_ACTOR,reviewReference:"ZERO_STOCK_TEST_REVIEW",approvedManifestSha256:manifest.manifestSha256}));
+  const completed=JSON.parse(await f.contract.FinalizeSnapshot(f.ctx,JSON.stringify({snapshotId:manifest.snapshotId,actorUserId:HISTORICAL_ACTOR})));
+  assert.equal(completed.expectedUnits,0);assert.equal(completed.manifest.counts.length,20);assert.equal(completed.status,"COMPLETE");
+});

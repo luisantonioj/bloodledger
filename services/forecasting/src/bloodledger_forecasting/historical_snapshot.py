@@ -1,4 +1,5 @@
 """Read-only extraction of one V5 synthetic stock day; emits no observed rows."""
+
 from __future__ import annotations
 
 import argparse
@@ -9,7 +10,13 @@ from pathlib import Path
 from .v5_experiment import SHEETS, read_synthetic, require, validate
 
 BLOOD = {"A+": "A_POSITIVE", "B+": "B_POSITIVE", "O+": "O_POSITIVE", "AB+": "AB_POSITIVE"}
-COMPONENT = {"WB": "WHOLE_BLOOD", "PRBC": "PACKED_RED_BLOOD_CELLS", "FFP": "FRESH_FROZEN_PLASMA", "PC": "PLATELETS", "CRYO": "CRYOPRECIPITATE"}
+COMPONENT = {
+    "WB": "WHOLE_BLOOD",
+    "PRBC": "PACKED_RED_BLOOD_CELLS",
+    "FFP": "FRESH_FROZEN_PLASMA",
+    "PC": "PLATELETS",
+    "CRYO": "CRYOPRECIPITATE",
+}
 
 
 def extract(workbook: Path, expected_sha256: str, business_date: str) -> dict[str, object]:
@@ -26,9 +33,13 @@ def extract(workbook: Path, expected_sha256: str, business_date: str) -> dict[st
         "workbookSha256": actual,
         "businessDate": business_date,
         "counts": [
-            {"bloodType": BLOOD[row.blood_type], "componentType": COMPONENT[row.component],
-             "available": int(row.available_close_units), "reserved": int(row.reserved_close_units),
-             "closing": int(row.closing_units)}
+            {
+                "bloodType": BLOOD[row.blood_type],
+                "componentType": COMPONENT[row.component],
+                "available": int(row.available_close_units),
+                "reserved": int(row.reserved_close_units),
+                "closing": int(row.closing_units),
+            }
             for row in rows.itertuples()
         ],
     }

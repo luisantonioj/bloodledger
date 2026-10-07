@@ -21,3 +21,6 @@ test("FR-14 rejects missing, duplicate, unbalanced, fractional, negative and wro
   const zero=makeHistoricalManifest({...input,counts:input.counts.map(r=>({...r,available:0,reserved:0,closing:0}))});
   assert.equal(zero.units.length,0); assert.equal(zero.counts.length,20);
 });
+test("NFR-02 bounded manifest capacity rejects oversized imports without dropping units",()=>{
+  const input=source();assert.throws(()=>makeHistoricalManifest({...input,counts:input.counts.map(r=>({...r,available:2000,reserved:0,closing:2000}))}),/SERIES_INVALID/);
+});
