@@ -69,6 +69,7 @@
     "scan:secrets": "bash scripts/scan-secrets.sh",
     "development-data": "bash scripts/development-data/run.sh",
     "development-forecasts": "bash scripts/development-data/forecast.sh",
-    "test:development-data": "node --test tests/development-data/*.test.mjs"
+    "test:development-data": "node --test tests/development-data/*.test.mjs",
+    "review:web": "node tests/frontend/visual-review/server.mjs"
   }
 }

@@ -711,3 +711,45 @@ those legacy actions or imply complete real transfer lifecycle acceptance.
 [Pre-handoff review](LAT-PRE-HANDOFF-REVIEW.md) lists the local decision and
 remaining owner gates. No Testing-phase acceptance or replacement execution
 window is approved by this preparation.
+# Lat design restoration and populated preview — 2026-10-08
+
+The user requested restoration of the prior design progress together with sample
+data and top navigation. The design remains preserved on
+`codex/ui-polish-first-batch` at `f61a60f`; it was absent from the subsequently
+selected persistent-integration snapshot. Lat restored the shared shell,
+navigation order, compact page heads and three-signal dashboard around the current
+V2/historical/V5 consumers on `codex/lat-restore-design`, implementation commit
+`2e9e175c7f1ab25b6918eb6e6a9f55e22b95c1e8`. Original worktrees and the retained
+database were preserved. The restored chart also reserves space for its highest
+value labels.
+
+The permanent [sample review command](VISUAL-REVIEW.md), `npm run review:web`,
+serves current editable components at loopback 5175. It includes all ten tabs,
+role/populated/empty/unavailable selectors and a direct Page selector in the top
+toolbar. Every API write is blocked; samples never connect to API 3000. Historical
+samples use explicitly constructed visual references, not the missing workbook
+or local Fabric receipts. Port 5174 continues to use the real API through its
+existing proxy. Those backend records remain empty; populated backend validation
+and the account-policy/workbook/binding dependencies remain open.
+
+Lat self-validation passed:
+
+- `npm run check:web`: type check and production build.
+- `npm run test:web`: 62 tests.
+- `npm run test:web:e2e`: 57 passed, seven existing retired V1 mutation skips.
+  Inherited test-only dashboard/alert/audit fixtures were aligned with the
+  delivered V2 read paths; label/control assertions were updated for the restored
+  design. Authorization, stale-state, failure, retry and scope checks remain.
+- `node tests/frontend/visual-review/check.mjs`: 42 page checks, all ten tabs,
+  role navigation, blocked writes, empty/unavailable states, top Page selector,
+  CRYO, historical sample pagination and unclipped chart values; no page errors.
+  The synthetic screenshot is `/tmp/bloodledger-visual-review-dashboard.png`.
+- Real ordinary-login 5174→3000 probe: 23 checks, including all six existing
+  accounts and permission/logout boundaries. Private report:
+  `build/development-local/browser-restored-design.json`. This is empty-state
+  evidence, not a populated durability pass.
+- Repository foundation and secret scanning passed; no dependencies were added.
+
+This is FR-03/09/12/14 presentation and NFR-11 technical evidence, SIMULATION_ONLY.
+It does not complete UAT, physical OCR, clinical/operational accuracy, full
+Fabric-to-browser latency, V5 activation or Testing-phase acceptance.
