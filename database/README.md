@@ -322,3 +322,12 @@ foreign keys include source institution scope. A database insert guard checks th
 saved V5 run/model/payload, forecast series and current snapshot digest/time.
 Runtime grants remain SELECT/INSERT only. This is simulation evidence under the
 existing disabled `SYNTHETIC_OPTIMIZATION_V2_1` policy; it cannot approve transfers.
+
+## Historical synthetic inventory
+
+The additive migration `20261007000000000_create-historical-synthetic-inventory.js`
+creates separately named `app.synthetic_inventory_*` tables and a completed-only
+view for constructed historical research stock. These do not feed operational
+inventory, OCR intake, FEFO, census, transfers or forecasting stock inputs.
+[The import contract and DBeaver guide](../docs/HISTORICAL-SYNTHETIC-INVENTORY.md)
+own source review, deterministic identity, ledger confirmation and recovery rules.
