@@ -106,8 +106,14 @@ Historical AVAILABLE/RESERVED means status on the source day, not present-day st
 Jopia self-validation; tests use fabricated synthetic fixtures, not Buno's source.
 The reviewed external workbook/day remains an execution gate. The user supplied
 Drive file ID `1jtgBPBijaO-mKht1fNrKFDst2DwT9ZpT`, in the thesis Machine Learning/final
-folder; the workbook requires authenticated access. No selected day or Buno snapshot
-review reference has been provided. No actual historical snapshot has been loaded.
+folder. Authenticated read-only access through the connected BloodLedger Google Drive
+account retrieved the original 6,271,434-byte XLSX outside the repository. Its SHA-256 is
+`5c5997bd4df26f6f0d52d7ea13dde0172706faaa15308ebc87f241f44c241ddb`.
+The existing full allowlisted V5 validator passed: 1,461 stock days from 2023-01-01
+through 2026-12-31, with daily closing totals between 431 and 614. The range includes
+future simulation dates; it is not evidence of current or actual clinical stock.
+No selected day or Buno snapshot review reference has been provided. Source validation
+does not substitute for Buno's selection review. No historical snapshot has been loaded.
 
 The branch was created from the freshly fetched merged `origin/main` at `b028515`,
 containing PRs #19/#20. PR #21 was confirmed open; its frontend is outside this CLI
@@ -122,17 +128,41 @@ configuration change or removal of domain records occurred. PostgreSQL now has
 24 applied migrations, including the historical addition. The original unit and
 its state/version/transaction reference were preserved.
 
-The peer is now healthy, but channel queries with the current admin identity are
-denied by /Channel/Application/Readers. Peer logs separately report an orderer TLS
-CA verification failure. A healthy container does not establish channel trust.
-The historical lifecycle upgrade and live Fabric import were not performed.
-Restoring trusted identities/roots matching the retained channel configuration is
-a prerequisite; resetting the channel would violate this task's preservation scope.
+Read-only channel-scoped queries with the retained Sprint 4 admin identified identity
+drift: the current node/admin material used different roots from the retained channel.
+The older organizational roots matched the channel genesis, and the older orderer
+TLS certificate exactly matched both pinned consenter certificates. Identity validity
+and certificate/key correspondence were checked without exposing private keys.
+Peer/orderer configuration and data volumes were archived while stopped, and the
+complete matching organizational identity tree was restored from the retained local
+Sprint 4 checkout. Previous material is retained in the restricted backup directory.
+No CA enrollment, channel reset, channel configuration update or volume deletion occurred.
+The running CA services retain their separate current roots: do not issue replacement
+channel identities from them or run identity assembly without a reviewed trust plan.
+
+After restoration, the current admin passed read-only trust/health checks and peer/
+orderer heights matched. The additive `bloodledger-inventory` upgrade to `historical-v1`
+at sequence 3 succeeded with the existing Mediatrix peer endorsement policy. Its
+installed package is
+`bloodledger-historical-v1_551b871d4eb0:c276bd2ed06fdcadb5d31980de062a72b4495426478b553b59fa7f5286460a64`.
+Approval transaction `b88ec6be78866f28e5d8346b498c3d4b3555ca8ec798280f23e7624a8dbff4a5`
+and definition transaction `1723c18b6efc87f34d5a131a20ecb0597ba499fe1703cf547ba018efcb91538a`
+both committed VALID. Existing chaincode definitions and domain state remain intact.
+
+Using the restored gateway, the original operational unit was read directly from the
+upgraded contract: `UNIT_SYNTH_S4_LIVE_001`, AVAILABLE, version 1, unchanged transaction
+`03b925d4e80af5ba359845b0363c39d7871659de09c07eaddc7cee023e25278a`.
+QSCC transaction and containing block evidence confirmed VALID in block 45, including
+the block validation flag and matching transaction envelope. A read-only query through
+the new historical contract returned the expected HISTORICAL_SNAPSHOT_NOT_FOUND for
+an absent snapshot, proving contract availability and gateway authorization without
+creating an import. PostgreSQL still has zero historical snapshots and import commands.
 
 Automatic approval review rejected a combined orderer/API/worker startup action
 because API/worker startup could process transactions before the source review gate.
 That rejected action was not executed. API and sync-worker remain stopped; the
 standalone historical CLI does not depend on starting those application services.
+The subsequent node-only restoration described above was approved and executed.
 
 Validation results:
 
@@ -151,6 +181,11 @@ Validation results:
   20 source series, zero components, deterministic manifest, no database imports.
   [Fixture producer](../tests/historical-inventory/create-preview-fixture.py) writes
   only an explicitly selected external test file; no workbook is committed.
+- Private-file preview also passed with a mode-0600 fabricated workbook and an
+  operator-owned, readable output manifest. Python extraction and Node execution use
+  the host UID/GID. Live installation validated Fabric's standard Node package layout;
+  an earlier package build failure changed no channel definition and was corrected
+  before the successful sequence-3 deployment.
 - Existing chaincode static-boundary checks and shell syntax checks passed.
 - Pinned Gitleaks 8.30.1: candidate source and the new commit range passed with no
   leaks. Scanning all existing refs/history reports 11 inherited findings and does
@@ -162,6 +197,7 @@ forecasting quality/testing with the pinned service runtime. The disposable data
 uses no published ports and no application network and is removed by its own trap.
 
 Completion remains partial: implementation and synthetic technical checks pass,
-but actual workbook loading, reviewed date selection, additive lifecycle deployment
-and live transaction/block verification remain pending. Empty historical tables
+and the additive lifecycle deployment and original transaction/block verification pass.
+Actual workbook loading, reviewed date selection and reconciliation of imported
+historical units remain pending. Empty historical tables
 must not be reported as an accepted or imported Buno snapshot.
