@@ -1,4 +1,4 @@
-export const up = (pgm) => {
+exports.up = (pgm) => {
   pgm.sql(`
     CREATE TABLE app.synthetic_inventory_snapshots (
       snapshot_id varchar(48) PRIMARY KEY,
@@ -71,4 +71,4 @@ export const up = (pgm) => {
     GRANT SELECT ON app.synthetic_inventory_completed_units TO bloodledger_app;
   `);
 };
-export const down = () => { throw new Error('Historical ledger evidence is retained; disable the importer instead of dropping records'); };
+exports.down = () => { throw new Error('Historical ledger evidence is retained; disable the importer instead of dropping records'); };
