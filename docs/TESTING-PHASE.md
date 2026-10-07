@@ -359,3 +359,14 @@ boundary. Twenty forecast series, forty census combinations, verified zeros,
 scope, stale/failure and logout behavior pass under Lat self-validation. V4
 remains default; all binding/activation, research/UAT, physical OCR, full
 Fabric-to-browser latency and phase-acceptance gates remain unchanged.
+
+## Lat local pre-handoff preparation — 2026-10-07
+
+[The scoped review package](frontend/LAT-PRE-HANDOFF-REVIEW.md) reconciles current
+V5 and migration statuses with Lat's own passing real rerun, records exact fix
+revisions and preserves requirement-level incomplete boundaries. Final web
+regression passed 57 cases with seven retired V1 skips; capture passed build,
+14 units and three Desktop Chromium synthetic-OCR cases. Physical Android,
+V2 offline replay, full Fabric-to-browser latency, integrated phase regression
+and UAT remain unexecuted or gated. Publication and groupmate handoff are not
+performed; accountable phase acceptance and TP-G01–06 remain open.

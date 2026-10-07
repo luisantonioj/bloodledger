@@ -45,3 +45,12 @@ in depth. Technical records cannot authorize clinical use or close UAT.
 TP-LAT-005 required fixture corrections: use the component combobox's accessible
 name and include the existing contract's `urgency` field in the expected payload.
 Both retry cases pass without changing the request implementation.
+
+## Fix revisions
+
+TP-LAT-D01–D05 are fixed in `71c91af`; source and browser scenario hashes are
+recorded in the frontend validation record. The final runtime rerun tests
+`b5601cc` and is recorded by `467b146`. PR #23's executable preflight patch
+`60fd148` is incorporated as `d0ceeed`; its evidence-only commit `daf5a0c` is
+incorporated as `b5601cc`, preserving Jopia authorship. No new application
+defect was found in the real rerun.

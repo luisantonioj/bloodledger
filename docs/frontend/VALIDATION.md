@@ -679,3 +679,35 @@ test-only, and ledger state is a synthetic committed-projection fixture.
 No Fabric-to-browser NFR-06, physical OCR, human UAT, operational accuracy,
 binding approval, activation, RQ-07/RQ-14, deployment or phase acceptance gate
 is closed. PRs remain unmerged; no publication or teammate message was sent.
+
+## Lat final pre-handoff regression — 2026-10-07
+
+Owner: Lat, Codex-assisted self-validation. Classification: SIMULATION_ONLY.
+Tested baseline: `467b14601414b9ba43c61a2d5e3e9d9965d991a5`. This follow-up makes
+documentation-only corrections; application source remains as tested in the
+real runtime rerun at `b5601cc`.
+
+| Command | Exit/result | Boundary |
+|---|---|---|
+| `npm run test:web:e2e` | 0 / PASS, 57 passed, 7 skipped | Full mocked HTTP web suite, six-role navigation, error/access clearing, retry, canonical V2 request/local release and V4/V5/census states |
+| `npm run check:capture` | 0 / PASS | Capture typecheck/build and packaged local OCR assets |
+| `npm run test:capture` | 0 / PASS, 14 tests | Synthetic parser/capture/privacy/command evidence |
+| `npm run test:capture:e2e` | 0 / PASS, 3 tests | Desktop Chromium synthetic PNG OCR with mocked session/commands; no external OCR request, volatile exact label, offline blocking and accepted command polling |
+| `npm run scan:secrets` | 0 / PASS | Final history/index/candidate-content scan including local review documents |
+| `npm run check:format` and `git diff --check` | 0 / PASS | Repository JSON formatting and patch whitespace |
+
+Logs: `/tmp/lat-prehandoff-browser.log`,
+`/tmp/lat-prehandoff-capture-check.log`, `/tmp/lat-prehandoff-capture-unit.log`,
+`/tmp/lat-prehandoff-capture-browser.log`, and `/tmp/lat-prehandoff-secrets.log`.
+Local link targets were checked in all eight affected documents. Browser suites rebuilt their
+respective apps before execution; no shared preview server was reused.
+The capture test titled “on device” runs browser-local OCR in Desktop Chromium;
+it is not a physical Android result. Command commitment is mocked in this
+capture suite; no Fabric event or durable offline replay is proved.
+Seven skipped web tests are retired V1 request/approval/rejection/cancellation/
+dispatch/transit/receipt mutations; canonical V2 coverage does not reinstate
+those legacy actions or imply complete real transfer lifecycle acceptance.
+
+[Pre-handoff review](LAT-PRE-HANDOFF-REVIEW.md) lists the local decision and
+remaining owner gates. No Testing-phase acceptance or replacement execution
+window is approved by this preparation.
