@@ -4,7 +4,7 @@ Jopia owns backend/Fabric integration; Lat owns local frontend validation; Buno 
 
 ## Delivered branch and prerequisites
 
-Use `codex/persistent-synthetic-development`. Integration base: PR21 `0ebe88b`, merged historical `be043b3`. Executable seed: `scripts/development-data/run.sh`; scoped forecast producer: `scripts/development-data/forecast.sh`; DBeaver queries: `scripts/development-data/inspect.sql`; historical importer: `scripts/historical-inventory/run.sh`. The validation section records the tested revision; `git rev-parse HEAD` identifies your exact checkout.
+Use `codex/lat-retained-actor-mapping`, based on Lat-tested `e9a91d087819fab454bd3a033c7b22cdeaca1c71` from `codex/persistent-synthetic-development`. Integration base: PR21 `0ebe88b`, merged historical `be043b3`. Executable seed: `scripts/development-data/run.sh`; scoped forecast producer: `scripts/development-data/forecast.sh`; DBeaver queries: `scripts/development-data/inspect.sql`; historical importer: `scripts/historical-inventory/run.sh`. The validation section records the tested revision; `git rev-parse HEAD` identifies your exact checkout.
 
 Required: canonical WSL2 Linux checkout, Docker Desktop/Compose with WSL integration, Python 3, Bash, Git, npm lockfile dependencies, Node image `24.17.0`, Playwright image `v1.61.1-noble`, existing project network `bloodledger_default`, retained PostgreSQL 17.10 `bloodledger_dev`, current additive migrations, channel `bloodledger-dev`, organizational API gateway identity and the chaincode package containing `InterviewCoreContract` and `HistoricalInventoryContract`. Existing local private `.env`, donation encryption/lookup keys and synthetic passwords stay private. Preserve the key versions used for existing encrypted donations.
 
@@ -12,7 +12,7 @@ Start from a clean checkout; preserve unrelated changes rather than discarding t
 
 ```bash
 git fetch origin
-git switch codex/persistent-synthetic-development
+git switch --track origin/codex/lat-retained-actor-mapping
 git status --short
 git rev-parse HEAD
 docker run --rm -v "$PWD:/workspace" -w /workspace node:24.17.0 npm ci --ignore-scripts
@@ -37,17 +37,24 @@ docker exec bloodledger-postgres-1 pg_dump -U postgres -d bloodledger_dev -Fc > 
 docker run --rm --network host -v "$PWD:/workspace" -w /workspace node:24.17.0 npm run migrate:up
 ```
 
-Migration owner applies schema; runtime `bloodledger_app` receives specific grants. No seed writes operational projections directly. Keep the backup outside Git. Preserve existing Fabric data and generated identities; use the existing historical deployment script only if the local package lacks that contract:
+Migration owner applies schema; runtime `bloodledger_app` receives specific grants. No seed writes operational projections directly. Keep the backup outside Git. This actor-mapping revision requires no new migration. Preserve existing Fabric data and generated identities; upgrade the full package with the explicit local confirmation:
 
 ```bash
-bash network/scripts/deploy-historical-inventory.sh --apply bloodledger-local
+bash network/scripts/deploy-persistent-development.sh --apply bloodledger-local
 ```
 
-This preserves the channel and existing policy and adds a lifecycle sequence if required. A previously committed `historical-v1` package is reused; verify its namespace rather than resetting or reenrolling identities.
+This preserves all four contract namespaces and the approved Mediatrix endorsement settings. It commits `persistent-development-v1` at the current lifecycle sequence plus one, verifies the approved package ID, and reuses only an exact package match on replay. It refuses unexpected lifecycle settings or a different package under the same version. The older historical deployment script skips an already committed `historical-v1`; that skip does not install this revision.
 
 ## Private configuration and editable frontend
 
-If the existing 5174 frontend and API already run the delivered source, keep them. API must use the same retained database, V2 writes, existing donation keys, `WEB_ORIGIN=http://127.0.0.1:5174`, secure-cookie false on loopback, API 3000 and V4 default. Stop the general sync-worker while preparing this scoped seed; do not drain unrelated work. Existing pending operations remain pending and can block a truthful census.
+For the delivered retained API/web containers, load the revised API without replacing accounts or stores:
+
+```bash
+docker run --rm -v "$PWD:/workspace" -w /workspace node:24.17.0 npm run build --workspace @bloodledger/api
+docker restart bloodledger-persistent-api bloodledger-persistent-web
+```
+
+Build the revised API and restart its existing container so its policy selector is loaded; the existing Vite frontend uses the same controls. If services already run this revision, keep them. API must use the same retained database, V2 writes, existing donation keys, `WEB_ORIGIN=http://127.0.0.1:5174`, secure-cookie false on loopback, API 3000 and V4 default. Stop the general sync-worker while preparing this scoped seed; do not drain unrelated work. Existing pending operations remain pending and can block a truthful census.
 
 Alternatively, when ports 3000/5174 are free, use the delivered API/web container recipe. This serves editable repository source through Vite with its existing `/api` proxy; it does not start a general worker:
 
@@ -76,7 +83,14 @@ Create `build/development-local/config.json` privately with this shape. Replace 
 }
 ```
 
-Set file mode 0600. The coordinator must be ROLE-02/INST_MEDIATRIX and its user ID must match the existing chaincode policy `USR_MEDIATRIX_TECH`. The recipient must be ROLE-03 and match an allowed recipient actor/institution, for example `USR_DIVINE_LOVE`/`INST_DIVINE_LOVE`. Different existing user IDs fail with `SEED_FABRIC_ACTOR_MAPPING_REQUIRED`; do not silently rename users/change roles. Jopia must resolve any mapping mismatch through an explicit policy change separately. This release supplies no account reseed.
+Set file mode 0600. Use the passwords and usernames of the existing accounts. The [accepted mapping](PERSISTENT-SYNTHETIC-DEVELOPMENT.md#retained-actor-mapping-decision--2026-10-08) adds these exact tuples under the immutable [development policy](../chaincode/policy/persistent-development-core-v1.json):
+
+| Existing principal | Role | Institution |
+| --- | --- | --- |
+| `USR_SYNTH_REVIEW_ROLE02` | `ROLE-02` | `INST_MEDIATRIX` |
+| `USR_SYNTH_REVIEW_ROLE03` | `ROLE-03` | `INST_SYNTH_SECONDARY_REVIEW` |
+
+The recipient keeps its synthetic institution and existing simulation permissions. Preserve all six accounts and role assignments; no reseed, rename, password change or institution alias is needed. Original V2/V2.1 actors remain supported. Unknown actors or wrong roles/institutions fail closed. V2.1 commands for these retained tuples select `PERSISTENT_DEVELOPMENT_CORE_V1`; old policies still reject them. `inspect` checks the actual peer's actor mapping and policy digest as well as credentials and target. A missing or different installed policy stops continuation.
 
 Inspect, review your actual target and add its exact returned `targetSha256` to the private JSON:
 
@@ -88,11 +102,12 @@ cat build/development-local/inspect.json
 
 ## Freeze, apply and replay the operational seed
 
-Use an explicit simulation date; this tested example is 2026-10-07, not a silently refreshed current-day dataset. It constructs label dates expressly for simulation, without a clinical shelf-life claim. Real Tesseract 7.0.0 recognizes generated label field regions. The accepted parser validates exact recognized values and measured confidence ≥90; failures stop preview. No raw label images or OCR text are persisted.
+For the first operational preview, explicitly choose the actual execution date in Asia/Manila. Set `operational_date` yourself after checking the date; the example below is 2026-10-08. Review a new manifest, including its `policyVersions`, `policySha256`, recognized labels and target. Keep that original manifest, dates and hash unchanged for apply/resume/verify. Prior 2026-10-07 seed evidence remains frozen; do not regenerate an existing seed to refresh its dates. It constructs label dates expressly for simulation, without a clinical shelf-life claim. Real Tesseract 7.0.0 recognizes generated label field regions. The accepted parser validates exact recognized values and measured confidence ≥90; failures stop preview. No raw label images or OCR text are persisted.
 
 ```bash
+operational_date=2026-10-08 # Explicit reviewed execution date; change before the first preview if running later.
 bash scripts/development-data/run.sh preview \
-  --config build/development-local/config.json --date 2026-10-07 \
+  --config build/development-local/config.json --date "$operational_date" \
   --output build/development-local/manifest.json
 ```
 
@@ -121,6 +136,8 @@ bash scripts/development-data/run.sh verify \
 A regenerated manifest for the same date/target conflicts rather than replacing the original. Unrelated earlier FEFO stock may cause reservation rejection: inspect and resolve the intended scenario, never exclude competing stock to bypass FEFO. `--stop-after N` is a safe partial-batch pause. Validation-only `pause-after-submit`/`pause-after-commit` require explicit private `validationFaultInjection:true`; use them only for controlled recovery evidence.
 
 ## Re-import reviewed historical stock on Lat's local ledger
+
+Lat's import remains blocked until Buno supplies the exact original workbook. The historical snapshot date remains 2026-10-07 regardless of the operational seed date. Jopia's preserved import is separate evidence and does not complete this Lat-host dependency.
 
 Use the original external XLSX, not a newly exported version with different bytes. Expected original workbook SHA-256: `5c5997bd4df26f6f0d52d7ea13dde0172706faaa15308ebc87f241f44c241ddb`. The shared date selection review is `CONVERSATION_2026-10-07_STOCK_REVIEW_486_AVAILABLE_36_RESERVED`; this records supplied review evidence, not independent Buno account attestation.
 
@@ -160,10 +177,10 @@ Use Buno's external unchanged `selected_model.json` (file hash `1e0f0c240109e49e
 ```bash
 bash scripts/development-data/forecast.sh preview --config build/development-local/config.json \
   --model /absolute/private/path/selected_model.json \
-  --request-id V5_REQ_LAT_PERSISTENT_20261007_001 --job build/development-local/forecast-job.json
+  --request-id V5_REQ_LAT_PERSISTENT_20261008_001 --job build/development-local/forecast-job.json
 ```
 
-Review target, institution, binding and job hashes. The scoped binding is development-only, distinct from the disposable binding. The producer uses yesterday in Manila as origin, actual current generation time and 20 next-day forecasts. Approve both exact hashes printed by preview:
+Choose a fresh request ID for the actual run date before preview. Jopia must separately review Lat's actual target fingerprint, institution, binding and job hashes before persistence; a prior disposable or Jopia-host approval does not approve Lat's target. The scoped binding is development-only, distinct from the disposable binding. The producer uses yesterday in Manila as origin, actual current generation time and 20 next-day forecasts. Approve both exact hashes printed by preview:
 
 ```bash
 bash scripts/development-data/forecast.sh apply --config build/development-local/config.json \
@@ -229,3 +246,69 @@ docker run --rm --init --user "$(id -u):$(id -g)" --network host \
 The probe defaults to loopback 5174. Its assertions require this historical snapshot and an explicitly CURRENT V5 run for today's Manila date. Different existing local inventory requires checking seed IDs through `verify` and the UI rather than reusing the strict count assertions. Calendar rollover deliberately makes old forecasting/census evidence stale; create a new approved forecast job/census capture instead of editing timestamps. Existing forecasting regression evidence covers that clock boundary; this validation did not wait for a physical midnight.
 
 Lat must still run this recipe against his retained database and Fabric, including the reviewed historical re-import. Local operational IDs are target-bound; historical IDs are source-bound and remain identical across hosts. Local transaction IDs, blocks and commitment times always come from the local ledger. Physical OCR, full latency, human UAT, reporting policy and operational activation remain deferred or gated.
+
+## Retained actor follow-up validation — 2026-10-08
+
+Tested implementation: `198ae06dc7a958a7d7788c9d0d64a0f89f060cfd`, from Lat's
+`e9a91d087819fab454bd3a033c7b22cdeaca1c71` baseline. Validator: Jopia;
+self-validation disclosed. The delivery documentation commit is a descendant.
+
+- Automated checks passed: 40 chaincode, 114 API, eight seed/recovery and nine
+  historical tests; chaincode format/lint/type/static checks; API type/static
+  checks; web type/build; foundation and database checks; isolated historical
+  and API/Sprint 6 database regressions; shell syntax and missing-confirmation
+  rejection. Full npm audit: zero vulnerabilities. Gitleaks 8.30.1 scanned all
+  history, index and candidate content with no leaks.
+- The local upgrade advanced `historical-v1` sequence 3 to
+  `persistent-development-v1` sequence 4, preserving the Mediatrix endorsement
+  parameter, plugins, empty collections and all four contract namespaces.
+  Verified package:
+  `bloodledger-persistent-development-v1_e15354b9bc2f:4560bb6d5f5e0b05e0b99646eeb29731debac7a47975135f22ca9afc6137be97`.
+  Repeating deployment verified the same package at sequence 4 without another
+  lifecycle commit.
+- Read-only peer inspection accepted both retained development principals and
+  all eight original actors, with matching immutable policy digests. Both new
+  principals were rejected under V2 and V2.1; an unknown actor was rejected.
+  Role/institution denial, permitted transfer lifecycle, deterministic replay
+  and Gateway/seed preservation of saved versions passed automated tests.
+- The public `run.sh inspect` completed against the upgraded peer with existing
+  Jopia credentials and restored wrapper prerequisites. Jopia's two existing
+  account rows and role assignments retained identical before/after row
+  fingerprints. No account or password was changed and no migration was added.
+  This does not attest to Lat's six-account database remotely.
+- Public-wrapper verify/resume and verify after an ordinary API/web restart
+  reconciled the frozen 2026-10-07 seed: nine components, five types, three
+  PENDING requests, two reservations (ACTIVE / IN_TRANSIT), and 18 VALID local
+  Fabric operations. Component IDs, states and transaction receipts were
+  identical on replay. The original manifest and timestamps were retained.
+- A separate preview explicitly selected 2026-10-08, recognized nine synthetic
+  labels and included selected policy versions/digests. It was reviewed without
+  applying a second scenario to the populated retained database. Lat must make
+  his own initial preview for his actual execution date and target.
+- Populated browser checks before and after API/web restart used real HTTP and
+  official HttpOnly cookies without interception. Inventory, five component
+  types, transfers/reservations, history pagination, Alerts and Audit passed;
+  anonymous, recipient/source-history, source-inventory, wrong-origin and
+  logout boundaries passed. V4 stayed default. The preserved 20 V5 forecasts
+  kept their 2026-10-07 business date; today's explicit V5 was correctly
+  UNAVAILABLE. No fresh V5 job was persisted without its separate review.
+- A new public-wrapper census captured all 40 operational combinations at
+  `2026-10-07T18:42:17.877Z`, including verified zeros and excluding historical
+  stock. It used actual capture time; it did not refresh prior forecast rows.
+- The pre-existing historical snapshot retained 522 units (486 available,
+  36 reserved) and all 524 directly verified VALID transactions. Its source
+  date remained 2026-10-07.
+
+Private evidence and logs are under ignored `build/retained-actor-validation/`
+and `build/retained-*.log`; credentials, backup, target fingerprints, generated
+manifests and session material remain outside Git.
+
+Lat continuation remains: preserve all six accounts, install this revision,
+run inspect, obtain Jopia's separate review of the actual retained target and
+V5 binding/job hashes, then reconcile the approved operational manifest and
+validate populated browser access, replay and restart on Lat's host. Capture
+40 operational census combinations and verify 20 V5 forecasts using actual
+generation time after approval. Buno must provide the exact original workbook
+before Lat's historical import can proceed. All outputs remain SIMULATION_ONLY;
+V4 default, disabled near-expiry policy and unresolved research/operational
+approval gates remain unchanged.
