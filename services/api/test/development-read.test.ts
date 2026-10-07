@@ -11,7 +11,7 @@ test("FR-12: historical records deny unrelated institutions and roles before que
 });
 test("FR-12: operational reads deny regulator before accessing component records", async () => {
   const reader = new PostgresDevelopmentReader({ query: async () => { throw Error("SHOULD_NOT_QUERY"); } } as unknown as Pool);
-  await assert.rejects(reader.read("audit", { ...principal, roleId: "ROLE-04" }), /Operational component evidence/);
+  for (const roleId of ["ROLE-01", "ROLE-03", "ROLE-04"] as const) await assert.rejects(reader.read("audit", { ...principal, roleId }), /audit-reader role/);
 });
 test("NFR-01: historical pages validate cursor and bounded limit; restore authentication", async () => {
   const app = Fastify(); let called = 0;

@@ -16,7 +16,8 @@ docker run --rm -v "$repository_root:/workspace" -w /workspace node:24.17.0 npm 
 docker build -q -t bloodledger-development-tools:local -f scripts/development-data/Dockerfile scripts/development-data >/dev/null
 # The private configuration contains existing synthetic account credentials.
 # No accounts, schema, services or volumes are reset/created by this command.
-docker run --rm --init --network bloodledger_default --env-file "${BLOODLEDGER_DEV_ENV_FILE:-.env}" -v "$repository_root:$repository_root" -w "$repository_root" \
+docker run --rm --init --user "$(id -u):$(id -g)" --network bloodledger_default --env-file "${BLOODLEDGER_DEV_ENV_FILE:-.env}" -v "$repository_root:$repository_root" -w "$repository_root" \
+  -e "BLOODLEDGER_REPOSITORY_ROOT=$repository_root" \
   -e DEVELOPMENT_PG_HOST=postgres -e DEVELOPMENT_PG_PORT=5432 \
   -e "DEVELOPMENT_TARGET_VOLUME=$volume" -e "DEVELOPMENT_TARGET_VOLUME_CREATED=$created" \
   -e "DEVELOPMENT_API_URL=${BLOODLEDGER_DEV_API_URL:-http://host.docker.internal:3000}" \

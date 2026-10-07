@@ -4,13 +4,13 @@ import {createRequire} from 'node:module';
 import {decodeHistoricalEvidence} from '../../scripts/historical-inventory/ledger.mjs';
 const require=createRequire(import.meta.url);
 const {common,peer}=createRequire(require.resolve('@hyperledger/fabric-gateway'))('@hyperledger/fabric-protos');
-function fixture(validation=0,blockValidation=0) {
-  const expected={transactionId:'a'.repeat(64),channel:'bloodledger-dev',chaincode:'bloodledger-inventory',operation:'RegisterUnit',payload:{actorUserId:'USR_SYNTH_HISTORICAL_IMPORT',snapshotId:'TEST',componentId:'TEST'}};
+function fixture(validation=0,blockValidation=0,contract='HistoricalInventoryContract') {
+  const expected={transactionId:'a'.repeat(64),channel:'bloodledger-dev',chaincode:'bloodledger-inventory',contract,operation:contract==='InterviewCoreContract'?'RegisterInboundComponent':'RegisterUnit',payload:{actorUserId:'USR_SYNTH_HISTORICAL_IMPORT',snapshotId:'TEST',componentId:'TEST'}};
   const spec=new peer.ChaincodeSpec(),id=new peer.ChaincodeID(),input=new peer.ChaincodeInput();id.setName(expected.chaincode);spec.setChaincodeId(id);
-  input.setArgsList([Buffer.from(`HistoricalInventoryContract:${expected.operation}`),Buffer.from(JSON.stringify(expected.payload))]);spec.setInput(input);
+  input.setArgsList([Buffer.from(`${contract}:${expected.operation}`),Buffer.from(JSON.stringify(expected.payload))]);spec.setInput(input);
   const invocation=new peer.ChaincodeInvocationSpec();invocation.setChaincodeSpec(spec);
   const proposal=new peer.ChaincodeProposalPayload();proposal.setInput(invocation.serializeBinary());
-  const response=new peer.Response();response.setStatus(200);response.setPayload(Buffer.from(JSON.stringify({transactionId:expected.transactionId,componentId:'TEST'})));
+  const response=new peer.Response();response.setStatus(200);response.setPayload(Buffer.from(JSON.stringify({...(contract==='InterviewCoreContract'?{lastTransactionId:expected.transactionId}:{transactionId:expected.transactionId}),componentId:'TEST'})));
   const action=new peer.ChaincodeAction();action.setResponse(response);
   const responsePayload=new peer.ProposalResponsePayload();responsePayload.setExtension$(action.serializeBinary());
   const endorsed=new peer.ChaincodeEndorsedAction();endorsed.setProposalResponsePayload(responsePayload.serializeBinary());
@@ -33,3 +33,5 @@ test('NFR-02 inclusion without valid status or matching transaction evidence is 
   const f=fixture();for(const key of ['transactionId','channel','chaincode','operation'])assert.throws(()=>decodeHistoricalEvidence(f.tx,f.block,{...f.expected,[key]:'wrong'}),/MISMATCH/);
   assert.throws(()=>decodeHistoricalEvidence(f.tx,f.block,{...f.expected,payload:{...f.expected.payload,componentId:'WRONG'}}),/MISMATCH/);
 });
+
+test("NFR-02 V2 receipts pin the InterviewCore namespace and actual lastTransactionId",()=>{const f=fixture(0,0,"InterviewCoreContract");assert.equal(decodeHistoricalEvidence(f.tx,f.block,f.expected).validationStatus,"VALID");assert.throws(()=>decodeHistoricalEvidence(f.tx,f.block,{...f.expected,contract:"HistoricalInventoryContract"}),/OPERATION_MISMATCH/);});

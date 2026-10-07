@@ -48,5 +48,5 @@ docker run --rm --user "$(id -u):$(id -g)" --network none --read-only --tmpfs /t
 # The pinned Node runtime accesses only this project's network and volumes.
 docker run --rm -i --user "$(id -u):$(id -g)" --network bloodledger_default -v "${repository_root}:${repository_root}" \
   -v "${workbook}:${workbook}:ro" "${extra_mounts[@]}" -w "${repository_root}" \
-  -e HISTORICAL_PG_HOST=postgres -e FABRIC_PEER_ENDPOINT=peer0-mediatrix:7051 \
+  -e HISTORICAL_PG_HOST=postgres -e HISTORICAL_PG_PORT=5432 -e FABRIC_PEER_ENDPOINT=peer0-mediatrix:7051 \
   node:24.17.0 node scripts/historical-inventory/cli.mjs "${arguments[@]}" < "${source_file}"

@@ -25,7 +25,7 @@ import datetime as dt, hashlib, json, pathlib, re, sys
 config=json.loads(pathlib.Path(sys.argv[1]).read_text()); target=json.loads(pathlib.Path(sys.argv[2]).read_text());model=pathlib.Path(sys.argv[3]).resolve();dest=pathlib.Path(sys.argv[4]).resolve();request_id=sys.argv[5]
 assert config.get('targetSha256')==target['targetSha256'], 'FORECAST_TARGET_MISMATCH'
 assert hashlib.sha256(model.read_bytes()).hexdigest()=='1e0f0c240109e49e8f1a89a713021afae07c2f5fae5b0e2bc8e3904610fb9764', 'FORECAST_PINNED_MODEL_REQUIRED'
-assert re.fullmatch(r'[A-Z][A-Z0-9_-]{0,63}',request_id), 'FORECAST_REQUEST_ID_INVALID'
+assert re.fullmatch(r'V5_REQ_[A-Z0-9_-]{1,48}',request_id), 'FORECAST_REQUEST_ID_INVALID'
 assert 'build' in dest.parts or not dest.is_relative_to(pathlib.Path.cwd()), 'FORECAST_PRIVATE_OUTPUT_REQUIRED'
 binding={'schemaVersion':'SYNTHETIC_V5_INSTITUTION_BINDING_V1','bindingId':'V5_BIND_PERSISTENT_DEVELOPMENT','researchInstitutionId':'SIM_INSTITUTION_01','institutionId':'INST_MEDIATRIX','modelSha256':'ceb0e74b2eb2f8af7fcafabb3619f2a23681c38eac65998816e7daf40b5afb86','enabled':True}
 canonical=lambda value:json.dumps(value,sort_keys=True,separators=(',',':'))
@@ -52,7 +52,7 @@ PY
   mapfile -t producer_arguments < "$runtime_dir/arguments"
   output="$(realpath -m "$output")"
   [[ "$output" == "$repository_root/build/"* && ! -e "$output" ]] || { echo FORECAST_PRIVATE_NEW_OUTPUT_REQUIRED >&2; exit 2; }
-  docker run --rm --network bloodledger_default --env-file "${BLOODLEDGER_DEV_ENV_FILE:-.env}" \
+  docker run --rm --user "$(id -u):$(id -g)" --network bloodledger_default --env-file "${BLOODLEDGER_DEV_ENV_FILE:-.env}" \
     -e POSTGRES_HOST=postgres -e POSTGRES_PORT=5432 \
     -e "BLOODLEDGER_V5_APPROVED_BINDING_SHA256=${producer_arguments[1]}" \
     -e PYTHONPATH=/forecasting/src -e PYTHONDONTWRITEBYTECODE=1 \

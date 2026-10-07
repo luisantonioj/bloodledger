@@ -35,7 +35,7 @@ async function database() {
   if(existsSync('.env')) process.loadEnvFile('.env');
   const host=process.env.HISTORICAL_PG_HOST??'127.0.0.1';
   if(!['127.0.0.1','localhost','postgres'].includes(host)||process.env.POSTGRES_DB!=='bloodledger_dev'||process.env.POSTGRES_APP_USER!=='bloodledger_app') throw new Error('HISTORICAL_LOCAL_DATABASE_REQUIRED');
-  const client=new Client({host,port:Number(process.env.POSTGRES_HOST_PORT??5432),database:process.env.POSTGRES_DB,user:process.env.POSTGRES_APP_USER,password:process.env.POSTGRES_APP_PASSWORD});
+  const client=new Client({host,port:Number(process.env.HISTORICAL_PG_PORT??process.env.POSTGRES_HOST_PORT??5432),database:process.env.POSTGRES_DB,user:process.env.POSTGRES_APP_USER,password:process.env.POSTGRES_APP_PASSWORD});
   await client.connect();return client;
 }
 export async function verifySnapshot(client,ledger,manifest) {

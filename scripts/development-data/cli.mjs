@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
 import { Pool } from 'pg';
@@ -12,10 +12,12 @@ import { verifyPassword } from '../../services/api/build/src/session.js';
 import { PostgresMlInventorySnapshotStore } from '../../services/api/build/src/census-worker.js';
 import policy from '../../chaincode/policy/interview-core-v2.json' with {type:'json'};
 
+async function main() {
 const args=process.argv.slice(2);const action=args[0]?.startsWith('--')?'preview':args.shift()??'preview';const options={};
 for(let index=0;index<args.length;index+=2) {const key=args[index]?.replace(/^--/,'');if(!['config','date','manifest','approve-manifest','output','report','stop-after','scheduled-for','pause-after-commit','pause-after-submit'].includes(key)||options[key]||!args[index+1]) throw new Error('SEED_ARGUMENT_INVALID');options[key]=args[index+1];}
 if(!['inspect','preview','apply','resume','verify','census'].includes(action)) throw new Error('SEED_ACTION_INVALID');
 if(existsSync('.env')) process.loadEnvFile('.env');
+if(!options.config || ((await stat(options.config)).mode & 0o077)!==0) throw new Error('SEED_PRIVATE_CONFIG_PERMISSIONS_REQUIRED');
 const config=JSON.parse(await readFile(options.config,'utf8'));
 if(config.classification!=='SIMULATION_ONLY'||config.scope!=='PERSISTENT_LOCAL_DEVELOPMENT') throw new Error('SEED_CONFIG_SCOPE_REQUIRED');
 const pgHost=process.env.DEVELOPMENT_PG_HOST??'127.0.0.1';
@@ -82,7 +84,9 @@ try {
           if(action==='verify') {
             if(!command||command.status!=='COMMITTED') throw new Error('SEED_COMMAND_INCOMPLETE');
           } else {
-            if(!command) {const response=await request(name,path,payload,key);if(response.commandId!==commandId) throw new Error('SEED_COMMAND_ID_MISMATCH');command=await store.get(commandId,principals[name].institutionId,principals[name].userId);}
+            const ownership=(await pool.query('SELECT seed_id FROM app.development_seed_commands WHERE command_id=$1',[commandId])).rows[0];
+            if(ownership&&ownership.seed_id!==manifest.seedId) throw new Error('SEED_OWNERSHIP_MISMATCH');
+            if(!command||!ownership) {const response=await request(name,path,payload,key);if(response.commandId!==commandId) throw new Error('SEED_COMMAND_ID_MISMATCH');command=await store.get(commandId,principals[name].institutionId,principals[name].userId);}
             if(!command||['FAILED','CONFLICT'].includes(command.status)) throw new Error('SEED_COMMAND_FAILED');
             await pool.query('INSERT INTO app.development_seed_commands(seed_id,command_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[manifest.seedId,commandId]);
           }
@@ -130,14 +134,19 @@ try {
         // Accepted deterministic expiry has no public endpoint: authenticated actor above,
         // same durable store/gateway/projector, scoped exclusively to this synthetic component.
         if(action!=='verify'&&!await store.get(id('CMD_',expiryKey),principals.coordinator.institutionId,principals.coordinator.userId)) await store.enqueue({commandId:id('CMD_',expiryKey),idempotencyKey:expiryKey,resourceType:'COMPONENT',resourceId:expiredId,operation:'EVALUATE_COMPONENT_EXPIRY',payload:{componentId:expiredId,expectedVersion:1,evaluationTime:manifest.generatedAt,eventTime:manifest.generatedAt,actorUserId:principals.coordinator.userId,correlationId:corr('expiry'),policyVersion:'INTERVIEW_DERIVED_CORE_V2_1'},correlationId:corr('expiry'),actorUserId:principals.coordinator.userId,actorInstitutionId:principals.coordinator.institutionId,acceptedAt:new Date().toISOString()});
+        if(action!=='verify') await pool.query('INSERT INTO app.development_seed_commands(seed_id,command_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[manifest.seedId,id('CMD_',expiryKey)]);
         await send('coordinator','',{},expiryKey);
-        const components=(await pool.query('SELECT component_id,blood_type,component_type,collected_at,expires_at,inventory_status,ledger_transaction_id FROM app.v2_components WHERE component_id=ANY($1::text[])',[Object.values(componentIds)])).rows;
+        const components=(await pool.query('SELECT component_id,blood_type,component_type,collected_at,expires_at,inventory_status,ledger_version,ledger_transaction_id FROM app.v2_components WHERE component_id=ANY($1::text[])',[Object.values(componentIds)])).rows;
         for(const label of manifest.labels) {
           const row=components.find(item=>item.component_id===componentIds[label.name]);
+          const asset=JSON.parse(Buffer.from(await ledger.contract.evaluateTransaction('ReadComponent',JSON.stringify({actorUserId:principals.coordinator.userId,componentId:componentIds[label.name]}))).toString('utf8'));
+          const expectedState=label.name==='RESERVED'?'RESERVED':label.name==='IN_TRANSIT'?'IN_TRANSIT':label.name==='EXPIRED'?'EXPIRED':'AVAILABLE';
+          if(!row || asset.status!==expectedState || row.inventory_status!==expectedState || asset.componentId!==row.component_id || asset.status!==row.inventory_status || asset.version!==row.ledger_version || asset.lastTransactionId!==row.ledger_transaction_id) throw new Error('SEED_CURRENT_LEDGER_PROJECTION_MISMATCH');
           if(!row||row.blood_type!==label.bloodType||row.component_type!==label.componentType||new Date(row.collected_at).toISOString()!==label.collectedAt||new Date(row.expires_at).toISOString()!==label.expiresAt) throw new Error('SEED_MANIFEST_COMPONENT_MISMATCH');
         }
         if(components.length!==9||components.some(row=>!row.ledger_transaction_id)||components.find(r=>r.component_id===expiredId)?.inventory_status!=='EXPIRED'||components.find(r=>r.component_id===componentIds.RESERVED)?.inventory_status!=='RESERVED'||components.find(r=>r.component_id===componentIds.IN_TRANSIT)?.inventory_status!=='IN_TRANSIT') throw new Error('SEED_PROJECTION_RECONCILIATION_FAILED');
-        const report={seedId:manifest.seedId,targetSha256,classification:'SIMULATION_ONLY',components,receipts,verifiedAt:new Date().toISOString(),nearExpiry:'DISABLED_UNAPPROVED_POLICY',hostValidation:'LOCAL_SELF_VALIDATION'};
+        const owned=(await pool.query('SELECT COUNT(*)::int AS count FROM app.development_seed_commands WHERE seed_id=$1',[manifest.seedId])).rows[0].count;if(owned!==receipts.length) throw new Error('SEED_COMMAND_MEMBERSHIP_MISMATCH');
+        const report={directCurrentAssetsVerified:9,seedId:manifest.seedId,targetSha256,classification:'SIMULATION_ONLY',components,receipts,verifiedAt:new Date().toISOString(),nearExpiry:'DISABLED_UNAPPROVED_POLICY',hostValidation:'LOCAL_SELF_VALIDATION'};
         await savedFile(options.report,report);console.log(canonical({seedId:manifest.seedId,components:components.length,validTransactions:receipts.length,report:options.report}));
         for(const cookie of Object.values(cookies)) await fetch(apiUrl+'/api/v1/auth/session',{method:'DELETE',headers:{Origin:'http://127.0.0.1:5174',Cookie:cookie}});
       } finally {await lock.query('SELECT pg_advisory_unlock_all()');lock.release();}
@@ -145,3 +154,6 @@ try {
   }
 } catch(error) {console.error(error.code??(/^[A-Z][A-Z0-9_]+$/.test(error.message)?error.message:'SEED_PREREQUISITE_OR_OPERATION_FAILED'));process.exitCode=2;}
 finally {ledger?.close();await pool.end();}
+
+}
+main().catch(error=>{console.error(/^[A-Z][A-Z0-9_]+$/.test(error.message)?error.message:"SEED_PREREQUISITE_OR_OPERATION_FAILED");process.exitCode=2;});

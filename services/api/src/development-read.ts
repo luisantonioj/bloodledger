@@ -14,6 +14,7 @@ export class PostgresDevelopmentReader implements DevelopmentReader {
   constructor(private readonly pool: Pool) {}
   async read(kind: Parameters<DevelopmentReader["read"]>[0], principal: WebPrincipal, id?: string, cursor?: string, limit = 50): Promise<unknown> {
     const institution = principal.institutionId;
+    if (kind === "audit" && principal.roleId !== "ROLE-02") throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "V2 command audit requires the assigned audit-reader role.");
     if (kind === "historical") {
       if (institution !== "INST_MEDIATRIX" || !["ROLE-01", "ROLE-02"].includes(principal.roleId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Historical stock requires a Mediatrix inventory role.");
       if (!id) {

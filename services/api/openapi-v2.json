@@ -640,7 +640,7 @@
     "/analytics/inventory-evidence": {
       "get": {
         "operationId": "readMlInventoryEvidence",
-        "description": "Official cookie roles 01\u201303; authenticated institution only. Read-only internal ML snapshots, independent of DOH export. CURRENT requires complete valid same-day capture and evaluation; stale history remains explicit. Missing/invalid/future snapshots return UNAVAILABLE with null evidence. Persisted zero rows are required; no older fallback after invalid selection.",
+        "description": "Official cookie roles 01–03; authenticated institution only. Read-only internal ML snapshots, independent of DOH export. CURRENT requires complete valid same-day capture and evaluation; stale history remains explicit. Missing/invalid/future snapshots return UNAVAILABLE with null evidence. Persisted zero rows are required; no older fallback after invalid selection.",
         "parameters": [
           {
             "name": "businessDate",
@@ -715,7 +715,7 @@
     "/audit": {
       "get": {
         "operationId": "readOperationalAudit",
-        "description": "SIMULATION_ONLY, institution-scoped V2 projection. ROLE-01/02/03 only. Historical records excluded. Existing V1 reads are preserved separately.",
+        "description": "SIMULATION_ONLY, institution-scoped V2 command and off-chain acknowledgement audit for ROLE-02. Historical records excluded; V1 history remains separately accessible.",
         "responses": {
           "200": {
             "description": "Authorized V2 evidence"
@@ -805,6 +805,15 @@
               "type": "string",
               "pattern": "^V2EXP_COMP_[A-Z0-9_-]{1,56}$"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
           }
         ],
         "responses": {
@@ -816,6 +825,26 @@
           },
           "404": {
             "description": "No matching expired component"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "correlationId"
+                ],
+                "properties": {
+                  "correlationId": {
+                    "type": "string",
+                    "pattern": "^CORR_[0-9A-F]{32}$"
+                  }
+                }
+              }
+            }
           }
         }
       }
