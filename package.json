@@ -68,6 +68,7 @@
     "test:historical-inventory:database": "bash tests/historical-inventory/database.sh",
     "scan:secrets": "bash scripts/scan-secrets.sh",
     "development-data": "bash scripts/development-data/run.sh",
+    "development-forecasts": "bash scripts/development-data/forecast.sh",
     "test:development-data": "node --test tests/development-data/*.test.mjs"
   }
 }
