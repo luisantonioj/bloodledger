@@ -387,3 +387,13 @@ not close UAT, clinical/privacy gates or forecast activation.
 ## Persistent development environment verification
 
 The authorized [persistent-data integration](PERSISTENT-SYNTHETIC-DEVELOPMENT.md) adds retained-environment verification to existing disposable test evidence. Jopia must disclose self-validation; Lat's independent local execution remains a separate result. This extension does not authorize human UAT, clinical policy or deployment.
+
+
+Jopia's retained-host execution on 2026-10-07 passed the scoped integration at
+`fee83dc`: real synthetic OCR intake, directly verified operational and historical
+Fabric evidence, interrupted submission/projection recovery, safe replay, official
+cookie browser inspection and ordinary restart. The authoritative results,
+limitations and executable Lat handoff are in
+[the persistent development runbook](PERSISTENT-DEVELOPMENT-RUNBOOK.md#verification-evidence).
+This is disclosed Jopia self-validation. Lat's local re-import and six-account
+preservation require local reproduction; no UAT or Testing-phase exit is claimed.

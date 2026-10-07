@@ -22,3 +22,10 @@ V5 stays an explicit preview; V4 stays the default. A private, approved binding 
 ## Validation and handoff
 
 Retained-environment acceptance must cover official cookie authentication, real API/UI on 5174 → 3000, safe replay, interruption/resume, ordinary restart, preservation, tenant/role denial and direct Fabric reconciliation. Disposable tests are supporting evidence only. Report Jopia-host results separately from Lat-host execution; do not claim Lat acceptance remotely.
+
+The executable reproduction and remaining host prerequisites are maintained in
+[Lat's runbook](PERSISTENT-DEVELOPMENT-RUNBOOK.md), with read interfaces in
+[OpenAPI V2](../services/api/openapi-v2.json). The small operational scenario set
+does not supply local release, receipt, compromise or autonomous algorithm
+examples. Existing V1 history remains separately readable without being added
+to V2 stock totals.

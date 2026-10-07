@@ -365,3 +365,11 @@ BloodLedger environment.
   `database/README.md`.
 - Architecture and decisions: `docs/ARCHITECTURE.md`.
 - Sprint tasks and acceptance: `docs/SPRINT-01.md`.
+
+## Persistent synthetic data for frontend development
+
+Use [Lat's retained setup runbook](PERSISTENT-DEVELOPMENT-RUNBOOK.md) for the
+scoped Fabric-backed operational seed, local historical re-import, census,
+explicit V5 preview and 5174 frontend → 3000 API recipe. It preserves existing
+accounts, unrelated data, volumes and ledger history. Stop/disabling the seed
+retains committed evidence; no reset is part of this workflow.

@@ -341,3 +341,14 @@ view for constructed historical research stock. These do not feed operational
 inventory, OCR intake, FEFO, census, transfers or forecasting stock inputs.
 [The import contract and DBeaver guide](../docs/HISTORICAL-SYNTHETIC-INVENTORY.md)
 own source review, deterministic identity, ledger confirmation and recovery rules.
+
+### Retained synthetic development seed
+
+The additive `20261007010000000_add-development-evidence` and
+`20261007020000000_add-v2-alert-acknowledgement-evidence` migrations bind scoped
+seed ownership/receipts to a retained database identity and keep expiry
+acknowledgements off-chain. Operational donations/components still use the
+existing V2 tables and OCR/Fabric projector; historical units stay separate.
+Follow [Lat's retained setup](../docs/PERSISTENT-DEVELOPMENT-RUNBOOK.md) for
+runtime grants, backups and read-only DBeaver inspection. Applied migrations
+are never edited to reseed data.
