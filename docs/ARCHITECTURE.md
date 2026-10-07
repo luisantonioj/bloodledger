@@ -560,3 +560,7 @@ authoritative operational document before the affected configuration is written.
 ## Historical synthetic inventory boundary
 
 Accepted for simulation implementation by Jopia on 2026-10-07: [historical import](HISTORICAL-SYNTHETIC-INVENTORY.md) represents Buno-reviewed aggregate stock as separately namespaced historical assets. ADR-035 remains authoritative for operational OCR intake. Historical import creates no operational donations, reservations or custody transitions.
+
+## Persistent synthetic development integration
+
+Accepted by Jopia on 2026-10-07 for Testing-phase technical preparation: [persistent development data](PERSISTENT-SYNTHETIC-DEVELOPMENT.md) combines PR21 and the historical importer. Operational demo intake retains ADR-035, isolated historical stock retains its separate ledger namespace, and V5 persistence does not activate operational forecasting. Lat re-imports historical stock on his own ledger; local receipts are verified rather than copied.

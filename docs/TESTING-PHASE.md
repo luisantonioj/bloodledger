@@ -383,3 +383,7 @@ transaction ID and completed without duplicate component or transaction referenc
 The operational prototype record remained unchanged. Jopia self-validation is
 disclosed; this evidence applies only to the selected synthetic snapshot and does
 not close UAT, clinical/privacy gates or forecast activation.
+
+## Persistent development environment verification
+
+The authorized [persistent-data integration](PERSISTENT-SYNTHETIC-DEVELOPMENT.md) adds retained-environment verification to existing disposable test evidence. Jopia must disclose self-validation; Lat's independent local execution remains a separate result. This extension does not authorize human UAT, clinical policy or deployment.
