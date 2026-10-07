@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createHash } from "node:crypto";
 import type { Context } from "fabric-contract-api";
 import { InterviewCoreContract } from "../src/interview-core-contract";
+import developmentPolicy from "../policy/persistent-development-core-v1.json";
+import v21Policy from "../policy/interview-core-v2-1.json";
 
 class MockContext {
   public readonly state = new Map<string, Buffer>();
@@ -37,6 +40,67 @@ class MockContext {
 const asContext = (value: MockContext): Context => value as unknown as Context;
 const policyVersion = "INTERVIEW_DERIVED_CORE_V2";
 const digest = (character: string) => character.repeat(64);
+
+const developmentVersion = "PERSISTENT_DEVELOPMENT_CORE_V1";
+const retainedCoordinator = "USR_SYNTH_REVIEW_ROLE02";
+const retainedRecipient = "USR_SYNTH_REVIEW_ROLE03";
+
+function retainedTransfer(overrides: Record<string, unknown> = {}) {
+  return { actorUserId: retainedRecipient, bloodType: "A_POSITIVE", componentType: "CRYOPRECIPITATE", correlationId: "CORR_RETAINED_REQUEST", destinationInstitutionId: "INST_SYNTH_SECONDARY_REVIEW", eventTime: "2026-09-02T00:00:00.000Z", idempotencyKey: "IDEM_RETAINED_REQUEST", policyVersion: developmentVersion, quantity: 1, requestTime: "2026-09-02T00:00:00.000Z", sourceInstitutionId: "INST_MEDIATRIX", transferId: "TRF_RETAINED_001", urgency: "ROUTINE", ...overrides };
+}
+
+test("FR-12 retained development policy adds exactly two actors without changing V2.1 rules", () => {
+  const { policyVersion: newVersion, developmentActorIds, actors, ...rules } = developmentPolicy;
+  const { policyVersion: oldVersion, actors: oldActors, ...oldRules } = v21Policy;
+  assert.equal(newVersion, developmentVersion); assert.equal(oldVersion, "INTERVIEW_DERIVED_CORE_V2_1");
+  assert.deepEqual(rules, oldRules);
+  assert.deepEqual(Object.keys(actors).filter(id => !(id in oldActors)).sort(), [...developmentActorIds].sort());
+  for (const [id, actor] of Object.entries(oldActors)) assert.deepEqual(actors[id as keyof typeof actors], actor);
+});
+
+test("FR-12 retained actors fail under old policies and retain role/institution denial", async () => {
+  const contract = new InterviewCoreContract(); const context = new MockContext();
+  const input = { ...component("COMP_RETAINED_001", "DON_RETAINED_001", digest("a"), "2026-09-10T00:00:00.000Z", "CRYOPRECIPITATE"), actorUserId: retainedCoordinator, policyVersion: developmentVersion };
+  for (const old of ["INTERVIEW_DERIVED_CORE_V2", "INTERVIEW_DERIVED_CORE_V2_1"]) {
+    await assert.rejects(register(contract, context, { ...input, policyVersion: old }), /CORE_NOT_AUTHORIZED/);
+    await assert.rejects(contract.SubmitTransferRequest(asContext(context), JSON.stringify(retainedTransfer({ policyVersion: old }))), /CORE_NOT_AUTHORIZED/);
+  }
+  await assert.rejects(register(contract, context, { ...input, actorUserId: retainedRecipient }), /CORE_NOT_AUTHORIZED/);
+  await assert.rejects(register(contract, context, { ...input, issuerInstitutionId: "INST_SYNTH_SECONDARY_REVIEW", custodyInstitutionId: "INST_SYNTH_SECONDARY_REVIEW" }), /CORE_NOT_AUTHORIZED/);
+  for (const overrides of [{ actorUserId: retainedCoordinator }, { destinationInstitutionId: "INST_DIVINE_LOVE" }, { sourceInstitutionId: "INST_SYNTH_SECONDARY_REVIEW" }]) await assert.rejects(contract.SubmitTransferRequest(asContext(context), JSON.stringify(retainedTransfer(overrides))), /TRANSFER_NOT_AUTHORIZED/);
+  await assert.rejects(contract.SubmitTransferRequest(asContext(context), JSON.stringify(retainedTransfer({ actorUserId: "USR_SYNTH_UNKNOWN" }))), /CORE_NOT_AUTHORIZED/);
+  assert.equal(context.state.size, 0); assert.equal(context.events.length, 0);
+});
+
+test("NFR-02 retained policy inspection is read-only and enforces gateway identity", async () => {
+  const contract = new InterviewCoreContract(); const context = new MockContext();
+  const input = JSON.stringify({ actorUserId: retainedRecipient, policyVersion: developmentVersion });
+  const actor = JSON.parse(await contract.ReadActorPolicy(asContext(context), input));
+  assert.equal(actor.role, "ROLE_03"); assert.equal(actor.institutionId, "INST_SYNTH_SECONDARY_REVIEW");
+  assert.equal(actor.policySha256, createHash("sha256").update(JSON.stringify(developmentPolicy)).digest("hex")); assert.equal(context.state.size, 0);
+  context.mspId = "OTHER_MSP";
+  await assert.rejects(contract.ReadActorPolicy(asContext(context), input), /CORE_NOT_AUTHORIZED/);
+});
+
+test("NFR-08 retained actor lifecycle and duplicate replay preserve identical state and events", async () => {
+  const run = async () => {
+    const contract = new InterviewCoreContract(); const context = new MockContext();
+    const input = { ...component("COMP_RETAINED_001", "DON_RETAINED_001", digest("a"), "2026-09-10T00:00:00.000Z", "CRYOPRECIPITATE"), actorUserId: retainedCoordinator, policyVersion: developmentVersion };
+    await register(contract, context, input); const before = context.state.size;
+    await register(contract, context, input); assert.equal(context.state.size, before);
+    const transfer = JSON.stringify(retainedTransfer());
+    assert.equal(await contract.SubmitTransferRequest(asContext(context), transfer), await contract.SubmitTransferRequest(asContext(context), transfer));
+    await contract.ReserveComponents(asContext(context), JSON.stringify(reservation("RES_RETAINED_001", [input.componentId], [1], "TRANSFER", { actorUserId: retainedCoordinator, policyVersion: developmentVersion, componentType: "CRYOPRECIPITATE", destinationInstitutionId: "INST_SYNTH_SECONDARY_REVIEW" })));
+    await contract.PrepareReservation(asContext(context), JSON.stringify(action("RES_RETAINED_001", 1, retainedCoordinator, { policyVersion: developmentVersion, preparedAt: "2026-09-02T00:10:00.000Z", preparedEvidenceDigest: digest("b"), preparedEvidenceId: "EVD_RETAINED_001" })));
+    await contract.DispatchReservation(asContext(context), JSON.stringify(action("RES_RETAINED_001", 2, retainedCoordinator, { policyVersion: developmentVersion })));
+    await contract.StartReservationTransit(asContext(context), JSON.stringify(action("RES_RETAINED_001", 3, retainedCoordinator, { policyVersion: developmentVersion })));
+    const asset = JSON.parse(await contract.ReadComponent(asContext(context), JSON.stringify({ actorUserId: retainedRecipient, componentId: input.componentId })));
+    assert.equal(asset.status, "IN_TRANSIT"); assert.equal(asset.policyVersion, developmentVersion);
+    await assert.rejects(contract.ReadComponent(asContext(context), JSON.stringify({ actorUserId: "USR_DIVINE_LOVE", componentId: input.componentId })), /COMPONENT_NOT_AUTHORIZED/);
+    return { state: [...context.state].map(([key, bytes]) => [key, bytes.toString("utf8")]), events: context.events.map(event => [event.name, event.payload.toString("utf8")]) };
+  };
+  assert.deepEqual(await run(), await run());
+});
 
 function component(id: string, donation: string, donationDigest: string, expiry: string, type = "PACKED_RED_BLOOD_CELLS") {
   return {

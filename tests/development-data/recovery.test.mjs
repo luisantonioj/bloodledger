@@ -2,6 +2,16 @@ import {test} from 'node:test';import assert from 'node:assert/strict';
 import {scenarios,digest,ledgerCommand,processSavedCommand} from '../../scripts/development-data/scenario.mjs';
 const command={operation:'SUBMIT_TRANSFER',idempotencyKey:'IDEM_TEST',payload:{transferId:'TRF_TEST'},ledgerTransactionId:null};
 const evidence={transactionId:'tx',blockNumber:'12',validationStatus:'VALID'};
+test('NFR-02: saved policy version survives ledger preparation and recovery',async()=>{
+ for(const policyVersion of ['INTERVIEW_DERIVED_CORE_V2','INTERVIEW_DERIVED_CORE_V2_1','PERSISTENT_DEVELOPMENT_CORE_V1']) {
+  const savedCommand={...command,payload:{...command.payload,policyVersion}};
+  assert.equal(ledgerCommand(savedCommand).payload.policyVersion,policyVersion);
+  const f=setup({found:true}); f.setSaved(); f.state.command=savedCommand;
+  f.state.ledger.inspect=async request=>{assert.equal(request.payload.policyVersion,policyVersion);return evidence;};
+  await processSavedCommand(f.state);assert.equal(f.counts().submitted,0);
+ }
+ assert.equal(ledgerCommand(command).payload.policyVersion,'INTERVIEW_DERIVED_CORE_V2_1');
+});
 function setup({found=null,commit=null,queryError=false}={}) {
  let saved={transaction_id:null};let prepared=0,submitted=0,projected=0,committed=0,inspections=0;
  const state={command:{...command,ledgerTransactionId:commit},get saved(){return saved;},ledger:{prepare:async()=>{prepared++;return {transactionId:'tx',bytes:Buffer.from('signed')};},inspect:async()=>{inspections++;if(queryError)throw Error('QUERY_UNAVAILABLE');return submitted||found?evidence:null;},submitSaved:async s=>{assert.equal(s.transaction_id,'tx');assert.equal(saved.transaction_id,'tx');submitted++;}},saveSubmission:async s=>{saved={transaction_id:s.transactionId,signed_transaction:s.bytes};},saveCommit:async()=>{committed++;},project:async()=>{projected++;},complete:async()=>{}};

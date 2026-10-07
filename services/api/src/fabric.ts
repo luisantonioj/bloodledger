@@ -626,6 +626,22 @@ export class FabricGatewayInventory implements InventoryLedger {
   }
 }
 
+export function interviewCorePayload(command: Pick<V2Command, "operation" | "payload" | "idempotencyKey">): Record<string, unknown> {
+  const rawPayload: Record<string, unknown> = command.operation === "REGISTER_INBOUND_COMPONENT"
+    ? (() => {
+      const { captureId: _captureId, donationNoCiphertext: _ciphertext, donationNoNonce: _nonce, donationNoAuthTag: _authTag, donationNoEncryptionKeyVersion: _keyVersion, capturedAt: _capturedAt, confirmedAt: _confirmedAt, ocrEngine: _engine, ocrEngineVersion: _engineVersion, donationNumberConfidence: _donationConfidence, bloodTypeConfidence: _bloodConfidence, donationNoLookupHmac, ...safe } = command.payload;
+      return { ...safe, donationNoDigest: donationNoLookupHmac };
+    })()
+    : command.operation === "RESERVE_COMPONENTS"
+      ? (() => { const { transferId: _projectionTransfer, ...ledgerPayload } = command.payload; return ledgerPayload; })()
+    : command.operation === "PLACE_RECONCILIATION_HOLD"
+      ? (() => { const { reconciliationPolicyVersion: _policyEvidence, ...ledgerPayload } = command.payload; return ledgerPayload; })()
+      : command.payload;
+  const policyVersion = rawPayload.policyVersion ?? "INTERVIEW_DERIVED_CORE_V2";
+  if (!["INTERVIEW_DERIVED_CORE_V2", "INTERVIEW_DERIVED_CORE_V2_1", "PERSISTENT_DEVELOPMENT_CORE_V1"].includes(String(policyVersion))) throw new WorkerFailure("CORE_POLICY_UNSUPPORTED", false);
+  return { ...rawPayload, idempotencyKey: command.idempotencyKey, policyVersion };
+}
+
 export class FabricGatewayInterviewCore implements V2LedgerSubmitter {
   constructor(private readonly environment: NodeJS.ProcessEnv = process.env) {}
 
@@ -646,20 +662,7 @@ export class FabricGatewayInterviewCore implements V2LedgerSubmitter {
       };
       const transaction = transactionByOperation[command.operation];
       if (!transaction) throw new WorkerFailure("CORE_OPERATION_UNSUPPORTED", false);
-      const rawPayload = command.operation === "REGISTER_INBOUND_COMPONENT"
-        ? (() => {
-          const { captureId: _captureId, donationNoCiphertext: _ciphertext, donationNoNonce: _nonce, donationNoAuthTag: _authTag, donationNoEncryptionKeyVersion: _keyVersion, capturedAt: _capturedAt, confirmedAt: _confirmedAt, ocrEngine: _engine, ocrEngineVersion: _engineVersion, donationNumberConfidence: _donationConfidence, bloodTypeConfidence: _bloodConfidence, donationNoLookupHmac, ...safe } = command.payload;
-          return { ...safe, donationNoDigest: donationNoLookupHmac };
-        })()
-        : command.operation === "RESERVE_COMPONENTS"
-          ? (() => { const { transferId: _projectionTransfer, ...ledgerPayload } = command.payload; return ledgerPayload; })()
-        : command.operation === "PLACE_RECONCILIATION_HOLD"
-          ? (() => { const { reconciliationPolicyVersion: _policyEvidence, ...ledgerPayload } = command.payload; return ledgerPayload; })()
-          : command.payload;
-      const policyVersion = (rawPayload as Record<string, unknown>).policyVersion === "INTERVIEW_DERIVED_CORE_V2_1"
-        ? "INTERVIEW_DERIVED_CORE_V2_1"
-        : "INTERVIEW_DERIVED_CORE_V2";
-      const payload = { ...rawPayload, idempotencyKey: command.idempotencyKey, policyVersion };
+      const payload = interviewCorePayload(command);
       const contract = gateway.getNetwork(this.environment.FABRIC_CHANNEL ?? "bloodledger-dev").getContract(this.environment.FABRIC_CHAINCODE ?? "bloodledger-inventory", "InterviewCoreContract");
       const submitted = await contract.submitAsync(transaction, { arguments: [JSON.stringify(payload)] });
       const status = await submitted.getStatus();

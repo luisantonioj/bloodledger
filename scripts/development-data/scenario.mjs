@@ -21,7 +21,7 @@ export function ledgerCommand(command) {
     payload.donationNoDigest=payload.donationNoLookupHmac;delete payload.donationNoLookupHmac;
   }
   if(command.operation==='RESERVE_COMPONENTS') delete payload.transferId;
-  return { operation:operations[command.operation],payload:{...payload,idempotencyKey:command.idempotencyKey,policyVersion:'INTERVIEW_DERIVED_CORE_V2_1'} };
+  return { operation:operations[command.operation],payload:{...payload,idempotencyKey:command.idempotencyKey,policyVersion:payload.policyVersion??'INTERVIEW_DERIVED_CORE_V2_1'} };
 }
 export async function processSavedCommand({command, saved, ledger, saveSubmission, saveCommit, project, complete, afterSubmit = async () => undefined}) {
   const request = ledgerCommand(command);

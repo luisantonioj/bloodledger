@@ -1,4 +1,5 @@
 export const V2_POLICY_VERSION = "INTERVIEW_DERIVED_CORE_V2" as const;
+export type CorePolicyVersion = typeof V2_POLICY_VERSION | "INTERVIEW_DERIVED_CORE_V2_1" | "PERSISTENT_DEVELOPMENT_CORE_V1";
 export const V2_CLASSIFICATION = "SIMULATION_ONLY" as const;
 export const V2_RECOMMENDATION_ELIGIBILITY = "DISABLED_UNAPPROVED_POLICY" as const;
 
@@ -42,7 +43,7 @@ export interface V2ComponentView {
   reservationPurpose: V2ReservationPurpose | null;
   reservationId: string | null;
   version: number;
-  policyVersion: typeof V2_POLICY_VERSION;
+  policyVersion: CorePolicyVersion;
   classification: typeof V2_CLASSIFICATION;
 }
 
