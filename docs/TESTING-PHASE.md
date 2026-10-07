@@ -370,3 +370,16 @@ regression passed 57 cases with seven retired V1 skips; capture passed build,
 V2 offline replay, full Fabric-to-browser latency, integrated phase regression
 and UAT remain unexecuted or gated. Publication and groupmate handoff are not
 performed; accountable phase acceptance and TP-G01–06 remain open.
+## Historical synthetic inventory verification
+
+Jopia owns source validation, deterministic generation, gateway authorization, durable recovery, direct Fabric validation and DBeaver reconciliation for the [historical import](HISTORICAL-SYNTHETIC-INVENTORY.md). Buno confirms the external source/date. Self-validation is disclosed; no source import, UAT, clinical acceptance or model activation is implied by implementation tests.
+
+On 2026-10-07, the user supplied the selection review for that source date. Live
+historical-import acceptance passed: all 20 original count rows reconciled to 486
+available and 36 reserved constructed components, with 524 directly verified VALID
+Fabric transactions and 522 completed-view rows. An environment restart interrupted
+the import; the durable queue resumed the saved submission under its original
+transaction ID and completed without duplicate component or transaction references.
+The operational prototype record remained unchanged. Jopia self-validation is
+disclosed; this evidence applies only to the selected synthetic snapshot and does
+not close UAT, clinical/privacy gates or forecast activation.

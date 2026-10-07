@@ -333,3 +333,11 @@ before reconstruction; missing rows cannot become verified zero. Readers
 preserve PostgreSQL timestamp milliseconds. This follow-up adds no migration
 or capture behavior; DOH reporting/export policy remains separate. See the
 [integration contract](../docs/ML-RUNTIME-INTEGRATION-V5.md#pr-21-follow-up--independent-browser-inventory-evidence).
+## Historical synthetic inventory
+
+The additive migration `20261007000000000_create-historical-synthetic-inventory.js`
+creates separately named `app.synthetic_inventory_*` tables and a completed-only
+view for constructed historical research stock. These do not feed operational
+inventory, OCR intake, FEFO, census, transfers or forecasting stock inputs.
+[The import contract and DBeaver guide](../docs/HISTORICAL-SYNTHETIC-INVENTORY.md)
+own source review, deterministic identity, ledger confirmation and recovery rules.
