@@ -1,3 +1,4 @@
+import { V2TransferEvidenceView } from "../features/transfers/v2-transfer-evidence-view";
 import type { Principal } from "../auth/permissions";
 import type { ReactNode } from "react";
 import { AccountsParityPreview } from "../features/accounts/accounts-parity-preview";
@@ -14,8 +15,9 @@ import { useLiveData } from "../hooks/use-live-data";
 import type { Alerts, Audit, Consortium, Dashboard, FeatureResponse, Report, Transfers } from "../services/api/types";
 
 export function FeatureRouter({path,canAcknowledge=false,canSubmitTransfer=false,canRejectTransfer=false,canCancelTransfer=false,canCancelApprovedTransfer=false,canDispatchTransfer=false,canStartTransit=false,canDelayTransfer=false,canResumeTransfer=false,canReceiveTransfer=false,canCapture=false,canPreviewInventoryExport=false,canPreviewTransferExport=false,principal}:{path:string;canAcknowledge?:boolean;canSubmitTransfer?:boolean;canRejectTransfer?:boolean;canCancelTransfer?:boolean;canCancelApprovedTransfer?:boolean;canDispatchTransfer?:boolean;canStartTransit?:boolean;canDelayTransfer?:boolean;canResumeTransfer?:boolean;canReceiveTransfer?:boolean;canCapture?:boolean;canPreviewInventoryExport?:boolean;canPreviewTransferExport?:boolean;principal?:Principal}) {
-  const endpoint:Record<string,string>={"/":"/api/v1/dashboard","/alerts":"/api/v1/alerts","/transfers":"/api/v1/transfers","/consortium":"/api/v1/consortium","/audit":"/api/v1/audit","/reporting":"/api/v1/reports/inventory"};
+  const endpoint:Record<string,string>={"/":principal && ["ROLE-01","ROLE-02","ROLE-03"].includes(principal.roleId)?"/api/v2/dashboard":"/api/v1/dashboard","/alerts":principal && ["ROLE-01","ROLE-02","ROLE-03"].includes(principal.roleId)?"/api/v2/alerts":"/api/v1/alerts","/transfers":"/api/v1/transfers","/consortium":"/api/v1/consortium","/audit":principal && ["ROLE-01","ROLE-02","ROLE-03"].includes(principal.roleId)?"/api/v2/audit":"/api/v1/audit","/reporting":"/api/v1/reports/inventory"};
   const state=useLiveData<FeatureResponse>(endpoint[path]??null);
+  if(path==="/transfers"&&principal&&["ROLE-01","ROLE-02","ROLE-03"].includes(principal.roleId))return <V2TransferEvidenceView/>;
   if(path==="/accounts"&&principal)return <AccountsParityPreview principal={principal}/>;
   if(path==="/analytics"&&principal)return <AnalyticsPreview principal={principal}/>;
   if(path==="/profile"&&principal)return <ProfileParityPreview principal={principal}/>;

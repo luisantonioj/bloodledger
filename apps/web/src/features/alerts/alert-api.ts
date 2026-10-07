@@ -13,7 +13,7 @@ export interface AlertAcknowledgementResult {
 }
 
 export function acknowledgeAlert(alertId: string, payload: AlertAcknowledgementPayload, keys: MutationKeys): Promise<AlertAcknowledgementResult> {
-  return requestJson(`/api/v1/alerts/${encodeURIComponent(alertId)}/acknowledgements`, {
+  return requestJson(`${alertId.startsWith("V2EXP_") ? "/api/v2" : "/api/v1"}/alerts/${encodeURIComponent(alertId)}/${alertId.startsWith("V2EXP_") ? "acknowledge" : "acknowledgements"}`, {
     method: "POST",
     headers: { "Idempotency-Key": keys.idempotencyKey },
     body: JSON.stringify(payload),

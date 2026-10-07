@@ -174,29 +174,18 @@
       }
     },
     "/transfers": {
-      "post": {
-        "operationId": "submitTransfer",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/ContractVersion"
-          },
-          {
-            "$ref": "#/components/parameters/IdempotencyKey"
-          }
-        ],
+      "get": {
+        "operationId": "readOperationalTransfers",
+        "description": "SIMULATION_ONLY, institution-scoped V2 projection. ROLE-01/02/03 only. Historical records excluded. Existing V1 reads are preserved separately.",
         "responses": {
-          "202": {
-            "$ref": "#/components/responses/Command"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TransferRequest"
-              }
-            }
+          "200": {
+            "description": "Authorized V2 evidence"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role or institution forbidden"
           }
         }
       }
@@ -475,6 +464,97 @@
             "description": "V2.1 is required when the reservation contains cryoprecipitate"
           }
         }
+      },
+      "post": {
+        "operationId": "reserveComponentsForTransfer",
+        "description": "Same-origin ROLE-02 canonical RESERVE_COMPONENTS bridge. Source request must be PENDING and selected components must satisfy contract FEFO and expected versions. V2.1 header required for CRYO. Retired transfer action aliases stay disabled.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "name": "X-BloodLedger-Contract-Version",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "V2",
+                "V2.1"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "correlationId",
+                  "eventTime",
+                  "expectedComponentVersions",
+                  "reservationId",
+                  "selectedComponentIds",
+                  "transferId"
+                ],
+                "properties": {
+                  "correlationId": {
+                    "type": "string",
+                    "pattern": "^CORR_[0-9A-F]{32}$"
+                  },
+                  "eventTime": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "reservationId": {
+                    "type": "string",
+                    "pattern": "^RES_[A-Z0-9_-]{1,56}$"
+                  },
+                  "transferId": {
+                    "type": "string",
+                    "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+                  },
+                  "selectedComponentIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^COMP_[A-Z0-9_-]{1,56}$"
+                    }
+                  },
+                  "expectedComponentVersions": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Durably queued, not yet ledger committed"
+          },
+          "403": {
+            "description": "Forbidden role/source/origin"
+          },
+          "409": {
+            "description": "Request or idempotency conflict"
+          }
+        }
       }
     },
     "/reservations/{reservationId}": {
@@ -560,7 +640,7 @@
     "/analytics/inventory-evidence": {
       "get": {
         "operationId": "readMlInventoryEvidence",
-        "description": "Official cookie roles 01–03; authenticated institution only. Read-only internal ML snapshots, independent of DOH export. CURRENT requires complete valid same-day capture and evaluation; stale history remains explicit. Missing/invalid/future snapshots return UNAVAILABLE with null evidence. Persisted zero rows are required; no older fallback after invalid selection.",
+        "description": "Official cookie roles 01\u201303; authenticated institution only. Read-only internal ML snapshots, independent of DOH export. CURRENT requires complete valid same-day capture and evaluation; stale history remains explicit. Missing/invalid/future snapshots return UNAVAILABLE with null evidence. Persisted zero rows are required; no older fallback after invalid selection.",
         "parameters": [
           {
             "name": "businessDate",
@@ -594,6 +674,148 @@
           },
           "503": {
             "description": "Inventory infrastructure unavailable"
+          }
+        }
+      }
+    },
+    "/dashboard": {
+      "get": {
+        "operationId": "readOperationalDashboard",
+        "description": "SIMULATION_ONLY, institution-scoped V2 projection. ROLE-01/02/03 only. Historical records excluded. Existing V1 reads are preserved separately.",
+        "responses": {
+          "200": {
+            "description": "Authorized V2 evidence"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role or institution forbidden"
+          }
+        }
+      }
+    },
+    "/alerts": {
+      "get": {
+        "operationId": "readOperationalAlerts",
+        "description": "SIMULATION_ONLY, institution-scoped V2 projection. ROLE-01/02/03 only. Historical records excluded. Existing V1 reads are preserved separately.",
+        "responses": {
+          "200": {
+            "description": "Authorized V2 evidence"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role or institution forbidden"
+          }
+        }
+      }
+    },
+    "/audit": {
+      "get": {
+        "operationId": "readOperationalAudit",
+        "description": "SIMULATION_ONLY, institution-scoped V2 projection. ROLE-01/02/03 only. Historical records excluded. Existing V1 reads are preserved separately.",
+        "responses": {
+          "200": {
+            "description": "Authorized V2 evidence"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role or institution forbidden"
+          }
+        }
+      }
+    },
+    "/historical-snapshots": {
+      "get": {
+        "operationId": "listHistoricalSyntheticSnapshots",
+        "description": "Read-only Mediatrix ROLE-01/02. Includes incomplete status; never operational inventory. Returns snapshots with source date, hashes, expected/verified totals and local Fabric receipt fields.",
+        "responses": {
+          "200": {
+            "description": "Historical snapshot metadata"
+          },
+          "403": {
+            "description": "Outside historical inventory scope"
+          }
+        }
+      }
+    },
+    "/historical-snapshots/{snapshotId}": {
+      "get": {
+        "operationId": "readHistoricalSnapshotPage",
+        "description": "Snapshot metadata and 20 original counts plus generated-unit page. Unknown collection/expiry/purpose stay null. Receipt fields are local verified projections, not a fresh peer query.",
+        "parameters": [
+          {
+            "name": "snapshotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^HSNAP_[0-9A-F]{40}$"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^HCOMP_[0-9A-F]{40}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Historical counts and paginated unit receipts"
+          },
+          "400": {
+            "description": "Invalid cursor or page"
+          },
+          "403": {
+            "description": "Scope forbidden"
+          },
+          "404": {
+            "description": "Snapshot missing"
+          }
+        }
+      }
+    },
+    "/alerts/{alertId}/acknowledge": {
+      "post": {
+        "operationId": "acknowledgeV2ExpiryAlert",
+        "description": "Same-origin ROLE-01/02 institution-scoped, idempotent off-chain acknowledgement. No Fabric submission.",
+        "parameters": [
+          {
+            "name": "alertId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^V2EXP_COMP_[A-Z0-9_-]{1,56}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Off-chain acknowledgement"
+          },
+          "403": {
+            "description": "Wrong role/institution/origin"
+          },
+          "404": {
+            "description": "No matching expired component"
           }
         }
       }

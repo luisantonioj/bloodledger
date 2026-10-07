@@ -1,3 +1,4 @@
+import { registerDevelopmentReads, type DevelopmentReader } from "./development-read.js";
 import { readInventoryEvidence, validEvidenceDate, type MlInventoryEvidenceReader } from "./inventory-evidence.js";
 import { createHash } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
@@ -28,6 +29,7 @@ const COMMAND_CURSOR_PATTERN = /^CMD_[A-Z0-9_-]{1,56}$/;
 
 export interface V2RouteDependencies {
   store: V2CommandStore;
+  developmentRead?: DevelopmentReader;
   restore: (request: FastifyRequest) => Promise<{ principal: WebPrincipal }>;
   keyring?: DonationKeyring;
   census?: CensusStore;
@@ -97,6 +99,7 @@ function safeCommand(command: Awaited<ReturnType<V2CommandStore["enqueue"]>>["co
 
 export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDependencies): void {
   const restore = dependencies.restore;
+  if (dependencies.developmentRead) registerDevelopmentReads(app, dependencies.developmentRead, restore, dependencies.webOrigin);
   const sameOrigin = (request: FastifyRequest) => { if (request.headers.origin !== dependencies.webOrigin) throw new ApiFailure(403, "ORIGIN_FORBIDDEN", "Request origin is not permitted."); };
   const enqueue = async (request: FastifyRequest, reply: FastifyReply, resourceType: V2ResourceType, resourceId: string, operation: string, payload: Record<string, unknown>, principal: WebPrincipal, payloadSha256?: string) => {
     const idempotencyKey = requiredHeader(request);

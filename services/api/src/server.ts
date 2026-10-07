@@ -1,3 +1,4 @@
+import { PostgresDevelopmentReader } from "./development-read.js";
 import { buildApp } from "./app.js";
 import { readApiConfig } from "./config.js";
 import { createPoolFromEnvironment, PostgresScanRepository } from "./database.js";
@@ -18,7 +19,7 @@ try { donationKeyring = keyringFromEnvironment(); } catch { donationKeyring = un
 const reportPolicy = readDohReportPolicy();
 const census = new PostgresCensusStore(pool, reportPolicy.version, reportPolicy.copyModeEnabled ? reportPolicy.bloodTypeOrder : undefined);
 const enabledIssuerInstitutionIds = (process.env.BLOODLEDGER_INBOUND_ENABLED_ISSUERS ?? "INST_MEDIATRIX").split(",").map((value) => value.trim()).filter((value) => /^INST_[A-Z0-9_-]{1,59}$/.test(value));
-const app = await buildApp(new PostgresScanRepository(pool), config, undefined, new PostgresSessionRepository(pool), new PostgresApplicationReadRepository(pool), new PostgresApplicationWriteRepository(pool, new FabricGatewayTransfer()), { store: new PostgresV2CommandStore(pool), keyring: donationKeyring, census, mlInventory: new PostgresMlInventorySnapshotStore(pool), projection: new PostgresV2ProjectionReader(pool), enabledIssuerInstitutionIds });
+const app = await buildApp(new PostgresScanRepository(pool), config, undefined, new PostgresSessionRepository(pool), new PostgresApplicationReadRepository(pool), new PostgresApplicationWriteRepository(pool, new FabricGatewayTransfer()), { store: new PostgresV2CommandStore(pool), developmentRead: new PostgresDevelopmentReader(pool), keyring: donationKeyring, census, mlInventory: new PostgresMlInventorySnapshotStore(pool), projection: new PostgresV2ProjectionReader(pool), enabledIssuerInstitutionIds });
 
 const shutdown = async (): Promise<void> => {
   await app.close();
