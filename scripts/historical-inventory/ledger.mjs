@@ -1,4 +1,4 @@
-import { createPrivateKey } from 'node:crypto';
+import { createPrivateKey, createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -28,13 +28,13 @@ export function decodeHistoricalEvidence(transactionBytes,blockBytes,expected) {
   const proposal=peer.ChaincodeProposalPayload.deserializeBinary(actionPayload.getChaincodeProposalPayload_asU8());
   const invocation=peer.ChaincodeInvocationSpec.deserializeBinary(proposal.getInput_asU8());
   const spec=invocation.getChaincodeSpec(); const args=spec.getInput().getArgsList_asU8().map(text);
-  assert(spec.getChaincodeId().getName()===expected.chaincode&&args.length===2&&args[0]===`HistoricalInventoryContract:${expected.operation}`,'HISTORICAL_OPERATION_MISMATCH');
+  assert(spec.getChaincodeId().getName()===expected.chaincode&&args.length===2&&args[0]===`${expected.contract ?? "HistoricalInventoryContract"}:${expected.operation}`,'HISTORICAL_OPERATION_MISMATCH');
   assert(canonical(JSON.parse(args[1]))===canonical(expected.payload),'HISTORICAL_PAYLOAD_MISMATCH');
   const responsePayload=peer.ProposalResponsePayload.deserializeBinary(actionPayload.getAction().getProposalResponsePayload_asU8());
   const action=peer.ChaincodeAction.deserializeBinary(responsePayload.getExtension_asU8());
   assert(action.getResponse().getStatus()===200,'HISTORICAL_RESPONSE_INVALID');
   const asset=JSON.parse(text(action.getResponse().getPayload_asU8()));
-  assert(asset.transactionId===expected.transactionId,'HISTORICAL_ASSET_TRANSACTION_MISMATCH');
+  assert((expected.contract === 'InterviewCoreContract' ? asset.lastTransactionId : asset.transactionId)===expected.transactionId,'HISTORICAL_ASSET_TRANSACTION_MISMATCH');
   const block=common.Block.deserializeBinary(blockBytes);
   const entries=block.getData().getDataList_asU8();
   const index=entries.findIndex(bytes=>header(common.Envelope.deserializeBinary(bytes)).channelHeader.getTxId()===expected.transactionId);
@@ -47,7 +47,7 @@ export function decodeHistoricalEvidence(transactionBytes,blockBytes,expected) {
 }
 async function oneFile(directory) { const names=await readdir(directory); if(names.length!==1) throw new HistoricalFailure('HISTORICAL_IDENTITY_FILES_INVALID'); return join(directory,names[0]); }
 export class HistoricalLedger {
-  constructor(gateway,client,channel,chaincode,signer) { this.gateway=gateway; this.client=client;this.channel=channel;this.chaincode=chaincode;this.signer=signer; this.contract=gateway.getNetwork(channel).getContract(chaincode,'HistoricalInventoryContract');this.qscc=gateway.getNetwork(channel).getContract('qscc'); }
+  constructor(gateway,client,channel,chaincode,signer) { this.gateway=gateway; this.client=client;this.channel=channel;this.chaincode=chaincode;this.signer=signer; this.namespace='HistoricalInventoryContract';this.contract=gateway.getNetwork(channel).getContract(chaincode,this.namespace);this.qscc=gateway.getNetwork(channel).getContract('qscc'); }
   static async connect(environment=process.env) {
     const root=resolve(environment.BLOODLEDGER_REPOSITORY_ROOT??process.cwd());
     const org=environment.FABRIC_ORGANIZATION_ROOT??join(root,'network/generated/organizations/peerOrganizations/mediatrix.bloodledger.local');
@@ -62,7 +62,9 @@ export class HistoricalLedger {
     const gateway=connect({client,identity:{mspId:'MediatrixMSP',credentials},signer,hash:hash.sha256,evaluateOptions:()=>({deadline:Date.now()+15_000}),endorseOptions:()=>({deadline:Date.now()+30_000}),submitOptions:()=>({deadline:Date.now()+15_000}),commitStatusOptions:()=>({deadline:Date.now()+30_000})});
     return new HistoricalLedger(gateway,client,environment.FABRIC_CHANNEL??'bloodledger-dev',environment.FABRIC_CHAINCODE??'bloodledger-inventory',signer);
   }
+  useContract(namespace) { if(!['HistoricalInventoryContract','InterviewCoreContract'].includes(namespace)) throw new HistoricalFailure('CONTRACT_INVALID',true); this.namespace=namespace;this.contract=this.gateway.getNetwork(this.channel).getContract(this.chaincode,namespace);return this; }
   close() { this.gateway.close();this.client.close(); }
+  async genesisDigest() { return createHash('sha256').update(await this.qscc.evaluateTransaction('GetBlockByNumber',this.channel,'0')).digest('hex'); }
   async prepare(command) {
     const proposal=this.contract.newProposal(command.operation,{arguments:[JSON.stringify(command.payload)]});
     const transaction=await proposal.endorse();
@@ -80,7 +82,7 @@ export class HistoricalLedger {
       throw new HistoricalFailure('HISTORICAL_LEDGER_QUERY_UNAVAILABLE');
     }
     const block=await this.qscc.evaluateTransaction('GetBlockByTxID',this.channel,command.transaction_id);
-    return decodeHistoricalEvidence(bytes,block,{transactionId:command.transaction_id,channel:this.channel,chaincode:this.chaincode,operation:command.operation,payload:command.payload});
+    return decodeHistoricalEvidence(bytes,block,{transactionId:command.transaction_id,channel:this.channel,chaincode:this.chaincode,operation:command.operation,payload:command.payload,contract:this.namespace});
   }
   async submitSaved(command) {
     const transaction=this.gateway.newTransaction(command.signed_transaction);

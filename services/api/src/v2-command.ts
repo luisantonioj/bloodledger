@@ -143,8 +143,8 @@ export class PostgresV2CommandStore implements V2CommandStore {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      await client.query("UPDATE app.v2_commands SET status=CASE WHEN ledger_transaction_id IS NULL THEN 'RETRY_WAIT' ELSE 'LEDGER_COMMITTED_PROJECTION_PENDING' END,lease_owner=NULL,lease_expires_at=NULL,next_attempt_at=$1,updated_at=$1,version=version+1 WHERE status='SUBMITTING' AND lease_expires_at <= $1", [now.toISOString()]);
-      const result = await client.query<Record<string, unknown>>(`SELECT * FROM app.v2_commands WHERE status IN ('QUEUED','RETRY_WAIT','LEDGER_COMMITTED_PROJECTION_PENDING') AND next_attempt_at <= $1 ORDER BY accepted_at,command_id FOR UPDATE SKIP LOCKED LIMIT 1`, [now.toISOString()]);
+      await client.query("UPDATE app.v2_commands SET status=CASE WHEN ledger_transaction_id IS NULL THEN 'RETRY_WAIT' ELSE 'LEDGER_COMMITTED_PROJECTION_PENDING' END,lease_owner=NULL,lease_expires_at=NULL,next_attempt_at=$1,updated_at=$1,version=version+1 WHERE status='SUBMITTING' AND lease_expires_at <= $1 AND NOT EXISTS(SELECT 1 FROM app.development_seed_commands s WHERE s.command_id=app.v2_commands.command_id)", [now.toISOString()]);
+      const result = await client.query<Record<string, unknown>>(`SELECT * FROM app.v2_commands WHERE status IN ('QUEUED','RETRY_WAIT','LEDGER_COMMITTED_PROJECTION_PENDING') AND next_attempt_at <= $1 AND NOT EXISTS(SELECT 1 FROM app.development_seed_commands s WHERE s.command_id=app.v2_commands.command_id) ORDER BY accepted_at,command_id FOR UPDATE SKIP LOCKED LIMIT 1`, [now.toISOString()]);
       if (!result.rows[0]) { await client.query("COMMIT"); return null; }
       const row = result.rows[0];
       const updated = await client.query<Record<string, unknown>>(`UPDATE app.v2_commands SET status='SUBMITTING',attempt_count=attempt_count+1,lease_owner=$2,lease_expires_at=$3,updated_at=$1,version=version+1 WHERE command_id=$4 RETURNING *`, [now.toISOString(), workerId, new Date(now.getTime() + leaseMs).toISOString(), row.command_id]);

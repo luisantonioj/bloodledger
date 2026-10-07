@@ -165,6 +165,24 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     return reservation;
   });
 
+  app.post("/api/v2/reservations", async (request, reply) => {
+    sameOrigin(request); const { principal } = await restore(request);
+    const body = request.body;
+    if (!hasKeys(body, ["correlationId", "eventTime", "expectedComponentVersions", "reservationId", "selectedComponentIds", "transferId"])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Reservation input is invalid.");
+    authorized(principal, ["ROLE-02"]);
+    const transferId = requiredBodyString(body, "transferId", TRANSFER_ID_PATTERN);
+    const reservationId = requiredBodyString(body, "reservationId", RESERVATION_ID_PATTERN);
+    const transfer = await dependencies.projection?.getTransferRequest?.(transferId, principal.institutionId);
+    if (!transfer) throw new ApiFailure(404, "V2_TRANSFER_NOT_FOUND", "Transfer request not found in source scope.");
+    if (transfer.status !== "PENDING") throw new ApiFailure(409, "V2_TRANSFER_STATE_CONFLICT", "Transfer request is not pending.");
+    const version = contractVersion(request);
+    if (transfer.component_type === "CRYOPRECIPITATE" && version !== "V2.1") throw new ApiFailure(409, "V2_1_CONTRACT_REQUIRED", "CRYO requires V2.1.");
+    const selected = body.selectedComponentIds; const versions = body.expectedComponentVersions;
+    if (!Array.isArray(selected) || !Array.isArray(versions) || selected.length !== Number(transfer.quantity) || versions.length !== selected.length || new Set(selected).size !== selected.length || selected.some(id => typeof id !== "string" || !COMPONENT_ID_PATTERN.test(id)) || versions.some(value => !Number.isSafeInteger(value) || value < 1)) throw new ApiFailure(400, "V2_INPUT_INVALID", "Selected components and versions are invalid.");
+    const payload = { reservationId, transferId, purpose: "TRANSFER", sourceInstitutionId: principal.institutionId, destinationInstitutionId: transfer.destination_institution_id, bloodType: transfer.blood_type, componentType: transfer.component_type, quantity: Number(transfer.quantity), selectedComponentIds: selected, expectedComponentVersions: versions, actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: version === "V2.1" ? "INTERVIEW_DERIVED_CORE_V2_1" : "INTERVIEW_DERIVED_CORE_V2" };
+    return enqueue(request, reply, "TRANSFER", transferId, "RESERVE_COMPONENTS", payload, principal);
+  });
+
   app.post("/api/v2/components", async (request, reply) => {
     sameOrigin(request); await restore(request);
     throw new ApiFailure(410, "V2_OCR_REQUIRED", "Inbound components must be registered through confirmed OCR capture.");
@@ -191,7 +209,8 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     }
     const componentId = generatedId("COMP_", idempotencyKey);
     const donationId = `DON_${hash(`${capture.issuerInstitutionId}:${encrypted.lookupHmac}`).slice(0, 40)}`;
-    const payload = { captureId, componentId, donationId, issuerInstitutionId: capture.issuerInstitutionId, donationNoCiphertext: encrypted.ciphertext, donationNoNonce: encrypted.nonce, donationNoAuthTag: encrypted.authTag, donationNoEncryptionKeyVersion: encrypted.encryptionKeyVersion, donationNoLookupHmac: encrypted.lookupHmac, componentType: capture.componentType, bloodType: capture.bloodType, collectedAt: capture.collectedAt, expiresAt: capture.expiresAt, custodyInstitutionId: principal.institutionId, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: capture.eventTime, correlationId: capture.correlationId, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt, bloodTypeEvidenceSource: capture.bloodTypeEvidence.source, componentEvidenceSource: capture.componentEvidence.source, ocrEngine: capture.ocrEvidence.engine, ocrEngineVersion: capture.ocrEvidence.engineVersion, donationNumberConfidence: capture.ocrEvidence.fieldConfidence.donationNumber, bloodTypeConfidence: capture.ocrEvidence.fieldConfidence.bloodType, policyVersion: version === "V2.1" ? "INTERVIEW_DERIVED_CORE_V2_1" : "INTERVIEW_DERIVED_CORE_V2" };
+    const captureEvidenceDigest = createHash("sha256").update(JSON.stringify({ captureId, donationDigest: encrypted.lookupHmac, ocrEvidence: capture.ocrEvidence, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt }), "utf8").digest("hex");
+    const payload = { captureMethod: "OCR", captureEvidenceDigest, captureId, componentId, donationId, issuerInstitutionId: capture.issuerInstitutionId, donationNoCiphertext: encrypted.ciphertext, donationNoNonce: encrypted.nonce, donationNoAuthTag: encrypted.authTag, donationNoEncryptionKeyVersion: encrypted.encryptionKeyVersion, donationNoLookupHmac: encrypted.lookupHmac, componentType: capture.componentType, bloodType: capture.bloodType, collectedAt: capture.collectedAt, expiresAt: capture.expiresAt, custodyInstitutionId: principal.institutionId, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: capture.eventTime, correlationId: capture.correlationId, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt, bloodTypeEvidenceSource: capture.bloodTypeEvidence.source, componentEvidenceSource: capture.componentEvidence.source, ocrEngine: capture.ocrEvidence.engine, ocrEngineVersion: capture.ocrEvidence.engineVersion, donationNumberConfidence: capture.ocrEvidence.fieldConfidence.donationNumber, bloodTypeConfidence: capture.ocrEvidence.fieldConfidence.bloodType, policyVersion: version === "V2.1" ? "INTERVIEW_DERIVED_CORE_V2_1" : "INTERVIEW_DERIVED_CORE_V2" };
     await dependencies.projection.recordInboundCapture?.(captureId, payload, dependencies.clock().toISOString());
     const payloadSha256 = createHash("sha256").update(JSON.stringify({ capture, captureId, componentId, donationId, custodyInstitutionId: principal.institutionId }), "utf8").digest("hex");
     return enqueue(request, reply, "INBOUND_CAPTURE", captureId, "REGISTER_INBOUND_COMPONENT", payload, principal, payloadSha256);
