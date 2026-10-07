@@ -348,3 +348,14 @@ is tracked by the follow-up draft PR. These are Jopia’s disclosed self-validat
 prior owner evidence retains its attribution. Lat’s own real browser rerun and
 frontend decision remain pending, so complete live V5 acceptance remains BLOCKED.
 No Testing-phase exit, binding/activation, RQ-07/RQ-14 or UAT gate is closed.
+
+## Lat real V5 runtime follow-up — 2026-10-07
+
+[Lat's verified transfer and real rerun](frontend/VALIDATION.md#lat-verified-runtime-transfer-and-real-v5-rerun--2026-10-07)
+passed at `b5601cc`: original model/image checks, native prerequisites, isolated
+producer/database and official-cookie Chromium flow without interception.
+The previously unavailable artifact blocker is resolved for this isolated
+boundary. Twenty forecast series, forty census combinations, verified zeros,
+scope, stale/failure and logout behavior pass under Lat self-validation. V4
+remains default; all binding/activation, research/UAT, physical OCR, full
+Fabric-to-browser latency and phase-acceptance gates remain unchanged.

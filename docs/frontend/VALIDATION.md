@@ -616,3 +616,66 @@ RQ-14/onboarding, UAT participant/consent/instrument/custody, physical Android
 OCR and full Fabric-to-browser NFR-06 gates remain unchanged. Human UAT is
 NOT_RUN. No deployment, operational recommendation, clinical/regulatory claim
 or Testing-phase completion is authorized by this review.
+
+## Lat verified runtime transfer and real V5 rerun — 2026-10-07
+
+**Result:** PASS for the isolated real V5 producer/database/cookie/browser
+boundary. Owner: Lat, Codex-assisted self-validation. Classification:
+SIMULATION_ONLY. Tested implementation: `b5601cc87011d7eab7b3cb1bae3a4256e60b255f`
+on `codex/lat-testing-traceability`. The frontend checkpoint is `71c91af`;
+PR #23 executable/evidence commits were incorporated as `d0ceeed`/`b5601cc`,
+preserving Jopia authorship. Both overlapping phase records were preserved.
+
+Transport `bloodledger-pr21-runtime-2026-10-07.tar.gz` SHA-256:
+`dbeec3106057c00fee967052563fa2fd295e3cdc52d249928c2b899c0f8a8b1c`.
+Local extraction: `/tmp/bloodledger-runtime-transfer/2026-10-07-pr21`, outside
+Git. Its manifest matches the committed
+[v5 runtime manifest](v5-runtime-artifact-manifest-2026-10-07-jopia.json).
+The model, image archive and seven optional library files match all manifest
+checksums. Docker load returned the exact approved image identity
+`sha256:dcb2ccd36834bcec33e3d5cb8158f2b7a75b0881f695821cc705764667fba4c1`;
+real prerequisite checks reverified it before resource creation. Jopia's source
+folder is not Lat's extraction path. No raw runtime artifact is committed.
+
+### Reproducible commands and results
+
+Set `BLOODLEDGER_V5_MODEL_TEST_PATH` to the local extraction's
+`selected_model.json`; for Chromium set `LD_LIBRARY_PATH` to its `browser-libs`.
+Docker commands require access to the local daemon.
+
+| Command | Result / exit |
+|---|---|
+| `node --test tests/forecasting/v5-runtime-prerequisites.test.mjs` | PASS / 0, 20 tests |
+| `node tests/forecasting/v5-runtime-prerequisites.mjs --producer` | PASS / 0, prerequisites only |
+| `npm run check:api` | PASS / 0 |
+| `npm run check:web` | PASS / 0 |
+| `npm run build --workspace @bloodledger/coordination` | PASS / 0 |
+| `bash tests/forecasting/v5-runtime-integration.sh` | PASS / 0, real producer persistence/replay/conflict, freshness/scope and V4 preservation |
+| `node tests/api/v5-census-integration.mjs` | PASS / 0, 23 migrations/reapply/grants and persisted forty-combination census |
+| `node tests/frontend/v5-cookie-integration.mjs` | PASS / 0, official cookie and real Chromium without interception |
+| `npm run test:web` | PASS / 0, 62 tests |
+| `npm run check:foundation` | PASS / 0 |
+| `npm run scan:secrets` | PASS / 0, pinned history/index/candidate scan |
+| `npm audit --json` | PASS / 0, zero vulnerabilities |
+| `git diff --check` | PASS / 0 |
+
+[Lat cookie/browser aggregate](v5-cookie-evidence-2026-10-07-lat.json)
+records twenty rendered forecast series, forty persisted census combinations,
+verified zeros, tenant isolation, independently available inventory, latest
+unavailable forecast, Manila midnight stale behavior and logout/401.
+[Lat census aggregate](v5-census-evidence-2026-10-07-lat-runtime.json)
+records persistence, scope, fractional timestamps/digest, immutability and
+fault-injected missing latest rows without fallback. Node is 24.17.0,
+PostgreSQL 17.10 and Chromium 149.0.7827.55. Business date is 2026-10-07.
+Logs remain local at `/tmp/lat-runtime-{producer,cookie,census,unit,foundation}.log`.
+The first sandboxed prerequisite test could not execute; the approved native
+rerun passed all twenty tests. Initial Docker load lacked sandbox daemon access;
+the approved load succeeded. These are host execution restrictions, not runtime
+defects. All three integration harnesses exited 0 after their cleanup.
+
+This supersedes Lat's missing-artifact BLOCKED disposition only for the tested
+isolated real V5 boundary. V4 remains default, institution binding is disposable
+test-only, and ledger state is a synthetic committed-projection fixture.
+No Fabric-to-browser NFR-06, physical OCR, human UAT, operational accuracy,
+binding approval, activation, RQ-07/RQ-14, deployment or phase acceptance gate
+is closed. PRs remain unmerged; no publication or teammate message was sent.

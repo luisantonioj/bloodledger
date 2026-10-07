@@ -42,7 +42,9 @@ mutation fixtures. They use mocked HTTP with distinct synthetic identifiers.
 
 ## Incomplete acceptance
 
-The V5 pinned model/image, full Fabric-to-browser NFR-06, physical Android OCR,
+The V5 pinned model/image availability blocker was resolved by the verified
+transfer and [Lat real rerun](frontend/VALIDATION.md#lat-verified-runtime-transfer-and-real-v5-rerun--2026-10-07).
+Full Fabric-to-browser NFR-06, physical Android OCR,
 RQ-07/RQ-14, onboarding activation and human UAT remain unchanged. No new binding,
 clinical rule, deployment, operational recommendation or phase exit window is
 approved by this register.
