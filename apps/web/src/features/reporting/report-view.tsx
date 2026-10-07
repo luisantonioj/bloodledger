@@ -14,7 +14,7 @@ export function ReportView({ data }: { data: Report }) {
     </div>
     <section className="v2-blocked-workflow">
       <span aria-hidden="true">!</span>
-      <div><strong>V2 census lookup requires a known snapshot ID</strong><p>The backend exposes snapshot detail, component TSV, and authorized manual catch-up, but no permission-scoped snapshot index. Official DOH copy order is also unapproved, so this frontend does not guess a snapshot or activate copy output.</p></div>
+      <div><strong>V2 census presentation is not connected</strong><p>Permission-scoped snapshot discovery exists, together with snapshot detail, component TSV, authorized manual catch-up, and a confirmed synthetic display order. This reporting view does not yet present those snapshots. Census capture, copy, and export remain unavailable pending full DOH format approval.</p></div>
       <b>NOT CONNECTED</b>
     </section>
     <div className="stats report-summary"><article><span>Confirmed units</span><strong>{units}</strong></article><article><span>Aggregate alerts</span><strong>{alerts}</strong></article><article><span>Transfers</span><strong>{transfers}</strong></article><article><span>Classification</span><strong className="scope">Simulation only</strong></article></div>

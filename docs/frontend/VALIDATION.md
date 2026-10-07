@@ -543,6 +543,74 @@ Local uncommitted logs are `/tmp/lat-v5-delivery-*.log`,
 `/tmp/lat-v5-final-secrets.log`. No credential, cookie, raw application payload,
 model, enabled binding, image or browser storage artifact is committed.
 
+## Lat Testing-phase frontend regression — 2026-10-07
+
+**Result:** PASS for the selected mocked frontend regression and remediation
+slice, not complete Testing-phase acceptance. **Owner:** Lat; Codex-assisted
+self-validation. **Classification:** SIMULATION_ONLY. Starting revision:
+`0f2f1f42d735f606aabf1a754bb6cca261b117e4` on
+`codex/lat-testing-traceability`; results below apply to the local working-tree
+implementation and the new scenario file. No GitHub handoff response was
+processed in this slice.
+
+The [traceability register](../TESTING-TRACEABILITY.md) owns scenario mappings;
+the [defect register](../TESTING-DEFECTS.md) owns dispositions for TP-LAT-D01
+through D05. Inventory clears prior contract evidence, rejects foreign rows,
+and ignores superseded responses. Inventory/intake and shared feature data
+clear after 401/403. Transient feature refresh failures label preserved data
+and provide retry. Status polling keeps the accepted command/resource identity
+and ignores responses after cleanup. Reporting describes already implemented
+scoped census discovery while preserving capture/copy/export deferrals.
+
+### Environment and fixture lineage
+
+- WSL2 Linux kernel `6.18.33.2-microsoft-standard-WSL2`, Bash, Node `24.17.0`,
+  npm `11.13.0`, Playwright `1.61.1`, configured Desktop Chrome/Chromium profile.
+- Browser preview: `http://127.0.0.1:4174`; synthetic mocked HTTP only, no
+  shared database seed, migration, ledger mutation, or human UAT.
+- Synthetic fixture instant: `2026-10-07T04:00:00.000Z`; distinct synthetic
+  owner/recipient/regulator and foreign inventory/resource IDs. Inventory uses
+  `INTERVIEW_DERIVED_CORE_V2`; retry tests select V2.1 cryoprecipitate.
+- `apps/web/e2e/testing-phase.spec.ts` SHA-256:
+  `a71153eefd54ecbb8ac2a8a73ee97bbd8844513be850196308c8e40e286629ba`.
+- Unchanged `package-lock.json` SHA-256:
+  `7809183849bdc5c2cb5ccb9b3e4e584d60c777cc6ee64e18bf1a12d9d3f1233c`.
+
+### Execution and evidence
+
+| Command | Exit/result | Boundary |
+|---|---|---|
+| `npm run test:web:e2e -- testing-phase.spec.ts` | 0 / PASS: 14 cases | Seven scenario groups; late response, foreign rows, six 401/403 cases, two transient refresh cases, two retry/failure/conflict cases, command resource binding, reporting deferrals |
+| `npm run test:web:e2e` | 0 / PASS: 57 passed, 7 skipped | Full mocked browser suite; skips remain retired V1 mutations, never passing evidence |
+| `npm run check:web` | 0 / PASS | Typecheck and production build; full browser run also rebuilt final source |
+| `npm run test:web` | 0 / PASS: 62 tests, 18 files | Includes three command-reader identity/valid-transition tests |
+| `npm run check:foundation` | 0 / PASS | JSON format, workspace, versions, ignore paths, safe environment template |
+| `npm audit --json` | 0 / PASS: zero vulnerabilities | Current registry audit; no dependency changes |
+| `npm run scan:secrets` | 0 / PASS | Pinned Gitleaks history, index, tracked and untracked candidate content |
+| `git diff --check` | 0 / PASS | Patch whitespace |
+
+The initial diagnostic browser attempt could not start its preview inside the
+sandbox. The approved outside-sandbox diagnostic run exposed stale inventory,
+foreign rows, and access-denial/refresh problems, plus two draft fixture errors:
+the component selector and omitted expected `urgency` field. Its preview build
+was rebuilt during implementation, so its mixed 9-failure/5-pass total is not a
+frozen-baseline regression result. The isolated final focused and full runs
+above are the acceptance evidence for this slice. Fixture corrections changed
+no request-submission behavior; retry tests prove identical keys/body/version,
+recipient scope, and truthful FAILED/CONFLICT presentation without resubmission.
+
+Initial audit and secret-scan attempts were blocked by sandbox registry/Docker
+access; approved reruns passed. Local logs are `/tmp/lat-testing-focused.log`,
+`/tmp/lat-testing-browser.log`, `/tmp/lat-testing-unit.log`,
+`/tmp/lat-testing-check.log`, `/tmp/lat-testing-foundation.log`,
+`/tmp/lat-testing-audit.json`, and `/tmp/lat-testing-secrets.log`.
+
+Complete real V5 acceptance remains BLOCKED by the previously recorded pinned
+model/image prerequisites; it was not rerun here. Physical Android OCR, full
+Fabric-to-browser NFR-06, RQ-07/RQ-14, institution binding/activation, and human
+UAT remain open. Passing mocked UI tests does not complete BL-TST-01 or the
+Testing phase, approve production use, or establish clinical validation.
+
 SIMULATION_ONLY, concrete institution binding, explicit activation, RQ-07,
 RQ-14/onboarding, UAT participant/consent/instrument/custody, physical Android
 OCR and full Fabric-to-browser NFR-06 gates remain unchanged. Human UAT is

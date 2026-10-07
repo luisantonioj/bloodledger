@@ -321,3 +321,17 @@ cookie → browser acceptance is BLOCKED by unavailable external pinned model an
 forecasting image; Jopia's previous success is not Lat's rerun. Both GitHub PRs
 remain unmerged. SIMULATION_ONLY and binding/activation, RQ-07/RQ-14, UAT,
 physical OCR and full Fabric-to-browser NFR-06 gates remain unchanged.
+
+## Lat scoped frontend testing — 2026-10-07
+
+The independent frontend slice on `codex/lat-testing-traceability` completes
+selected TP-01/TP-03/TP-08 preparation, regression and remediation. The
+[traceability register](TESTING-TRACEABILITY.md) links seven scenario groups;
+the [defect register](TESTING-DEFECTS.md) records five fixed frontend findings.
+[Lat's self-validation](frontend/VALIDATION.md#lat-testing-phase-frontend-regression--2026-10-07)
+records 14 focused browser passes, 57 full mocked browser passes with seven
+existing retired-fixture skips, 62 unit passes and applicable build,
+repository/security checks. This scoped evidence does not complete BL-TST-01,
+TP-02's full integrated baseline, human UAT or Testing-phase acceptance. Groupmate
+handoff responses are reserved for subsequent work; real V5, physical OCR,
+full Fabric-to-browser latency and owner/research gates remain open.
