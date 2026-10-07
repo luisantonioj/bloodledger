@@ -4,6 +4,11 @@ SELECT snapshot_id,source_business_date,source_institution_id,dataset_version,
        workbook_sha256,manifest_sha256,review_reference,status,expected_units,verified_units
 FROM app.synthetic_inventory_snapshots ORDER BY created_at;
 
+-- Generated status totals per snapshot, to compare with source closing counts.
+SELECT snapshot_id,snapshot_status,count(*) AS generated_components
+FROM app.synthetic_inventory_units
+GROUP BY snapshot_id,snapshot_status ORDER BY snapshot_id,snapshot_status;
+
 SELECT snapshot_id,blood_type,component_type,available_units,reserved_units,closing_units
 FROM app.synthetic_inventory_counts ORDER BY snapshot_id,series_key;
 

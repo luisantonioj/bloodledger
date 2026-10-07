@@ -46,8 +46,15 @@ Apply/resume require --target bloodledger-local, --approve-manifest <SHA256>,
 --review-reference <Buno review reference> and --operator USR_SYNTH_HISTORICAL_IMPORT.
 These explicit inputs are an operator attestation, not independent verification of
 Buno's identity. Jopia checks the external review before executing apply.
-No source/date has yet been approved in this conversation. Actual loading is gated.
-See the inspection section added with implementation evidence for runnable commands.
+The user supplied the selection review for 2026-10-07 in this conversation: all 20
+combinations, 486 available closing units and 36 reserved closing units. The original
+downloaded workbook independently matched those counts and date. The recorded review
+reference is `CONVERSATION_2026-10-07_STOCK_REVIEW_486_AVAILABLE_36_RESERVED`; it identifies
+the user-provided confirmation, not independently authenticated Buno identity evidence.
+The frozen manifest SHA-256 is
+`7b8c831d37667b1459c2b16707c5bf37cf72fe6cc12b2f24bf17a6ab2449af04`.
+This review covers this one synthetic snapshot; it does not approve other dates or
+sources. See the inspection section for runnable commands and execution evidence.
 
 ## CLI and DBeaver inspection
 
@@ -112,8 +119,9 @@ account retrieved the original 6,271,434-byte XLSX outside the repository. Its S
 The existing full allowlisted V5 validator passed: 1,461 stock days from 2023-01-01
 through 2026-12-31, with daily closing totals between 431 and 614. The range includes
 future simulation dates; it is not evidence of current or actual clinical stock.
-No selected day or Buno snapshot review reference has been provided. Source validation
-does not substitute for Buno's selection review. No historical snapshot has been loaded.
+At initial implementation validation, no selected day or snapshot review reference had
+been provided and no historical snapshot had been loaded. The subsequent selection
+confirmation is recorded above; source validation alone does not constitute that review.
 
 The branch was created from the freshly fetched merged `origin/main` at `b028515`,
 containing PRs #19/#20. PR #21 was confirmed open; its frontend is outside this CLI
@@ -156,7 +164,8 @@ QSCC transaction and containing block evidence confirmed VALID in block 45, incl
 the block validation flag and matching transaction envelope. A read-only query through
 the new historical contract returned the expected HISTORICAL_SNAPSHOT_NOT_FOUND for
 an absent snapshot, proving contract availability and gateway authorization without
-creating an import. PostgreSQL still has zero historical snapshots and import commands.
+creating an import. Before the reviewed import, PostgreSQL had zero historical snapshots
+and import commands.
 
 Automatic approval review rejected a combined orderer/API/worker startup action
 because API/worker startup could process transactions before the source review gate.
@@ -196,8 +205,44 @@ run `bash tests/historical-inventory/database.sh` on the Docker-enabled host. Ru
 forecasting quality/testing with the pinned service runtime. The disposable database
 uses no published ports and no application network and is removed by its own trap.
 
-Completion remains partial: implementation and synthetic technical checks pass,
-and the additive lifecycle deployment and original transaction/block verification pass.
-Actual workbook loading, reviewed date selection and reconciliation of imported
-historical units remain pending. Empty historical tables
-must not be reported as an accepted or imported Buno snapshot.
+## Reviewed snapshot execution — 2026-10-07
+
+The user-provided selection confirmation was compared with the original V5 workbook:
+all 20 combinations, including the explicit zero AB+ platelet row, reconciled to
+486 available + 36 reserved = 522 closing-stock components. Column M
+`available_close_units` and column I `reserved_close_units` were used; column J
+`available_before_release_units` was not substituted. The source workbook was read-only.
+
+Snapshot `HSNAP_913241C895D1447FEC7E6022E33412D8C45474B0` is COMPLETE in PostgreSQL and
+Fabric, with 522 expected and verified components. All 524 durable commands are
+COMMITTED: one BeginSnapshot, 522 RegisterUnit and one FinalizeSnapshot. The importer
+performed fresh QSCC transaction/block verification and ledger/member/database
+reconciliation for every command and all 20 source combinations. All transactions
+were VALID. Finalization transaction
+`5a76a6f44e1a6741700cb3962b64be9218a6f8d91ae869b1352caea523d2a440` is in block 574.
+The ignored local report is `build/historical-reviewed-2026-10-07-reconciliation.json`;
+the reviewed generated manifest also stays under ignored `build/`, outside Git.
+
+An environment restart interrupted the first run after 238 projected components.
+PostgreSQL retained the durable queue and signed submission. Docker Desktop access
+was restored and the peer recreated with its existing volumes to resolve a stale
+Docker socket bind. The original workbook was fetched read-only again and its SHA-256
+matched the frozen source. Resume recovered step 239 using transaction
+`a67deb1eaaa9a9e3745a8dce4f3b326d3689b7e2313b114e08ee5ce03b3a73c4`, which remained the
+same ID and finished COMMITTED/VALID. No source date, manifest, source count or review
+reference changed during recovery. A fresh PostgreSQL backup was taken before import.
+
+To inspect this snapshot in DBeaver, refresh the connection (right-click the connection
+and choose Refresh), then expand Schemas -> app. Under Tables, open
+`synthetic_inventory_snapshots` and its Data tab: the selected source date is
+2026-10-07 and status is COMPLETE. Open `synthetic_inventory_counts` for the original
+20 aggregate rows. Under Views, open `synthetic_inventory_completed_units` and its
+Data tab for all 522 individually identified constructed components and their VALID
+transaction/block references. Historical status totals are also available in the
+[read-only inspection SQL](../scripts/historical-inventory/inspect.sql).
+
+Acceptance is satisfied for this one user-reviewed synthetic snapshot: source counts,
+generated components, directly verified ledger evidence and database rows reconcile.
+Jopia self-validation is disclosed. These constructed research assets do not establish
+original bags, actual historical custody, approved clinical inventory or present-day
+operational stock. Forecast activation and frontend integration remain outside scope.
