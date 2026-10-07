@@ -296,3 +296,7 @@ accountable review is closed by these checks.
 ## ML V5 backend follow-up — 2026-09-30
 
 The user authorized Jopia-owned V5 backend implementation from PR #19. The [candidate integration contract](ML-RUNTIME-INTEGRATION-V5.md) and [implementation plan](ML-V5-JOPIA-IMPLEMENTATION-PLAN.md) track this work. V4 remains active until Buno calculation review, Lat frontend/browser validation, synthetic institution-binding decision and explicit activation. This does not close UAT or RQ-07.
+
+## Historical synthetic inventory verification
+
+Jopia owns source validation, deterministic generation, gateway authorization, durable recovery, direct Fabric validation and DBeaver reconciliation for the [historical import](HISTORICAL-SYNTHETIC-INVENTORY.md). Buno confirms the external source/date. Self-validation is disclosed; no source import, UAT, clinical acceptance or model activation is implied by implementation tests.

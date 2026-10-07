@@ -556,3 +556,7 @@ considered complete, the team must verify:
 
 Any change to an accepted ADR requires updating the Sprint 1 plan and the
 authoritative operational document before the affected configuration is written.
+
+## Historical synthetic inventory boundary
+
+Accepted for simulation implementation by Jopia on 2026-10-07: [historical import](HISTORICAL-SYNTHETIC-INVENTORY.md) represents Buno-reviewed aggregate stock as separately namespaced historical assets. ADR-035 remains authoritative for operational OCR intake. Historical import creates no operational donations, reservations or custody transitions.
