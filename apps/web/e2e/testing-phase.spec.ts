@@ -11,9 +11,12 @@ async function mock(page: Page, role: "ROLE-01" | "ROLE-03" | "ROLE-04", overrid
   const institutionId = role === "ROLE-03" ? "INST_LAT_RECIPIENT" : role === "ROLE-04" ? "INST_LAT_REGULATOR" : "INST_MEDIATRIX";
   const permissions = role === "ROLE-04" ? ["dashboard:regulatory", "reports:read", "alerts:read", "profile:read"] : ["dashboard:operational", "transfers:read", "transfers:write", "alerts:read", "profile:read", ...(role === "ROLE-01" ? ["inventory:read"] : [])];
   await page.route("**/api/**", async route => {
-    const path = new URL(route.request().url()).pathname;
+    const actualPath = new URL(route.request().url()).pathname;
+    // Delivered persistent integration uses V2 reads; reuse these test-only bodies.
+    const path = ({ "/api/v2/dashboard": "/api/v1/dashboard", "/api/v2/alerts": "/api/v1/alerts", "/api/v2/audit": "/api/v1/audit" } as Record<string, string>)[actualPath] ?? actualPath;
     if (await override(route, path)) return;
     if (path === "/api/v1/auth/session") return json(route, { principal: { userId: "USR_LAT_" + role.slice(-2), displayName: "Synthetic Lat User", institutionId, institutionDisplayName: "Synthetic Lat Scope", roleId: role, roleDisplayName: role, permissions, classification: "SIMULATION_ONLY" } });
+    if (path === "/api/v2/transfers") return json(route, { requests: [], reservations: [], timeline: [], classification: "SIMULATION_ONLY" });
     if (path === "/api/v2/components") return json(route, { scope: "INSTITUTION", components: [component], classification: "SIMULATION_ONLY" });
     if (path === "/api/v2/reports/inbound-intake") return json(route, { scope: "INSTITUTION", statuses: { QUEUED: 1 }, includedInventoryStatuses: ["COMMITTED"], excludedFromInventory: ["QUEUED", "FAILED", "CONFLICT"], classification: "SIMULATION_ONLY" });
     if (path === "/api/v1/alerts") return json(route, { scope: "INSTITUTION", alerts: [alert], aggregates: [], classification: "SIMULATION_ONLY" });

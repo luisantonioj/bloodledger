@@ -384,9 +384,10 @@ charts cannot force the entire shell wider.
 
 The main page pattern is consistent:
 
-1. A top bar contains breadcrumbs and permitted global status/actions.
-2. A page head contains a small uppercase eyebrow, serif title, one-sentence
-   description, and right-aligned actions.
+1. A top bar contains breadcrumbs and one persistent `Simulation only` badge.
+2. A page head contains a serif title and only context needed for scope,
+   freshness, access, or a safety decision. Do not repeat generic eyebrows,
+   subtitles, data wrappers, or classification labels.
 3. KPI tiles may precede the primary data surface.
 4. A card contains the principal table, matrix, timeline, or form.
 5. Supporting cards follow in two- or three-column grids where the information
@@ -435,9 +436,8 @@ Matrix hover feedback may use a very small shadow and one-pixel lift. Do not add
 glass effects, backdrop blur, glowing panels, decorative gradients, or stacked
 card shadows.
 
-Semantic tint gradients from the mockup may be used inside status-focused KPI
-or matrix cells only. They fade into the normal surface and must not become
-decorative page backgrounds.
+Status-focused KPI and matrix cells use flat semantic tints when they need
+emphasis. Do not introduce decorative gradients.
 
 ## Shapes
 
@@ -463,8 +463,8 @@ ambiguous action text.
 
 ### Application shell and navigation
 
-The sidebar order is brand, authenticated institution/principal context,
-permission-filtered navigation groups, then the signed-in user footer. The
+The sidebar order is brand, authenticated institution context,
+permission-filtered task groups, then the signed-in user footer. The
 institution context must say who the user is acting for without exposing
 internal peer IDs or implying that every institution hosts a Fabric peer.
 
@@ -476,17 +476,33 @@ The active item uses the dark hover surface plus a narrow primary-red rail.
 Badges are compact and numeric only when the count is meaningful. Avoid a
 separate sidebar implementation for each role or hospital.
 
-The top bar shows only functional controls. Do not port the mockup's
-non-functional search field, fabricated live block count, or network-health
-language unless an official API supplies current, authorized values and the UI
+The task groups are Overview (Dashboard), Operations (Blood Inventory, Requests
+& Transfers, Alerts, Activity History), Insights (Analytics, Network view,
+Reports), Account (Profile), and Administration (Accounts when permitted).
+These are display labels only; routes and server permissions do not change.
+The sidebar uses a thin blue-toned scrollbar that remains keyboard and pointer
+scrollable. Blood Unit Transactions remains in the separate Capture PWA.
+
+The top bar shows breadcrumbs and one `Simulation only` badge. The disconnected
+global search, notification preview, fabricated pending-application count,
+and floating design-preview panel are excluded. Do not add global status or
+counts until an official API supplies current, authorized values and the UI
 shows unavailable and stale states honestly.
 
 ### Page head
 
-Every feature page begins with the same page-head composition. Titles state the
-feature; eyebrows state context; subtitles explain the current scope or
-freshness. Institution-specific headings use the authenticated display name,
-never a client-selected tenant or hard-coded facility name.
+Every feature page begins with a clear title. Add context only where it explains
+scope, freshness, access, or safety. Institution identity comes from the
+authenticated session in the sidebar, never a client-selected tenant or
+hard-coded facility name. Restricted previews retain the explicit
+`Preview · no data access` label and never mount protected read components.
+
+The operational dashboard leads with ledger-confirmed units, uncommitted scan
+states, and last projection, then the confirmed/available eight-blood-type
+chart and a compact accessible aggregate table. A missing projection is not a
+confirmed zero. The chart uses only approved aggregate fields, not inferred
+shortage, expiry, or redistribution status. The authorized ROLE-01/ROLE-02
+Capture PWA link belongs on Blood Inventory, not on the dashboard.
 
 Actions are ordered from quiet to dominant, with at most one primary-red action
 per action group.

@@ -21,6 +21,7 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
   const [error, setError] = useState("");
   const [refreshedAt, setRefreshedAt] = useState<string>();
   const requestSequence = useRef(0);
+  const canOpenCapture = ["ROLE-01", "ROLE-02"].includes(principal.roleId) && principal.institutionId === "INST_MEDIATRIX";
   const canReadIntake = ["ROLE-01", "ROLE-02"].includes(principal.roleId);
 
   const refresh = useCallback(async () => {
@@ -79,6 +80,7 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
         setRefreshedAt(undefined);
         setVersion(event.target.value as V2ContractVersion);
       }}><option value="V2">V2 core components</option><option value="V2.1">V2.1 including cryoprecipitate</option></select></label>
+      {canOpenCapture && <a className="button primary inventory-capture-action" href="/capture/">Open capture workspace</a>}
       <button className="button compact" onClick={() => void refresh()} disabled={busy}>{busy ? "Refreshing…" : "Refresh"}</button>
     </div>
 

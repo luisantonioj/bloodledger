@@ -25,7 +25,7 @@ export function FeatureRouter({path,canAcknowledge=false,canSubmitTransfer=false
   if(!endpoint[path])return <div className="empty"><strong>Data unavailable</strong>The official feature API is not implemented yet. Runtime mock fallback is disabled.</div>;
   if(!state.data&&state.busy)return <div className="empty" aria-live="polite"><strong>Loading authorized data</strong>Waiting for the official API.</div>;
   if(!state.data)return <div className="empty" role="alert"><strong>Unable to load data</strong>{state.error}<br/><button className="button" onClick={state.manual}>Retry</button></div>;
-  if(path==="/")return <DashboardView data={state.data as Dashboard} canCapture={canCapture} refreshError={state.error} onRetry={state.manual}/>;
+  if(path==="/")return <DashboardView data={state.data as Dashboard} refreshError={state.error} onRetry={state.manual}/>;
   const withRefreshState=(view:ReactNode)=><>{state.error&&<div className="v2-inline-state warning" role="status"><strong>Update unavailable</strong><span>{state.error}</span><span>Showing the last successfully loaded data.</span><button className="button compact" onClick={state.manual}>Retry update</button></div>}{view}</>;
   if(path==="/consortium")return withRefreshState(<ConsortiumView data={state.data as Consortium}/>);
   if(path==="/audit")return withRefreshState(<AuditView data={state.data as Audit}/>);

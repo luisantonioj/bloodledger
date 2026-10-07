@@ -13,12 +13,12 @@ const permissions = {
 } as const;
 
 const navigation: Record<RoleId, string[]> = {
-  "ROLE-01": ["Dashboard", "Inventory", "Transfers", "Alerts", "Analytics", "Profile"],
-  "ROLE-02": ["Dashboard", "Inventory", "Transfers", "Alerts", "Audit", "Analytics", "Profile"],
-  "ROLE-03": ["Dashboard", "Transfers", "Alerts", "Analytics", "Profile"],
-  "ROLE-04": ["Dashboard", "Inventory", "Transfers", "Alerts", "Network view", "Audit", "Reports", "Profile"],
-  "ROLE-05": ["Dashboard", "Accounts", "Profile"],
-  "ROLE-06": ["Dashboard", "Accounts", "Profile"],
+  "ROLE-01": ["Dashboard", "Blood Inventory", "Requests & Transfers", "Alerts", "Analytics", "Profile"],
+  "ROLE-02": ["Dashboard", "Blood Inventory", "Requests & Transfers", "Alerts", "Activity History", "Analytics", "Profile"],
+  "ROLE-03": ["Dashboard", "Requests & Transfers", "Alerts", "Analytics", "Profile"],
+  "ROLE-04": ["Dashboard", "Blood Inventory", "Requests & Transfers", "Alerts", "Activity History", "Network view", "Reports", "Profile"],
+  "ROLE-05": ["Dashboard", "Profile", "Accounts"],
+  "ROLE-06": ["Dashboard", "Profile", "Accounts"],
 };
 
 const timestamp = "2026-08-24T03:00:00.000Z";
@@ -118,12 +118,15 @@ function dashboardFor(roleId: RoleId) {
 async function authenticatedApi(page: Page, roleId: RoleId, override?: (route: Route, path: string) => boolean | Promise<boolean>, principalOverride: Partial<ReturnType<typeof principal>> = {}) {
   const activePrincipal = { ...principal(roleId), ...principalOverride };
   await page.route("**/api/**", async route => {
-    const path = new URL(route.request().url()).pathname;
+    const actualPath = new URL(route.request().url()).pathname;
+    // Delivered persistent integration uses V2 reads; reuse these test-only bodies.
+    const path = ({ "/api/v2/dashboard": "/api/v1/dashboard", "/api/v2/alerts": "/api/v1/alerts", "/api/v2/audit": "/api/v1/audit" } as Record<string, string>)[actualPath] ?? actualPath;
     if (override && await override(route, path)) return;
     if (path === "/api/v1/auth/session") return fulfillJson(route, { principal: activePrincipal });
     if (path === "/api/v1/reports/inventory.csv") return route.fulfill({ status: 200, contentType: "text/csv", body: "classification\nSIMULATION_ONLY\n" });
     if (path === "/api/v1/demand-forecasts") return fulfillJson(route, { ...forecastResponse, businessDate: new URL(route.request().url()).searchParams.get("businessDate") });
     if (path === "/api/v2/analytics/inventory-evidence") return fulfillJson(route, { schemaVersion: "BLOODLEDGER_INVENTORY_EVIDENCE_V1", institutionId: activePrincipal.institutionId, businessDate: new URL(route.request().url()).searchParams.get("businessDate"), evaluatedAt: "2026-10-01T04:00:00.000Z", evaluationDate: "2026-10-01", status: "UNAVAILABLE", unavailableReason: "ML_SNAPSHOT_UNAVAILABLE", snapshot: null, classification: "SIMULATION_ONLY", recommendationEligibility: "DISABLED_UNAPPROVED_POLICY" });
+    if (path === "/api/v2/transfers") return fulfillJson(route, { requests: [], reservations: [], timeline: [], classification: "SIMULATION_ONLY" });
     if (path === "/api/v2/components") return fulfillJson(route, { scope: "INSTITUTION", components: [v2Component], classification: "SIMULATION_ONLY" });
     if (path === "/api/v2/reports/inbound-intake") return fulfillJson(route, { scope: "INSTITUTION", statuses: { QUEUED: 1 }, includedInventoryStatuses: ["COMMITTED"], excludedFromInventory: ["QUEUED", "FAILED", "CONFLICT"], classification: "SIMULATION_ONLY" });
     const body = responses[path];
@@ -144,7 +147,7 @@ for (const roleId of Object.keys(navigation) as RoleId[]) {
     await expect(page.locator(".facility-context")).toBeVisible();
     await expect(page.locator(".page-head")).toBeVisible();
     await expect(page.getByText(activePrincipal.institutionDisplayName, { exact: true })).toBeVisible();
-    await expect(page.getByText("SIMULATION ONLY", { exact: true })).toBeVisible();
+    await expect(page.getByText("Simulation only", { exact: true })).toBeVisible();
   });
 }
 
@@ -161,11 +164,11 @@ test("two synthetic secondary hospitals share structure while retaining distinct
       return true;
     }, { institutionId, institutionDisplayName });
     await page.goto("/");
-    await expect(page.getByText("Secondary-hospital coordination", { exact: true })).toBeVisible();
-    await expect(page.getByText(`${institutionDisplayName} requests, transfers, receipts, and alerts with approved city-wide inventory aggregates.`, { exact: true })).toBeVisible();
-    const confirmed = page.locator(".stats article").filter({ hasText: "Ledger-confirmed" }).locator("strong");
+    await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+    await expect(page.locator(".facility-context")).toContainText(institutionDisplayName);
+    const confirmed = page.locator(".stats article").filter({ hasText: "Ledger-confirmed units" }).locator("strong");
     await expect(confirmed).toHaveText(String(confirmedCount));
-    await expect(page.getByRole("link", { name: "Inventory", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Blood Inventory", exact: true })).toHaveCount(0);
     await context.close();
   }
 });
@@ -183,15 +186,16 @@ test("PRC, DOH, and administrators receive truthful non-operational compositions
     await authenticatedApi(page, roleId, undefined, { institutionId, institutionDisplayName });
     await page.goto("/");
     await expect(page.getByText(institutionDisplayName, { exact: true })).toBeVisible();
-    await expect(page.getByRole("main").locator(".eyebrow")).toHaveText(eyebrow);
+    await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+    await expect(page.getByRole("main").locator(".page-head .eyebrow")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Open capture workspace" })).toHaveCount(0);
     if (roleId === "ROLE-04") {
-      await expect(page.getByText("Ledger-confirmed", { exact: true })).toBeVisible();
+      await expect(page.getByText("Ledger-confirmed units", { exact: true })).toBeVisible();
       await expect(page.getByText("Non-clinical workspace", { exact: true })).toHaveCount(0);
       await expect(page.getByRole("link", { name: "Analytics", exact: true })).toHaveCount(0);
     } else {
       await expect(page.getByText("Non-clinical workspace", { exact: true })).toBeVisible();
-      await expect(page.getByText("Ledger-confirmed", { exact: true })).toHaveCount(0);
+      await expect(page.getByText("Ledger-confirmed units", { exact: true })).toHaveCount(0);
     }
     await context.close();
   }
@@ -264,7 +268,7 @@ test.skip("retired V1 secondary request mutation fixture", async ({ page }) => {
     return true;
   });
   await page.goto("/");
-  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
   await page.getByLabel("Blood type").selectOption("O_POSITIVE");
   await page.getByLabel("Component").selectOption("PLATELETS");
   await page.getByLabel("Quantity").fill("3");
@@ -314,7 +318,7 @@ test.skip("retired V1 FEFO approval mutation fixture", async ({ page }) => {
     return false;
   });
   await page.goto("/");
-  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
   await expect(page.locator(".transfer-overview")).toBeVisible();
   await expect(page.locator(".transfer-route")).toContainText("INST_MEDIATRIX");
   await expect(page.getByRole("button", { name: "View", exact: true })).toBeInViewport({ ratio: 1 });
@@ -366,7 +370,7 @@ test.skip("retired V1 rejection mutation fixture", async ({ page }) => {
     return false;
   });
   await page.goto("/");
-  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
   await page.getByRole("button", { name: "View", exact: true }).click();
   await page.getByRole("button", { name: "Reject request", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("retry the same rejection");
@@ -412,7 +416,7 @@ test.skip("retired V1 cancellation mutation fixture", async ({ page }) => {
     return false;
   });
   await page.goto("/");
-  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
   await page.getByRole("button", { name: "View", exact: true }).click();
   await page.getByRole("button", { name: "Cancel transfer", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("retry the same cancellation");
@@ -458,7 +462,7 @@ test.skip("retired V1 dispatch mutation fixture", async ({ page }) => {
     return false;
   });
   await page.goto("/");
-  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
   await page.getByRole("button", { name: "View", exact: true }).click();
   await page.getByLabel("Fallback reason").selectOption("PERMISSION_DENIED");
   await page.getByRole("button", { name: "Record dispatch" }).click();
@@ -534,7 +538,7 @@ test.skip("retired V1 transit mutation fixture", async ({ page }) => {
     return false;
   });
   await page.goto("/");
-  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
   await page.getByRole("button", { name: "View", exact: true }).click();
   await page.getByRole("button", { name: "Start transit", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("retry the same transit transition");
@@ -597,7 +601,7 @@ test.skip("retired V1 receipt mutation fixture", async ({ page }) => {
     return false;
   }, { institutionId: "INST_METRO_LIPA", institutionDisplayName: "Synthetic Metro Lipa Hospital" });
   await page.goto("/");
-  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
   await page.getByRole("button", { name: "View", exact: true }).click();
   await page.getByLabel("Fallback reason").selectOption("SIGNAL_UNAVAILABLE");
   await page.getByRole("button", { name: "Record receipt" }).click();
@@ -621,7 +625,7 @@ test("legacy V1 transfer mutations stay unavailable while canonical V2 entry poi
     const page = await context.newPage();
     await authenticatedApi(page, roleId);
     await page.goto("/");
-    await page.getByRole("link", { name: "Transfers", exact: true }).click();
+    await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
     await expect(page.getByRole("button", { name: canonicalButton, exact: true })).toBeVisible();
     await expect(page.getByText("Canonical reservation actions unavailable", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /Submit request|Approve FEFO selection|Reject request|Cancel transfer|Record dispatch|Start transit|Record receipt/ })).toHaveCount(0);
@@ -683,7 +687,7 @@ test("regulatory navigation renders every selected read-only page and CSV bounda
   page.on("pageerror", error => pageErrors.push(error.message));
   await authenticatedApi(page, "ROLE-04");
   await page.goto("/");
-  for (const [label, heading, path] of [["Inventory", "Inventory", "/inventory"], ["Transfers", "Transfers", "/transfers"], ["Alerts", "Alerts", "/alerts"], ["Network view", "Network view", "/consortium"], ["Audit", "Audit", "/audit"], ["Reports", "Reports", "/reporting"], ["Profile", "Profile", "/profile"]] as const) {
+  for (const [label, heading, path] of [["Blood Inventory", "Blood Inventory", "/inventory"], ["Requests & Transfers", "Requests & Transfers", "/transfers"], ["Alerts", "Alerts", "/alerts"], ["Network view", "Network view", "/consortium"], ["Activity History", "Activity History", "/audit"], ["Reports", "Reports", "/reporting"], ["Profile", "Profile", "/profile"]] as const) {
     await page.getByRole("link", { name: label, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${path}$`));
     expect(pageErrors).toEqual([]);
@@ -721,12 +725,14 @@ test("latest visual baseline stays role-scoped while Sprint 6 integrations remai
   await expect(page.getByText("Inventory validity unavailable", { exact: true })).toBeVisible();
   await expect(page.getByText("SYNTHETIC_FORECAST_V4_RUNTIME_V1", { exact: true }).first()).toBeVisible();
 
-  await page.getByRole("link", { name: "Inventory", exact: true }).click();
+  await page.getByRole("link", { name: "Blood Inventory", exact: true }).click();
   await expect(page.getByText("Committed component registry", { exact: true })).toBeVisible();
   await expect(page.getByText("CMP_SYNTH_BROWSER_01", { exact: true })).toBeVisible();
 
-  await page.getByRole("link", { name: "Transfers", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Export filtered PDF" })).toBeDisabled();
+  await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "V2 transfers and reservations", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Start local release", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export filtered PDF" })).toHaveCount(0);
 
   await page.getByRole("link", { name: "Profile", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Staff Directory" })).toBeVisible();
@@ -780,7 +786,7 @@ test("ROLE-02 submits one canonical V2 local release and polls the accepted comm
   });
 
   await page.goto("/");
-  await page.getByRole("link", { name: "Transfers", exact: true }).click();
+  await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
   await page.getByRole("button", { name: "Queue local release", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Committed", exact: true })).toBeVisible({ timeout: 10_000 });
   await expect(page.getByRole("button", { name: "Command accepted", exact: true })).toBeDisabled();
@@ -817,7 +823,7 @@ test("committed projection becomes visible within the frontend NFR-06 budget", a
     return true;
   });
   await page.goto("/");
-  const confirmedCount = page.locator(".stats article").filter({ hasText: "Ledger-confirmed" }).locator("strong");
+  const confirmedCount = page.locator(".stats article").filter({ hasText: "Ledger-confirmed units" }).locator("strong");
   const pendingCount = page.locator(".stats article").filter({ hasText: "Uncommitted scan states" }).locator("strong");
   await expect.poll(() => page.evaluate(() => document.visibilityState)).toBe("visible");
   await expect(confirmedCount).toHaveText("1");
@@ -849,7 +855,7 @@ test("failed dashboard load exposes a non-destructive retry and recovers", async
   await page.goto("/");
   await expect(page.getByRole("alert")).toContainText("Projection is temporarily unavailable.");
   await page.getByRole("button", { name: "Retry" }).click();
-  await expect(page.getByText("Ledger-confirmed", { exact: true })).toBeVisible();
+  await expect(page.getByText("Ledger-confirmed units", { exact: true })).toBeVisible();
   expect(dashboardCalls).toBe(2);
 });
 
@@ -862,7 +868,7 @@ test("inventory exposes loading and empty states without inventing committed dat
     return true;
   });
   await page.goto("/");
-  await page.getByRole("link", { name: "Inventory", exact: true }).click();
+  await page.getByRole("link", { name: "Blood Inventory", exact: true }).click();
   await expect(page.getByText("Loading V2 component inventory", { exact: true })).toBeVisible();
   expect(releaseInventory).toBeDefined();
   releaseInventory?.();
@@ -879,7 +885,7 @@ test("refresh failure preserves confirmed data and backs off until manual retry"
     return true;
   });
   await page.goto("/");
-  await expect(page.getByText("Ledger-confirmed", { exact: true })).toBeVisible();
+  await expect(page.getByText("Ledger-confirmed units", { exact: true })).toBeVisible();
   await expect(page.getByRole("status")).toContainText("Showing the last confirmed view. Refresh failed: Projection is temporarily unavailable.");
   expect(dashboardCalls).toBe(2);
   await page.waitForTimeout(2_200);
@@ -899,8 +905,8 @@ test("route changes clean up the previous poller and refresh only the active pag
   });
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Inventory", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Inventory", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Blood Inventory", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Blood Inventory", exact: true })).toBeVisible();
   await expect(page.locator(".blood-type")).toHaveText("A+");
   await page.waitForTimeout(5_200);
   expect(dashboardCalls).toBe(1);
@@ -949,23 +955,14 @@ test("administrators can review the visual-only account workspace without mutati
   await expect(page.getByText("Boundary: No clinical, custody, or transfer authority by default.", { exact: true })).toBeVisible();
 });
 
-test("visual parity controls remain local previews without connected claims", async ({ page }) => {
+test("restored shell omits disconnected preview controls and keeps simulation scope", async ({ page }) => {
   await authenticatedApi(page, "ROLE-01");
   await page.goto("/");
-  await page.getByLabel("Search records").fill("SYNTH-UNIT");
-  await expect(page.getByText("No connected results for")).toBeVisible();
-  await expect(page.getByText("Search API unavailable", { exact: true })).toHaveCount(3);
-  await page.getByRole("button", { name: "Close search preview" }).click();
-  await page.getByRole("button", { name: "Open notifications preview" }).click();
-  await expect(page.getByText("No connected notification feed", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Close notifications preview" }).click();
-  await page.getByRole("button", { name: "Open design preview controls" }).click();
-  await page.getByRole("button", { name: "Dark" }).click();
-  await expect(page.locator(".shell")).toHaveClass(/preview-dark/);
-  await page.getByRole("button", { name: "Green accent" }).click();
-  await expect(page.locator(".shell")).toHaveClass(/preview-accent-green/);
-  await page.getByRole("button", { name: "Compact" }).click();
-  await expect(page.locator(".shell")).toHaveClass(/preview-compact/);
+  await expect(page.getByLabel("Search records")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Open notifications preview" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Open design preview controls" })).toHaveCount(0);
+  await expect(page.locator(".top-status")).toHaveText("Simulation only");
+  await expect(page.locator(".dashboard-stats article")).toHaveCount(3);
 });
 
 // FR-14 / BR-ALG-07: mocked HTTP UI evidence; no institution activation.
