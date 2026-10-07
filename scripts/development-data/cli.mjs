@@ -10,7 +10,8 @@ import { PostgresV2Projector } from '../../services/api/build/src/database-v2.js
 import { PostgresSessionRepository } from '../../services/api/build/src/database-session.js';
 import { verifyPassword } from '../../services/api/build/src/session.js';
 import { PostgresMlInventorySnapshotStore } from '../../services/api/build/src/census-worker.js';
-import policy from '../../chaincode/policy/interview-core-v2.json' with {type:'json'};
+import policy from '../../chaincode/policy/interview-core-v2-1.json' with {type:'json'};
+import developmentPolicy from '../../chaincode/policy/persistent-development-core-v1.json' with {type:'json'};
 
 async function main() {
 const args=process.argv.slice(2);const action=args[0]?.startsWith('--')?'preview':args.shift()??'preview';const options={};
@@ -32,17 +33,22 @@ try {
   const target={genesisSha256:await ledger.genesisDigest(),database:process.env.POSTGRES_DB,instanceId:identity.instance_id,volume:process.env.DEVELOPMENT_TARGET_VOLUME,volumeCreatedAt:process.env.DEVELOPMENT_TARGET_VOLUME_CREATED,channel:'bloodledger-dev'};
   if(!target.volume||!target.volumeCreatedAt) throw new Error('SEED_RETAINED_VOLUME_EVIDENCE_REQUIRED');
   const targetSha256=digest(target);
-  const repo=new PostgresSessionRepository(pool);const principals={};
+  const repo=new PostgresSessionRepository(pool);const principals={};const policyVersions={};const policySha256={};
   for(const name of ['coordinator','recipient']) {
     const privateAccount=config.accounts?.[name];if(!privateAccount) throw new Error('SEED_ACCOUNT_MAPPING_REQUIRED');
     const credential=await repo.findCredential(privateAccount.username);
     if(!credential||!await verifyPassword(privateAccount.password,credential)) throw new Error('SEED_ACCOUNT_CREDENTIAL_INVALID');
-    const actor=policy.actors[credential.userId];
+    const activePolicy=developmentPolicy.developmentActorIds.includes(credential.userId)?developmentPolicy:policy;
+    const actor=activePolicy.actors[credential.userId];
     if(!actor||actor.role!==credential.roleId.replace('-','_')||actor.institutionId!==credential.institutionId||credential.roleId!==(name==='coordinator'?'ROLE-02':'ROLE-03')) throw new Error('SEED_FABRIC_ACTOR_MAPPING_REQUIRED');
     principals[name]={userId:credential.userId,institutionId:credential.institutionId,roleId:credential.roleId};
+    // Match the contract's immutable parsed-JSON serialization, not manifest canonicalization.
+    policyVersions[name]=activePolicy.policyVersion;policySha256[name]=digest(JSON.stringify(activePolicy));
+    const installed=JSON.parse(Buffer.from(await ledger.contract.evaluateTransaction('ReadActorPolicy',JSON.stringify({actorUserId:credential.userId,policyVersion:activePolicy.policyVersion}))).toString('utf8'));
+    if(installed.userId!==credential.userId||installed.role!==actor.role||installed.institutionId!==actor.institutionId||installed.policyVersion!==activePolicy.policyVersion||installed.policySha256!==policySha256[name]||installed.classification!=='SIMULATION_ONLY') throw new Error('SEED_INSTALLED_POLICY_MISMATCH');
   }
   if(action==='inspect') {
-    console.log(canonical({target,targetSha256,principals,classification:'SIMULATION_ONLY',prerequisites:{keys:!!(process.env.BLOODLEDGER_DONATION_ENCRYPTION_KEY&&process.env.BLOODLEDGER_DONATION_LOOKUP_KEY),migration:true}}));
+    console.log(canonical({target,targetSha256,principals,policyVersions,policySha256,classification:'SIMULATION_ONLY',prerequisites:{keys:!!(process.env.BLOODLEDGER_DONATION_ENCRYPTION_KEY&&process.env.BLOODLEDGER_DONATION_LOOKUP_KEY),migration:true}}));
   } else {
     if(config.targetSha256!==targetSha256) throw new Error('SEED_APPROVED_TARGET_MISMATCH');
     if(action==='census') {
@@ -52,12 +58,14 @@ try {
     } else if(action==='preview') {
       const labels=await recognizeScenarios(scenarios(options.date));
       const generatedAt=new Date().toISOString();
-      const manifest={schemaVersion:'PERSISTENT_DEVELOPMENT_SEED_V1',classification:'SIMULATION_ONLY',target,targetSha256,businessDate:options.date,principals,generatedAt,labels,scenarios:['FIVE_TYPES_AVAILABLE','ACTIVE_RESERVATION','PREPARED_DISPATCHED_IN_TRANSIT','PENDING_REQUEST','EXPIRED','IMMINENT_EXPIRY_POLICY_DISABLED']};
+      const manifest={schemaVersion:'PERSISTENT_DEVELOPMENT_SEED_V1',classification:'SIMULATION_ONLY',target,targetSha256,businessDate:options.date,principals,policyVersions,policySha256,generatedAt,labels,scenarios:['FIVE_TYPES_AVAILABLE','ACTIVE_RESERVATION','PREPARED_DISPATCHED_IN_TRANSIT','PENDING_REQUEST','EXPIRED','IMMINENT_EXPIRY_POLICY_DISABLED']};
       manifest.seedId=id('SEED_',`${targetSha256}|${options.date}|V1`);manifest.manifestSha256=digest(manifest);
       await savedFile(options.output,manifest);console.log(canonical({seedId:manifest.seedId,manifestSha256:manifest.manifestSha256,componentCount:labels.length,confirmationRequired:'Review exact recognized synthetic fields and approve manifest hash. This constitutes synthetic operator confirmation only.'}));
     } else {
       const manifest=JSON.parse(await readFile(options.manifest,'utf8'));const {manifestSha256,...unsigned}=manifest;
       if(manifestSha256!==digest(unsigned)||manifest.targetSha256!==targetSha256||canonical(manifest.principals)!==canonical(principals)||manifest.classification!=='SIMULATION_ONLY'||manifest.schemaVersion!=='PERSISTENT_DEVELOPMENT_SEED_V1'||options['approve-manifest']!==manifestSha256) throw new Error('SEED_MANIFEST_OR_APPROVAL_INVALID');
+      const legacyVersions={coordinator:policy.policyVersion,recipient:policy.policyVersion};
+      if(canonical(manifest.policyVersions??legacyVersions)!==canonical(policyVersions)||(manifest.policySha256&&canonical(manifest.policySha256)!==canonical(policySha256))) throw new Error('SEED_MANIFEST_POLICY_MISMATCH');
       const lock=await pool.connect();
       try {
         const acquired=(await lock.query('SELECT pg_try_advisory_lock(hashtextextended($1,0)) AS acquired',['development-seed:'+manifest.seedId])).rows[0].acquired;if(!acquired) throw new Error('SEED_ALREADY_RUNNING');
@@ -133,7 +141,7 @@ try {
         const expiredId=componentIds.EXPIRED;const expiryKey=key('EVALUATE_EXPIRY');
         // Accepted deterministic expiry has no public endpoint: authenticated actor above,
         // same durable store/gateway/projector, scoped exclusively to this synthetic component.
-        if(action!=='verify'&&!await store.get(id('CMD_',expiryKey),principals.coordinator.institutionId,principals.coordinator.userId)) await store.enqueue({commandId:id('CMD_',expiryKey),idempotencyKey:expiryKey,resourceType:'COMPONENT',resourceId:expiredId,operation:'EVALUATE_COMPONENT_EXPIRY',payload:{componentId:expiredId,expectedVersion:1,evaluationTime:manifest.generatedAt,eventTime:manifest.generatedAt,actorUserId:principals.coordinator.userId,correlationId:corr('expiry'),policyVersion:'INTERVIEW_DERIVED_CORE_V2_1'},correlationId:corr('expiry'),actorUserId:principals.coordinator.userId,actorInstitutionId:principals.coordinator.institutionId,acceptedAt:new Date().toISOString()});
+        if(action!=='verify'&&!await store.get(id('CMD_',expiryKey),principals.coordinator.institutionId,principals.coordinator.userId)) await store.enqueue({commandId:id('CMD_',expiryKey),idempotencyKey:expiryKey,resourceType:'COMPONENT',resourceId:expiredId,operation:'EVALUATE_COMPONENT_EXPIRY',payload:{componentId:expiredId,expectedVersion:1,evaluationTime:manifest.generatedAt,eventTime:manifest.generatedAt,actorUserId:principals.coordinator.userId,correlationId:corr('expiry'),policyVersion:policyVersions.coordinator},correlationId:corr('expiry'),actorUserId:principals.coordinator.userId,actorInstitutionId:principals.coordinator.institutionId,acceptedAt:new Date().toISOString()});
         if(action!=='verify') await pool.query('INSERT INTO app.development_seed_commands(seed_id,command_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[manifest.seedId,id('CMD_',expiryKey)]);
         await send('coordinator','',{},expiryKey);
         const components=(await pool.query('SELECT component_id,blood_type,component_type,collected_at,expires_at,inventory_status,ledger_version,ledger_transaction_id FROM app.v2_components WHERE component_id=ANY($1::text[])',[Object.values(componentIds)])).rows;

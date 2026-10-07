@@ -5,6 +5,7 @@ const jsonFiles = [
   "policy/synthetic-inventory-v1.json",
   "policy/synthetic-transfer-v1.json",
   "policy/interview-core-v2.json",
+  "policy/persistent-development-core-v1.json",
   "tsconfig.json",
 ];
 for (const file of jsonFiles) {
