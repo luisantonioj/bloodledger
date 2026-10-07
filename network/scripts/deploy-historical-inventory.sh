@@ -23,11 +23,9 @@ docker run --rm -v "$repository_root:/workspace" -w /workspace node:24.17.0 \
 package_digest="$(find chaincode/build/package/dist -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d ' ' -f1)"
 label="bloodledger-historical-v1_${package_digest:0:12}"
 archive="${inventory_build_root}/${label}.tgz"
-metadata_dir="$(mktemp -d "$inventory_build_root/historical-package.XXXXXX")"
-trap 'rm -rf -- "$metadata_dir"' EXIT
-printf '{"path":"/chaincode/build/package","type":"node","label":"%s"}\n' "$label" > "$metadata_dir/metadata.json"
-tar -czf "$metadata_dir/code.tar.gz" -C "$inventory_package_root" .
-tar -czf "$archive" -C "$metadata_dir" metadata.json code.tar.gz
+# Use Fabric's packager: the Node builder requires code.tar.gz contents under src/.
+inventory_tools_run peer lifecycle chaincode package "/chaincode/build/$(basename "$archive")" \
+  --path /chaincode/build/package --lang node --label "$label"
 package_id="$(calculate_inventory_package_id "$archive")"
 installed="$(inventory_tools_run peer lifecycle chaincode queryinstalled --output json)"
 if ! jq -e --arg id "$package_id" '.installed_chaincodes | any(.package_id==$id)' <<< "$installed" >/dev/null; then

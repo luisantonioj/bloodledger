@@ -40,13 +40,13 @@ docker run --rm -v "${repository_root}:/workspace" -w /workspace node:24.17.0 \
 umask 077
 source_file="$(mktemp /tmp/bloodledger-historical-source.XXXXXX)"
 trap 'rm -f -- "${source_file}"' EXIT
-docker run --rm --network none --read-only --tmpfs /tmp \
+docker run --rm --user "$(id -u):$(id -g)" --network none --read-only --tmpfs /tmp \
   -v "${repository_root}/services/forecasting:/forecasting:ro" -v "${workbook}:/source/workbook.xlsx:ro" \
   -e PYTHONPATH=/forecasting/src -e PYTHONDONTWRITEBYTECODE=1 --entrypoint python \
   sha256:dcb2ccd36834bcec33e3d5cb8158f2b7a75b0881f695821cc705764667fba4c1 -m bloodledger_forecasting.historical_snapshot \
   --workbook /source/workbook.xlsx --sha256 "${digest}" --business-date "${business_date}" > "${source_file}"
 # The pinned Node runtime accesses only this project's network and volumes.
-docker run --rm -i --network bloodledger_default -v "${repository_root}:${repository_root}" \
+docker run --rm -i --user "$(id -u):$(id -g)" --network bloodledger_default -v "${repository_root}:${repository_root}" \
   -v "${workbook}:${workbook}:ro" "${extra_mounts[@]}" -w "${repository_root}" \
   -e HISTORICAL_PG_HOST=postgres -e FABRIC_PEER_ENDPOINT=peer0-mediatrix:7051 \
   node:24.17.0 node scripts/historical-inventory/cli.mjs "${arguments[@]}" < "${source_file}"
