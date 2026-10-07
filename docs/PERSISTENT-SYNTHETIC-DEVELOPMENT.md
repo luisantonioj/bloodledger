@@ -29,3 +29,32 @@ The executable reproduction and remaining host prerequisites are maintained in
 does not supply local release, receipt, compromise or autonomous algorithm
 examples. Existing V1 history remains separately readable without being added
 to V2 stock totals.
+
+## Retained actor mapping decision — 2026-10-08
+
+Status: Accepted for simulation implementation by Jopia in the current conversation.
+Related: FR-12, NFR-02, ADR-031 and BR-INV-07. Source: Lat's retained-environment
+handoff on PR #21, comment 6043857862; tested baseline e9a91d087819fab454bd3a033c7b22cdeaca1c71.
+
+A new immutable `PERSISTENT_DEVELOPMENT_CORE_V1` policy derives from V2.1 and
+adds only `USR_SYNTH_REVIEW_ROLE02` (ROLE-02 / INST_MEDIATRIX) and
+`USR_SYNTH_REVIEW_ROLE03` (ROLE-03 / INST_SYNTH_SECONDARY_REVIEW).
+The existing policy versions and existing principals remain unchanged. The
+recipient retains its synthetic institution; it is not an alias for Divine Love.
+This is an explicit development actor allowlist decision, not institutional
+onboarding or permission to broaden either role.
+
+Authenticated V2.1 commands select this policy only for the exact approved
+user/role/institution tuples. Wrong tuples fail closed. New writes and reviewed
+seed manifests record the policy version; saved commands preserve their policy
+on replay. An additive, package-verified Fabric lifecycle upgrade retains all
+contract namespaces, endorsement, channel state, identities and volumes. No
+account changes, account reseed or database migration are selected.
+
+Jopia validates the patch with self-validation disclosed; Lat validates the
+retained host. Lat must separately inspect/review the actual target fingerprint,
+seed manifest and V5 binding/job hashes. The initial operational preview uses an
+explicit reviewed execution date; replay preserves it. Historical source date
+stays 2026-10-07 and import stays blocked until Buno supplies the exact workbook.
+V4 remains default; all research, UAT, operational activation and deployment gates
+remain open. No populated integration pass is implied by this decision.
