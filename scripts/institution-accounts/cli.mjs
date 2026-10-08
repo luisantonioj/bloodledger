@@ -25,9 +25,10 @@ try{
   if(action==='inspect'){await save({target,targetDigest,classification:'SIMULATION_ONLY'});}
   else{
     if(config.targetDigest!==targetDigest)throw new Error('ACCOUNT_APPROVED_TARGET_MISMATCH');
-    if(action==='preview')await save(await previewAccountMigration(pool,targetDigest));
+    if(action==='preview')await save(await previewAccountMigration(pool,targetDigest,config.legacyBaselineVersion));
     else if(action==='apply'||action==='resume'){
       const manifest=await privateJson(options.manifest);
+      if(manifest.legacyBaselineVersion!==config.legacyBaselineVersion)throw new Error('ACCOUNT_BASELINE_APPROVAL_MISMATCH');
       if(manifest.manifestSha256!==options['approve-manifest'])throw new Error('ACCOUNT_MANIFEST_APPROVAL_REQUIRED');
       if(!options.backup||(await stat(options.backup)).size<100||(await stat(options.backup)).mode&0o077)throw new Error('ACCOUNT_PRIVATE_BACKUP_REQUIRED');
       if(config.backupSha256!==createHash('sha256').update(await readFile(options.backup)).digest('hex'))throw new Error('ACCOUNT_APPROVED_BACKUP_MISMATCH');
