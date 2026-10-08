@@ -11,6 +11,14 @@ reconciliation in progress
 `sprint-05-accepted-2026-08-24`
 **Classification:** `SIMULATION_ONLY`
 
+## Selected operational stock preparation — 2026-10-08
+
+The user's Jopia instruction selects TP-STOCK-01 under BL-TST-01 for
+[controlled OCR population](OPERATIONAL-STOCK-POPULATION.md), based on PR26/27
+and the retained institution integration. This authorizes implementation and
+technical self-validation; actual population requires verified source/scenario,
+target, preservation and FEFO checks. No Testing-phase exit or UAT gate closes.
+
 ## 1. Phase goal
 
 Validate the accepted BloodLedger research prototype as an integrated system
