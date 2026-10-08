@@ -83,7 +83,7 @@ try {
       await page.getByRole('link',{name:'Accounts',exact:true}).click();await page.getByRole('heading',{name:'Institution accounts',exact:true}).waitFor();
       const directory=await (await context.request.get(base+'/api/v2/onboarding/institutions')).json();assert.equal(directory.institutions.length,6);
       assert.deepEqual(directory.institutions.map(i=>i.username).sort(),policy.accounts.map(a=>a.username).sort());
-      if(process.env.BLOODLEDGER_ACCOUNT_READ_ONLY!=='true'){
+      if(process.env.BLOODLEDGER_ACCOUNT_ALLOW_PROFILE_MUTATION==='true'){
       const medix=page.locator('table').first().locator('tbody tr').filter({hasText:'Synthetic Medix'});await medix.getByRole('button',{name:'Edit profile',exact:true}).click();
       await page.getByLabel('Synthetic institution name',{exact:true}).fill('Synthetic Medix');
       await page.getByRole('button',{name:'Verify and submit change',exact:true}).click();

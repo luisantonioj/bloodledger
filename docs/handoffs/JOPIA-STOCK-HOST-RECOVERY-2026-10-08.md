@@ -129,7 +129,7 @@ over the retained ledger.
 | Secret scan | PASS: history/index/candidate; Gitleaks 8.30.1, unchanged allowlist |
 | Real browser 5174 → 3000 | PASS before and after restart: six HttpOnly-cookie logins, scope, historical rows, census, V4 default, V5 unavailable, operator prompt/cancellation, DOH denial and protected-data clearing; no interception |
 | Ordinary restart | PASS: PostgreSQL, orderer, peer, API and web; identity/domain/volume preservation verified |
-| Live stock intake/reservation/559 VALID receipts | IN_PROGRESS after exact user approval; no final acceptance claim |
+| Live stock intake/reservation/559 VALID receipts | BLOCKED before command creation by an institution fingerprint change; original approved execution superseded, fresh preview in progress |
 | Live OCR preview | PASS: all 522 fields recognized at confidence ≥90; collision/global FEFO/preservation checks passed; exact hash confirmed by user |
 | Independent Lat acceptance | NOT_RUN; Jopia browser checks are self-validation |
 
@@ -254,3 +254,32 @@ near-expiry remains disabled. Fixture interception or port 5175 does not count.
 Durable-runtime ordinary-cookie browser verification also passed all six
 accounts after moving the worktree and restarting API/web from the tested
 startup script. This remains Jopia self-validation.
+
+
+## Preservation stop and browser regression disposition
+
+Apply of approved execution `0c3bda8baba5efd34e5d85e21c8874c5cabd32b706bd0033b17bb061aad00776`
+returned `STOCK_BASELINE_PRESERVATION_FAILED` before creating a run or stock
+command. Counts remained: zero operational-stock runs, zero stock commands,
+nine components. No new ledger inventory mutation or projection occurred.
+
+The durable-runtime browser invocation omitted its old opt-out flag and ran
+its PRC profile-save step. Although the submitted display name was unchanged,
+the canonical profile endpoint incremented `INST_SYNTH_MEDIX.version` from
+2 to 3. A complete isolated restore of `before-stock.dump` and private row
+comparison proved that this was the only institution column difference.
+Unrelated domain fingerprints remained unchanged. The version/audit history is
+retained; it was not reverted to force the old preview hash to pass.
+
+The live browser now runs reads by default. Profile writes require explicit
+`BLOODLEDGER_ACCOUNT_ALLOW_PROFILE_MUTATION=true`. Re-running its default
+against 5174 → 3000 passed all six accounts and matched exact before/after
+institution rows. No profile action was submitted in the corrected run.
+No new operational capture or source scenario change is implied by this repair.
+
+A fresh six-account/nine-unit backup was fully restored and its instance checked:
+`ff233d25056b3f6c4e9a2898aae6c5d576f89b93ab82c1605e935752ba17ddea`.
+A fresh live OCR preview is being generated from the same reviewed scenario.
+The old preview, execution, approval and failure evidence remain private and
+unchanged. Fresh exact confirmation/approval is required; this evidence does
+not declare the old execution accepted or silently rebase its fingerprints.
