@@ -66,6 +66,8 @@ async function transaction<T>(pool: Pool, action: (client: PoolClient) => Promis
 
 export async function provisionSyntheticAccount(pool: Pool, input: SyntheticAccountInput): Promise<ProvisionedSyntheticAccount> {
   validateInput(input);
+  const model=await pool.query("SELECT 1 FROM app.institution_account_migrations LIMIT 1");
+  if(model.rows.length)throw new Error("ACCOUNT_PRIMARY_REQUIRED: legacy provisioning is retired");
   return transaction(pool, async (client) => {
     await client.query(
       `INSERT INTO app.institutions(institution_id,display_name,category,status,classification)
