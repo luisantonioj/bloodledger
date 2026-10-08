@@ -373,3 +373,14 @@ scoped Fabric-backed operational seed, local historical re-import, census,
 explicit V5 preview and 5174 frontend → 3000 API recipe. It preserves existing
 accounts, unrelated data, volumes and ledger history. Stop/disabling the seed
 retains committed evidence; no reset is part of this workflow.
+
+## Retained institution-account migration
+
+The accepted synthetic institution-account extension uses the private,
+fingerprint-checked [migration runbook](INSTITUTION-ACCOUNTS.md#retained-host-migration-runbook).
+Legacy role-account provisioning is disabled after its migration checkpoint;
+use scoped administration for subsequent account/operator changes. Preserve
+existing volumes, identities and ledger history. The disposable
+`tests/accounts/postgres-integration.sh` has its own container and tmpfs and
+never resets retained resources. Lat's UI integration and retained-host rerun
+remain separate evidence.
