@@ -283,3 +283,15 @@ A fresh live OCR preview is being generated from the same reviewed scenario.
 The old preview, execution, approval and failure evidence remain private and
 unchanged. Fresh exact confirmation/approval is required; this evidence does
 not declare the old execution accepted or silently rebase its fingerprints.
+
+
+Fresh preview completed at `2026-10-08T10:31:10.271Z`:
+`680f530d452cdd990f3d6811b6dc94981193c7c55bbab42a2290055b2acbcf5f`.
+Actual OCR again recognized all 522 labels at field confidence ≥90. An
+independent private comparison proved that recognized label values, backend
+mappings, actor bindings, target and reservation membership are identical to
+the original confirmed preview. Capture timestamps/confidence evidence are
+fresh. Only the institution baseline fingerprint changed; all other baseline
+fingerprints remained identical. Collision/global FEFO/current-ledger/original
+receipt and preservation checks passed again. Zero stock commands and nine
+operational components remain. Exact fresh confirmation/approval is pending.
