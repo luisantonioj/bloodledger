@@ -366,3 +366,21 @@ acceptance cannot be claimed before the fixed Oct9 08:00 Manila window. Scoped
 writer protection remains active until successful T0 verification. Lat can
 perform reads while population is pending; independent mutation acceptance and
 new workflow navigation require the completed Jopia record.
+
+
+The user requested a pause during population. Only the population runner and
+read-only progress monitor were stopped; API/web/database/Fabric remained up.
+The checkpoint contained 18 new COMMITTED intakes, 18 saved VALID receipts and
+27 total operational components. The user subsequently authorized continuation
+inside the same population window. Resume uses the same execution/backup,
+re-verifies the saved operations and continues without rebasing or resubmitting
+completed intakes. The private pause checkpoint and both invocation logs remain.
+
+At `2026-10-08T12:50:58.863Z`, an independent authenticated ordinary-cookie API
+read returned 37 operational components: 34 AVAILABLE, 1 RESERVED, 1 IN_TRANSIT,
+1 EXPIRED. All five component types and actual V2.1 wire fields were present.
+The primary institution account read its operator's first command as COMMITTED;
+Medix received V2_COMMAND_NOT_FOUND for the same command, proving scoped status
+visibility. This is a partial observation, not 531-population acceptance or
+Lat's independent browser evidence. Full population/reconciliation/T0 remains
+in progress and must be reported after completion.
