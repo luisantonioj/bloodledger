@@ -3,12 +3,14 @@ set -euo pipefail
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 cd "$repository_root"
 source network/scripts/inventory-contract-lib.sh
+generated_root="${BLOODLEDGER_FABRIC_GENERATED_ROOT:-$generated_root}"
+channel_artifacts="$generated_root/channel-artifacts"
 [[ "${1:-}" == --apply && "${2:-}" == bloodledger-local && "$#" -eq 2 ]] || {
   echo 'Usage: bash network/scripts/deploy-institution-accounts.sh --apply bloodledger-local' >&2; exit 2;
 }
 # FR-12 / NFR-02: preserve trust, endorsement, namespaces and retained channel state.
 assert_health_prerequisites readonly
-version=institution-accounts-v1
+version=institution-accounts-v2
 current="$(inventory_tools_run peer lifecycle chaincode querycommitted --channelID "$channel_name" --output json)"
 definition="$(jq -c --arg name "$inventory_chaincode_name" '.chaincode_definitions[] | select(.name==$name)' <<< "$current")"
 [[ -n "$definition" ]] || { echo 'Existing domain chaincode definition is required' >&2; exit 1; }

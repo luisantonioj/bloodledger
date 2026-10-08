@@ -280,7 +280,9 @@ export class InterviewCoreContract extends Contract {
   @Returns("string")
   public async ReadComponentByIdentity(ctx: Context, inputJson: string): Promise<string> {
     const input = this.parseExactObject<Record<string, unknown>>(inputJson, ["actorUserId", "componentType", "donationNoDigest", "issuerInstitutionId"]);
-    this.assertGateway(ctx); this.assertActor(input.actorUserId); this.assertHash(input.donationNoDigest, "COMPONENT_DONATION_REFERENCE_INVALID"); if (!this.policyFor(input).componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
+    // FR-01/12: this read has no policyVersion field; inspect every accepted
+    // component type while retaining the installed actor/gateway checks.
+    this.assertGateway(ctx); this.assertActor(input.actorUserId); this.assertHash(input.donationNoDigest, "COMPONENT_DONATION_REFERENCE_INVALID"); if (!institutionPolicy.componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
     const key = this.identityKey(String(input.issuerInstitutionId), String(input.donationNoDigest), String(input.componentType)); const stored = await ctx.stub.getState(key); return stored.length === 0 ? "" : Buffer.from(stored).toString("utf8");
   }
 

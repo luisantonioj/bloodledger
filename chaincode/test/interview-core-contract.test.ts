@@ -45,6 +45,20 @@ const developmentVersion = "PERSISTENT_DEVELOPMENT_CORE_V1";
 const retainedCoordinator = "USR_SYNTH_REVIEW_ROLE02";
 const retainedRecipient = "USR_SYNTH_REVIEW_ROLE03";
 
+test("FR-01/12: identity lookup includes CRYO, preserves read-only replay and rejects unknown types/actors", async () => {
+  const contract = new InterviewCoreContract(); const context = new MockContext();
+  const input = {actorUserId:retainedCoordinator,componentType:"CRYOPRECIPITATE",donationNoDigest:digest("a"),issuerInstitutionId:"INST_MEDIATRIX"};
+  assert.equal(await contract.ReadComponentByIdentity(asContext(context),JSON.stringify(input)),"");
+  context.state.set(`component:identity:INST_MEDIATRIX:${digest("a")}:CRYOPRECIPITATE`,Buffer.from("COMP_EXISTING_CRYO"));
+  const before=[...context.state].map(([key,value])=>[key,value.toString()]);
+  for(let n=0;n<2;n++)assert.equal(await contract.ReadComponentByIdentity(asContext(context),JSON.stringify(input)),"COMP_EXISTING_CRYO");
+  assert.deepEqual([...context.state].map(([key,value])=>[key,value.toString()]),before);
+  await assert.rejects(contract.ReadComponentByIdentity(asContext(context),JSON.stringify({...input,componentType:"UNKNOWN"})),/COMPONENT_TYPE_UNSUPPORTED/);
+  await assert.rejects(contract.ReadComponentByIdentity(asContext(context),JSON.stringify({...input,actorUserId:"USR_UNKNOWN"})),/CORE_NOT_AUTHORIZED/);
+  context.mspId="UnknownMSP";
+  await assert.rejects(contract.ReadComponentByIdentity(asContext(context),JSON.stringify(input)),/CORE_NOT_AUTHORIZED/);
+});
+
 function retainedTransfer(overrides: Record<string, unknown> = {}) {
   return { actorUserId: retainedRecipient, bloodType: "A_POSITIVE", componentType: "CRYOPRECIPITATE", correlationId: "CORR_RETAINED_REQUEST", destinationInstitutionId: "INST_SYNTH_SECONDARY_REVIEW", eventTime: "2026-09-02T00:00:00.000Z", idempotencyKey: "IDEM_RETAINED_REQUEST", policyVersion: developmentVersion, quantity: 1, requestTime: "2026-09-02T00:00:00.000Z", sourceInstitutionId: "INST_MEDIATRIX", transferId: "TRF_RETAINED_001", urgency: "ROUTINE", ...overrides };
 }
