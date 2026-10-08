@@ -95,9 +95,12 @@ population. Reinspect its thirty-migration/six-account baseline; take the
 backup before applying the new forward migration
 `20261008040000000_add-operational-stock-journal.js`, then rebuild/restart the
 API using the retained-host startup runbook. This adds the thirty-first
-migration. Never run account provisioning, rollback, reset or enrollment to
-make the target match. The current implementation host is blocked as recorded
-in [Jopia's evidence](handoffs/JOPIA-OPERATIONAL-STOCK-IMPLEMENTATION-2026-10-08.md).
+migration. Account prerequisite repair on Jopia's separate two-account host is
+now authorized by the user's blocker-repair instruction and must use the
+[versioned recovery mapping](INSTITUTION-ACCOUNTS.md#jopia-two-account-baseline-recovery--2026-10-08).
+Do not pretend that this restores Lat's distinct target. Reset and enrollment
+remain prohibited. Live results are recorded separately in
+[Jopia's evidence](handoffs/JOPIA-OPERATIONAL-STOCK-IMPLEMENTATION-2026-10-08.md).
 
 Use an external mode-0700 directory and mode-0600 JSON configuration with
 `classification=SIMULATION_ONLY`, `scope=PERSISTENT_LOCAL_DEVELOPMENT`,

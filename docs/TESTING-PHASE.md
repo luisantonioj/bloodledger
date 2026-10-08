@@ -408,6 +408,18 @@ preservation require local reproduction; no UAT or Testing-phase exit is claimed
 
 ## Selected institution-account implementation — 2026-10-08
 
+The user's subsequent Jopia blocker-repair instruction selects TP-STOCK-01
+host recovery. The exact two-account Jopia baseline is handled through the
+[versioned mapping](INSTITUTION-ACCOUNTS.md#jopia-two-account-baseline-recovery--2026-10-08),
+separately from Yuri/Lat's six-actor target. Account migration preserves original
+credential and domain evidence; actual population still requires an approved
+OCR execution manifest. CRYO identity lookup reads all accepted component
+types under the existing installed actor/gateway checks; the new local package
+version is `institution-accounts-v2`. Immutable policy files, clinical write
+authority, endorsement, retained namespaces, V4 default and V5 approval gates
+remain unchanged. Record self-validation and Lat's independent acceptance
+separately; no Testing-phase exit is claimed.
+
 Jopia explicitly authorized [PR #24 account implementation](INSTITUTION-ACCOUNTS.md)
 from retained integration `daf4ada29b5a0346a804815817fde64f4893a390`. This selects
 BL-WEB-01 remediation, BL-API-02 backend onboarding and synthetic BL-TST-02

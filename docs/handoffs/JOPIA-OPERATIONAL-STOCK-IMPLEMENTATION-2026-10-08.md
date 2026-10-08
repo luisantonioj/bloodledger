@@ -3,7 +3,10 @@
 Classification: **SIMULATION_ONLY**. Jopia technical self-validation, not Lat
 retained-host acceptance, human UAT, clinical validation or deployment.
 Implementation contract: [controlled population](../OPERATIONAL-STOCK-POPULATION.md).
-The full task remains **BLOCKED for live population**.
+The initial attempt was **BLOCKED for live population**. The user's subsequent
+blocker-repair instruction and verified account/service/archive recovery are
+recorded in [the follow-up evidence](JOPIA-STOCK-HOST-RECOVERY-2026-10-08.md).
+Population still requires its exact OCR manifest confirmation and local receipts.
 
 ## Ancestry and review disposition
 

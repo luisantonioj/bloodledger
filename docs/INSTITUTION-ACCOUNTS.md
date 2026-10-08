@@ -1,7 +1,9 @@
 # Institution accounts — Jopia delivery
 
-Status: implementation and isolated self-validation delivered; retained-host
-migration, Fabric deployment and Lat frontend integration are pending.
+Initial delivery status: implementation and isolated self-validation delivered.
+Jopia's retained host was subsequently migrated and verified in
+[the stock-host recovery evidence](handoffs/JOPIA-STOCK-HOST-RECOVERY-2026-10-08.md).
+Lat's independent acceptance remains pending.
 Classification: **SIMULATION_ONLY**. Authorized by Jopia on 2026-10-08 in response
 to [Lat PR #24](https://github.com/luisantonioj/bloodledger/pull/24).
 Branch: `codex/jopia-institution-accounts`; exact retained integration base:
@@ -158,6 +160,42 @@ separately approved capability and Fabric-policy change; no activation calls CA,
 changes membership or adds a peer.
 
 ## Retained-host migration runbook
+
+### Jopia two-account baseline recovery — 2026-10-08
+
+The user's blocker-repair instruction selects technical host recovery under
+TP-STOCK-01. Yuri/Lat's six legacy actors and Jopia's two retained actors are
+different targets. The opt-in `JOPIA_RETAINED_TWO_ACCOUNT_V1` preview accepts
+exactly `USR_MEDIATRIX_TECH / INST_MEDIATRIX / ROLE-02` and
+`USR_DIVINE_LOVE / INST_DIVINE_LOVE / ROLE-03`. Any additional actor or changed
+scope fails. The default six-actor migration and its published hashes remain
+unchanged.
+
+The new preview binds this baseline version and exact mapping into its manifest
+hash. Apply preserves both existing user IDs, usernames, password verifiers,
+institution assignments, original role rows and all domain fingerprints. It
+retires their interactive access and provisions the same six policy-defined
+primary accounts and operator roster with private new credentials. Missing
+review operators are created as noninteractive operators; existing actors are
+never relabelled. This is an explicitly versioned local account migration,
+not restoration of Yuri's accounts or credentials. Retired actors may recover
+accepted evidence but cannot submit new work.
+
+Set `legacyBaselineVersion` in the private account configuration before preview.
+The CLI requires an identical version in the approved apply/resume manifest.
+`BLOODLEDGER_FABRIC_GENERATED_ROOT` permits an isolated checkout to mount the
+original generated identities read-only in account/population tooling; it
+does not enroll or copy secrets. Deployment uses the same retained identities,
+channel, namespace and endorsement. Backup precedes additive migrations and
+account mutation. Population still requires its own genuine OCR preview and
+explicit execution confirmation under ADR-035.
+
+The local recovery follow-up uses `institution-accounts-v2`: the identity read
+has no policy-version argument and previously defaulted to the four-type V2
+list, rejecting CRYO collision checks. Its supported read types now follow the
+existing five-type institution policy. Gateway/actor checks and all write
+policies remain unchanged. This version supersedes v1 package execution on the
+recovered Jopia host; Lat's recorded v1 receipt remains historical evidence.
 
 Run against the reviewed retained checkout with its existing private `.env`,
 gateway identity, TLS material and channel. This worktree has no generated
