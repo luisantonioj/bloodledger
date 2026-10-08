@@ -411,3 +411,13 @@ The new boundary regression plus existing planner/client/recovery checks passed:
 23 development-data tests, zero failures. Apply/resume/verify use `--report`;
 preview/confirm use `--output`. This guard does not change frozen execution
 payloads, actor grants or recovery behavior.
+
+
+At 424 COMMITTED intakes, the live runner stopped safely with
+`OPERATOR_RATE_LIMITED`, before the next command was created. Recorded grant
+intervals were approximately 29.9 seconds despite the nominal 31-second pause.
+The existing institution/session throttle was not reset or relaxed. The runner
+now uses a conservative 35-second pause; recovery waits for the existing window
+to expire and re-verifies saved receipts on the same approved execution.
+The cause of the recorded timing discrepancy is not asserted. Actual subsequent
+intervals and final reconciliation remain to be verified.

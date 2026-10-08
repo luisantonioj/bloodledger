@@ -153,7 +153,7 @@ async function processOperation(runtime, execution, operation, action, options, 
     // The institution's 30 attempts/15m protection includes successful grants.
     // Persisted acceptedAt also paces a resumed invocation; never loosen it.
     const last = (await pool.query('SELECT max(c.accepted_at) AS at FROM app.v2_commands c JOIN app.operational_stock_commands s USING(command_id) WHERE c.actor_institution_id=$1',[principal.institutionId])).rows[0]?.at;
-    if(last) await pause(Math.max(0,31000-(Date.now()-new Date(last).getTime())));
+    if(last) await pause(Math.max(0,35000-(Date.now()-new Date(last).getTime())));
     requirePopulationWindow(execution.scenario,new Date());
     const result = await client.command(operation.account,operation.path,operation.payload,operation.idempotencyKey);
     requireStock(result.commandId === operation.commandId && result.replayed === false,'STOCK_UNOWNED_COMMAND_COLLISION');

@@ -169,7 +169,7 @@ PostgreSQL container and compares its development instance identity. It never
 restores over the retained database. Committed ledger history cannot be undone
 by restoring an older PostgreSQL backup.
 
-New grant attempts are paced at least 31 seconds apart per institution;
+New grant attempts are paced with a conservative 35-second pause per institution;
 successful attempts count toward the existing 30-per-15-minute protection.
 Expect several hours for intake. A rejected/rate-limited grant stops safely;
 use the same execution file for resume after the existing window clears.
