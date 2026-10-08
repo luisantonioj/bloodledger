@@ -50,7 +50,10 @@ try {
       assert.equal(await page.getByLabel('Operator PIN',{exact:true}).inputValue(),'');
       await page.getByRole('button',{name:'Cancel',exact:true}).click();
       report.checks.push('Privileged local release prompts for bound operator verification; cancellation sends no command');
-      await page.getByRole('link',{name:'Alerts',exact:true}).click();await page.getByText('Acknowledged',{exact:true}).waitFor();
+      await page.getByRole('link',{name:'Alerts',exact:true}).click();await page.locator('.alert-summary').waitFor();
+      const alertData=await (await context.request.get(base+'/api/v2/alerts')).json();
+      assert.equal(await page.getByText('Acknowledged',{exact:true}).count(),alertData.alerts.filter(a=>a.acknowledged).length);
+      report.checks.push('Acknowledgement display matches authenticated account/operator ownership; retained unrelated acknowledgements remain separate');
       await page.getByRole('link',{name:'Analytics',exact:true}).click();
       assert.equal(await page.getByLabel('Forecast version').inputValue(),'SYNTHETIC_FORECAST_V4_RUNTIME_V1');
       await page.getByLabel('Forecast version').selectOption('SYNTHETIC_FORECAST_V5_RUNTIME_V1');await page.getByText('Forecast unavailable',{exact:true}).waitFor();

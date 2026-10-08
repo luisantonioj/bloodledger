@@ -2,6 +2,8 @@
 set -euo pipefail
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 cd "$repository_root"
+identity_root="${BLOODLEDGER_FABRIC_GENERATED_ROOT:-$repository_root/network/generated}"
+[[ -d "$identity_root/organizations" ]] || { echo STOCK_RETAINED_IDENTITIES_REQUIRED >&2; exit 2; }
 entrypoint=scripts/development-data/cli.mjs
 if [[ "${1:-}" == stock ]]; then entrypoint=scripts/development-data/stock-cli.mjs; shift; fi
 private_mount=()
@@ -37,7 +39,7 @@ docker run --rm -v "$repository_root:/workspace" -w /workspace node:24.17.0 npm 
 docker build -q -t bloodledger-development-tools:local -f scripts/development-data/Dockerfile scripts/development-data >/dev/null
 # The private configuration contains existing synthetic account credentials.
 # No accounts, schema, services or volumes are reset/created by this command.
-docker run --rm --init --user "$(id -u):$(id -g)" --network bloodledger_default --env-file "${BLOODLEDGER_DEV_ENV_FILE:-.env}" -v "$repository_root:$repository_root" "${private_mount[@]}" -w "$repository_root" \
+docker run --rm --init --user "$(id -u):$(id -g)" --network bloodledger_default --env-file "${BLOODLEDGER_DEV_ENV_FILE:-.env}" -v "$repository_root:$repository_root" --mount "type=bind,src=$identity_root,dst=$repository_root/network/generated,readonly" "${private_mount[@]}" -w "$repository_root" \
   -e "BLOODLEDGER_REPOSITORY_ROOT=$repository_root" \
   -e DEVELOPMENT_PG_HOST=postgres -e DEVELOPMENT_PG_PORT=5432 \
   -e "DEVELOPMENT_TARGET_VOLUME=$volume" -e "DEVELOPMENT_TARGET_VOLUME_CREATED=$created" \
