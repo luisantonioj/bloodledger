@@ -634,6 +634,8 @@ export function interviewCorePayload(command: Pick<V2Command, "operation" | "pay
     })()
     : command.operation === "RESERVE_COMPONENTS"
       ? (() => { const { transferId: _projectionTransfer, ...ledgerPayload } = command.payload; return ledgerPayload; })()
+    : command.operation === "RESERVE_LOCAL_RELEASE"
+      ? (() => { const { localReleaseId: _projectionRelease, ...ledgerPayload } = command.payload; return ledgerPayload; })()
     : command.operation === "PLACE_RECONCILIATION_HOLD"
       ? (() => { const { reconciliationPolicyVersion: _policyEvidence, ...ledgerPayload } = command.payload; return ledgerPayload; })()
       : command.payload;
@@ -658,7 +660,7 @@ export class FabricGatewayInterviewCore implements V2LedgerSubmitter {
       client = new grpc.Client(this.environment.FABRIC_PEER_ENDPOINT ?? "127.0.0.1:7051", grpc.credentials.createSsl(tlsRoot), { "grpc.ssl_target_name_override": this.environment.FABRIC_PEER_HOST_ALIAS ?? "peer0.mediatrix.bloodledger.local" });
       gateway = connect({ client, identity: { mspId: "MediatrixMSP", credentials: certificate }, signer: signers.newPrivateKeySigner(privateKey), hash: hash.sha256, evaluateOptions: () => ({ deadline: deadline(15) }), endorseOptions: () => ({ deadline: deadline(30) }), submitOptions: () => ({ deadline: deadline(15) }), commitStatusOptions: () => ({ deadline: deadline(30) }) });
       const transactionByOperation: Record<string, string> = {
-        REGISTER_COMPONENT: "RegisterComponent", REGISTER_INBOUND_COMPONENT: "RegisterInboundComponent", RECEIVE_INBOUND_COMPONENT: "RecordInboundReceipt", SUBMIT_TRANSFER: "SubmitTransferRequest", RESERVE_COMPONENTS: "ReserveComponents", PREPARE_RESERVATION: "PrepareReservation", DISPATCH_RESERVATION: "DispatchReservation", START_RESERVATION_TRANSIT: "StartReservationTransit", RECEIVE_RESERVATION: "RecordReservationReceipt", COMPLETE_LOCAL_RELEASE: "CompleteLocalRelease", CANCEL_RESERVATION: "CancelReservation", PLACE_RECONCILIATION_HOLD: "PlaceReconciliationHold", RESOLVE_RECONCILIATION_HOLD: "ResolveReconciliationHold", EVALUATE_COMPONENT_EXPIRY: "EvaluateComponentExpiry", COMPROMISE_RESERVATION: "MarkReservationCompromised",
+        REGISTER_COMPONENT: "RegisterComponent", REGISTER_INBOUND_COMPONENT: "RegisterInboundComponent", RECEIVE_INBOUND_COMPONENT: "RecordInboundReceipt", SUBMIT_TRANSFER: "SubmitTransferRequest", RESERVE_COMPONENTS: "ReserveComponents", RESERVE_LOCAL_RELEASE: "ReserveComponents", PREPARE_RESERVATION: "PrepareReservation", DISPATCH_RESERVATION: "DispatchReservation", START_RESERVATION_TRANSIT: "StartReservationTransit", RECEIVE_RESERVATION: "RecordReservationReceipt", COMPLETE_LOCAL_RELEASE: "CompleteLocalRelease", CANCEL_RESERVATION: "CancelReservation", PLACE_RECONCILIATION_HOLD: "PlaceReconciliationHold", RESOLVE_RECONCILIATION_HOLD: "ResolveReconciliationHold", EVALUATE_COMPONENT_EXPIRY: "EvaluateComponentExpiry", COMPROMISE_RESERVATION: "MarkReservationCompromised",
       };
       const transaction = transactionByOperation[command.operation];
       if (!transaction) throw new WorkerFailure("CORE_OPERATION_UNSUPPORTED", false);
