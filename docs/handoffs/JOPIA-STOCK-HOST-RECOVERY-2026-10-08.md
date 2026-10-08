@@ -295,3 +295,13 @@ fresh. Only the institution baseline fingerprint changed; all other baseline
 fingerprints remained identical. Collision/global FEFO/current-ledger/original
 receipt and preservation checks passed again. Zero stock commands and nine
 operational components remain. Exact fresh confirmation/approval is pending.
+
+
+The user confirmed fresh preview
+`680f530d452cdd990f3d6811b6dc94981193c7c55bbab42a2290055b2acbcf5f`.
+It was frozen at actual time `2026-10-08T10:36:19.022Z` as execution
+`0e6323106027b4c89aafef7354292fa5a9db77bc46129a8ae79bb1d35bda690f`,
+using the fresh restored backup
+`ff233d25056b3f6c4e9a2898aae6c5d576f89b93ab82c1605e935752ba17ddea`.
+Full fields/payloads remain private in `execution-v2.json`. This execution
+supersedes the old hash and requires its own exact apply approval.
