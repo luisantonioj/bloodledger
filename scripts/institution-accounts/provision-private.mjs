@@ -1,0 +1,14 @@
+import {randomBytes,randomInt,createHash} from 'node:crypto';
+import {mkdir,writeFile,readFile,stat} from 'node:fs/promises';
+import {resolve,relative} from 'node:path';
+import policy from '../../services/api/policy/institution-accounts-v1.json' with {type:'json'};
+import {OPERATOR_ROSTER} from '../../services/api/build/src/account-migration.js';
+const [output,targetDigest,backup]=process.argv.slice(2);
+if(!output||!targetDigest||!/^[0-9a-f]{64}$/.test(targetDigest))throw new Error('ACCOUNT_PRIVATE_OUTPUT_AND_TARGET_REQUIRED');
+const path=resolve(output),rel=relative(process.cwd(),path);
+if(!rel.startsWith('build/')||rel.startsWith('..'))throw new Error('ACCOUNT_IGNORED_OUTPUT_REQUIRED');
+await mkdir(resolve(path,'..'),{recursive:true,mode:0o700});
+if(!backup||(await stat(backup)).mode&0o077)throw new Error('ACCOUNT_PRIVATE_BACKUP_REQUIRED');
+const backupSha256=createHash('sha256').update(await readFile(backup)).digest('hex');
+await writeFile(path,JSON.stringify({backupSha256,classification:'SIMULATION_ONLY',scope:'INSTITUTION_ACCOUNTS',targetDigest,passwords:Object.fromEntries(policy.accounts.map(a=>[a.accountId,randomBytes(24).toString('base64url')])),pins:Object.fromEntries(OPERATOR_ROSTER.map(o=>[o.operatorId,String(randomInt(0,100000000)).padStart(8,'0')]))},null,2)+'\n',{flag:'wx',mode:0o600});
+console.log('Private credentials provisioned without printing passwords or PINs.');
