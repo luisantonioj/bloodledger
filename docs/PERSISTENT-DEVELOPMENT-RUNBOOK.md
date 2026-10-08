@@ -37,7 +37,7 @@ docker exec bloodledger-postgres-1 pg_dump -U postgres -d bloodledger_dev -Fc > 
 docker run --rm --network host -v "$PWD:/workspace" -w /workspace node:24.17.0 npm run migrate:up
 ```
 
-Migration owner applies schema; runtime `bloodledger_app` receives specific grants. No seed writes operational projections directly. Keep the backup outside Git. This actor-mapping revision requires no new migration. Preserve existing Fabric data and generated identities; upgrade the full package with the explicit local confirmation:
+Migration owner applies schema; runtime `bloodledger_app` receives specific grants. No seed writes operational projections directly. Keep the backup outside Git. Lat's retained-host validation found that the actor-mapping revision also needs the additive `20261008000000000_allow-retained-development-component-policy.js` migration: the existing component constraint rejects `PERSISTENT_DEVELOPMENT_CORE_V1` during projection. Apply it before seeding. If a registration already committed to Fabric, preserve its frozen manifest and saved receipt; resume projection without submitting another registration. Preserve existing Fabric data and generated identities; upgrade the full package with the explicit local confirmation:
 
 ```bash
 bash network/scripts/deploy-persistent-development.sh --apply bloodledger-local
