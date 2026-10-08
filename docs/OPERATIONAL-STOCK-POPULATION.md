@@ -122,9 +122,11 @@ original workbook, delivered ZIP and extracted manifest must reside there.
 The wrapper accepts only the local development PostgreSQL/API/Fabric targets
 and refuses a running general synchronization worker.
 
-The following are executable handoff commands; live population commands are
-**NOT_RUN on this host**. Variables refer to privately held paths and reviewed
-hashes. Inspection can run before the new migration. Forecast maintenance
+The following are handoff commands. Live population is executing on the
+reviewed Jopia target; completed prerequisites and actual recovery results are
+recorded in the [host recovery evidence](handoffs/JOPIA-STOCK-HOST-RECOVERY-2026-10-08.md).
+Final population, replay, restart and T0 acceptance remain pending. Variables
+refer to privately held paths and reviewed hashes. Inspection can run before the new migration. Forecast maintenance
 uses this same primary/operator configuration through `run.sh inspect` and
 `run.sh census`; its existing separate binding/job approvals remain mandatory.
 
@@ -217,7 +219,7 @@ After accepted apply/replay/T0 verification, follow the ordinary retained-host
 stop/start commands, preserving all project volumes and generated identities,
 then verify with the identical execution hash and a new report path. Compare
 receipt IDs/blocks, per-series counts, forty census rows, baseline fingerprints,
-identity/volume fingerprints and ordinary-cookie API reads. Retained restart
-and Lat's 5174 → 3000 browser acceptance remain pending until the real target
-is available. Neither fixture interception nor the disposable database probe
+identity/volume fingerprints and ordinary-cookie API reads. Final populated-state restart evidence and Lat's independent 5174 → 3000
+browser acceptance remain pending. Earlier restart and ordinary-cookie checks
+are disclosed Jopia self-validation in the host recovery evidence. Neither fixture interception nor the disposable database probe
 constitutes that evidence.

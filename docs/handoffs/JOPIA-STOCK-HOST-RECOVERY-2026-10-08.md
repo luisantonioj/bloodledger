@@ -348,7 +348,7 @@ stock() {
   bash scripts/development-data/run.sh stock "$action" \
     --config "$PRIVATE/stock-runtime.json" --manifest "$PRIVATE/execution-v2.json" \
     --approve-manifest "$EXECUTION_HASH" --backup "$PRIVATE/before-stock-v2.dump" \
-    --approve-backup "$BACKUP_HASH" --output "$PRIVATE/population-v2.json" "$@"
+    --approve-backup "$BACKUP_HASH" --report "$PRIVATE/population-v2.json" "$@"
 }
 stock apply --pause-after-submit 1
 stock resume --pause-after-commit 2
@@ -396,3 +396,11 @@ durable containers. Private before/after comparison again matched all 110
 identity files and five named-volume fingerprints. Health returned READY and
 resume re-verifies all saved receipts on the same execution before submitting
 new work. No applied migration, execution manifest, volume or identity changed.
+
+
+On continuation, inspection found that the running resume had used `--output`
+although execution actions save final evidence using `--report`. The runner alone
+was stopped and resumed with the correct report argument and the same approved
+execution/backup. Saved commands and receipts remain durable; completed work
+is verified before continuing. API/web/Fabric/database and the writer gate
+remained active. This corrects the invocation, not the scenario or approval.
