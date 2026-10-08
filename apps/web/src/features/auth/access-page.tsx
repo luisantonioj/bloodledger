@@ -1,3 +1,4 @@
+import { SyntheticApplication } from "./synthetic-application";
 import { useState, type FormEvent } from "react";
 import type { Principal } from "../../auth/permissions";
 import { requestJson } from "../../services/api/client";
@@ -146,10 +147,10 @@ export function AccessPage({ onAuthenticated }: { onAuthenticated: (principal: P
           <button type="button" role="tab" aria-selected={mode === "signin"} className={mode === "signin" ? "active" : ""} onClick={() => setMode("signin")}>Sign in</button>
           <button type="button" role="tab" aria-selected={mode === "apply"} className={mode === "apply" ? "active" : ""} onClick={() => setMode("apply")}>Apply for access</button>
         </div>
-        {mode === "apply" ? <AccessApplication /> : <>
-          <div className="auth-card-heading"><p className="eyebrow">Welcome back</p><h2>Sign in to BloodLedger</h2><p>Use the opaque username assigned to your approved synthetic account.</p></div>
+        {mode === "apply" ? <SyntheticApplication /> : <>
+          <div className="auth-card-heading"><p className="eyebrow">Welcome back</p><h2>Sign in to BloodLedger</h2><p>Use your institution email and privately supplied password.</p></div>
           <form className="auth-form" onSubmit={event => void submit(event)}>
-            <label htmlFor="login-username">Username<input id="login-username" autoComplete="username" value={username} onChange={event => setUsername(event.target.value)} placeholder="synth_account_name" required/></label>
+            <label htmlFor="login-username">Institution email or username<input id="login-username" autoComplete="username" value={username} onChange={event => setUsername(event.target.value)} placeholder="bloodbank@mmc.bloodledger" required/></label>
             <label htmlFor="login-password">Password<input id="login-password" type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} placeholder="Enter your password" required/></label>
             <div className="auth-form-options"><label><input type="checkbox" />Keep me signed in on this trusted device</label><button type="button" disabled title="Password recovery is not implemented">Forgot password?</button></div>
             {error && <p className="auth-error" role="alert">{error}</p>}

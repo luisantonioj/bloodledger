@@ -82,7 +82,8 @@ for (const status of [401, 403]) for (const feature of ["inventory", "alerts", "
     denied = true;
     if (feature === "inventory") await page.getByRole("button", { name: "Refresh", exact: true }).click();
     await expect(page.getByText(marker, { exact: true })).toHaveCount(0);
-    await expect(page.getByText(feature === "inventory" ? "V2 component inventory unavailable" : "Unable to load data", { exact: true })).toBeVisible();
+    if (status === 401) await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
+    else await expect(page.getByText(feature === "inventory" ? "V2 component inventory unavailable" : "Unable to load data", { exact: true })).toBeVisible();
   });
 }
 

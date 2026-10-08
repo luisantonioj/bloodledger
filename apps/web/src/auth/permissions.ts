@@ -13,6 +13,13 @@ export type Permission =
   | "profile:read";
 
 export interface Principal {
+  accountId?: string;
+  accountCategory?: "BLOOD_BANK" | "REQUESTOR" | "PRC" | "DOH" | "SYSTEM";
+  accountState?: string;
+  authorizationPolicyVersion?: string;
+  verificationRequired?: boolean;
+  administrativeCapabilities?: string[];
+  operators?: OperatorProfile[];
   userId: string;
   displayName: string;
   institutionId: string;
@@ -22,6 +29,18 @@ export interface Principal {
   permissions: Permission[];
   classification: "SIMULATION_ONLY";
 }
+
+export interface OperatorProfile {
+  operatorId: string;
+  roleId: Principal["roleId"];
+  capabilityProfile: "ROLE" | "PRC_REVIEWER" | "INSTITUTION_ADMIN";
+  version: number;
+  permissions?: Permission[];
+  actionCapabilities?: string[];
+}
+
+export const canAct = (principal: Principal, action: string) =>
+  principal.operators?.some(operator => operator.actionCapabilities?.includes(action)) ?? false;
 
 export const can = (principal: Principal, permission: Permission) => principal.permissions.includes(permission);
 

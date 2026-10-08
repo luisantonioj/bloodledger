@@ -36,10 +36,11 @@ export async function saveStoredCommand(receipt: StoredCommandReceipt): Promise<
   }
 }
 
-export async function listStoredCommands(): Promise<StoredCommandReceipt[]> {
+export async function listStoredCommands(owner: {accountId: string; institutionId: string}): Promise<StoredCommandReceipt[]> {
   const db = await database();
   try {
-    return (await requestResult(db.transaction(STORE_NAME).objectStore(STORE_NAME).getAll()))
+    return (await requestResult<StoredCommandReceipt[]>(db.transaction(STORE_NAME).objectStore(STORE_NAME).getAll()))
+      .filter(receipt => receipt.accountId === owner.accountId && receipt.institutionId === owner.institutionId)
       .sort((left, right) => left.acceptedAt.localeCompare(right.acceptedAt));
   } finally {
     db.close();

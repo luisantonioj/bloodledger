@@ -14,6 +14,12 @@ export const ENABLED_ISSUER_INSTITUTION_ID = "INST_MEDIATRIX" as const;
 export const MINIMUM_FIELD_CONFIDENCE = 90;
 
 const MEDIATRIX_DONATION_NUMBER = /^MM[0-9]{2}-(0[1-9]|1[0-2])-[0-9]{4}$/;
+export function issuerForDonationNumber(donationNumber: string): string {
+  if (MEDIATRIX_DONATION_NUMBER.test(donationNumber)) return "INST_MEDIATRIX";
+  if (/^SYNMEDIX-[0-9]{4}-[0-9]{4}$/.test(donationNumber)) return "INST_SYNTH_MEDIX";
+  if (/^SYNNLVILLA-[0-9]{4}-[0-9]{4}$/.test(donationNumber)) return "INST_SYNTH_NLVILLA";
+  throw new CapturePolicyError("INBOUND_DONATION_NUMBER_INVALID");
+}
 const PROHIBITED_TEXT = /\b(PATIENT|DONOR|DIAGNOSIS|TREATMENT|EMPLOYEE)\b/i;
 
 export class CapturePolicyError extends Error {
@@ -32,9 +38,7 @@ export function contractVersionFor(componentType: ComponentType): ContractVersio
 }
 
 export function validateCapturedLabel(label: CapturedInboundLabel): CapturedInboundLabel {
-  if (!MEDIATRIX_DONATION_NUMBER.test(label.donationNumber)) {
-    throw new CapturePolicyError("INBOUND_DONATION_NUMBER_INVALID");
-  }
+  issuerForDonationNumber(label.donationNumber);
   if (!BLOOD_TYPES.includes(label.bloodType)) {
     throw new CapturePolicyError("V2_BLOOD_TYPE_INVALID");
   }

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiRequestError } from "../../services/api/client";
 import { BloodTypeBadge } from "../../components/ui/aggregate-tables";
 import { formatManilaDateTime, humanizeCode, statusClassName } from "../../components/ui/display";
-import type { Principal } from "../../auth/permissions";
+import { canAct, type Principal } from "../../auth/permissions";
 import {
   readInboundIntake,
   readV2Components,
@@ -14,14 +14,14 @@ import {
 
 export function V2InventoryView({ principal }: { principal: Principal }) {
   const [historical, setHistorical] = useState(false);
-  const [version, setVersion] = useState<V2ContractVersion>("V2");
+  const [version, setVersion] = useState<V2ContractVersion>(principal.accountId ? "V2.1" : "V2");
   const [data, setData] = useState<V2ComponentsResponse>();
   const [intake, setIntake] = useState<InboundIntakeResponse>();
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [refreshedAt, setRefreshedAt] = useState<string>();
   const requestSequence = useRef(0);
-  const canOpenCapture = ["ROLE-01", "ROLE-02"].includes(principal.roleId) && principal.institutionId === "INST_MEDIATRIX";
+  const canOpenCapture = principal.accountId ? canAct(principal, "inventory:capture") : ["ROLE-01", "ROLE-02"].includes(principal.roleId) && principal.institutionId === "INST_MEDIATRIX";
   const canReadIntake = ["ROLE-01", "ROLE-02"].includes(principal.roleId);
 
   const refresh = useCallback(async () => {
@@ -70,7 +70,7 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
     return () => { ++requestSequence.current; clearInterval(timer); };
   }, [refresh]);
 
-  return <div className="v2-inventory">{canReadIntake && <button className="button" onClick={() => setHistorical(value => !value)}>{historical ? "Show operational inventory" : "Historical synthetic stock"}</button>}{historical ? <HistoricalStockView/> : <div>
+  return <div className="v2-inventory">{canReadIntake && principal.institutionId === "INST_MEDIATRIX" && <button className="button" onClick={() => setHistorical(value => !value)}>{historical ? "Show operational inventory" : "Historical synthetic stock"}</button>}{historical ? <HistoricalStockView/> : <div>
     <div className="v2-scope-bar">
       <div><span className="eyebrow">INTERVIEW_DERIVED_CORE_V2</span><strong>{principal.institutionDisplayName}</strong><small>Institution scope comes from the authenticated session.</small></div>
       <label>Contract view<select value={version} onChange={(event) => {

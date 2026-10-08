@@ -82,6 +82,9 @@ export type InboundCaptureResult = V2Command | AlreadyRegisteredCapture;
 
 /** Privacy-safe status evidence. Exact Donation No. and OCR payloads are never stored here. */
 export interface StoredCommandReceipt {
+  accountId?: string;
+  operatorId?: string;
+  institutionId?: string;
   idempotencyKey: string;
   commandId: string;
   resourceId: string;

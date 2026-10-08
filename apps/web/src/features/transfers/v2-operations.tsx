@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { Principal } from "../../auth/permissions";
+import { canAct, type Principal } from "../../auth/permissions";
 import { humanizeCode } from "../../components/ui/display";
 import { CommandStatusCard } from "../commands/command-status-card";
 import { useCommandStatus } from "../commands/use-command-status";
@@ -22,6 +22,8 @@ function V2TransferRequest({ principal, onRefresh }: { principal: Principal; onR
   const [componentType, setComponentType] = useState<V2ComponentType>("PACKED_RED_BLOOD_CELLS");
   const [quantity, setQuantity] = useState(1);
   const [urgency, setUrgency] = useState("ROUTINE");
+  const banks = [{id:"INST_MEDIATRIX",name:"Mediatrix"},{id:"INST_SYNTH_MEDIX",name:"Medix"},{id:"INST_SYNTH_NLVILLA",name:"N.L. Villa"}].filter(bank => bank.id !== principal.institutionId);
+  const [source, setSource] = useState(principal.accountId ? banks[0]?.id ?? "INST_MEDIATRIX" : "INST_MEDIATRIX");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const attempt = useRef<{ keys: MutationKeys; payload: Record<string, unknown> & { componentType: V2ComponentType } } | undefined>(undefined);
@@ -46,7 +48,7 @@ function V2TransferRequest({ principal, onRefresh }: { principal: Principal; onR
         keys,
         payload: {
           transferId: resourceId("TRF_WEB_", keys),
-          sourceInstitutionId: "INST_MEDIATRIX",
+          sourceInstitutionId: source,
           destinationInstitutionId: principal.institutionId,
           bloodType,
           componentType,
@@ -70,8 +72,9 @@ function V2TransferRequest({ principal, onRefresh }: { principal: Principal; onR
   }
 
   return <section className="v2-operation-card">
-    <header><div><p className="eyebrow">INTERVIEW_DERIVED_CORE_V2</p><h3>Request blood from Mediatrix</h3><p>Source is fixed by contract; destination is the authenticated institution.</p></div><span>ROLE-03</span></header>
+    <header><div><h3>{principal.accountId ? "Request blood" : "Request blood from Mediatrix"}</h3><p>Destination is the authenticated institution.</p></div></header>
     <form className="v2-operation-form" onSubmit={(event) => void submit(event)}>
+      {principal.accountId && <label>Source blood bank<select disabled={locked} value={source} onChange={event => changed(() => setSource(event.target.value))}>{banks.map(bank => <option key={bank.id} value={bank.id}>{bank.name}</option>)}</select></label>}
       <label>Blood type<select disabled={locked} value={bloodType} onChange={(event) => changed(() => setBloodType(event.target.value as V2BloodType))}>{V2_BLOOD_TYPES.map((value) => <option key={value} value={value}>{humanizeCode(value)}</option>)}</select></label>
       <label>Component<select disabled={locked} value={componentType} onChange={(event) => changed(() => setComponentType(event.target.value as V2ComponentType))}>{V2_COMPONENT_TYPES.map((value) => <option key={value} value={value}>{humanizeCode(value)}</option>)}</select></label>
       <label>Quantity<input disabled={locked} type="number" min="1" value={quantity} onChange={(event) => changed(() => setQuantity(Number(event.target.value)))}/></label>
@@ -146,8 +149,8 @@ function BlockedWorkflow({ title, detail }: { title: string; detail: string }) {
 }
 
 export function V2Operations({ principal, onRefresh }: { principal: Principal; onRefresh: () => void }) {
-  const recipient = principal.roleId === "ROLE-03";
-  const sourceOperator = ["ROLE-01", "ROLE-02"].includes(principal.roleId);
+  const recipient = principal.accountId ? canAct(principal, "transfer:request") : principal.roleId === "ROLE-03";
+  const sourceOperator = principal.accountId ? canAct(principal, "inventory:local-release") : ["ROLE-01", "ROLE-02"].includes(principal.roleId);
   if (!recipient && !sourceOperator) return null;
   return <div className="v2-operations">
     <div className="v2-workflow-disclosure"><strong>Sprint 6 command workflows</strong><span>Acceptance is not ledger commitment. Every state remains visible until committed, failed, or conflicted.</span></div>
