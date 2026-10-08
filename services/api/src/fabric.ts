@@ -638,7 +638,7 @@ export function interviewCorePayload(command: Pick<V2Command, "operation" | "pay
       ? (() => { const { reconciliationPolicyVersion: _policyEvidence, ...ledgerPayload } = command.payload; return ledgerPayload; })()
       : command.payload;
   const policyVersion = rawPayload.policyVersion ?? "INTERVIEW_DERIVED_CORE_V2";
-  if (!["INTERVIEW_DERIVED_CORE_V2", "INTERVIEW_DERIVED_CORE_V2_1", "PERSISTENT_DEVELOPMENT_CORE_V1"].includes(String(policyVersion))) throw new WorkerFailure("CORE_POLICY_UNSUPPORTED", false);
+  if (!["INTERVIEW_DERIVED_CORE_V2", "INTERVIEW_DERIVED_CORE_V2_1", "PERSISTENT_DEVELOPMENT_CORE_V1", "SYNTHETIC_INSTITUTION_CORE_V1"].includes(String(policyVersion))) throw new WorkerFailure("CORE_POLICY_UNSUPPORTED", false);
   return { ...rawPayload, idempotencyKey: command.idempotencyKey, policyVersion };
 }
 
