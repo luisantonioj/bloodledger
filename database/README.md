@@ -352,3 +352,11 @@ existing V2 tables and OCR/Fabric projector; historical units stay separate.
 Follow [Lat's retained setup](../docs/PERSISTENT-DEVELOPMENT-RUNBOOK.md) for
 runtime grants, backups and read-only DBeaver inspection. Applied migrations
 are never edited to reseed data.
+
+## Institution-account extension
+
+ADR-036–039 authorize additive institution-account, operator verification and
+synthetic onboarding storage. No applied migration is edited. Historical user
+IDs, credential records and domain references survive login retirement. See
+[the account migration](../docs/INSTITUTION-ACCOUNTS.md) for preview, apply,
+resume, rollback and retained fingerprint evidence.

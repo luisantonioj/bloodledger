@@ -564,3 +564,24 @@ Accepted for simulation implementation by Jopia on 2026-10-07: [historical impor
 ## Persistent synthetic development integration
 
 Accepted by Jopia on 2026-10-07 for Testing-phase technical preparation: [persistent development data](PERSISTENT-SYNTHETIC-DEVELOPMENT.md) combines PR21 and the historical importer. Operational demo intake retains ADR-035, isolated historical stock retains its separate ledger namespace, and V5 persistence does not activate operational forecasting. Lat re-imports historical stock on his own ledger; local receipts are verified rather than copied.
+
+## Accepted institution-account architecture — 2026-10-08
+
+Jopia authorized PR #24 implementation in the current conversation. ADR-036
+(**Accepted**) separates one primary interactive institution account from opaque
+PIN-verified operators and action capabilities. ADR-037 (**Accepted**) permits
+Medix and N.L. Villa synthetic application custody through the existing Mediatrix
+organizational gateway; it supersedes the application-custody restriction in
+BR-ONB-13 for explicitly packaged actors only, without changing ADR-001 topology.
+ADR-038 (**Accepted**) gives PRC explicit off-chain onboarding administration;
+ADR-002 remains applicable to DOH and to PRC clinical/ledger authority. PRC is
+never implicitly ROLE-05. Approval, activation, role assignment and Fabric-policy
+deployment remain separate. ADR-039 (**Accepted**) versions synthetic onboarding
+retention at 30 days after closure, preserving minimal audit/reference evidence;
+it does not resolve institutional RQ-14. These decisions supersede the earlier
+login-equals-role interpretation, preserve historical actors and policy versions,
+and authorize additive migrations only.
+
+The machine-readable account/capability policy and OpenAPI own executable shapes.
+[Implementation and migration evidence](INSTITUTION-ACCOUNTS.md) owns delivery
+commands, retained-data mapping, validation and Lat's contract handoff.

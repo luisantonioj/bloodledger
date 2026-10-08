@@ -397,3 +397,14 @@ limitations and executable Lat handoff are in
 [the persistent development runbook](PERSISTENT-DEVELOPMENT-RUNBOOK.md#verification-evidence).
 This is disclosed Jopia self-validation. Lat's local re-import and six-account
 preservation require local reproduction; no UAT or Testing-phase exit is claimed.
+
+## Selected institution-account implementation — 2026-10-08
+
+Jopia explicitly authorized [PR #24 account implementation](INSTITUTION-ACCOUNTS.md)
+from retained integration `daf4ada29b5a0346a804815817fde64f4893a390`. This selects
+BL-WEB-01 remediation, BL-API-02 backend onboarding and synthetic BL-TST-02
+authorization tests under PA-ACCOUNT-01/02. Lat owns BL-WEB-05/06 frontend
+integration and independent rerun. TP-G06 is relaxed solely for approved
+synthetic backend evidence; full web/onboarding acceptance, institutional RQ-14,
+UAT, clinical gates and Testing-phase exit remain open. Results are recorded
+only after execution, with disclosed Jopia self-validation.
