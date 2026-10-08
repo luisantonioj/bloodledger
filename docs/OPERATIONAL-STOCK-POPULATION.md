@@ -1,7 +1,9 @@
 # Controlled operational stock population
 
 Status: Accepted implementation scope by the user's Jopia instruction on
-2026-10-08; retained-target population acceptance remains pending.
+2026-10-08. Actual population completed at 2026-10-08T17:44:45.900Z:
+522 new / 531 total units and 559 VALID commitments. Exact replay, final
+populated-state restart and fixed-window T0 acceptance remain pending.
 Classification: **SIMULATION_ONLY**. Jopia owns backend implementation and
 self-validation; Buno owns source/scenario lineage; Lat owns independent
 retained-host and browser verification.
@@ -122,10 +124,11 @@ original workbook, delivered ZIP and extracted manifest must reside there.
 The wrapper accepts only the local development PostgreSQL/API/Fabric targets
 and refuses a running general synchronization worker.
 
-The following are handoff commands. Live population is executing on the
+The following are handoff commands. Live population completed on the
 reviewed Jopia target; completed prerequisites and actual recovery results are
 recorded in the [host recovery evidence](handoffs/JOPIA-STOCK-HOST-RECOVERY-2026-10-08.md).
-Final population, replay, restart and T0 acceptance remain pending. Variables
+Full population reconciliation passed; replay, restart and T0 acceptance
+remain pending. Variables
 refer to privately held paths and reviewed hashes. Inspection can run before the new migration. Forecast maintenance
 uses this same primary/operator configuration through `run.sh inspect` and
 `run.sh census`; its existing separate binding/job approvals remain mandatory.

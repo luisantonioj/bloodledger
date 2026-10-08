@@ -421,3 +421,128 @@ now uses a conservative 35-second pause; recovery waits for the existing window
 to expire and re-verifies saved receipts on the same approved execution.
 The cause of the recorded timing discrepancy is not asserted. Actual subsequent
 intervals and final reconciliation remain to be verified.
+
+
+## Complete population — actual 2026-10-09 Manila evidence
+
+At `2026-10-08T17:44:45.900Z` (October 9 01:44 Manila), full resume
+completed with exit 0 on the same corrected execution, target and restored
+backup. All 559 operations are COMMITTED with distinct independently verified
+local Fabric VALID transaction IDs in blocks 599–1157: 522 OCR intakes,
+13 destination-side transfer requests, 13 transfer reservations and 11 local
+release reservations. No dispatch or release completion was submitted.
+
+The runner independently compared all 531 current ledger component assets with
+PostgreSQL and authenticated V2.1 component list/detail reads; all 24 ACTIVE
+reservations, their version 1, 36 members at inventory version 2 and transfer
+request links matched. The original nine component states/dates, original
+18 operational receipts, historical 522 members/524 receipts, accounts and
+other baseline table fingerprints remain preserved. `population-v2.json` is
+private mode 600, with `preservation=PASS` and `t0Verification=PENDING`.
+A separate QSCC transaction-and-block read at `2026-10-08T17:46:23.756Z`
+again verified all 559 transaction IDs, saved blocks and original signed-envelope
+SHA-256 values; all were COMMITTED and unique.
+
+| Population | AVAILABLE | RESERVED | IN_TRANSIT | EXPIRED | Total |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Added scenario | 486 | 36 | 0 | 0 | 522 |
+| Preserved combined operational | 492 | 37 | 1 | 1 | 531 |
+
+The following actual per-series additions match all twenty reviewed source
+series. All new IN_TRANSIT and EXPIRED counts are zero. The zero AB+ platelet
+series is verified from accepted operational data.
+
+| Blood type | Component | AVAILABLE | RESERVED | Total |
+| --- | --- | ---: | ---: | ---: |
+| A+ | WHOLE_BLOOD | 4 | 0 | 4 |
+| A+ | PACKED_RED_BLOOD_CELLS | 37 | 1 | 38 |
+| A+ | FRESH_FROZEN_PLASMA | 56 | 3 | 59 |
+| A+ | PLATELETS | 11 | 1 | 12 |
+| A+ | CRYOPRECIPITATE | 21 | 1 | 22 |
+| B+ | WHOLE_BLOOD | 5 | 0 | 5 |
+| B+ | PACKED_RED_BLOOD_CELLS | 38 | 6 | 44 |
+| B+ | FRESH_FROZEN_PLASMA | 58 | 4 | 62 |
+| B+ | PLATELETS | 25 | 2 | 27 |
+| B+ | CRYOPRECIPITATE | 19 | 2 | 21 |
+| O+ | WHOLE_BLOOD | 7 | 0 | 7 |
+| O+ | PACKED_RED_BLOOD_CELLS | 16 | 1 | 17 |
+| O+ | FRESH_FROZEN_PLASMA | 58 | 5 | 63 |
+| O+ | PLATELETS | 16 | 2 | 18 |
+| O+ | CRYOPRECIPITATE | 22 | 2 | 24 |
+| AB+ | WHOLE_BLOOD | 8 | 0 | 8 |
+| AB+ | PACKED_RED_BLOOD_CELLS | 26 | 2 | 28 |
+| AB+ | FRESH_FROZEN_PLASMA | 36 | 4 | 40 |
+| AB+ | PLATELETS | 0 | 0 | 0 |
+| AB+ | CRYOPRECIPITATE | 23 | 0 | 23 |
+
+The conservative pacing recovery reverified all 424 saved commands before
+continuing. Subsequent actual recorded grant intervals were 33.87–34.222 seconds;
+the remainder completed without relaxing or resetting authorization limits.
+The original transaction/envelope evidence for interrupted commands remained
+unchanged. An invocation/report correction and the observed rate-limit failure
+are preserved as live failure/recovery evidence, not erased by the final pass.
+
+Read-only real Chromium checks on 5174 → 3000 passed at
+`2026-10-08T17:57:46.998Z` using the versioned
+`tests/development-data/populated-browser.mjs`: all six primary logins, HttpOnly
+cookies, normal UI Sign out / subsequent API 401, exact 531 inventory rows,
+36 member links, Medix's 13 request/reservation links, unrelated institution
+and local-release isolation, historical 522 VALID members with null dates and
+purpose, V4 default, V5 unavailable and disabled near-expiry eligibility.
+There was no fixture interception, profile save or operator mutation. These
+are **JOPIA_SELF_VALIDATION**, not independent Lat acceptance.
+
+Two initial private browser probes failed because of verifier assumptions:
+a direct session DELETE plus a visibility event on Analytics did not exercise
+normal UI logout; then the destination expectation was incorrectly applied
+to N.L. Villa as well as Medix. The corrected verifier clicks the actual Sign
+out button and expects 13 reviewed links only for Medix, zero and scoped 404s
+for unrelated institutions. Both failure reports remain private. No application
+permission change was needed. The versioned rerun also checked the requestor's
+empty component scope and denial of all scenario reservation details.
+
+All 110 original generated-file hashes and five named-volume
+Name/CreatedAt/Mountpoint fingerprints matched at
+`2026-10-08T17:50:47.254130+00:00`. Final exact replay and populated-state
+restart are still running/pending. The 40-row T0 operational census is not
+claimed before October 9 08:00 Manila; the writer gate remains true.
+
+## Reproducible read-only population evidence
+
+From the implementation worktree, with the existing private account config and
+approved execution (never copy credentials, manifests or label fields into Git):
+
+```bash
+PRIVATE=/home/luisantonioj/projects/bloodledger/build/operational-stock-private
+EXECUTION_HASH=0e6323106027b4c89aafef7354292fa5a9db77bc46129a8ae79bb1d35bda690f
+docker run --rm --network container:bloodledger-persistent-api \
+  -v "$PWD:$PWD" -v "$PRIVATE:/private" -w "$PWD" \
+  -e BLOODLEDGER_BROWSER_CONFIG_PATH="$PWD/build/recovery/accounts.json" \
+  -e BLOODLEDGER_STOCK_EXECUTION_PATH=/private/execution-v2.json \
+  -e BLOODLEDGER_STOCK_EXECUTION_SHA256="$EXECUTION_HASH" \
+  -e BLOODLEDGER_BROWSER_REPORT_PATH=/private/browser-populated-versioned-before-restart.json \
+  mcr.microsoft.com/playwright:v1.61.1-noble \
+  node tests/development-data/populated-browser.mjs
+
+docker run --rm --init --user "$(id -u):$(id -g)" \
+  --network bloodledger_default \
+  --env-file /home/luisantonioj/projects/bloodledger/build/development-local/runtime.env \
+  -v "$PWD:$PWD" \
+  --mount "type=bind,src=/home/luisantonioj/projects/bloodledger/network/generated,dst=$PWD/network/generated,readonly" \
+  -v "$PRIVATE:/private" -w "$PWD" \
+  -e BLOODLEDGER_REPOSITORY_ROOT="$PWD" \
+  -e FABRIC_PEER_ENDPOINT=peer0-mediatrix:7051 \
+  -e BLOODLEDGER_STOCK_EXECUTION_PATH=/private/execution-v2.json \
+  -e BLOODLEDGER_STOCK_EXECUTION_SHA256="$EXECUTION_HASH" \
+  -e BLOODLEDGER_STOCK_EVIDENCE_REPORT_PATH=/private/all-559-versioned-before-restart.json \
+  bloodledger-development-tools:local \
+  node tests/development-data/saved-stock-evidence.mjs
+```
+
+Reports use exclusive creation. Choose a fresh private report filename for each
+replay or restart rerun. The independent verifier checks the saved actor,
+idempotency key, run ownership, VALID transaction/block contents and original
+envelope hash; it cannot submit or project anything. Browser navigation between
+component/reservation/workflow screens and independent Lat pending/error/restart
+acceptance remain explicitly NOT_RUN. Existing reads define those links; no
+unsupported local-release detail endpoint is introduced.
