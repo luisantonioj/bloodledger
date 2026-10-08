@@ -14,6 +14,23 @@ export class PostgresDevelopmentReader implements DevelopmentReader {
   constructor(private readonly pool: Pool) {}
   async read(kind: Parameters<DevelopmentReader["read"]>[0], principal: WebPrincipal, id?: string, cursor?: string, limit = 50): Promise<unknown> {
     const institution = principal.institutionId;
+    if(principal.accountId && ["PRC","DOH"].includes(principal.accountCategory??"") && principal.roleId==="ROLE-04" && kind!=="historical"){
+      if(kind==="dashboard"){
+        const rows=await this.pool.query<Row>("SELECT c.institution_id,i.display_name,c.blood_type,c.component_type,c.inventory_status,COUNT(*)::int count,MAX(c.updated_at) projected_at FROM app.v2_components c JOIN app.institutions i USING(institution_id) GROUP BY c.institution_id,i.display_name,c.blood_type,c.component_type,c.inventory_status");
+        return {composition:"REGULATORY",scope:"CITY_AGGREGATE",inventory:rows.rows.map(r=>({institutionId:r.institution_id,institutionDisplayName:r.display_name,bloodType:r.blood_type,component:r.component_type,inventoryStatus:r.inventory_status,confirmedCount:r.count,lastProjectedAt:iso(r.projected_at)})),pendingScans:[],lastSuccessfulProjectionAt:rows.rows.map(r=>iso(r.projected_at)).sort().at(-1)??null,classification};
+      }
+      if(kind==="transfers"){
+        const rows=await this.pool.query<Row>("SELECT status,COUNT(*)::int transfer_count,SUM(quantity)::int unit_count FROM app.v2_transfer_requests GROUP BY status ORDER BY status");
+        return {scope:"CITY_AGGREGATE",requests:[],reservations:[],timeline:[],transferSummary:rows.rows,classification};
+      }
+      if(kind==="alerts"){
+        const rows=await this.pool.query<Row>("SELECT institution_id,blood_type,component_type,COUNT(*)::int count FROM app.v2_components WHERE inventory_status='EXPIRED' GROUP BY institution_id,blood_type,component_type");
+        return {scope:"CITY_AGGREGATE",alerts:[],aggregates:rows.rows,classification};
+      }
+      const rows=await this.pool.query<Row>("SELECT c.command_id,c.operation,c.resource_type,c.status,c.correlation_id,c.ledger_transaction_id,c.accepted_at,i.display_name FROM app.v2_commands c JOIN app.institutions i ON i.institution_id=c.actor_institution_id ORDER BY c.accepted_at DESC LIMIT 200");
+      return {scope:"CITY_AGGREGATE",events:rows.rows.map(r=>({auditEventId:r.command_id,institutionDisplayName:r.display_name,actionCode:r.operation,targetType:r.resource_type,outcome:r.status,correlationId:r.correlation_id,ledgerTransactionId:r.ledger_transaction_id,eventTime:iso(r.accepted_at)})),classification};
+    }
+
     if (kind === "audit" && principal.roleId !== "ROLE-02") throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "V2 command audit requires the assigned audit-reader role.");
     if (kind === "historical") {
       if (institution !== "INST_MEDIATRIX" || !["ROLE-01", "ROLE-02"].includes(principal.roleId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Historical stock requires a Mediatrix inventory role.");
@@ -29,9 +46,9 @@ export class PostgresDevelopmentReader implements DevelopmentReader {
     }
     if (!["ROLE-01", "ROLE-02", "ROLE-03"].includes(principal.roleId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Operational component evidence requires an inventory or recipient role.");
     if (kind === "dashboard") {
-      const result = await this.pool.query<Row>(`SELECT c.institution_id,i.display_name,c.blood_type,c.component_type,c.inventory_status,COUNT(*)::int AS count,MAX(c.updated_at) AS projected_at FROM app.v2_components c JOIN app.institutions i USING(institution_id) WHERE c.institution_id=$1 GROUP BY c.institution_id,i.display_name,c.blood_type,c.component_type,c.inventory_status`, [institution]);
+      const result = await this.pool.query<Row>(`SELECT c.institution_id,i.display_name,c.blood_type,c.component_type,c.inventory_status,COUNT(*)::int AS count,MAX(c.updated_at) AS projected_at FROM app.v2_components c JOIN app.institutions i USING(institution_id) WHERE ($2::boolean OR c.institution_id=$1) GROUP BY c.institution_id,i.display_name,c.blood_type,c.component_type,c.inventory_status`, [institution,principal.roleId==="ROLE-03"]);
       const pending = await this.pool.query<Row>("SELECT status,COUNT(*)::int AS count FROM app.v2_commands WHERE actor_institution_id=$1 AND status<>'COMMITTED' GROUP BY status", [institution]);
-      return { composition: "OPERATIONAL", scope: "INSTITUTION", inventory: result.rows.map(r => ({ institutionId: r.institution_id, institutionDisplayName: r.display_name, bloodType: r.blood_type, component: r.component_type, inventoryStatus: r.inventory_status, confirmedCount: r.count, lastProjectedAt: iso(r.projected_at) })), pendingScans: pending.rows, lastSuccessfulProjectionAt: result.rows.map(r => iso(r.projected_at)).sort().at(-1) ?? null, classification };
+      return { composition: "OPERATIONAL", scope: principal.roleId==="ROLE-03"?"CITY_AGGREGATE":"INSTITUTION", evidenceStatus:result.rows.length?"PROJECTED":"NO_OPERATIONAL_ROWS", inventory: result.rows.map(r => ({ institutionId: r.institution_id, institutionDisplayName: r.display_name, bloodType: r.blood_type, component: r.component_type, inventoryStatus: r.inventory_status, confirmedCount: r.count, lastProjectedAt: iso(r.projected_at) })), pendingScans: pending.rows, lastSuccessfulProjectionAt: result.rows.map(r => iso(r.projected_at)).sort().at(-1) ?? null, classification };
     }
     if (kind === "transfers") {
       const requests = await this.pool.query<Row>("SELECT transfer_id,source_institution_id,destination_institution_id,blood_type,component_type,quantity,urgency,request_time,status,ledger_transaction_id FROM app.v2_transfer_requests WHERE source_institution_id=$1 OR destination_institution_id=$1 ORDER BY request_time DESC LIMIT 100", [institution]);
@@ -40,7 +57,7 @@ export class PostgresDevelopmentReader implements DevelopmentReader {
       return { requests: requests.rows, reservations: reservations.rows, timeline: timeline.rows, classification };
     }
     if (kind === "alerts") {
-      const rows = await this.pool.query<Row>(`SELECT c.component_id,c.blood_type,c.component_type,c.expires_at,c.updated_at,EXISTS(SELECT 1 FROM app.v2_alert_acknowledgements a WHERE a.component_id=c.component_id AND a.actor_user_id=$2) AS acknowledged FROM app.v2_components c WHERE c.institution_id=$1 AND c.inventory_status='EXPIRED' ORDER BY c.component_id`, [institution, principal.userId]);
+      const rows = await this.pool.query<Row>(`SELECT c.component_id,c.blood_type,c.component_type,c.expires_at,c.updated_at,EXISTS(SELECT 1 FROM app.v2_alert_acknowledgements a WHERE a.component_id=c.component_id AND (a.actor_user_id=$2 OR a.actor_user_id IN (SELECT operator_id FROM app.institution_operators WHERE account_id=$2 AND institution_id=$1))) AS acknowledged FROM app.v2_components c WHERE c.institution_id=$1 AND c.inventory_status='EXPIRED' ORDER BY c.component_id`, [institution, principal.userId]);
       return { scope: "INSTITUTION", alerts: rows.rows.map(r => ({ alertId: `V2EXP_${r.component_id}`, alertType: "EXPIRED", severity: "CRITICAL", unitId: r.component_id, bloodType: r.blood_type, component: r.component_type, expiresAt: iso(r.expires_at), evaluatedAt: iso(r.updated_at), status: "OPEN", acknowledged: r.acknowledged })), aggregates: [], nearExpiryEligibility: "DISABLED_UNAPPROVED_POLICY", evidence: "OFF_CHAIN_ALERT_FROM_LEDGER_PROJECTION", classification };
     }
     const rows = await this.pool.query<Row>(`SELECT c.command_id,c.operation,c.resource_type,c.status,c.safe_error_code,c.correlation_id,c.ledger_transaction_id,c.accepted_at,i.display_name FROM app.v2_commands c JOIN app.institutions i ON i.institution_id=c.actor_institution_id WHERE c.actor_institution_id=$1 ORDER BY c.accepted_at DESC,c.command_id DESC LIMIT 200`, [institution]);

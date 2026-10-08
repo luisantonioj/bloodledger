@@ -1,0 +1,144 @@
+{
+  "classification": "SIMULATION_ONLY",
+  "policyVersion": "SYNTHETIC_INSTITUTION_CORE_V1",
+  "allowedIssuerInstitutionIds": [
+    "INST_MEDIATRIX",
+    "INST_SYNTH_MEDIX",
+    "INST_SYNTH_NLVILLA"
+  ],
+  "issuerRules": {
+    "INST_MEDIATRIX": {
+      "ruleKind": "MEDIATRIX_MMYY_MONTH_SEQ",
+      "pattern": "^MM[0-9]{2}-(0[1-9]|1[0-2])-[0-9]{4}$",
+      "enabled": true
+    },
+    "INST_SYNTH_MEDIX": {
+      "ruleKind": "SYNTHETIC_ONLY",
+      "pattern": "^SYNMEDIX-[0-9]{4}-[0-9]{4}$",
+      "enabled": true
+    },
+    "INST_SYNTH_NLVILLA": {
+      "ruleKind": "SYNTHETIC_ONLY",
+      "pattern": "^SYNNLVILLA-[0-9]{4}-[0-9]{4}$",
+      "enabled": true
+    }
+  },
+  "bloodTypes": [
+    "A_POSITIVE",
+    "A_NEGATIVE",
+    "B_POSITIVE",
+    "B_NEGATIVE",
+    "AB_POSITIVE",
+    "AB_NEGATIVE",
+    "O_POSITIVE",
+    "O_NEGATIVE"
+  ],
+  "componentTypes": [
+    "WHOLE_BLOOD",
+    "PACKED_RED_BLOOD_CELLS",
+    "FRESH_FROZEN_PLASMA",
+    "PLATELETS",
+    "CRYOPRECIPITATE"
+  ],
+  "nearExpiryEnabled": false,
+  "reconciliationPolicyVersion": "SYNTHETIC_RECONCILIATION_REASONS_V1",
+  "reconciliationReasonCodes": [
+    "LABEL_RECORD_MISMATCH",
+    "POSSIBLE_DUPLICATE",
+    "COMPONENT_TYPE_MISMATCH",
+    "BLOOD_TYPE_MISMATCH",
+    "DATE_MISMATCH",
+    "CUSTODY_MISMATCH",
+    "STATUS_MISMATCH"
+  ],
+  "actors": {
+    "USR_MEDIATRIX_ADMIN": {
+      "institutionId": "INST_MEDIATRIX",
+      "role": "ROLE_01"
+    },
+    "USR_MEDIATRIX_TECH": {
+      "institutionId": "INST_MEDIATRIX",
+      "role": "ROLE_02"
+    },
+    "USR_DIVINE_LOVE": {
+      "institutionId": "INST_DIVINE_LOVE",
+      "role": "ROLE_03"
+    },
+    "USR_LIPA_CITY_DISTRICT": {
+      "institutionId": "INST_LIPA_CITY_DISTRICT",
+      "role": "ROLE_03"
+    },
+    "USR_METRO_LIPA": {
+      "institutionId": "INST_METRO_LIPA",
+      "role": "ROLE_03"
+    },
+    "USR_OSPITAL_NG_LIPA": {
+      "institutionId": "INST_OSPITAL_NG_LIPA",
+      "role": "ROLE_03"
+    },
+    "USR_SAN_ANTONIO": {
+      "institutionId": "INST_SAN_ANTONIO",
+      "role": "ROLE_03"
+    },
+    "USR_DOH_VIEWER": {
+      "institutionId": "INST_MEDIATRIX",
+      "role": "ROLE_04"
+    },
+    "USR_SYNTH_REVIEW_ROLE02": {
+      "institutionId": "INST_MEDIATRIX",
+      "role": "ROLE_02"
+    },
+    "USR_SYNTH_REVIEW_ROLE03": {
+      "institutionId": "INST_SYNTH_SECONDARY_REVIEW",
+      "role": "ROLE_03"
+    },
+    "USR_SYNTH_REVIEW_ROLE01": {
+      "institutionId": "INST_MEDIATRIX",
+      "role": "ROLE_01"
+    },
+    "USR_OP_6F506CBEB691D1F2F7C946A678C97A5E": {
+      "institutionId": "INST_SYNTH_MEDIX",
+      "role": "ROLE_01"
+    },
+    "USR_OP_BA806C9407FF05B6F3ECDA4D9CF4FCD9": {
+      "institutionId": "INST_SYNTH_MEDIX",
+      "role": "ROLE_02"
+    },
+    "USR_OP_B5115DC956C435754793A206CE37267C": {
+      "institutionId": "INST_SYNTH_NLVILLA",
+      "role": "ROLE_01"
+    },
+    "USR_OP_019748F191695C0648054E1DEAB1CFD5": {
+      "institutionId": "INST_SYNTH_NLVILLA",
+      "role": "ROLE_02"
+    },
+    "USR_OP_442D31C531892E2145033E6F18136B58": {
+      "institutionId": "INST_SYNTH_METROLIPA",
+      "role": "ROLE_03"
+    }
+  },
+  "developmentActorIds": [
+    "USR_SYNTH_REVIEW_ROLE02",
+    "USR_SYNTH_REVIEW_ROLE03"
+  ],
+  "bloodBankInstitutionIds": [
+    "INST_MEDIATRIX",
+    "INST_SYNTH_MEDIX",
+    "INST_SYNTH_NLVILLA"
+  ],
+  "institutionAccountActorIds": [
+    "USR_SYNTH_REVIEW_ROLE01",
+    "USR_SYNTH_REVIEW_ROLE02",
+    "USR_OP_6F506CBEB691D1F2F7C946A678C97A5E",
+    "USR_OP_BA806C9407FF05B6F3ECDA4D9CF4FCD9",
+    "USR_OP_B5115DC956C435754793A206CE37267C",
+    "USR_OP_019748F191695C0648054E1DEAB1CFD5",
+    "USR_OP_442D31C531892E2145033E6F18136B58"
+  ],
+  "operationalDestinationInstitutionIds": [
+    "INST_MEDIATRIX",
+    "INST_SYNTH_MEDIX",
+    "INST_SYNTH_NLVILLA",
+    "INST_SYNTH_METROLIPA"
+  ]
+}

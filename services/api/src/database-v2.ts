@@ -104,7 +104,7 @@ export class PostgresV2ProjectionReader implements V2ProjectionReader {
 
   async listReservations(institutionId: string, roleId: string, limit: number, cursor?: string): Promise<{ reservations: V2ReservationProjection[]; nextCursor: string | null }> {
     const destination = roleId === "ROLE-03";
-    const scope = destination ? "t.destination_institution_id=$1" : "r.institution_id=$1";
+    const scope = destination ? "t.destination_institution_id=$1" : "(r.institution_id=$1 OR t.destination_institution_id=$1)";
     const cursorClause = cursor ? " AND r.reservation_id>$2" : "";
     const values: unknown[] = [institutionId];
     if (cursor) values.push(cursor);
@@ -117,7 +117,7 @@ export class PostgresV2ProjectionReader implements V2ProjectionReader {
 
   async getReservation(reservationId: string, institutionId: string, roleId: string): Promise<V2ReservationProjection | null> {
     const destination = roleId === "ROLE-03";
-    const scope = destination ? "t.destination_institution_id=$2" : "r.institution_id=$2";
+    const scope = destination ? "t.destination_institution_id=$2" : "(r.institution_id=$2 OR t.destination_institution_id=$2)";
     const result = await this.pool.query<Row>(`${this.reservationSelect} WHERE r.reservation_id=$1 AND ${scope} GROUP BY r.reservation_id,t.destination_institution_id`, [reservationId, institutionId]);
     return result.rows[0] ? mapReservation(result.rows[0]) : null;
   }

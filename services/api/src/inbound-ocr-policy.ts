@@ -57,7 +57,7 @@ export function validateInboundOcrInput(value: unknown, enabledIssuerIds: readon
   const issuerInstitutionId = stringField(body, "issuerInstitutionId");
   if (!INSTITUTION.test(issuerInstitutionId) || !enabledIssuerIds.includes(issuerInstitutionId)) throw new ApiFailure(400, "INBOUND_ISSUER_UNAPPROVED", "The issuer has no enabled inbound format policy.");
   const donationNumber = stringField(body, "donationNumber");
-  if (!(issuerInstitutionId === "INST_MEDIATRIX" ? MEDIATRIX_DONATION_NUMBER : EXTERNAL_DONATION_NUMBER).test(donationNumber)) throw new ApiFailure(400, "INBOUND_DONATION_NUMBER_INVALID", "The Donation No. does not match the issuer format policy.");
+  if (!(issuerInstitutionId === "INST_MEDIATRIX" ? MEDIATRIX_DONATION_NUMBER : issuerInstitutionId === "INST_SYNTH_MEDIX" ? /^SYNMEDIX-[0-9]{4}-[0-9]{4}$/ : issuerInstitutionId === "INST_SYNTH_NLVILLA" ? /^SYNNLVILLA-[0-9]{4}-[0-9]{4}$/ : EXTERNAL_DONATION_NUMBER).test(donationNumber)) throw new ApiFailure(400, "INBOUND_DONATION_NUMBER_INVALID", "The Donation No. does not match the issuer format policy.");
   const bloodType = stringField(body, "bloodType") as V2BloodType;
   const componentType = stringField(body, "componentType") as V2ComponentType;
   if (!(V2_BLOOD_TYPES as readonly string[]).includes(bloodType)) throw new ApiFailure(400, "V2_BLOOD_TYPE_INVALID", "The blood type is not supported.");
