@@ -20,6 +20,27 @@ Only synthetic information may be entered during review.
 
 ## Implemented visual surfaces
 
+### Institution-account integration — 2026-10-08
+
+For primary institution sessions, the following original preview entries are
+superseded by the selected synthetic contracts in
+[`INSTITUTION-ACCOUNTS.md`](../INSTITUTION-ACCOUNTS.md): invited application
+submission/status/withdrawal, PRC application review and separate activation,
+institution profiles and account administration, and individual operator PIN
+verification. Primary sessions use authenticated V2 reads and action-bound
+verification; the older role-specific Accounts/Profile previews remain for
+legacy visual fixtures. PRC and DOH network/report screens now read V2
+aggregates and stored census reports. Capture uses the authenticated receiving
+institution and separately validates the synthetic issuer.
+
+This limited implementation follows the Testing-phase selection dated
+2026-10-08 and ADR-036 through ADR-039. It does not close institutional RQ-14,
+TP-G06, real document handling, password recovery, full report formatting or
+UAT. The table and dependency register below retain the original parity scope;
+they do not describe the newer primary-account API as missing. Independent
+retained-host evidence and remaining browser limitations are recorded in
+[`LAT-INSTITUTION-ACCOUNT-VALIDATION-2026-10-08.md`](LAT-INSTITUTION-ACCOUNT-VALIDATION-2026-10-08.md).
+
 | Surface | Official destination | Visual behavior | Runtime truth |
 |---|---|---|---|
 | Access tabs | `features/auth/access-page.tsx` | Sign-in and Apply for access tabs | Sign-in keeps the existing official session API; application mode has no API |
