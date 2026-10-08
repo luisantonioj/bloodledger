@@ -10,6 +10,7 @@ import { PostgresV2Projector } from '../../services/api/build/src/database-v2.js
 import { PostgresSessionRepository } from '../../services/api/build/src/database-session.js';
 import { verifyPassword } from '../../services/api/build/src/session.js';
 import { PostgresMlInventorySnapshotStore } from '../../services/api/build/src/census-worker.js';
+import { INSTITUTION_OPERATOR_MODE } from './stock-plan.mjs';
 import policy from '../../chaincode/policy/interview-core-v2-1.json' with {type:'json'};
 import developmentPolicy from '../../chaincode/policy/persistent-development-core-v1.json' with {type:'json'};
 
@@ -20,6 +21,10 @@ if(!['inspect','preview','apply','resume','verify','census'].includes(action)) t
 if(existsSync('.env')) process.loadEnvFile('.env');
 if(!options.config || ((await stat(options.config)).mode & 0o077)!==0) throw new Error('SEED_PRIVATE_CONFIG_PERMISSIONS_REQUIRED');
 const config=JSON.parse(await readFile(options.config,'utf8'));
+if(config.authenticationMode===INSTITUTION_OPERATOR_MODE) {
+  const {institutionMaintenance}=await import('./institution-maintenance.mjs');
+  return institutionMaintenance(action,options,config);
+}
 if(config.classification!=='SIMULATION_ONLY'||config.scope!=='PERSISTENT_LOCAL_DEVELOPMENT') throw new Error('SEED_CONFIG_SCOPE_REQUIRED');
 const pgHost=process.env.DEVELOPMENT_PG_HOST??'127.0.0.1';
 if(!['127.0.0.1','localhost','postgres'].includes(pgHost)||process.env.POSTGRES_DB!=='bloodledger_dev'||process.env.POSTGRES_APP_USER!=='bloodledger_app') throw new Error('SEED_LOCAL_TARGET_REQUIRED');

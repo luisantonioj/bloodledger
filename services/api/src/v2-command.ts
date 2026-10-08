@@ -33,6 +33,7 @@ export interface V2Command extends V2CommandInput {
 }
 
 export interface V2CommandStore {
+  assertPopulationRequest?(path: string, body: unknown, idempotencyKey: unknown): Promise<void>;
   enqueue(input: V2CommandInput): Promise<{ command: V2Command; replayed: boolean }>;
   get(commandId: string, institutionId: string, userId: string): Promise<V2Command | null>;
   list(institutionId: string, userId: string, limit: number, cursor?: string, idempotencyKey?: string): Promise<{ commands: V2Command[]; nextCursor: string | null }>;
@@ -55,6 +56,7 @@ function commandView(row: Record<string, unknown>): V2Command {
     resourceId: String(row.resource_id), operation: String(row.operation), payload: (row.payload ?? {}) as Record<string, unknown>,
     correlationId: String(row.correlation_id), actorUserId: String(row.actor_user_id), actorInstitutionId: String(row.actor_institution_id),
     acceptedAt: new Date(String(row.accepted_at)).toISOString(), status: String(row.status) as V2CommandStatus,
+    payloadSha256: String(row.payload_sha256),
     attemptCount: Number(row.attempt_count), nextAttemptAt: new Date(String(row.next_attempt_at)).toISOString(),
     ledgerTransactionId: row.ledger_transaction_id === null || row.ledger_transaction_id === undefined ? null : String(row.ledger_transaction_id),
     ledgerResult: row.ledger_result === null || row.ledger_result === undefined ? null : row.ledger_result,
@@ -105,12 +107,27 @@ export class InMemoryV2CommandStore implements V2CommandStore {
 
 export class PostgresV2CommandStore implements V2CommandStore {
   constructor(private readonly pool: Pool) {}
+  async assertPopulationRequest(path: string, body: unknown, idempotencyKey: unknown): Promise<void> {
+    const run = (await this.pool.query<Record<string, unknown>>("SELECT manifest FROM app.operational_stock_runs WHERE writer_lock")).rows[0];
+    if (!run) return;
+    const manifest = run.manifest as { operations: Array<{ path: string; payloadSha256: string; idempotencyKey: string }> };
+    const stable = (value: unknown): string => JSON.stringify(value, (_key, item: unknown) => item && typeof item === "object" && !Array.isArray(item) ? Object.fromEntries(Object.entries(item).sort(([a],[b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
+    const digest = createHash("sha256").update(stable(body)).digest("hex");
+    if (!manifest.operations.some(operation => operation.path === path && operation.idempotencyKey === idempotencyKey && operation.payloadSha256 === digest)) throw new ApiFailure(409, "V2_CONTROLLED_POPULATION_LOCKED", "Inventory writers are quiesced for an approved simulation population.");
+  }
   async enqueue(input: V2CommandInput): Promise<{ command: V2Command; replayed: boolean }> {
     const digest = input.payloadSha256 ?? payloadDigest(input.payload);
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
       await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [input.idempotencyKey]);
+      const activeRun = (await client.query<Record<string, unknown>>("SELECT manifest FROM app.operational_stock_runs WHERE writer_lock FOR SHARE")).rows[0];
+      if (activeRun) {
+        const manifest = activeRun.manifest as { operations: Array<{ commandId: string; account: string }>; principals: Record<string, { userId: string; institutionId: string }> };
+        const operation = manifest.operations.find(operation => operation.commandId === input.commandId);
+        const actor = operation && manifest.principals[operation.account];
+        if (!actor || actor.userId !== input.actorUserId || actor.institutionId !== input.actorInstitutionId) throw new ApiFailure(409, "V2_CONTROLLED_POPULATION_LOCKED", "Inventory writers are quiesced for an approved simulation population.");
+      }
       const existing = await client.query<Record<string, unknown>>("SELECT * FROM app.v2_commands WHERE idempotency_key=$1", [input.idempotencyKey]);
       if (existing.rows[0]) {
         if (String(existing.rows[0].actor_institution_id) !== input.actorInstitutionId || String(existing.rows[0].actor_user_id) !== input.actorUserId) throw new ApiFailure(409, "V2_IDEMPOTENCY_SCOPE_CONFLICT", "Idempotency key belongs to another authenticated scope.");
@@ -154,8 +171,8 @@ export class PostgresV2CommandStore implements V2CommandStore {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      await client.query("UPDATE app.v2_commands SET status=CASE WHEN ledger_transaction_id IS NULL THEN 'RETRY_WAIT' ELSE 'LEDGER_COMMITTED_PROJECTION_PENDING' END,lease_owner=NULL,lease_expires_at=NULL,next_attempt_at=$1,updated_at=$1,version=version+1 WHERE status='SUBMITTING' AND lease_expires_at <= $1 AND NOT EXISTS(SELECT 1 FROM app.development_seed_commands s WHERE s.command_id=app.v2_commands.command_id)", [now.toISOString()]);
-      const result = await client.query<Record<string, unknown>>(`SELECT * FROM app.v2_commands WHERE status IN ('QUEUED','RETRY_WAIT','LEDGER_COMMITTED_PROJECTION_PENDING') AND next_attempt_at <= $1 AND NOT EXISTS(SELECT 1 FROM app.development_seed_commands s WHERE s.command_id=app.v2_commands.command_id) ORDER BY accepted_at,command_id FOR UPDATE SKIP LOCKED LIMIT 1`, [now.toISOString()]);
+      await client.query("UPDATE app.v2_commands SET status=CASE WHEN ledger_transaction_id IS NULL THEN 'RETRY_WAIT' ELSE 'LEDGER_COMMITTED_PROJECTION_PENDING' END,lease_owner=NULL,lease_expires_at=NULL,next_attempt_at=$1,updated_at=$1,version=version+1 WHERE status='SUBMITTING' AND lease_expires_at <= $1 AND NOT EXISTS(SELECT 1 FROM app.development_seed_commands s WHERE s.command_id=app.v2_commands.command_id) AND NOT EXISTS(SELECT 1 FROM app.operational_stock_commands s WHERE s.command_id=app.v2_commands.command_id)", [now.toISOString()]);
+      const result = await client.query<Record<string, unknown>>(`SELECT * FROM app.v2_commands WHERE status IN ('QUEUED','RETRY_WAIT','LEDGER_COMMITTED_PROJECTION_PENDING') AND next_attempt_at <= $1 AND NOT EXISTS(SELECT 1 FROM app.development_seed_commands s WHERE s.command_id=app.v2_commands.command_id) AND NOT EXISTS(SELECT 1 FROM app.operational_stock_commands s WHERE s.command_id=app.v2_commands.command_id) ORDER BY accepted_at,command_id FOR UPDATE SKIP LOCKED LIMIT 1`, [now.toISOString()]);
       if (!result.rows[0]) { await client.query("COMMIT"); return null; }
       const row = result.rows[0];
       const updated = await client.query<Record<string, unknown>>(`UPDATE app.v2_commands SET status='SUBMITTING',attempt_count=attempt_count+1,lease_owner=$2,lease_expires_at=$3,updated_at=$1,version=version+1 WHERE command_id=$4 RETURNING *`, [now.toISOString(), workerId, new Date(now.getTime() + leaseMs).toISOString(), row.command_id]);

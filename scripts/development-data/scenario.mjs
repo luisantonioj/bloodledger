@@ -13,7 +13,7 @@ export function scenarios(date) {
     {name:'IMMINENT_EXPIRY_NO_WARNING_POLICY',componentType:'WHOLE_BLOOD',bloodType:'AB_POSITIVE',collectedAt:time(-24),expiresAt:time(23),donationNumber:`MM${date.slice(2,4)}-${date.slice(5,7)}-${String(8700+Number(date.slice(8))).padStart(4,'0')}`}];
 }
 export function ledgerCommand(command) {
-  const operations = { REGISTER_INBOUND_COMPONENT:'RegisterInboundComponent', SUBMIT_TRANSFER:'SubmitTransferRequest', RESERVE_COMPONENTS:'ReserveComponents', PREPARE_RESERVATION:'PrepareReservation', DISPATCH_RESERVATION:'DispatchReservation', START_RESERVATION_TRANSIT:'StartReservationTransit', EVALUATE_COMPONENT_EXPIRY:'EvaluateComponentExpiry' };
+  const operations = { REGISTER_INBOUND_COMPONENT:'RegisterInboundComponent', SUBMIT_TRANSFER:'SubmitTransferRequest', RESERVE_COMPONENTS:'ReserveComponents', RESERVE_LOCAL_RELEASE:'ReserveComponents', PREPARE_RESERVATION:'PrepareReservation', DISPATCH_RESERVATION:'DispatchReservation', START_RESERVATION_TRANSIT:'StartReservationTransit', EVALUATE_COMPONENT_EXPIRY:'EvaluateComponentExpiry' };
   if (!operations[command.operation]) throw new Error('SEED_OPERATION_UNSUPPORTED');
   let payload = {...command.payload};
   if (command.operation==='REGISTER_INBOUND_COMPONENT') {
@@ -21,6 +21,7 @@ export function ledgerCommand(command) {
     payload.donationNoDigest=payload.donationNoLookupHmac;delete payload.donationNoLookupHmac;
   }
   if(command.operation==='RESERVE_COMPONENTS') delete payload.transferId;
+  if(command.operation==='RESERVE_LOCAL_RELEASE') delete payload.localReleaseId;
   return { operation:operations[command.operation],payload:{...payload,idempotencyKey:command.idempotencyKey,policyVersion:payload.policyVersion??'INTERVIEW_DERIVED_CORE_V2_1'} };
 }
 export async function processSavedCommand({command, saved, ledger, saveSubmission, saveCommit, project, complete, afterSubmit = async () => undefined}) {
