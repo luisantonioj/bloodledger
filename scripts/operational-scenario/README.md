@@ -108,7 +108,7 @@ Never place the XLSX, generated manifest or synthetic label material in Git.
 ```bash
 python3 -m unittest discover -s scripts/operational-scenario -v
 python3 scripts/operational-scenario/scenario.py \
-  --workbook "$WORKBOOK" --revision "$(git rev-parse HEAD)" \
+  --workbook "$WORKBOOK" --revision "$GENERATOR_COMMIT" \
   --generated-at 2026-10-08T06:46:27Z --output "$OUT/scenario.json"
 python3 scripts/operational-scenario/verify.py \
   --workbook "$WORKBOOK" --manifest "$OUT/scenario.json" --sha256 "$REVIEWED_FILE_SHA"
