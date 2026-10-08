@@ -546,3 +546,181 @@ envelope hash; it cannot submit or project anything. Browser navigation between
 component/reservation/workflow screens and independent Lat pending/error/restart
 acceptance remain explicitly NOT_RUN. Existing reads define those links; no
 unsupported local-release detail endpoint is introduced.
+
+
+## Exact replay and populated-state restart follow-up
+
+Exact `stock resume` using the same approved execution/backup and a fresh
+`--report replay-v2.json` completed at `2026-10-08T18:02:25.550Z`. Exact
+comparison with `population-v2.json` passed all 559 complete receipt records
+(including original commitment-observation times), all twenty series, counts,
+24 reservations/36 links, current-ledger count and preservation. There were
+still exactly 559 scenario commands, all COMMITTED. No replacement transaction
+or changed manifest was introduced. T0 remained PENDING and the writer gate true.
+
+An ordinary populated-state restart began at `2026-10-08T18:03:01Z`: API/web/peer
+were stopped, PostgreSQL/orderer/both CAs restarted, then peer and API/web
+started after infrastructure health checks. All infrastructure reported healthy.
+API `/healthz` returned READY for API/database; the general Fabric sync worker
+remained DISABLED and the durable command/projection/census configuration
+remained CONFIGURED. Forecast readiness was UNAVAILABLE, consistent with the
+separate forecast bindings; no model was activated. No reset, live database
+restore, volume recreation or identity enrollment ran. The infrastructure health
+inspection encountered an automatic-approval timeout; its permitted read-only
+retry succeeded. Stop/start timestamps are retained, without treating this
+administrative pause as NFR-06 latency evidence.
+
+At `2026-10-08T21:50:42.094810+00:00`, all original 110 generated-file hashes
+and five named-volume Name/CreatedAt/Mountpoint fingerprints matched.
+The versioned independent QSCC verifier completed at
+`2026-10-08T21:52:13.609Z`, returning all 559 original VALID transactions and
+COMMITTED statuses. Exact before/after receipt-array comparison, including
+every signed-envelope SHA-256, passed. Canonical JSON receipt-array SHA-256
+(sorted object keys, compact separators) is
+`81cf0a503a855e8bc741795663190458026a711010203a6523b35d77667ea014`.
+The private full receipt array is not published as institutional inventory data.
+
+The versioned ordinary-cookie browser rerun completed at
+`2026-10-08T21:52:56.513Z`: all six primary accounts, 531 source inventory
+rows, all 24 ACTIVE reservations/36 member links, Medix's 13 requests/reservation
+links, unrelated/requestor/regulatory scopes, original historical null fields,
+normal UI logout and subsequent API 401 passed again. V4 remained default,
+V5 unavailable and near-expiry eligibility disabled. No fixture interception
+or profile mutation was used. This remains Jopia self-validation.
+
+The full post-restart `stock verify` report is still in progress. It checks
+every original/new commitment, all current ledger assets, PostgreSQL and API
+contracts and the baseline fingerprints. The fixed 08:00–16:00 Manila T0
+window has not yet opened; no forty-row T0 census or writer-gate release
+is claimed.
+
+Tested restart and post-restart read-only commands:
+
+```bash
+docker stop bloodledger-persistent-web bloodledger-persistent-api bloodledger-peer0-mediatrix-1
+docker restart bloodledger-postgres-1 bloodledger-orderer0-1 bloodledger-ca-mediatrix-1 bloodledger-ca-orderer-1
+docker start bloodledger-peer0-mediatrix-1
+docker inspect bloodledger-peer0-mediatrix-1 bloodledger-postgres-1 bloodledger-orderer0-1 \
+  bloodledger-ca-mediatrix-1 bloodledger-ca-orderer-1 \
+  --format '{{.Name}} {{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}'
+# All reported running/healthy before starting retained applications:
+docker start bloodledger-persistent-api bloodledger-persistent-web
+curl --fail --silent http://127.0.0.1:3000/healthz
+export BLOODLEDGER_FABRIC_GENERATED_ROOT=/home/luisantonioj/projects/bloodledger/network/generated
+export BLOODLEDGER_DEV_ENV_FILE=/home/luisantonioj/projects/bloodledger/build/development-local/runtime.env
+export BLOODLEDGER_DEV_PRIVATE_DIR="$PRIVATE"
+bash scripts/development-data/run.sh stock verify \
+  --config "$PRIVATE/stock-runtime.json" --manifest "$PRIVATE/execution-v2.json" \
+  --approve-manifest "$EXECUTION_HASH" --report "$PRIVATE/post-restart-v2.json"
+# Repeat both versioned read-only evidence commands above with fresh reports:
+# browser-populated-versioned-after-restart.json
+# all-559-versioned-after-restart.json
+```
+
+
+At `2026-10-08T22:02:11.488Z`, the versioned current-time dry census read
+passed all 40 component/blood-type combinations against PostgreSQL and
+authenticated V2.1 component data: 492 AVAILABLE, 37 RESERVED, 529 reportable,
+491 forecast-eligible AVAILABLE and 21 verified **reportable** zero combinations.
+The original past-expiry AVAILABLE component stays unchanged and excluded from
+forecast eligibility. IN_TRANSIT/EXPIRED are excluded from census reportable
+counts, while the operational component total stays 531.
+This uses a READ ONLY transaction and the pure census builder with the actual
+current timestamp. It creates no snapshot, writes no inventory and explicitly
+reports `persisted=false`, `t0Verification=NOT_ESTABLISHED_BY_DRY_READ`. The
+fixed-window T0 capture remains a separate pending check.
+
+Tested current-time dry-read command (same private inputs, fresh report):
+
+```bash
+docker run --rm --init --user "$(id -u):$(id -g)" \
+  --network bloodledger_default \
+  --env-file /home/luisantonioj/projects/bloodledger/build/development-local/runtime.env \
+  -v "$PWD:$PWD" -v "$PRIVATE:/private" -w "$PWD" \
+  -e BLOODLEDGER_REPOSITORY_ROOT="$PWD" \
+  -e BLOODLEDGER_STOCK_CONFIG_PATH=/private/stock-runtime.json \
+  -e BLOODLEDGER_STOCK_EXECUTION_PATH=/private/execution-v2.json \
+  -e BLOODLEDGER_STOCK_EXECUTION_SHA256="$EXECUTION_HASH" \
+  -e BLOODLEDGER_STOCK_EVIDENCE_REPORT_PATH=/private/census-current-time-dry-read.json \
+  bloodledger-development-tools:local \
+  node tests/development-data/stock-census-dry-read.mjs
+```
+
+
+## Current acceptance disposition — October 9 06:04 Manila
+
+Full post-restart `stock verify` completed successfully at
+`2026-10-08T22:03:18.996Z`, with 559 VALID saved commitments, 531 current
+ledger assets and exact ledger/PostgreSQL/API reconciliation. A private exact
+comparison at `2026-10-08T22:04:16.308022+00:00` matched the original full
+receipt records, counts, all twenty series, 24 ACTIVE reservations/36 members
+and preservation. PostgreSQL still contains exactly 559 COMMITTED scenario
+commands, `writer_lock=true`, and no scenario `census_snapshot_id`. No pending,
+failed or conflicted scenario command remains. Both working trees are clean
+apart from this scoped evidence update; Lat's original checkout is preserved.
+
+| Check | Current result |
+| --- | --- |
+| Exact ZIP/workbook/scenario lineage, genuine confirmed OCR and human execution approval | PASS |
+| Retained six primary accounts/12 operators, installed policy/target and original identities/volumes | PASS |
+| 559 genuine local Fabric VALID commands, current ledger/PG/API 531 reconciliation | PASS |
+| Twenty source series, 24 ACTIVE reservations, 36 members and destination request links | PASS |
+| Original nine stock, historical 522, original receipts and baseline fingerprints | PASS |
+| Ambiguous submission, projection interruption and exact full replay | PASS |
+| Ordinary populated-state infrastructure/service restart and unchanged original envelopes | PASS |
+| Six-account ordinary-cookie browser/API/scope/logout/V4 checks before/after restart | PASS — JOPIA_SELF_VALIDATION |
+| Current-time forty-combination census, 21 reportable zeros, 491 eligible / 529 reportable | PASS — DRY READ ONLY, no snapshot |
+| Fixed-window persisted T0 census/API/currentness, writer-gate release and census replay/restart durability | PENDING — October 9 08:00–16:00 Manila |
+| Lat's independent detail-navigation/pending/error/scope/logout/restart acceptance | NOT_RUN — separate owner evidence |
+| V5 persistence/binding/job activation | BLOCKED — separate review/approval |
+| Human UAT, physical Android OCR, full NFR-06, clinical claims and deployment | NOT_RUN — outside this acceptance scope |
+
+The remaining timed Jopia command is `stock verify` using the same exact
+approved execution and a **new** report, e.g. `t0-verify-v2.json`, inside
+`[2026-10-09T00:00:00Z, 2026-10-09T08:00:00Z)`. No new apply approval or
+new units are required. The runner will again verify all evidence, capture
+the 40-row actual operational snapshot at the actual generation time,
+reconcile its authenticated inventory-evidence API and only then release the
+scoped writer gate. Current-time dry-read counts cannot replace this step.
+No clock change, future snapshot, manual gate release or backdating is permitted.
+
+```bash
+# Run inside the fixed window, with existing private inputs and exports above:
+bash scripts/development-data/run.sh stock verify \
+  --config "$PRIVATE/stock-runtime.json" --manifest "$PRIVATE/execution-v2.json" \
+  --approve-manifest "$EXECUTION_HASH" --report "$PRIVATE/t0-verify-v2.json"
+```
+
+Lat can independently read the current Jopia retained target, but mutations
+remain gated until this T0 pass. Integrate the reviewed implementation ancestry
+without overwriting Lat's working tree or resetting stores. Implement/verify
+component-detail → reservation-detail → transfer-request or local-release
+purpose/member navigation using the existing V2.1 contracts. Verify null,
+missing/denied, queued/submitting/projection-pending/committed/failed/conflicted
+states, scoped errors, normal logout and restart on 5174 → 3000; interception
+and port 5175 are not acceptance. Existing inventory references are still
+plain references, so Jopia API link validation does not claim those UI flows
+already exist. A different retained host needs its own target/preservation
+review; do not copy the Jopia execution as approval for Lat's distinct database.
+
+V4 remains default. On October 9, yesterday's Manila origin is October 8;
+any V5 persistence job must separately review that origin, target/binding and
+actual generation time. No V5 activation, historical-date rewrite, near-expiry
+enablement, Testing exit or research/clinical/deployment claim is authorized.
+
+
+After that T0 capture passes, repeat the ordinary restart and `stock verify`
+with a fresh `t0-post-restart-v2.json` within the same verification window.
+Compare the actual persisted census ID, captured-at instant, 40 rows,
+source-projection digest, API currentness, complete original receipts and
+preservation. This proves durability of the **new T0 census** as well as the
+already verified inventory. Keep competing writers quiescent during that
+comparison. The inventory restart is PASS now; future T0-census persistence
+across restart is explicitly NOT_RUN until the snapshot exists. Do not
+restore the old backup over committed ledger history.
+
+Final helper validation at `2026-10-08T22:05:59.407Z` again passed the actual
+current-time dry census after exact schema/scenario guards were added.
+Final syntax and full-history/index/candidate Gitleaks checks passed; no
+credential, generated identity, private manifest, envelope or unrelated edit
+is included in the implementation commits.

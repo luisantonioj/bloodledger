@@ -2,8 +2,9 @@
 
 Status: Accepted implementation scope by the user's Jopia instruction on
 2026-10-08. Actual population completed at 2026-10-08T17:44:45.900Z:
-522 new / 531 total units and 559 VALID commitments. Exact replay, final
-populated-state restart and fixed-window T0 acceptance remain pending.
+522 new / 531 total units and 559 VALID commitments. Exact replay and ordinary
+populated-state restart passed. Fixed-window persisted T0 acceptance remains
+pending; the current-time dry census passes all 40 combinations.
 Classification: **SIMULATION_ONLY**. Jopia owns backend implementation and
 self-validation; Buno owns source/scenario lineage; Lat owns independent
 retained-host and browser verification.
@@ -127,8 +128,8 @@ and refuses a running general synchronization worker.
 The following are handoff commands. Live population completed on the
 reviewed Jopia target; completed prerequisites and actual recovery results are
 recorded in the [host recovery evidence](handoffs/JOPIA-STOCK-HOST-RECOVERY-2026-10-08.md).
-Full population reconciliation passed; replay, restart and T0 acceptance
-remain pending. Variables
+Full population reconciliation, exact replay and populated-state restart passed;
+fixed-window persisted T0 acceptance remains pending. Variables
 refer to privately held paths and reviewed hashes. Inspection can run before the new migration. Forecast maintenance
 uses this same primary/operator configuration through `run.sh inspect` and
 `run.sh census`; its existing separate binding/job approvals remain mandatory.
@@ -222,7 +223,7 @@ After accepted apply/replay/T0 verification, follow the ordinary retained-host
 stop/start commands, preserving all project volumes and generated identities,
 then verify with the identical execution hash and a new report path. Compare
 receipt IDs/blocks, per-series counts, forty census rows, baseline fingerprints,
-identity/volume fingerprints and ordinary-cookie API reads. Final populated-state restart evidence and Lat's independent 5174 → 3000
-browser acceptance remain pending. Earlier restart and ordinary-cookie checks
+identity/volume fingerprints and ordinary-cookie API reads. Populated-state restart and Jopia ordinary-cookie browser self-validation passed;
+Lat's independent 5174 → 3000 browser acceptance remains pending. Earlier restart and ordinary-cookie checks
 are disclosed Jopia self-validation in the host recovery evidence. Neither fixture interception nor the disposable database probe
 constitutes that evidence.
