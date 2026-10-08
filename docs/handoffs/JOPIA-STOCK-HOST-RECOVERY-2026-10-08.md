@@ -404,3 +404,10 @@ was stopped and resumed with the correct report argument and the same approved
 execution/backup. Saved commands and receipts remain durable; completed work
 is verified before continuing. API/web/Fabric/database and the writer gate
 remained active. This corrects the invocation, not the scenario or approval.
+
+The CLI now rejects missing or ambiguous execution report arguments before
+reading private configuration or opening the target (`STOCK_REPORT_REQUIRED`).
+The new boundary regression plus existing planner/client/recovery checks passed:
+23 development-data tests, zero failures. Apply/resume/verify use `--report`;
+preview/confirm use `--output`. This guard does not change frozen execution
+payloads, actor grants or recovery behavior.

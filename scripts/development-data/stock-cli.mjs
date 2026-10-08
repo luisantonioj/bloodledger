@@ -296,6 +296,9 @@ export async function main(args = process.argv.slice(2)) {
     requireStock(['config','scenario','archive','workbook','manifest','approve-manifest','output','report','backup','approve-backup','stop-after','pause-after-submit','pause-after-commit'].includes(key) && args[i+1] && !options[key],'STOCK_ARGUMENT_INVALID');
     options[key] = args[i+1];
   }
+  if (['apply','resume','verify'].includes(action)) {
+    requireStock(options.report && !options.output, 'STOCK_REPORT_REQUIRED');
+  }
   const config = await privateJson(options.config);
   const runtime = await openInstitutionRuntime(config,true);
   try {
