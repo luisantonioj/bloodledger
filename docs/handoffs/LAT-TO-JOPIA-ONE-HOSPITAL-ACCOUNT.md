@@ -7,8 +7,15 @@ Lat owns frontend integration and independent retained-host validation.
 **Product direction confirmed by Lat:** each hospital should have one primary
 BloodLedger login account. Separate technologist, hospital-administrator and
 institution-account-administrator logins for the same hospital do not match
-the intended design. Integrate the existing six synthetic review accounts into
-that model, with a documented migration and preserved data.
+the intended design. The requested target is six institution accounts: three
+blood banks, one requestor, PRC and DOH. Reconcile the existing role-based
+synthetic fixtures with that roster through a documented migration that
+preserves data. Six roles and six institution accounts are different concepts.
+
+Correction: this revision supersedes the earlier four-login interpretation.
+Lat supplied the exact six-account roster below on 2026-10-08. The earlier
+four-account target incorrectly treated the retained role fixtures as the
+intended institution roster.
 
 This is a new implementation handoff, not evidence that the account migration
 has run. Keep role capabilities and hospital login count as separate concepts.
@@ -49,34 +56,59 @@ Current institution IDs and historical actors must remain traceable.
 | `synth_review_role05` | `USR_SYNTH_REVIEW_ROLE05` | ROLE-05 System Administrator | `INST_SYNTH_SYSTEM_REVIEW` |
 | `synth_review_role06` | `USR_SYNTH_REVIEW_ROLE06` | ROLE-06 Institution Account Administrator | `INST_SYNTH_SECONDARY_REVIEW` |
 
-Requested fixture result:
+### User-confirmed target: six institution accounts
 
-| Account scope | Target interactive logins | Migration direction |
+| Institution / account scope | Requested login email | Account category |
 | --- | --- | --- |
-| Mediatrix hospital | One | Consolidate the ROLE-01/ROLE-02 login experience; retain actor history and explicitly authorized action boundaries |
-| Synthetic secondary hospital | One | Consolidate the ROLE-03/ROLE-06 login experience; recipient and administration capabilities must remain explicit |
-| Regulatory office | One, unchanged | Remains separate from hospitals; retain regulatory scope |
-| System scope | One, unchanged | Remains separate from hospitals; retain non-clinical system scope |
+| Mary Mediatrix Blood Bank | `bloodbank@mmc.bloodledger` | Blood bank |
+| Lipa Medix Blood Bank | `bloodbank@medix.bloodledger` | Blood bank |
+| N.L. Villa Blood Bank | `bloodbank@nlvilla.bloodledger` | Blood bank |
+| Metro Lipa Requestor | `facility@metrolipa.bloodledger` | Requestor |
+| PRC Administrator | `l.mendoza@prc.bloodledger` | PRC administration |
+| DOH Regulatory Officer | `regional.officer@doh.bloodledger` | DOH regulatory |
 
-For these fixtures, the expected result is **four primary interactive logins**,
-not six hospital accounts and not six fabricated hospitals. Six historical
-principal records may remain for audit/provenance; preserving those records
-must not leave a second active hospital login available through an old endpoint.
-Do not infer a universal one-account rule for all regulator/system organizations
-from this hospital-specific request.
+The expected product-facing result is **six institution logins**, with one
+primary account for each listed institution. PRC and DOH are separate accounts;
+there is no system-administrator account in this six-account roster. Distinguish
+any retained internal maintenance principal from these six product-facing
+accounts. Do not turn it into a seventh visible institution login or silently
+delete it merely to match a total database row count.
 
-Reusing existing ROLE-02 and ROLE-03 credentials as the two hospital entry
-accounts is a candidate that minimizes seed disruption, not a mandated
-implementation. Return the exact primary-account and retired-login mapping
-before applying it to Lat's retained environment. Do not rename, delete,
-overwrite passwords or change institution IDs as an undocumented shortcut.
+These identifiers are user-supplied design references for synthetic development;
+this handoff does not establish real mailbox ownership, employee identity or
+institutional approval. Deliver credentials outside Git. Do not derive a real
+person's identity from the PRC email or collect staff records for these fixtures.
+
+The old six role-based fixtures above are a retained implementation baseline,
+not the desired six-institution roster. Do not assume a one-to-one rename:
+two existing principals currently share Mediatrix, two share the synthetic
+recipient, and regulator/system scopes differ from separate PRC/DOH scopes.
+Return an explicit old-principal-to-target-account disposition, including
+preserved historical actors, retired interactive logins, new synthetic
+institution IDs and unchanged internal maintenance identities. Do not relabel
+existing stock or transaction ownership as Medix, N.L. Villa or Metro Lipa.
+
+### Scope conflict to resolve explicitly
+
+`docs/PROJECT.md` §4 currently permits Mediatrix as the sole active blood bank,
+lists Metro Lipa as a recipient, and defers Medix/N.L. Villa as candidate primary
+institutions. The inspected repository files did not establish this exact email
+roster as a previously accepted backend decision. Lat's supplied roster is the
+current requested design; document which scope/permission decisions it changes.
+
+Three blood-bank application accounts do not imply three Fabric organizations
+or peers. Keep the existing one-organization network unless a separate topology
+decision is approved. If Medix and N.L. Villa need blood-bank inventory/custody
+workflows in the synthetic application, settle and version those institution
+permissions and scope changes before enabling them. A display-only account
+label must not be presented as a working blood-bank integration.
 
 ## 3. Resolve the account/permission model before implementing it
 
 The current accepted baseline distinguishes six roles in REQUIREMENTS §2,
 ADR-013/ADR-030 and `services/api/src/web-access.ts`. Staff/PIN administration
 is currently a frontend preview, not a working authentication mechanism.
-Lat has authorized the one-hospital-login product direction; the secure actor
+Lat has authorized the six-institution, one-account-per-institution direction; the secure actor
 and permission implementation remains Jopia's decision to document.
 
 1. Define a hospital account separately from action permissions and the actor
@@ -88,8 +120,10 @@ and permission implementation remains Jopia's decision to document.
    system, approved staff-data collection or a chosen PIN format.
 3. If role boundaries must change, publish the exact synthetic capability matrix
    and obtain disposition of that material change before affected behavior.
-   Do not silently union ROLE-01/02 or ROLE-03/06 privileges or grant clinical
-   authority to the system/regulatory accounts.
+   Do not silently union existing role privileges. Define separately the three
+   blood-bank profiles, requestor profile, PRC administration and DOH regulatory
+   profile. Do not equate PRC administration with system administration or
+   grant clinical authority to regulatory/internal maintenance principals.
 4. Preserve stable role/requirement IDs. Update the authoritative requirements
    and architecture decision first, then affected API contracts, backlog/test
    references and frontend documentation. Record which earlier account model
@@ -127,7 +161,8 @@ only relabeling the six role logins in the UI.
   Accounts, web inventory/transfers and Capture PWA presentation.
 - Retain supported scan, inventory, transfer/request, reservation, expiry,
   history and Analytics workflows under their documented authorization.
-  The system/regulatory accounts must not inherit hospital capabilities.
+  PRC, DOH and internal maintenance principals must not inherit hospital
+  capabilities without an explicit documented authorization decision.
 
 Use only synthetic operator references during development. Do not introduce
 real employee names/IDs, patient/donor data or shared plaintext credential/PIN
@@ -176,11 +211,15 @@ Separate documentation, implementation and validation commits when useful.
 
 Prove on retained or representative synthetic data:
 
-1. One primary hospital login for each of the two existing hospital institutions;
-   regulator/system accounts stay separate. Duplicate/concurrent creation and
-   old login endpoints cannot defeat that rule.
-2. Ordinary browser login with official cookies and no interception; correct
-   hospital identity, navigation and supported web/Capture capabilities.
+1. Exactly the six requested institution logins: Mediatrix, Medix, N.L. Villa,
+   Metro Lipa, PRC and DOH, with the specified email identifiers and approved
+   institution/category mapping. Prove one primary account per institution;
+   duplicate/concurrent creation and legacy login endpoints cannot defeat it.
+   Verify PRC and DOH remain distinct and internal maintenance access is separate.
+2. Ordinary browser login for all six accounts with official cookies and no
+   interception; correct institution identity, category-specific navigation
+   and approved web/Capture capabilities. Verify the three blood-bank accounts,
+   Metro Lipa requestor, PRC and DOH against their separate permission matrix.
 3. Cross-hospital, wrong-capability/role and unauthorized actor selection fail;
    administrative/regulatory scope does not permit clinical/custody actions.
 4. Retired accounts and pre-migration cookies fail protected access; logout,
