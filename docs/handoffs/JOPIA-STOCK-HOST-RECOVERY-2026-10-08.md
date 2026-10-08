@@ -129,7 +129,7 @@ over the retained ledger.
 | Secret scan | PASS: history/index/candidate; Gitleaks 8.30.1, unchanged allowlist |
 | Real browser 5174 → 3000 | PASS before and after restart: six HttpOnly-cookie logins, scope, historical rows, census, V4 default, V5 unavailable, operator prompt/cancellation, DOH denial and protected-data clearing; no interception |
 | Ordinary restart | PASS: PostgreSQL, orderer, peer, API and web; identity/domain/volume preservation verified |
-| Live stock intake/reservation/559 VALID receipts | BLOCKED before command creation by an institution fingerprint change; original approved execution superseded, fresh preview in progress |
+| Live stock intake/reservation/559 VALID receipts | IN_PROGRESS on the corrected approved execution; two genuine interruption/recovery/restart receipts pass; full 559/T0 acceptance pending |
 | Live OCR preview | PASS: all 522 fields recognized at confidence ≥90; collision/global FEFO/preservation checks passed; exact hash confirmed by user |
 | Independent Lat acceptance | NOT_RUN; Jopia browser checks are self-validation |
 
@@ -305,3 +305,64 @@ using the fresh restored backup
 `ff233d25056b3f6c4e9a2898aae6c5d576f89b93ab82c1605e935752ba17ddea`.
 Full fields/payloads remain private in `execution-v2.json`. This execution
 supersedes the old hash and requires its own exact apply approval.
+
+
+## Corrected execution: genuine interruption and restart evidence
+
+The user approved exact corrected execution
+`0e6323106027b4c89aafef7354292fa5a9db77bc46129a8ae79bb1d35bda690f`,
+its actual target and fresh restored backup, including the controlled recovery
+checks. Full population is now running with the original authorization pacing.
+
+`apply --pause-after-submit 1` returned the intended
+`STOCK_REQUESTED_AMBIGUOUS_PAUSE`: one saved original envelope/transaction,
+status SUBMITTING, no saved block and nine projected units. An independent
+local QSCC transaction/block read verified the actual commitment as VALID in
+block 599 before recovery. Resume inspected that saved transaction, reused its
+original envelope, projected it and marked it COMMITTED. It then stopped after
+the second commitment using `resume --pause-after-commit 2`; PostgreSQL showed
+one COMMITTED and one LEDGER_COMMITTED_PROJECTION_PENDING operation, with ten
+projected units. Its independent QSCC evidence returned VALID in block 600.
+
+| Actual transaction | Block | Original signed-envelope SHA-256 |
+| --- | --- | --- |
+| `9ba6114e72356a66d842b4b1c186e30d5e42170c3f4a14b0e8e19af851b2eaf1` | 599 | `f389d12813f4ed50486a2e9b3bd64fed181a44c32b5d03f6223112f1a0d1c782` |
+| `c957e1344c816594b59bb0d180f58f759594972b3f915850fc1f37fffa116609` | 600 | `1053962f13df685487156e01a86894838fd0a409eb7b6af90be9c01717a53654` |
+
+An ordinary PostgreSQL/orderer/peer/API/web stop/restart then ran; no reset or
+restore occurred. The original 110 generated-file and five named-volume
+fingerprints still matched. Full resume recovered the second projection using
+the same saved envelope/transaction. Independent QSCC reads at
+`2026-10-08T10:54:22.375Z` again returned the exact two VALID transactions,
+blocks and envelope hashes, with both command statuses COMMITTED. No replacement
+transaction was created for either interrupted intake. The runner verifies the
+preserved baseline after every processed command.
+
+Tested corrected commands (first two exit 2 intentionally at the named pause):
+
+```bash
+EXECUTION_HASH=0e6323106027b4c89aafef7354292fa5a9db77bc46129a8ae79bb1d35bda690f
+BACKUP_HASH=ff233d25056b3f6c4e9a2898aae6c5d576f89b93ab82c1605e935752ba17ddea
+stock() {
+  action="$1"; shift
+  bash scripts/development-data/run.sh stock "$action" \
+    --config "$PRIVATE/stock-runtime.json" --manifest "$PRIVATE/execution-v2.json" \
+    --approve-manifest "$EXECUTION_HASH" --backup "$PRIVATE/before-stock-v2.dump" \
+    --approve-backup "$BACKUP_HASH" --output "$PRIVATE/population-v2.json" "$@"
+}
+stock apply --pause-after-submit 1
+stock resume --pause-after-commit 2
+docker stop bloodledger-persistent-web bloodledger-persistent-api bloodledger-peer0-mediatrix-1
+docker restart bloodledger-postgres-1 bloodledger-orderer0-1
+docker start bloodledger-peer0-mediatrix-1
+# Wait until the peer's reported Docker health is healthy, then:
+docker start bloodledger-persistent-api bloodledger-persistent-web
+stock resume
+```
+
+The full resume is still running; its final reconciliation/replay/restart report
+and all 559 accepted receipts must be recorded after completion. T0 census and
+acceptance cannot be claimed before the fixed Oct9 08:00 Manila window. Scoped
+writer protection remains active until successful T0 verification. Lat can
+perform reads while population is pending; independent mutation acceptance and
+new workflow navigation require the completed Jopia record.
