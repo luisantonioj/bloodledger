@@ -1,0 +1,53 @@
+{
+  "policyVersion": "SYNTHETIC_INSTITUTION_ACCOUNTS_V1",
+  "classification": "SIMULATION_ONLY",
+  "pinLength": 8,
+  "maxFailedAttempts": 5,
+  "lockoutSeconds": 900,
+  "verificationSeconds": 120,
+  "onboardingRetentionDays": 30,
+  "accounts": [
+    {
+      "institutionId": "INST_MEDIATRIX",
+      "accountId": "USR_ACCOUNT_MEDIATRIX",
+      "username": "bloodbank@mmc.bloodledger",
+      "category": "BLOOD_BANK",
+      "readRoleId": "ROLE-02"
+    },
+    {
+      "institutionId": "INST_SYNTH_MEDIX",
+      "accountId": "USR_ACCOUNT_SYNTH_MEDIX",
+      "username": "bloodbank@medix.bloodledger",
+      "category": "BLOOD_BANK",
+      "readRoleId": "ROLE-02"
+    },
+    {
+      "institutionId": "INST_SYNTH_NLVILLA",
+      "accountId": "USR_ACCOUNT_SYNTH_NLVILLA",
+      "username": "bloodbank@nlvilla.bloodledger",
+      "category": "BLOOD_BANK",
+      "readRoleId": "ROLE-02"
+    },
+    {
+      "institutionId": "INST_SYNTH_METROLIPA",
+      "accountId": "USR_ACCOUNT_SYNTH_METROLIPA",
+      "username": "facility@metrolipa.bloodledger",
+      "category": "REQUESTOR",
+      "readRoleId": "ROLE-03"
+    },
+    {
+      "institutionId": "INST_SYNTH_PRC",
+      "accountId": "USR_ACCOUNT_SYNTH_PRC",
+      "username": "l.mendoza@prc.bloodledger",
+      "category": "PRC",
+      "readRoleId": "ROLE-04"
+    },
+    {
+      "institutionId": "INST_SYNTH_DOH",
+      "accountId": "USR_ACCOUNT_SYNTH_DOH",
+      "username": "regional.officer@doh.bloodledger",
+      "category": "DOH",
+      "readRoleId": "ROLE-04"
+    }
+  ]
+}
