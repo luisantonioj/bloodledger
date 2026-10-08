@@ -384,3 +384,15 @@ Medix received V2_COMMAND_NOT_FOUND for the same command, proving scoped status
 visibility. This is a partial observation, not 531-population acceptance or
 Lat's independent browser evidence. Full population/reconciliation/T0 remains
 in progress and must be reported after completion.
+
+
+An unexpected Docker restart later interrupted population at 67 new COMMITTED
+intakes. PostgreSQL retained all 67 transaction/block records; combined stock
+was 76 units (73 AVAILABLE, 1 RESERVED, 1 IN_TRANSIT, 1 EXPIRED). The peer again
+failed its stale Docker Desktop socket bind with exit 127. Recreating only its
+container from the original Compose definition re-bound the socket against the
+same identities and named volumes; API/web were started from their retained
+durable containers. Private before/after comparison again matched all 110
+identity files and five named-volume fingerprints. Health returned READY and
+resume re-verifies all saved receipts on the same execution before submitting
+new work. No applied migration, execution manifest, volume or identity changed.
