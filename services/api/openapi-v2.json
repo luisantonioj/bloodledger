@@ -184,6 +184,9 @@
           "202": {
             "$ref": "#/components/responses/Command"
           },
+          "400": {
+            "$ref": "#/components/responses/CommandTimeOutOfWindow"
+          },
           "409": {
             "$ref": "#/components/responses/Conflict"
           }
@@ -426,6 +429,9 @@
         "responses": {
           "202": {
             "$ref": "#/components/responses/Command"
+          },
+          "400": {
+            "$ref": "#/components/responses/CommandTimeOutOfWindow"
           }
         },
         "requestBody": {
@@ -622,6 +628,9 @@
           "202": {
             "description": "Durably queued, not yet ledger committed"
           },
+          "400": {
+            "$ref": "#/components/responses/CommandTimeOutOfWindow"
+          },
           "403": {
             "description": "Forbidden role/source/origin"
           },
@@ -706,6 +715,9 @@
         "responses": {
           "202": {
             "$ref": "#/components/responses/Command"
+          },
+          "400": {
+            "$ref": "#/components/responses/CommandTimeOutOfWindow"
           }
         },
         "requestBody": {
@@ -4530,6 +4542,16 @@
       },
       "Forbidden": {
         "description": "The authenticated role is outside the permitted scope"
+      },
+      "CommandTimeOutOfWindow": {
+        "description": "V2_COMMAND_TIME_OUT_OF_WINDOW: a new command eventTime (and requestTime for transfer requests) is more than 300 seconds from the server clock. A retry with an already accepted Idempotency-Key replays the original command unchanged, and an exact operation of the active approved population manifest keeps its recorded time. On this error, discard the attempt and submit a new attempt with a new Idempotency-Key and the current time.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
       }
     }
   }
