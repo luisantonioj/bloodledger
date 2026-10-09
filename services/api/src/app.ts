@@ -1,3 +1,7 @@
+import { PostgresOnboarding, registerOnboardingRoutes } from "./onboarding.js";
+import { primaryPrincipal } from "./institution-access.js";
+import { PostgresOperatorVerification, type VerificationInput } from "./operator-verification.js";
+import type { DevelopmentReader } from "./development-read.js";
 import type { MlInventoryEvidenceReader } from "./inventory-evidence.js";
 import { timingSafeEqual } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -72,6 +76,7 @@ function summarizeTransfers(transfers: readonly { status: string; quantity: numb
 
 const ROLE_NAMES = { "ROLE-01": "Medical Technologist", "ROLE-02": "Hospital Administrator", "ROLE-03": "Secondary Hospital User", "ROLE-04": "DOH/PRC Regulatory Viewer", "ROLE-05": "System Administrator", "ROLE-06": "Institution Account Administrator" } as const;
 function webPrincipal(record: CredentialRecord): WebPrincipal {
+  if (record.accountKind === "PRIMARY") return primaryPrincipal(record);
   if (!isRoleId(record.roleId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Session role is not recognized.");
   const validScope = (["ROLE-01","ROLE-02"] as const).includes(record.roleId as "ROLE-01"|"ROLE-02")
     ? record.institutionId === "INST_MEDIATRIX" && record.institutionCategory === "HOSPITAL"
@@ -116,12 +121,13 @@ export async function buildApp(
   sessions?: SessionRepository,
   applicationReads?: ApplicationReadRepository,
   applicationWrites?: ApplicationWriteRepository,
-  v2?: { store: V2CommandStore; keyring?: DonationKeyring; census?: CensusStore; mlInventory?: MlInventoryEvidenceReader; projection?: V2ProjectionReader; enabledIssuerInstitutionIds?: readonly string[] },
+  v2?: { store: V2CommandStore; developmentRead?: DevelopmentReader; keyring?: DonationKeyring; census?: CensusStore; mlInventory?: MlInventoryEvidenceReader; projection?: V2ProjectionReader; enabledIssuerInstitutionIds?: readonly string[] },
+  accountAccess?: PostgresOperatorVerification,
 ): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
       level: "info",
-      redact: ["req.headers.authorization", "req.headers.cookie", "req.headers.set-cookie", "req.body", "password", "credential", "donationNumber", "donationNo", "ciphertext", "authTag", "lookupHmac", "latitude", "longitude"],
+      redact: ["req.headers.operator-verification", "req.headers.authorization", "req.headers.cookie", "req.headers.set-cookie", "req.body", "password", "credential", "donationNumber", "donationNo", "ciphertext", "authTag", "lookupHmac", "latitude", "longitude"],
     },
     bodyLimit: 32 * 1024,
   });
@@ -135,15 +141,20 @@ export async function buildApp(
   app.setErrorHandler((error, request, reply) => {
     const correlationId = `CORR_API_${request.id.replaceAll("-", "").toUpperCase()}`;
     if (error instanceof ApiFailure) {
+      if(error.statusCode===401)reply.header("set-cookie",clearSessionCookie(config.webCookieSecure ?? true));
       void reply.status(error.statusCode).send({ error: { code: error.code, message: error.message, correlationId } });
       return;
     }
-    const frameworkError = error as { statusCode?: number; code?: string };
+    const frameworkError = error as { statusCode?: number; code?: string; constraint?: string };
+    if(frameworkError.code==='23505'){
+      const code=frameworkError.constraint==='one_active_primary_institution_account'?'ACCOUNT_PRIMARY_EXISTS':'ACCOUNT_IDENTITY_CONFLICT';
+      void reply.status(409).send({error:{code,message:'The account identity conflicts with an existing record.',correlationId}});return;
+    }
     if (frameworkError.statusCode === 401 || frameworkError.code?.startsWith("FST_JWT")) {
       void reply.status(401).send({ error: { code: "AUTH_REQUIRED", message: "A valid session is required.", correlationId } });
       return;
     }
-    request.log.error({ err: error, correlationId }, "request failed");
+    request.log.error({ safeErrorCode: frameworkError.code ?? "UNEXPECTED_FAILURE", correlationId }, "request failed");
     void reply.status(500).send({ error: { code: "INTERNAL_ERROR", message: "The request could not be completed.", correlationId } });
   });
 
@@ -154,6 +165,7 @@ export async function buildApp(
   let restoreWebSession: ((request: FastifyRequest) => Promise<{ claims: SessionClaims; principal: WebPrincipal }>) | undefined;
 
   app.post("/api/v1/simulation/session", async (request, reply) => {
+    if (accountAccess && await accountAccess.managed()) throw new ApiFailure(403, "LEGACY_LOGIN_RETIRED", "Legacy interactive authentication is retired.");
     const body = request.body as Record<string, unknown> | null;
     const keys = body && typeof body === "object" ? Object.keys(body).sort() : [];
     if (
@@ -177,6 +189,7 @@ export async function buildApp(
     const localOrigin = /^http:\/\/(127\.0\.0\.1|localhost)(?::[0-9]+)?$/.test(webOrigin);
     const secureCookie = config.webCookieSecure ?? !localOrigin;
     if (!secureCookie && !localOrigin) throw new Error("WEB_COOKIE_SECURE may be disabled only for isolated localhost development");
+    const verifiedPrincipals = new WeakMap<FastifyRequest, WebPrincipal>();
     const restore = async (request: FastifyRequest): Promise<{ claims: SessionClaims; principal: WebPrincipal }> => {
       const token = cookieValue(request.headers.cookie, "bloodledger_session");
       if (!token) throw new ApiFailure(401, "AUTH_REQUIRED", "A valid session is required.");
@@ -184,22 +197,49 @@ export async function buildApp(
       try { claims = app.jwt.verify<SessionClaims>(token); } catch { throw new ApiFailure(401, "AUTH_REQUIRED", "A valid session is required."); }
       if (claims.policyVersion !== WEB_ACCESS_POLICY_VERSION || !isRoleId(claims.roleId)) throw new ApiFailure(401, "AUTH_REQUIRED", "A valid session is required.");
       const record = await sessions.restoreSession(claims.sessionId, bindingDigest(claims.binding), clock());
-      if (!record || record.userId !== claims.userId || record.institutionId !== claims.institutionId || record.roleId !== claims.roleId) throw new ApiFailure(401, "AUTH_REQUIRED", "A valid session is required.");
-      return { claims, principal: webPrincipal(record) };
+      if (!record || record.userId !== claims.userId || record.institutionId !== claims.institutionId || record.roleId !== claims.roleId || (claims.credentialVersion !== undefined && record.credentialVersion !== claims.credentialVersion)) throw new ApiFailure(401, "AUTH_REQUIRED", "A valid session is required.");
+      return { claims, principal: verifiedPrincipals.get(request) ?? webPrincipal(record) };
     };
     restoreWebSession = restore;
+    if (accountAccess) {
+      registerOnboardingRoutes(app,new PostgresOnboarding(accountAccess.pool),restore,webOrigin,clock,secureCookie);
+      app.addHook("preHandler", async request => {
+        if(request.method==='GET' && /^\/api\/v1\/(dashboard|inventory|transfers|alerts|audit|reports)(\/|\?|$)/.test(request.url)){
+          const active=await restore(request);
+          if(active.principal.accountId)throw new ApiFailure(409,"INSTITUTION_V2_READ_REQUIRED","Use institution-scoped V2 data contracts.");
+        }
+        if (!["POST","PUT","PATCH","DELETE"].includes(request.method) || !request.url.startsWith("/api/")) return;
+        const path=request.url.split("?")[0];
+        if (["/api/v1/auth/session","/api/v1/simulation/session","/api/v2/auth/operator-verifications"].includes(path!)) return;
+        if (path === "/api/v2/onboarding/applications" || /^\/api\/v2\/onboarding\/applicant\//.test(path!)) return;
+        const active=await restore(request);
+        if (!active.principal.accountId) return;
+        requireSameOrigin(request,webOrigin);
+        // Primary accounts never mutate through the retired V1 actor path.
+        if (path!.startsWith("/api/v1/")) throw new ApiFailure(409,"V2_1_CONTRACT_REQUIRED","Institution accounts require the current V2 contract.");
+        const verified=await accountAccess.consume(active.principal,active.claims,request.headers["operator-verification"],`${request.method} ${path}`,request.body,request.headers["idempotency-key"],clock());
+        verifiedPrincipals.set(request,verified);
+      });
+      app.post("/api/v2/auth/operator-verifications", async request => {
+        requireSameOrigin(request,webOrigin);
+        const active=await restore(request);
+        const body=request.body as VerificationInput;
+        if (!body || Object.keys(body).sort().join(",") !== "action,idempotencyKey,operatorId,payload,pin") throw new ApiFailure(400,"OPERATOR_INPUT_INVALID","Operator verification input is invalid.");
+        return accountAccess.verify(active.principal,active.claims,body,clock());
+      });
+    }
     app.post("/api/v1/auth/session", async (request, reply) => {
       requireSameOrigin(request, webOrigin);
       const body = request.body as Record<string, unknown> | null;
       const keys = body && typeof body === "object" ? Object.keys(body).sort() : [];
-      if (keys.join(",") !== "password,username" || typeof body?.username !== "string" || typeof body.password !== "string" || !/^synth_[a-z0-9_]{3,57}$/.test(body.username) || body.password.length < 12 || body.password.length > 128) throw new ApiFailure(401, "AUTH_FAILED", "Credentials were not accepted.");
+      if (keys.join(",") !== "password,username" || typeof body?.username !== "string" || typeof body.password !== "string" || !/^(synth_[a-z0-9_]{3,57}|[a-z0-9._+-]{1,40}@[a-z0-9.-]{1,20}[.]bloodledger)$/.test(body.username) || body.password.length < 12 || body.password.length > 128) throw new ApiFailure(401, "AUTH_FAILED", "Credentials were not accepted.");
       const record = await sessions.findCredential(body.username);
       if (!record) { await deriveVerifier(body.password, "0".repeat(32)); throw new ApiFailure(401, "AUTH_FAILED", "Credentials were not accepted."); }
       if (!await verifyPassword(body.password, record)) throw new ApiFailure(401, "AUTH_FAILED", "Credentials were not accepted.");
       const principal = webPrincipal(record);
       const issuedAt = clock(); const expiresAt = new Date(issuedAt.getTime() + 900_000); const sessionId = randomSessionId(); const binding = randomBinding();
       await sessions.createSession({ sessionId, userId: record.userId, tokenDigest: bindingDigest(binding), issuedAt, expiresAt });
-      const claims: SessionClaims = { userId: record.userId, institutionId: record.institutionId, roleId: record.roleId, sessionId, binding, policyVersion: WEB_ACCESS_POLICY_VERSION };
+      const claims: SessionClaims = { userId: record.userId, institutionId: record.institutionId, roleId: record.roleId, sessionId, binding, policyVersion: WEB_ACCESS_POLICY_VERSION, credentialVersion: record.credentialVersion };
       const token = app.jwt.sign(claims, { expiresIn: 900 });
       return reply.header("set-cookie", sessionCookie(token, secureCookie)).send({ principal });
     });

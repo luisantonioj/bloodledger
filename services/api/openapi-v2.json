@@ -95,7 +95,18 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for institution-account mutations; legacy retained replay remains compatible."
+          }
+        ]
       },
       "get": {
         "operationId": "listComponents",
@@ -148,6 +159,15 @@
           },
           {
             "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for institution-account mutations; legacy retained replay remains compatible."
           }
         ],
         "responses": {
@@ -174,29 +194,18 @@
       }
     },
     "/transfers": {
-      "post": {
-        "operationId": "submitTransfer",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/ContractVersion"
-          },
-          {
-            "$ref": "#/components/parameters/IdempotencyKey"
-          }
-        ],
+      "get": {
+        "operationId": "readOperationalTransfers",
+        "description": "SIMULATION_ONLY, institution-scoped V2 projection. ROLE-01/02/03 only. Historical records excluded. Existing V1 reads are preserved separately.",
         "responses": {
-          "202": {
-            "$ref": "#/components/responses/Command"
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TransferRequest"
-              }
-            }
+          "200": {
+            "description": "Authorized V2 evidence"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role or institution forbidden"
           }
         }
       }
@@ -236,6 +245,15 @@
                 "reject"
               ]
             }
+          },
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for institution-account mutations; legacy retained replay remains compatible."
           }
         ],
         "responses": {
@@ -266,7 +284,18 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for institution-account mutations; legacy retained replay remains compatible."
+          }
+        ]
       }
     },
     "/reports/doh-census": {
@@ -376,6 +405,15 @@
           },
           {
             "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for institution-account mutations; legacy retained replay remains compatible."
           }
         ],
         "responses": {
@@ -424,6 +462,15 @@
           },
           {
             "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for institution-account mutations; legacy retained replay remains compatible."
           }
         ],
         "responses": {
@@ -473,6 +520,106 @@
           },
           "409": {
             "description": "V2.1 is required when the reservation contains cryoprecipitate"
+          }
+        }
+      },
+      "post": {
+        "operationId": "reserveComponentsForTransfer",
+        "description": "Same-origin ROLE-02 canonical RESERVE_COMPONENTS bridge. Source request must be PENDING and selected components must satisfy contract FEFO and expected versions. V2.1 header required for CRYO. Retired transfer action aliases stay disabled.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "name": "X-BloodLedger-Contract-Version",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "V2",
+                "V2.1"
+              ]
+            }
+          },
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for institution-account mutations; legacy retained replay remains compatible."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "correlationId",
+                  "eventTime",
+                  "expectedComponentVersions",
+                  "reservationId",
+                  "selectedComponentIds",
+                  "transferId"
+                ],
+                "properties": {
+                  "correlationId": {
+                    "type": "string",
+                    "pattern": "^CORR_[0-9A-F]{32}$"
+                  },
+                  "eventTime": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "reservationId": {
+                    "type": "string",
+                    "pattern": "^RES_[A-Z0-9_-]{1,56}$"
+                  },
+                  "transferId": {
+                    "type": "string",
+                    "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+                  },
+                  "selectedComponentIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^COMP_[A-Z0-9_-]{1,56}$"
+                    }
+                  },
+                  "expectedComponentVersions": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Durably queued, not yet ledger committed"
+          },
+          "403": {
+            "description": "Forbidden role/source/origin"
+          },
+          "409": {
+            "description": "Request or idempotency conflict"
           }
         }
       }
@@ -538,6 +685,15 @@
                 "local-release-complete"
               ]
             }
+          },
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for institution-account mutations; legacy retained replay remains compatible."
           }
         ],
         "responses": {
@@ -597,6 +753,1929 @@
           }
         }
       }
+    },
+    "/dashboard": {
+      "get": {
+        "operationId": "readOperationalDashboard",
+        "description": "SIMULATION_ONLY, institution-scoped V2 projection. ROLE-01/02/03 only. Historical records excluded. Existing V1 reads are preserved separately.",
+        "responses": {
+          "200": {
+            "description": "Authorized V2 evidence"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role or institution forbidden"
+          }
+        }
+      }
+    },
+    "/alerts": {
+      "get": {
+        "operationId": "readOperationalAlerts",
+        "description": "SIMULATION_ONLY, institution-scoped V2 projection. ROLE-01/02/03 only. Historical records excluded. Existing V1 reads are preserved separately.",
+        "responses": {
+          "200": {
+            "description": "Authorized V2 evidence"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role or institution forbidden"
+          }
+        }
+      }
+    },
+    "/audit": {
+      "get": {
+        "operationId": "readOperationalAudit",
+        "description": "SIMULATION_ONLY, institution-scoped V2 command and off-chain acknowledgement audit for ROLE-02. Historical records excluded; V1 history remains separately accessible.",
+        "responses": {
+          "200": {
+            "description": "Authorized V2 evidence"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role or institution forbidden"
+          }
+        }
+      }
+    },
+    "/historical-snapshots": {
+      "get": {
+        "operationId": "listHistoricalSyntheticSnapshots",
+        "description": "Read-only Mediatrix ROLE-01/02. Includes incomplete status; never operational inventory. Returns snapshots with source date, hashes, expected/verified totals and local Fabric receipt fields.",
+        "responses": {
+          "200": {
+            "description": "Historical snapshot metadata"
+          },
+          "403": {
+            "description": "Outside historical inventory scope"
+          }
+        }
+      }
+    },
+    "/historical-snapshots/{snapshotId}": {
+      "get": {
+        "operationId": "readHistoricalSnapshotPage",
+        "description": "Snapshot metadata and 20 original counts plus generated-unit page. Unknown collection/expiry/purpose stay null. Receipt fields are local verified projections, not a fresh peer query.",
+        "parameters": [
+          {
+            "name": "snapshotId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^HSNAP_[0-9A-F]{40}$"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^HCOMP_[0-9A-F]{40}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Historical counts and paginated unit receipts"
+          },
+          "400": {
+            "description": "Invalid cursor or page"
+          },
+          "403": {
+            "description": "Scope forbidden"
+          },
+          "404": {
+            "description": "Snapshot missing"
+          }
+        }
+      }
+    },
+    "/alerts/{alertId}/acknowledge": {
+      "post": {
+        "operationId": "acknowledgeV2ExpiryAlert",
+        "description": "Same-origin ROLE-01/02 institution-scoped, idempotent off-chain acknowledgement. No Fabric submission.",
+        "parameters": [
+          {
+            "name": "alertId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^V2EXP_COMP_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for institution-account mutations; legacy retained replay remains compatible."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Off-chain acknowledgement"
+          },
+          "403": {
+            "description": "Wrong role/institution/origin"
+          },
+          "404": {
+            "description": "No matching expired component"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "correlationId"
+                ],
+                "properties": {
+                  "correlationId": {
+                    "type": "string",
+                    "pattern": "^CORR_[0-9A-F]{32}$"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/operator-verifications": {
+      "post": {
+        "operationId": "postAuthOperator-Verifications",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorVerificationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OperatorVerificationRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/invitations": {
+      "post": {
+        "operationId": "postOnboardingInvitations",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/applications": {
+      "post": {
+        "operationId": "postOnboardingApplications",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationSubmission"
+              }
+            }
+          }
+        },
+        "security": []
+      },
+      "get": {
+        "operationId": "getOnboardingApplications",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/applicant/session": {
+      "post": {
+        "operationId": "postOnboardingApplicantSession",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicantLogin"
+              }
+            }
+          }
+        },
+        "security": []
+      },
+      "delete": {
+        "operationId": "deleteOnboardingApplicantSession",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "204": {
+            "description": "Applicant cookie revoked"
+          }
+        },
+        "security": []
+      }
+    },
+    "/onboarding/applicant/status": {
+      "get": {
+        "operationId": "getOnboardingApplicantStatus",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "applicantCookie": []
+          }
+        ]
+      }
+    },
+    "/onboarding/applicant/withdraw": {
+      "post": {
+        "operationId": "postOnboardingApplicantWithdraw",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingDecision"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "applicantCookie": []
+          }
+        ]
+      }
+    },
+    "/onboarding/applications/{id}/review": {
+      "post": {
+        "operationId": "postOnboardingApplicationsIdReview",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingReview"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/applications/{id}/approve": {
+      "post": {
+        "operationId": "postOnboardingApplicationsIdApprove",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingDecision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/applications/{id}/reject": {
+      "post": {
+        "operationId": "postOnboardingApplicationsIdReject",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingDecision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/applications/{id}/activate": {
+      "post": {
+        "operationId": "postOnboardingApplicationsIdActivate",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingActivation"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/institutions/{id}/suspend": {
+      "post": {
+        "operationId": "postOnboardingInstitutionsIdSuspend",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingDecision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/institutions/{id}/reactivate": {
+      "post": {
+        "operationId": "postOnboardingInstitutionsIdReactivate",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingDecision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/institutions/{id}/profile": {
+      "post": {
+        "operationId": "postOnboardingInstitutionsIdProfile",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstitutionProfileUpdate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/institutions/{id}/account": {
+      "post": {
+        "operationId": "postOnboardingInstitutionsIdAccount",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrimaryAccountReplacement"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/operators": {
+      "post": {
+        "operationId": "postOnboardingOperators",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OperatorCreation"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/operators/{id}/reset-pin": {
+      "post": {
+        "operationId": "postOnboardingOperatorsIdReset-Pin",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OperatorReset"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/operators/{id}/revoke": {
+      "post": {
+        "operationId": "postOnboardingOperatorsIdRevoke",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OnboardingDecision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/onboarding/institutions": {
+      "get": {
+        "operationId": "listAdministrativeInstitutions",
+        "description": "PRC directory, or own institution profile. Never exposes verifiers, PINs, or applicant details.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Scoped safe account metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "scope": {
+                      "type": "string"
+                    },
+                    "classification": {
+                      "const": "SIMULATION_ONLY"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Cross-institution or non-PRC directory access denied"
+          }
+        }
+      }
+    },
+    "/onboarding/institutions/{id}": {
+      "get": {
+        "operationId": "getInstitutionAccountProfile",
+        "description": "PRC directory, or own institution profile. Never exposes verifiers, PINs, or applicant details.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped safe account metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "scope": {
+                      "type": "string"
+                    },
+                    "classification": {
+                      "const": "SIMULATION_ONLY"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Cross-institution or non-PRC directory access denied"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -605,6 +2684,11 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "bloodledger_session"
+      },
+      "applicantCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "bloodledger_applicant"
       }
     },
     "parameters": {
@@ -669,6 +2753,16 @@
           "maximum": 100,
           "default": 50
         }
+      },
+      "OperatorVerification": {
+        "name": "Operator-Verification",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^VFY_[0-9A-F]{40}$"
+        },
+        "description": "Two-minute, session/operator/institution/action/body/idempotency-bound grant. A consumed grant accepts only matching retries while the session remains valid."
       }
     },
     "schemas": {
@@ -1673,6 +3767,577 @@
                 ]
               }
             ]
+          }
+        }
+      },
+      "OperatorProfile": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operatorId",
+          "roleId",
+          "capabilityProfile",
+          "version"
+        ],
+        "properties": {
+          "operatorId": {
+            "type": "string"
+          },
+          "roleId": {
+            "type": "string"
+          },
+          "capabilityProfile": {
+            "type": "string",
+            "enum": [
+              "ROLE",
+              "PRC_REVIEWER",
+              "INSTITUTION_ADMIN"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "actionCapabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "UI action visibility only. Server requires a bound PIN grant and validates roles, scope and versions."
+          }
+        }
+      },
+      "OperatorVerificationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operatorId",
+          "pin",
+          "action",
+          "payload",
+          "idempotencyKey"
+        ],
+        "properties": {
+          "operatorId": {
+            "type": "string",
+            "pattern": "^USR_[A-Z0-9_-]{1,48}$"
+          },
+          "pin": {
+            "type": "string",
+            "pattern": "^[0-9]{8}$",
+            "writeOnly": true
+          },
+          "action": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "payload": {
+            "type": "object"
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+          }
+        }
+      },
+      "OperatorVerificationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "verificationId",
+          "expiresAt",
+          "operatorId",
+          "action",
+          "classification"
+        ],
+        "properties": {
+          "verificationId": {
+            "type": "string",
+            "pattern": "^VFY_[0-9A-F]{40}$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "operatorId": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "InvitationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "category",
+          "correlationId"
+        ],
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "BLOOD_BANK",
+              "REQUESTOR"
+            ]
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "InvitationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "invitationId",
+          "status",
+          "expiresAt",
+          "classification",
+          "invitationSecret"
+        ],
+        "properties": {
+          "invitationId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "const": "ISSUED"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          },
+          "invitationSecret": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Returned once on issuance. Idempotent retry returns null; issue a new invitation if private delivery failed."
+          }
+        }
+      },
+      "ApplicationSubmission": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "institutionDisplayName",
+          "locality",
+          "licenseReference",
+          "applicationReason",
+          "category",
+          "genericContact",
+          "attested",
+          "correlationId",
+          "password",
+          "invitationSecret"
+        ],
+        "properties": {
+          "institutionDisplayName": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "locality": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "licenseReference": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "applicationReason": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "BLOOD_BANK",
+              "REQUESTOR"
+            ]
+          },
+          "genericContact": {
+            "type": "string",
+            "pattern": "^(office|admin|contact|bloodbank|facility)@[a-z0-9.-]+[.]bloodledger$"
+          },
+          "attested": {
+            "type": "boolean",
+            "const": true
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "writeOnly": true
+          },
+          "invitationSecret": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "writeOnly": true
+          }
+        }
+      },
+      "ApplicantLogin": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "applicationId",
+          "password"
+        ],
+        "properties": {
+          "applicationId": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "writeOnly": true
+          }
+        }
+      },
+      "ApplicationStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "applicationId",
+          "status",
+          "version",
+          "classification"
+        ],
+        "properties": {
+          "applicationId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SUBMITTED",
+              "UNDER_REVIEW",
+              "APPROVED",
+              "REJECTED",
+              "WITHDRAWN"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "OnboardingDecision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "correlationId",
+          "reasonCode"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "INCOMPLETE_EVIDENCE",
+              "VERIFICATION_FAILED",
+              "INELIGIBLE_CATEGORY",
+              "DUPLICATE_APPLICATION",
+              "OUT_OF_SCOPE",
+              "OTHER",
+              "SECURITY_HOLD",
+              "GOVERNANCE_HOLD",
+              "INSTITUTION_REQUEST",
+              "ELIGIBILITY_LAPSED",
+              "REVIEW_COMPLETE",
+              "APPLICANT_WITHDRAWAL",
+              "CREDENTIAL_RESET",
+              "OPERATOR_REVOKED"
+            ]
+          },
+          "safeExplanation": {
+            "type": "string",
+            "maxLength": 96,
+            "pattern": "^[A-Za-z0-9 _.-]+$",
+            "description": "Required only when reasonCode is OTHER. Synthetic, redacted explanation only."
+          }
+        }
+      },
+      "OnboardingReview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "correlationId",
+          "verificationReference",
+          "verificationOutcome"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "verificationReference": {
+            "type": "string",
+            "maxLength": 96,
+            "pattern": "^[A-Za-z0-9 _.-]+$"
+          },
+          "verificationOutcome": {
+            "type": "string",
+            "const": "CONFIRMED"
+          }
+        }
+      },
+      "OnboardingActivation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "correlationId",
+          "reasonCode",
+          "loginEmail",
+          "password",
+          "operatorPin"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "INCOMPLETE_EVIDENCE",
+              "VERIFICATION_FAILED",
+              "INELIGIBLE_CATEGORY",
+              "DUPLICATE_APPLICATION",
+              "OUT_OF_SCOPE",
+              "OTHER",
+              "SECURITY_HOLD",
+              "GOVERNANCE_HOLD",
+              "INSTITUTION_REQUEST",
+              "ELIGIBILITY_LAPSED",
+              "REVIEW_COMPLETE",
+              "APPLICANT_WITHDRAWAL",
+              "CREDENTIAL_RESET",
+              "OPERATOR_REVOKED"
+            ]
+          },
+          "safeExplanation": {
+            "type": "string",
+            "maxLength": 96,
+            "pattern": "^[A-Za-z0-9 _.-]+$",
+            "description": "Required only when reasonCode is OTHER. Synthetic, redacted explanation only."
+          },
+          "loginEmail": {
+            "type": "string",
+            "pattern": "^(bloodbank|facility)@[a-z0-9.-]+[.]bloodledger$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "writeOnly": true
+          },
+          "operatorPin": {
+            "type": "string",
+            "pattern": "^[0-9]{8}$",
+            "writeOnly": true
+          }
+        }
+      },
+      "OperatorReset": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "correlationId",
+          "reasonCode",
+          "pin"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "INCOMPLETE_EVIDENCE",
+              "VERIFICATION_FAILED",
+              "INELIGIBLE_CATEGORY",
+              "DUPLICATE_APPLICATION",
+              "OUT_OF_SCOPE",
+              "OTHER",
+              "SECURITY_HOLD",
+              "GOVERNANCE_HOLD",
+              "INSTITUTION_REQUEST",
+              "ELIGIBILITY_LAPSED",
+              "REVIEW_COMPLETE",
+              "APPLICANT_WITHDRAWAL",
+              "CREDENTIAL_RESET",
+              "OPERATOR_REVOKED"
+            ]
+          },
+          "safeExplanation": {
+            "type": "string",
+            "maxLength": 96,
+            "pattern": "^[A-Za-z0-9 _.-]+$",
+            "description": "Required only when reasonCode is OTHER. Synthetic, redacted explanation only."
+          },
+          "pin": {
+            "type": "string",
+            "pattern": "^[0-9]{8}$",
+            "writeOnly": true
+          }
+        }
+      },
+      "OperatorCreation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "institutionId",
+          "expectedVersion",
+          "correlationId",
+          "pin"
+        ],
+        "properties": {
+          "institutionId": {
+            "type": "string"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "pin": {
+            "type": "string",
+            "pattern": "^[0-9]{8}$",
+            "writeOnly": true
+          }
+        }
+      },
+      "InstitutionProfileUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "displayName",
+          "expectedVersion",
+          "correlationId"
+        ],
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "pattern": "^Synthetic [A-Za-z0-9 -]{1,86}$"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "PrimaryAccountReplacement": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "loginEmail",
+          "password",
+          "expectedVersion",
+          "correlationId"
+        ],
+        "properties": {
+          "loginEmail": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "writeOnly": true
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "correlationId"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "correlationId": {
+                "type": "string"
+              }
+            }
           }
         }
       }

@@ -12,15 +12,15 @@ export interface NavigationItem {
 
 export const navigation: NavigationItem[] = [
   { href: "/", label: "Dashboard" },
-  { href: "/inventory", label: "Inventory", permission: "inventory:read" },
-  { href: "/transfers", label: "Transfers", permission: "transfers:read" },
+  { href: "/inventory", label: "Blood Inventory", permission: "inventory:read" },
+  { href: "/transfers", label: "Requests & Transfers", permission: "transfers:read" },
   { href: "/alerts", label: "Alerts", permission: "alerts:read" },
+  { href: "/audit", label: "Activity History", permission: "audit:read" },
+  { href: "/analytics", label: "Analytics", when: canViewAnalyticsPreview },
   { href: "/consortium", label: "Network view", permission: "consortium:read" },
-  { href: "/audit", label: "Audit", permission: "audit:read" },
   { href: "/reporting", label: "Reports", permission: "reports:read" },
-  { href: "/analytics", label: "Analytics", badge: "Preview", when: canViewAnalyticsPreview },
-  { href: "/accounts", label: "Accounts", roles: ["ROLE-05", "ROLE-06"], badge: "Preview" },
   { href: "/profile", label: "Profile", permission: "profile:read" },
+  { href: "/accounts", label: "Accounts", roles: ["ROLE-05", "ROLE-06"], badge: "Preview" },
 ];
 
 export const visibleNavigation = (principal: Principal) =>

@@ -480,3 +480,10 @@ Frontend and forecasting changes are explicitly separate LAT/BUNO work.
 - Cold-chain sensing or continuous transport tracking.
 - Autonomous transfer approval.
 - Nationwide network deployment.
+
+## 2026-10-08 selected account work
+
+Jopia selected BL-WEB-01 account/RBAC correction and BL-API-02 synthetic backend
+onboarding from PR #24; BL-TST-02 technical tests are selected under
+PA-ACCOUNT-01/02. BL-WEB-05/06 remain Lat's integration tasks. These selections
+do not mark any backlog item complete. [Delivery record](INSTITUTION-ACCOUNTS.md).

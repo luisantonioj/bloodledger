@@ -11,7 +11,7 @@ export function InventoryOverviewChart({ items }: { items: Aggregate[] }) {
       <header>
         <div>
           <h2 id="inventory-overview-title">Blood inventory overview</h2>
-          <p>Ledger-confirmed totals by blood type for this institution scope.</p>
+          <p>Ledger-confirmed totals by blood type for the authorized scope shown above.</p>
         </div>
         <div className="inventory-overview-legend" aria-label="Inventory chart legend">
           <span><i className="confirmed" aria-hidden="true" />Confirmed total</span>
@@ -31,12 +31,12 @@ export function InventoryOverviewChart({ items }: { items: Aggregate[] }) {
                 key={item.bloodType}
               >
                 <div className="inventory-overview-track" aria-hidden="true">
-                  <strong className="mono" style={{ bottom: `calc(${barHeight}% + 9px)` }}>{item.confirmed}</strong>
+                  <strong style={{ bottom: `calc(${barHeight}% + 9px)` }}>{item.confirmed}</strong>
                   <span className="inventory-overview-fill" style={{ height: `${barHeight}%` }}>
                     {item.available > 0 && <i style={{ height: `${availableHeight}%` }} />}
                   </span>
                 </div>
-                <span className="inventory-overview-label mono">{formatBloodType(item.bloodType)}</span>
+                <span className="inventory-overview-label">{formatBloodType(item.bloodType)}</span>
                 <small>{item.available} available</small>
               </div>
             );

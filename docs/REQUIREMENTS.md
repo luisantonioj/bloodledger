@@ -600,3 +600,36 @@ blocked or implemented behind an explicitly approved prototype assumption.
 | ID | Resolution | Date/owner | Remaining replacement gate |
 |---|---|---|---|
 | RQ-11 | Mobile OCR is primary for the Sprint 4 synthetic PWA, with mandatory per-field confidence of at least 90, exact validation, authenticated confirmation, volatile-only image/raw-text handling, and Code 128/Data Matrix/synthetic QR fallback under `PA-S4-01`. | 2026-08-17 / Jopia | `RQ-02` and approved institutional fixtures/privacy evidence before real-label or ISBT claims |
+
+## PA-ACCOUNT-01 — Approved synthetic institution accounts (2026-10-08)
+
+**Accepted by Jopia in the implementation request; SIMULATION_ONLY.** Links:
+FR-01, FR-03–16, BR-SEC-03–05, BR-ONB-01–16, NFR-01/13, BL-WEB-01,
+BL-API-02, BL-WEB-05/06 and BL-TST-02. Supersedes Section 2's login/role
+coupling: roles remain operator capability profiles, while the six requested
+institutions each have one primary interactive account. Technologists cannot
+approve transfers. PRC has explicitly assigned off-chain onboarding capabilities
+in addition to regulatory reads, superseding FR-12's blanket regulatory-mutation
+restriction solely for these administrative actions. DOH remains read-only.
+
+Medix/N.L. Villa may perform synthetic inventory/custody actions under ADR-037's
+packaged actor policy; this prospectively supersedes BR-ONB-13 for these selected
+accounts only. No additional Fabric organization or peer is authorized. New
+onboarding activation grants ROLE-06 only; operational assignment and governed
+Fabric policy changes are separate. PRC may not self-approve, assign itself bank
+roles or change Fabric policy. Internal maintenance remains separate.
+
+Every privileged command needs operator PIN verification bound to session,
+institution, action, canonical body digest and idempotency key. Synthetic PINs
+are eight random digits, salted/hashed off-chain; five failed attempts lock for
+15 minutes. Verification expires after two minutes; retries preserve original
+actors and durable results. No real staff identifiers or plaintext PIN fixtures.
+Normal suspension is additionally refused while requests, reservations or queued
+mutations are unresolved. RQ-12/15 emergency behavior remains deferred.
+
+PA-ACCOUNT-02 (**Accepted**) allows synthetic onboarding under a 30-day retention
+assumption: verification metadata and closed/rejected application detail are
+purged 30 days after closure; minimal non-secret decisions/references remain.
+Only authorized PRC reviewers and scoped applicants can access the records.
+No documents/messages or real institutional evidence are collected; RQ-14
+remains open for real data. Replacement requires a superseding policy.

@@ -37,6 +37,7 @@ export interface V2ReservationProjection {
 }
 
 export interface V2ProjectionReader {
+  getTransferRequest?(transferId: string, institutionId: string): Promise<Record<string, unknown> | null>;
   listComponents(institutionId: string, roleId: string): Promise<V2ComponentProjection[]>;
   getComponent(componentId: string, institutionId: string, roleId: string): Promise<V2ComponentProjection | null>;
   findComponentByIdentity(issuerInstitutionId: string, donationNumberLookupHmac: string, componentType: string): Promise<Pick<V2ComponentProjection, "componentId" | "donationId" | "institutionId" | "inventoryStatus" | "reservationId" | "reservationVersion" | "inventoryVersion"> | null>;
@@ -76,6 +77,10 @@ function mapReservation(row: Row): V2ReservationProjection {
 
 export class PostgresV2ProjectionReader implements V2ProjectionReader {
   constructor(private readonly pool: Pool) {}
+  async getTransferRequest(transferId: string, institutionId: string): Promise<Record<string, unknown> | null> {
+    const result = await this.pool.query<Row>("SELECT * FROM app.v2_transfer_requests WHERE transfer_id=$1 AND source_institution_id=$2", [transferId, institutionId]);
+    return result.rows[0] ?? null;
+  }
   private query = `SELECT c.component_id,c.donation_id,c.issuer_institution_id,c.component_type,c.blood_type,c.collected_at,c.expires_at,c.institution_id,c.inventory_status,c.reservation_id,c.ledger_version,c.policy_version,r.version AS reservation_version FROM app.v2_components c LEFT JOIN app.v2_reservations r ON r.reservation_id=c.reservation_id WHERE c.institution_id=$1`;
   async listComponents(institutionId: string, _roleId: string): Promise<V2ComponentProjection[]> { const result = await this.pool.query<Row>(`${this.query} ORDER BY c.expires_at,c.component_id`, [institutionId]); return result.rows.map((row) => mapRow(row)); }
   async getComponent(componentId: string, institutionId: string, _roleId: string): Promise<V2ComponentProjection | null> { const result = await this.pool.query<Row>(`${this.query} AND c.component_id=$2`, [institutionId, componentId]); return result.rows[0] ? mapRow(result.rows[0]) : null; }
@@ -99,7 +104,7 @@ export class PostgresV2ProjectionReader implements V2ProjectionReader {
 
   async listReservations(institutionId: string, roleId: string, limit: number, cursor?: string): Promise<{ reservations: V2ReservationProjection[]; nextCursor: string | null }> {
     const destination = roleId === "ROLE-03";
-    const scope = destination ? "t.destination_institution_id=$1" : "r.institution_id=$1";
+    const scope = destination ? "t.destination_institution_id=$1" : "(r.institution_id=$1 OR t.destination_institution_id=$1)";
     const cursorClause = cursor ? " AND r.reservation_id>$2" : "";
     const values: unknown[] = [institutionId];
     if (cursor) values.push(cursor);
@@ -112,7 +117,7 @@ export class PostgresV2ProjectionReader implements V2ProjectionReader {
 
   async getReservation(reservationId: string, institutionId: string, roleId: string): Promise<V2ReservationProjection | null> {
     const destination = roleId === "ROLE-03";
-    const scope = destination ? "t.destination_institution_id=$2" : "r.institution_id=$2";
+    const scope = destination ? "t.destination_institution_id=$2" : "(r.institution_id=$2 OR t.destination_institution_id=$2)";
     const result = await this.pool.query<Row>(`${this.reservationSelect} WHERE r.reservation_id=$1 AND ${scope} GROUP BY r.reservation_id,t.destination_institution_id`, [reservationId, institutionId]);
     return result.rows[0] ? mapReservation(result.rows[0]) : null;
   }

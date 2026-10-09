@@ -465,3 +465,15 @@ services, the accepted Sprint 2 definition, a unique synthetic suffix, and
 untracked CA secrets. Unit/static success alone is not local-ledger evidence;
 Sprint 3 records the actual package ID and `VALID` transaction results only
 after the live commands pass.
+
+## Institution-account policy extension
+
+The accepted synthetic account extension keeps the existing Mediatrix MSP,
+peer, channel and endorsement. Its additive actor/custody policy is
+[`institution-core-v1.json`](../chaincode/policy/institution-core-v1.json).
+[`deploy-institution-accounts.sh`](scripts/deploy-institution-accounts.sh)
+checks the retained lifecycle definition and package identity before upgrading
+that same contract. It does not create peers or certificates, change membership,
+or reset channel state. Deployment has not been executed as account-delivery
+evidence. Host rollout prerequisites and the Lat handoff are in
+[`INSTITUTION-ACCOUNTS.md`](../docs/INSTITUTION-ACCOUNTS.md).

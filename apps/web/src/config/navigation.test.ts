@@ -12,7 +12,7 @@ describe("permission-filtered navigation", () => {
   });
 
   it("shows the visual-only accounts route only to administrative compositions", () => {
-    expect(visibleNavigation(principal(["profile:read"], "ROLE-05")).map((item) => item.href)).toEqual(["/", "/accounts", "/profile"]);
+    expect(visibleNavigation(principal(["profile:read"], "ROLE-05")).map((item) => item.href)).toEqual(["/", "/profile", "/accounts"]);
     expect(visibleNavigation(principal(["profile:read"], "ROLE-01")).map((item) => item.href)).toEqual(["/", "/analytics", "/profile"]);
   });
 

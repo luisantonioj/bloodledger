@@ -370,3 +370,41 @@ regression passed 57 cases with seven retired V1 skips; capture passed build,
 V2 offline replay, full Fabric-to-browser latency, integrated phase regression
 and UAT remain unexecuted or gated. Publication and groupmate handoff are not
 performed; accountable phase acceptance and TP-G01–06 remain open.
+## Historical synthetic inventory verification
+
+Jopia owns source validation, deterministic generation, gateway authorization, durable recovery, direct Fabric validation and DBeaver reconciliation for the [historical import](HISTORICAL-SYNTHETIC-INVENTORY.md). Buno confirms the external source/date. Self-validation is disclosed; no source import, UAT, clinical acceptance or model activation is implied by implementation tests.
+
+On 2026-10-07, the user supplied the selection review for that source date. Live
+historical-import acceptance passed: all 20 original count rows reconciled to 486
+available and 36 reserved constructed components, with 524 directly verified VALID
+Fabric transactions and 522 completed-view rows. An environment restart interrupted
+the import; the durable queue resumed the saved submission under its original
+transaction ID and completed without duplicate component or transaction references.
+The operational prototype record remained unchanged. Jopia self-validation is
+disclosed; this evidence applies only to the selected synthetic snapshot and does
+not close UAT, clinical/privacy gates or forecast activation.
+
+## Persistent development environment verification
+
+The authorized [persistent-data integration](PERSISTENT-SYNTHETIC-DEVELOPMENT.md) adds retained-environment verification to existing disposable test evidence. Jopia must disclose self-validation; Lat's independent local execution remains a separate result. This extension does not authorize human UAT, clinical policy or deployment.
+
+
+Jopia's retained-host execution on 2026-10-07 passed the scoped integration at
+`fee83dc`: real synthetic OCR intake, directly verified operational and historical
+Fabric evidence, interrupted submission/projection recovery, safe replay, official
+cookie browser inspection and ordinary restart. The authoritative results,
+limitations and executable Lat handoff are in
+[the persistent development runbook](PERSISTENT-DEVELOPMENT-RUNBOOK.md#verification-evidence).
+This is disclosed Jopia self-validation. Lat's local re-import and six-account
+preservation require local reproduction; no UAT or Testing-phase exit is claimed.
+
+## Selected institution-account implementation — 2026-10-08
+
+Jopia explicitly authorized [PR #24 account implementation](INSTITUTION-ACCOUNTS.md)
+from retained integration `daf4ada29b5a0346a804815817fde64f4893a390`. This selects
+BL-WEB-01 remediation, BL-API-02 backend onboarding and synthetic BL-TST-02
+authorization tests under PA-ACCOUNT-01/02. Lat owns BL-WEB-05/06 frontend
+integration and independent rerun. TP-G06 is relaxed solely for approved
+synthetic backend evidence; full web/onboarding acceptance, institutional RQ-14,
+UAT, clinical gates and Testing-phase exit remain open. Results are recorded
+only after execution, with disclosed Jopia self-validation.

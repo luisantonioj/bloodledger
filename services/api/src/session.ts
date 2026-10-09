@@ -1,9 +1,10 @@
+import type { AccountCategory, OperatorProfile } from "./institution-access.js";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual, createHash } from "node:crypto";
 import type { Permission, RoleId } from "./web-access.js";
 
-export interface CredentialRecord { userId:string; username:string; displayName:string; institutionId:string; institutionDisplayName:string; institutionCategory:"HOSPITAL"|"REGULATOR"|"SYSTEM"; roleId:RoleId; saltHex:string; verifierHex:string }
-export interface WebPrincipal { userId:string; displayName:string; institutionId:string; institutionDisplayName:string; institutionCategory:"HOSPITAL"|"REGULATOR"|"SYSTEM"; roleId:RoleId; roleDisplayName:string; permissions:readonly Permission[]; classification:"SIMULATION_ONLY" }
-export interface SessionClaims { userId:string; institutionId:string; roleId:RoleId; sessionId:string; binding:string; policyVersion:"SYNTHETIC_WEB_ACCESS_V1" }
+export interface CredentialRecord { accountKind?:string; accountCategory?:AccountCategory; credentialVersion?:number; operators?:OperatorProfile[]; userId:string; username:string; displayName:string; institutionId:string; institutionDisplayName:string; institutionCategory:"HOSPITAL"|"REGULATOR"|"SYSTEM"; roleId:RoleId; saltHex:string; verifierHex:string }
+export interface WebPrincipal { accountId?:string; operatorId?:string; operatorVersion?:number; verificationSessionId?:string; accountCategory?:AccountCategory; accountState?:string; operators?:OperatorProfile[]; verificationRequired?:boolean; authorizationPolicyVersion?:string; administrativeCapabilities?:readonly string[]; userId:string; displayName:string; institutionId:string; institutionDisplayName:string; institutionCategory:"HOSPITAL"|"REGULATOR"|"SYSTEM"; roleId:RoleId; roleDisplayName:string; permissions:readonly Permission[]; classification:"SIMULATION_ONLY" }
+export interface SessionClaims { credentialVersion?:number; userId:string; institutionId:string; roleId:RoleId; sessionId:string; binding:string; policyVersion:"SYNTHETIC_WEB_ACCESS_V1" }
 export interface SessionRepository {
   findCredential(username:string):Promise<CredentialRecord|null>;
   createSession(input:{sessionId:string;userId:string;tokenDigest:string;issuedAt:Date;expiresAt:Date}):Promise<void>;

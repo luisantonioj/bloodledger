@@ -2049,6 +2049,87 @@
           "classification": {
             "type": "string",
             "const": "SIMULATION_ONLY"
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "operatorId": {
+            "type": "string"
+          },
+          "accountCategory": {
+            "type": "string",
+            "enum": [
+              "BLOOD_BANK",
+              "REQUESTOR",
+              "PRC",
+              "DOH",
+              "SYSTEM"
+            ]
+          },
+          "accountState": {
+            "type": "string",
+            "enum": [
+              "ACTIVE"
+            ]
+          },
+          "operators": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operatorId",
+                "roleId",
+                "capabilityProfile",
+                "version"
+              ],
+              "properties": {
+                "operatorId": {
+                  "type": "string"
+                },
+                "roleId": {
+                  "type": "string"
+                },
+                "capabilityProfile": {
+                  "type": "string",
+                  "enum": [
+                    "ROLE",
+                    "PRC_REVIEWER",
+                    "INSTITUTION_ADMIN"
+                  ]
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "permissions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "actionCapabilities": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "UI action visibility only. Server requires a bound PIN grant and validates roles, scope and versions."
+                }
+              }
+            }
+          },
+          "verificationRequired": {
+            "type": "boolean"
+          },
+          "authorizationPolicyVersion": {
+            "type": "string",
+            "const": "SYNTHETIC_INSTITUTION_ACCOUNTS_V1"
+          },
+          "administrativeCapabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },

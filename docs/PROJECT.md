@@ -292,3 +292,15 @@ Repository precedence is:
 
 Contradictions are recorded rather than silently resolved. A scope change
 requires team approval and coordinated updates to affected documents.
+
+## Approved synthetic account scope extension — 2026-10-08
+
+The Jopia-authorized PR #24 implementation prospectively extends Sections 4/5/8:
+Mediatrix, Medix and N.L. Villa each have one synthetic bank account; Metro Lipa
+has a requestor account; PRC and DOH have distinct accounts. Medix/N.L. Villa
+application custody uses the existing single Mediatrix gateway/peer. Their own
+Fabric organizations remain deferred. PRC adds off-chain onboarding review and
+activation under ADR-038; DOH retains read-only oversight. The original sections
+remain the historical baseline. [The account decision and delivery](INSTITUTION-ACCOUNTS.md)
+records supersession and data-preservation evidence. No real institution approval,
+clinical authority or deployment follows from this synthetic extension.

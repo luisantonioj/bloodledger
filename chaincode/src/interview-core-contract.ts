@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { Context, Contract, Info, Returns, Transaction } from "fabric-contract-api";
 import policyJson from "../policy/interview-core-v2.json";
 import policyV21Json from "../policy/interview-core-v2-1.json";
+import institutionPolicyJson from "../policy/institution-core-v1.json";
+import developmentPolicyJson from "../policy/persistent-development-core-v1.json";
 
 const AUTHORIZED_MSP_ID = "MediatrixMSP";
 const AUTHORIZED_ENROLLMENT_ID = "api-gateway";
@@ -11,6 +13,8 @@ const ROLE_ATTRIBUTE = "bloodledger.role";
 const INSTITUTION_ATTRIBUTE = "bloodledger.institution_id";
 const POLICY_VERSION = "INTERVIEW_DERIVED_CORE_V2";
 const POLICY_VERSION_V21 = "INTERVIEW_DERIVED_CORE_V2_1";
+const DEVELOPMENT_POLICY_VERSION = "PERSISTENT_DEVELOPMENT_CORE_V1";
+const INSTITUTION_POLICY_VERSION = "SYNTHETIC_INSTITUTION_CORE_V1";
 const COMPONENT_SCHEMA = "COMPONENT_ASSET_V2";
 const RESERVATION_SCHEMA = "RESERVATION_ASSET_V2";
 const CASE_SCHEMA = "RECONCILIATION_CASE_V2";
@@ -30,7 +34,7 @@ type BloodType =
   | "AB_POSITIVE" | "AB_NEGATIVE" | "O_POSITIVE" | "O_NEGATIVE";
 type ComponentType =
   | "WHOLE_BLOOD" | "PACKED_RED_BLOOD_CELLS" | "FRESH_FROZEN_PLASMA" | "PLATELETS" | "CRYOPRECIPITATE";
-type PolicyVersion = typeof POLICY_VERSION | typeof POLICY_VERSION_V21;
+type PolicyVersion = typeof POLICY_VERSION | typeof POLICY_VERSION_V21 | typeof DEVELOPMENT_POLICY_VERSION | typeof INSTITUTION_POLICY_VERSION;
 type ComponentStatus =
   | "AVAILABLE" | "RESERVED" | "DISPATCHED" | "IN_TRANSIT" | "RECEIVED"
   | "RELEASED" | "EXPIRED" | "RECONCILIATION_HOLD" | "COMPROMISED";
@@ -138,6 +142,8 @@ const policy = policyJson as {
   actors: Record<string, ActorPolicy>;
 };
 const policyV21 = policyV21Json as typeof policy & { policyVersion: typeof POLICY_VERSION_V21 };
+const developmentPolicy = developmentPolicyJson as typeof policy;
+const institutionPolicy = institutionPolicyJson as typeof policy;
 
 @Info({
   title: "InterviewCoreContract",
@@ -145,6 +151,19 @@ const policyV21 = policyV21Json as typeof policy & { policyVersion: typeof POLIC
 })
 export class InterviewCoreContract extends Contract {
   public constructor() { super("InterviewCoreContract"); }
+
+  // FR-12 / NFR-02: inspect the policy actually installed on this peer.
+  @Transaction(false)
+  @Returns("string")
+  public async ReadActorPolicy(ctx: Context, inputJson: string): Promise<string> {
+    const input = this.parseExactObject<Record<string, unknown>>(inputJson, ["actorUserId", "policyVersion"]);
+    this.assertGateway(ctx);
+    this.assertId(String(input.actorUserId), ACTOR_ID_PATTERN, "CORE_INPUT_INVALID");
+    const active = this.policyFor(input);
+    const actor = active.actors[String(input.actorUserId)];
+    if (!actor) this.fail("CORE_NOT_AUTHORIZED");
+    return this.serialize({ userId: input.actorUserId, ...actor, policyVersion: active.policyVersion, policySha256: this.digest(active), classification: "SIMULATION_ONLY" });
+  }
 
   @Transaction()
   @Returns("string")
@@ -154,7 +173,7 @@ export class InterviewCoreContract extends Contract {
     this.assertId(String(input.transferId), /^TRF_[A-Z0-9_-]{1,56}$/, "TRANSFER_INPUT_INVALID");
     this.assertActor(input.actorUserId);
     const actor = this.assertActor(input.actorUserId);
-    if (actor.role !== "ROLE_03" || actor.institutionId !== String(input.destinationInstitutionId) || input.sourceInstitutionId !== "INST_MEDIATRIX") this.fail("TRANSFER_NOT_AUTHORIZED");
+    if ((input.policyVersion === INSTITUTION_POLICY_VERSION ? !["ROLE_02","ROLE_03"].includes(actor.role) : actor.role !== "ROLE_03") || actor.institutionId !== String(input.destinationInstitutionId) || (input.policyVersion === INSTITUTION_POLICY_VERSION ? !institutionPolicy.allowedIssuerInstitutionIds.includes(String(input.sourceInstitutionId)) : input.sourceInstitutionId !== "INST_MEDIATRIX")) this.fail("TRANSFER_NOT_AUTHORIZED");
     if (!this.policyFor(input).bloodTypes.includes(input.bloodType as BloodType) || !this.policyFor(input).componentTypes.includes(input.componentType as ComponentType)) this.fail("TRANSFER_INPUT_INVALID");
     if (!Number.isSafeInteger(input.quantity) || Number(input.quantity) < 1 || !["ROUTINE", "URGENT", "CRITICAL"].includes(String(input.urgency))) this.fail("TRANSFER_INPUT_INVALID");
     this.parseUtc(input.requestTime); this.parseUtc(input.eventTime);
@@ -180,11 +199,12 @@ export class InterviewCoreContract extends Contract {
     ]);
     this.assertGateway(ctx);
     this.assertCommon(input);
+    if(input.policyVersion===INSTITUTION_POLICY_VERSION)this.fail("CORE_CONFIRMED_OCR_REQUIRED");
     this.assertId(String(input.componentId), COMPONENT_ID_PATTERN, "COMPONENT_INPUT_INVALID");
     this.assertId(String(input.donationId), DONATION_ID_PATTERN, "COMPONENT_INPUT_INVALID");
     this.assertHash(input.donationNoDigest, "COMPONENT_DONATION_REFERENCE_INVALID");
     this.assertActorForInstitution(input.actorUserId, input.issuerInstitutionId, ["ROLE_01", "ROLE_02"]);
-    if (!policy.allowedIssuerInstitutionIds.includes(String(input.issuerInstitutionId))) this.fail("COMPONENT_ISSUER_UNAPPROVED");
+    if (!this.policyFor(input).allowedIssuerInstitutionIds.includes(String(input.issuerInstitutionId))) this.fail("COMPONENT_ISSUER_UNAPPROVED");
     if (input.custodyInstitutionId !== input.issuerInstitutionId) this.fail("COMPONENT_INSTITUTION_INVALID");
     if (!policy.bloodTypes.includes(input.bloodType as BloodType)) this.fail("COMPONENT_BLOOD_TYPE_UNSUPPORTED");
     if (!this.policyFor(input).componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
@@ -239,7 +259,7 @@ export class InterviewCoreContract extends Contract {
     this.assertHash(input.captureEvidenceDigest, "COMPONENT_CAPTURE_EVIDENCE_INVALID");
     this.assertActorForInstitution(input.actorUserId, input.custodyInstitutionId, ["ROLE_01", "ROLE_02"]);
     if (input.actorInstitutionId !== input.custodyInstitutionId || input.captureMethod !== "OCR") this.fail("INBOUND_CAPTURE_INVALID");
-    if (!policy.allowedIssuerInstitutionIds.includes(String(input.issuerInstitutionId))) this.fail("COMPONENT_ISSUER_UNAPPROVED");
+    if (!this.policyFor(input).allowedIssuerInstitutionIds.includes(String(input.issuerInstitutionId))) this.fail("COMPONENT_ISSUER_UNAPPROVED");
     if (!policy.bloodTypes.includes(input.bloodType as BloodType)) this.fail("COMPONENT_BLOOD_TYPE_UNSUPPORTED");
     if (!this.policyFor(input).componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
     if (!["OCR_LABEL", "OPERATOR_CONFIRMED"].includes(String(input.bloodTypeEvidenceSource)) || !["OCR_LABEL", "BAG_TYPE", "OPERATOR_CONFIRMED"].includes(String(input.componentEvidenceSource))) this.fail("INBOUND_CAPTURE_EVIDENCE_INVALID");
@@ -271,10 +291,10 @@ export class InterviewCoreContract extends Contract {
     this.assertCommon(input); this.assertGateway(ctx); this.assertId(String(input.reservationId), RESERVATION_ID_PATTERN, "RESERVATION_INPUT_INVALID"); this.assertHash(input.captureEvidenceDigest, "COMPONENT_CAPTURE_EVIDENCE_INVALID");
     if (!Number.isSafeInteger(input.expectedVersion) || Number(input.expectedVersion) < 1) this.fail("RESERVATION_VERSION_INVALID");
     const reservation = await this.readReservation(ctx, String(input.reservationId)); const actor = this.assertActor(input.actorUserId);
-    if (!(actor.role === "ROLE_01" || actor.role === "ROLE_02") || actor.institutionId !== reservation.destinationInstitutionId || input.actorInstitutionId !== reservation.destinationInstitutionId || reservation.purpose !== "TRANSFER" || reservation.status !== "IN_TRANSIT") this.fail("RESERVATION_NOT_AUTHORIZED");
-    if (reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
+    if (!(actor.role === "ROLE_01" || actor.role === "ROLE_02") || actor.institutionId !== reservation.destinationInstitutionId || input.actorInstitutionId !== reservation.destinationInstitutionId || reservation.purpose !== "TRANSFER") this.fail("RESERVATION_NOT_AUTHORIZED");
     const prior = await this.readIdempotent(ctx, String(input.idempotencyKey), "RECEIVE_INBOUND_COMPONENT", this.digest(input)); if (prior !== undefined) return prior;
-    for (const id of reservation.selectedComponentIds) { const component = await this.readComponent(ctx, id); if (component.status !== "IN_TRANSIT" || component.reservationId !== reservation.reservationId) this.fail("COMPONENT_STATE_CONFLICT"); await ctx.stub.putState(this.componentKey(id), Buffer.from(this.serialize({ ...component, status: "RECEIVED", version: component.version + 1, actorUserId: String(input.actorUserId), updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID() } satisfies ComponentAsset), "utf8")); }
+    if (reservation.status !== "IN_TRANSIT" || reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
+    for (const id of reservation.selectedComponentIds) { const component = await this.readComponent(ctx, id); if (component.status !== "IN_TRANSIT" || component.reservationId !== reservation.reservationId) this.fail("COMPONENT_STATE_CONFLICT"); await ctx.stub.putState(this.componentKey(id), Buffer.from(this.serialize({ ...component, status: "RECEIVED", ...(input.policyVersion===INSTITUTION_POLICY_VERSION?{custodyInstitutionId:actor.institutionId}:{}), version: component.version + 1, actorUserId: String(input.actorUserId), updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID() } satisfies ComponentAsset), "utf8")); }
     const updated = { ...reservation, status: "RECEIVED" as const, version: reservation.version + 1, actorUserId: String(input.actorUserId), updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID() };
     const response = this.serialize(updated); await ctx.stub.putState(this.reservationKey(reservation.reservationId), Buffer.from(response, "utf8")); await this.writeIdempotent(ctx, String(input.idempotencyKey), "RECEIVE_INBOUND_COMPONENT", this.digest(input), response); this.emit(ctx, "InboundReceiptRecorded", { reservationId: reservation.reservationId, status: updated.status, version: updated.version, eventTime: updated.updatedAt, correlationId: updated.correlationId }); return response;
   }
@@ -304,6 +324,7 @@ export class InterviewCoreContract extends Contract {
     ]);
     this.assertGateway(ctx); this.assertCommon(input);
     this.assertId(String(input.reservationId), RESERVATION_ID_PATTERN, "RESERVATION_INPUT_INVALID");
+    if(input.policyVersion===INSTITUTION_POLICY_VERSION && input.purpose==="TRANSFER" && !institutionPolicyJson.operationalDestinationInstitutionIds.includes(String(input.destinationInstitutionId)))this.fail("RESERVATION_NOT_AUTHORIZED");
     const purpose = input.purpose as ReservationPurpose;
     if (purpose !== "TRANSFER" && purpose !== "LOCAL_RELEASE") this.fail("RESERVATION_PURPOSE_INVALID");
     if (purpose === "TRANSFER" && typeof input.destinationInstitutionId !== "string") this.fail("RESERVATION_INSTITUTION_INVALID");
@@ -624,21 +645,26 @@ export class InterviewCoreContract extends Contract {
     const actor = this.assertActor(actorUserId); if (!roles.includes(actor.role) || actor.institutionId !== String(institutionId)) this.fail("CORE_NOT_AUTHORIZED"); return actor;
   }
 
-  private assertActor(actorUserId: unknown): ActorPolicy { this.assertId(String(actorUserId), ACTOR_ID_PATTERN, "CORE_INPUT_INVALID"); const actor = policy.actors[String(actorUserId)]; if (actor === undefined) this.fail("CORE_NOT_AUTHORIZED"); return actor; }
+  private assertActor(actorUserId: unknown): ActorPolicy { this.assertId(String(actorUserId), ACTOR_ID_PATTERN, "CORE_INPUT_INVALID"); const actor = institutionPolicy.actors[String(actorUserId)]; if (actor === undefined) this.fail("CORE_NOT_AUTHORIZED"); return actor; }
   private actorInstitution(actorUserId: unknown): string { return this.assertActor(actorUserId).institutionId; }
 
   private policyFor(input: Record<string, unknown>): typeof policy | typeof policyV21 {
-    return input.policyVersion === POLICY_VERSION_V21 ? policyV21 : policy;
+    if (input.policyVersion === INSTITUTION_POLICY_VERSION) return institutionPolicy;
+    if (input.policyVersion === DEVELOPMENT_POLICY_VERSION) return developmentPolicy;
+    if (input.policyVersion === POLICY_VERSION_V21) return policyV21;
+    if (input.policyVersion === undefined || input.policyVersion === POLICY_VERSION) return policy;
+    this.fail("CORE_POLICY_MISMATCH");
   }
   private assertCommon(input: Record<string, unknown>): void {
     this.assertId(String(input.actorUserId), ACTOR_ID_PATTERN, "CORE_INPUT_INVALID");
     this.assertId(String(input.correlationId), CORRELATION_ID_PATTERN, "CORE_INPUT_INVALID");
     this.assertId(String(input.idempotencyKey), IDEMPOTENCY_KEY_PATTERN, "CORE_INPUT_INVALID");
-    this.parseUtc(input.eventTime); if (input.policyVersion !== POLICY_VERSION && input.policyVersion !== POLICY_VERSION_V21) this.fail("CORE_POLICY_MISMATCH");
+    this.parseUtc(input.eventTime); if (input.policyVersion !== POLICY_VERSION && input.policyVersion !== POLICY_VERSION_V21 && input.policyVersion !== DEVELOPMENT_POLICY_VERSION && input.policyVersion !== INSTITUTION_POLICY_VERSION) this.fail("CORE_POLICY_MISMATCH");
+    if (!this.policyFor(input).actors[String(input.actorUserId)] || input.policyVersion===INSTITUTION_POLICY_VERSION && !institutionPolicyJson.institutionAccountActorIds.includes(String(input.actorUserId))) this.fail("CORE_NOT_AUTHORIZED");
   }
   private assertReason(value: string): void { this.assertId(value, REASON_PATTERN, "CORE_REASON_INVALID"); }
   private assertReconciliationReason(value: string, policyVersion: PolicyVersion): void {
-    const activePolicy = policyVersion === POLICY_VERSION_V21 ? policyV21 : policy;
+    const activePolicy = this.policyFor({ policyVersion });
     if (!activePolicy.reconciliationReasonCodes.includes(value)) this.fail("RECONCILIATION_REASON_INVALID");
   }
   private assertHash(value: unknown, errorCode: string): void { if (typeof value !== "string" || !HASH_PATTERN.test(value)) this.fail(errorCode); }

@@ -63,6 +63,13 @@
     "migrate:up": "npm run migrate:up --workspace @bloodledger/database",
     "migrate:status": "npm run migrate:status --workspace @bloodledger/database",
     "provision:web-account": "npm run provision:synthetic-account --workspace @bloodledger/api",
-    "scan:secrets": "bash scripts/scan-secrets.sh"
+    "historical-inventory": "bash scripts/historical-inventory/run.sh",
+    "test:historical-inventory": "npm run build --workspace @bloodledger/inventory-contract && node --test tests/historical-inventory/*.test.mjs",
+    "test:historical-inventory:database": "bash tests/historical-inventory/database.sh",
+    "scan:secrets": "bash scripts/scan-secrets.sh",
+    "development-data": "bash scripts/development-data/run.sh",
+    "development-forecasts": "bash scripts/development-data/forecast.sh",
+    "test:development-data": "node --test tests/development-data/*.test.mjs",
+    "review:web": "node tests/frontend/visual-review/server.mjs"
   }
 }

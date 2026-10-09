@@ -333,3 +333,30 @@ before reconstruction; missing rows cannot become verified zero. Readers
 preserve PostgreSQL timestamp milliseconds. This follow-up adds no migration
 or capture behavior; DOH reporting/export policy remains separate. See the
 [integration contract](../docs/ML-RUNTIME-INTEGRATION-V5.md#pr-21-follow-up--independent-browser-inventory-evidence).
+## Historical synthetic inventory
+
+The additive migration `20261007000000000_create-historical-synthetic-inventory.js`
+creates separately named `app.synthetic_inventory_*` tables and a completed-only
+view for constructed historical research stock. These do not feed operational
+inventory, OCR intake, FEFO, census, transfers or forecasting stock inputs.
+[The import contract and DBeaver guide](../docs/HISTORICAL-SYNTHETIC-INVENTORY.md)
+own source review, deterministic identity, ledger confirmation and recovery rules.
+
+### Retained synthetic development seed
+
+The additive `20261007010000000_add-development-evidence` and
+`20261007020000000_add-v2-alert-acknowledgement-evidence` migrations bind scoped
+seed ownership/receipts to a retained database identity and keep expiry
+acknowledgements off-chain. Operational donations/components still use the
+existing V2 tables and OCR/Fabric projector; historical units stay separate.
+Follow [Lat's retained setup](../docs/PERSISTENT-DEVELOPMENT-RUNBOOK.md) for
+runtime grants, backups and read-only DBeaver inspection. Applied migrations
+are never edited to reseed data.
+
+## Institution-account extension
+
+ADR-036–039 authorize additive institution-account, operator verification and
+synthetic onboarding storage. No applied migration is edited. Historical user
+IDs, credential records and domain references survive login retirement. See
+[the account migration](../docs/INSTITUTION-ACCOUNTS.md) for preview, apply,
+resume, rollback and retained fingerprint evidence.

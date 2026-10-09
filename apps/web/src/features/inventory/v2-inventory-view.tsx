@@ -1,3 +1,4 @@
+import { HistoricalStockView } from "./historical-stock-view";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiRequestError } from "../../services/api/client";
 import { BloodTypeBadge } from "../../components/ui/aggregate-tables";
@@ -12,6 +13,7 @@ import {
 } from "../../services/api/v2";
 
 export function V2InventoryView({ principal }: { principal: Principal }) {
+  const [historical, setHistorical] = useState(false);
   const [version, setVersion] = useState<V2ContractVersion>("V2");
   const [data, setData] = useState<V2ComponentsResponse>();
   const [intake, setIntake] = useState<InboundIntakeResponse>();
@@ -19,6 +21,7 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
   const [error, setError] = useState("");
   const [refreshedAt, setRefreshedAt] = useState<string>();
   const requestSequence = useRef(0);
+  const canOpenCapture = ["ROLE-01", "ROLE-02"].includes(principal.roleId) && principal.institutionId === "INST_MEDIATRIX";
   const canReadIntake = ["ROLE-01", "ROLE-02"].includes(principal.roleId);
 
   const refresh = useCallback(async () => {
@@ -67,7 +70,7 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
     return () => { ++requestSequence.current; clearInterval(timer); };
   }, [refresh]);
 
-  return <div className="v2-inventory">
+  return <div className="v2-inventory">{canReadIntake && <button className="button" onClick={() => setHistorical(value => !value)}>{historical ? "Show operational inventory" : "Historical synthetic stock"}</button>}{historical ? <HistoricalStockView/> : <div>
     <div className="v2-scope-bar">
       <div><span className="eyebrow">INTERVIEW_DERIVED_CORE_V2</span><strong>{principal.institutionDisplayName}</strong><small>Institution scope comes from the authenticated session.</small></div>
       <label>Contract view<select value={version} onChange={(event) => {
@@ -77,6 +80,7 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
         setRefreshedAt(undefined);
         setVersion(event.target.value as V2ContractVersion);
       }}><option value="V2">V2 core components</option><option value="V2.1">V2.1 including cryoprecipitate</option></select></label>
+      {canOpenCapture && <a className="button primary inventory-capture-action" href="/capture/">Open capture workspace</a>}
       <button className="button compact" onClick={() => void refresh()} disabled={busy}>{busy ? "Refreshing…" : "Refresh"}</button>
     </div>
 
@@ -108,5 +112,5 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
       </tr>)}</tbody></table></div>
       <p className="v2-freshness">Last successful browser refresh: {refreshedAt ? formatManilaDateTime(refreshedAt) : "Unavailable"} · {version} · SIMULATION_ONLY</p>
     </>}
-  </div>;
+  </div>}</div>;
 }

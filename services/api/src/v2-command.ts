@@ -17,6 +17,8 @@ export interface V2CommandInput {
   actorInstitutionId: string;
   acceptedAt: string;
   payloadSha256?: string;
+  verificationSessionId?: string;
+  operatorVersion?: number;
 }
 
 export interface V2Command extends V2CommandInput {
@@ -116,6 +118,15 @@ export class PostgresV2CommandStore implements V2CommandStore {
         await client.query("COMMIT");
         return { command: commandView(existing.rows[0]), replayed: true };
       }
+      const reservationScope=typeof input.payload.reservationId==='string'?(await client.query<Record<string,unknown>>("SELECT r.institution_id,t.destination_institution_id FROM app.v2_reservations r LEFT JOIN app.v2_transfer_requests t USING(transfer_id) WHERE r.reservation_id=$1",[input.payload.reservationId])).rows[0]:undefined;
+      const scopes=[input.actorInstitutionId,input.payload.sourceInstitutionId,input.payload.destinationInstitutionId,reservationScope?.institution_id,reservationScope?.destination_institution_id].filter((v):v is string=>typeof v==='string');
+      const locked=await client.query<Record<string,unknown>>("SELECT institution_id,status,account_model FROM app.institutions WHERE institution_id=ANY($1::text[]) ORDER BY institution_id FOR UPDATE",[scopes]);
+      const activeInstitution={rows:locked.rows.filter(r=>r.institution_id===input.actorInstitutionId)};
+      if(input.payload.policyVersion==='SYNTHETIC_INSTITUTION_CORE_V1'&&locked.rows.some(r=>r.status!=='ACTIVE'))throw new ApiFailure(403,'AUTH_SCOPE_FORBIDDEN','A workflow institution is inactive.');
+      if(activeInstitution.rows[0]?.account_model==="INSTITUTION_V1"){
+        const activeOperator=await client.query("SELECT 1 FROM app.institution_operators o JOIN app.application_users u ON u.user_id=o.account_id WHERE o.operator_id=$1 AND o.institution_id=$2 AND o.status='ACTIVE' AND u.status='ACTIVE' AND o.version=$3 AND EXISTS(SELECT 1 FROM app.application_sessions s WHERE s.user_id=o.account_id AND s.session_id=$4 AND s.revoked_at IS NULL AND s.expires_at>CURRENT_TIMESTAMP) FOR UPDATE OF o,u",[input.actorUserId,input.actorInstitutionId,input.operatorVersion,input.verificationSessionId]);
+        if(activeInstitution.rows[0].status!=="ACTIVE"||!activeOperator.rows.length)throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","Institution/operator is not active.");
+      }
       await client.query(
         `INSERT INTO app.v2_commands(command_id,idempotency_key,payload_sha256,resource_type,resource_id,operation,payload,status,next_attempt_at,correlation_id,actor_user_id,actor_institution_id,accepted_at,updated_at,classification)
          VALUES($1,$2,$3,$4,$5,$6,$7,'QUEUED',$8,$9,$10,$11,$8,$8,'SIMULATION_ONLY')`,
@@ -127,11 +138,11 @@ export class PostgresV2CommandStore implements V2CommandStore {
     } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
   }
   async get(commandId: string, institutionId: string, userId: string): Promise<V2Command | null> {
-    const result = await this.pool.query<Record<string, unknown>>("SELECT * FROM app.v2_commands WHERE command_id=$1 AND actor_institution_id=$2 AND actor_user_id=$3", [commandId, institutionId, userId]);
+    const result = await this.pool.query<Record<string, unknown>>("SELECT * FROM app.v2_commands WHERE command_id=$1 AND actor_institution_id=$2 AND (actor_user_id=$3 OR actor_user_id IN (SELECT operator_id FROM app.institution_operators WHERE account_id=$3 AND institution_id=$2))", [commandId, institutionId, userId]);
     return result.rows[0] ? commandView(result.rows[0]) : null;
   }
   async list(institutionId: string, userId: string, limit: number, cursor?: string, idempotencyKey?: string): Promise<{ commands: V2Command[]; nextCursor: string | null }> {
-    const values: unknown[] = [institutionId, userId]; const conditions = ["actor_institution_id=$1", "actor_user_id=$2"];
+    const values: unknown[] = [institutionId, userId]; const conditions = ["actor_institution_id=$1", "(actor_user_id=$2 OR actor_user_id IN (SELECT operator_id FROM app.institution_operators WHERE account_id=$2 AND institution_id=$1))"];
     if (cursor) { values.push(cursor); conditions.push(`command_id>$${values.length}`); }
     if (idempotencyKey) { values.push(idempotencyKey); conditions.push(`idempotency_key=$${values.length}`); }
     values.push(limit + 1);
@@ -143,8 +154,8 @@ export class PostgresV2CommandStore implements V2CommandStore {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      await client.query("UPDATE app.v2_commands SET status=CASE WHEN ledger_transaction_id IS NULL THEN 'RETRY_WAIT' ELSE 'LEDGER_COMMITTED_PROJECTION_PENDING' END,lease_owner=NULL,lease_expires_at=NULL,next_attempt_at=$1,updated_at=$1,version=version+1 WHERE status='SUBMITTING' AND lease_expires_at <= $1", [now.toISOString()]);
-      const result = await client.query<Record<string, unknown>>(`SELECT * FROM app.v2_commands WHERE status IN ('QUEUED','RETRY_WAIT','LEDGER_COMMITTED_PROJECTION_PENDING') AND next_attempt_at <= $1 ORDER BY accepted_at,command_id FOR UPDATE SKIP LOCKED LIMIT 1`, [now.toISOString()]);
+      await client.query("UPDATE app.v2_commands SET status=CASE WHEN ledger_transaction_id IS NULL THEN 'RETRY_WAIT' ELSE 'LEDGER_COMMITTED_PROJECTION_PENDING' END,lease_owner=NULL,lease_expires_at=NULL,next_attempt_at=$1,updated_at=$1,version=version+1 WHERE status='SUBMITTING' AND lease_expires_at <= $1 AND NOT EXISTS(SELECT 1 FROM app.development_seed_commands s WHERE s.command_id=app.v2_commands.command_id)", [now.toISOString()]);
+      const result = await client.query<Record<string, unknown>>(`SELECT * FROM app.v2_commands WHERE status IN ('QUEUED','RETRY_WAIT','LEDGER_COMMITTED_PROJECTION_PENDING') AND next_attempt_at <= $1 AND NOT EXISTS(SELECT 1 FROM app.development_seed_commands s WHERE s.command_id=app.v2_commands.command_id) ORDER BY accepted_at,command_id FOR UPDATE SKIP LOCKED LIMIT 1`, [now.toISOString()]);
       if (!result.rows[0]) { await client.query("COMMIT"); return null; }
       const row = result.rows[0];
       const updated = await client.query<Record<string, unknown>>(`UPDATE app.v2_commands SET status='SUBMITTING',attempt_count=attempt_count+1,lease_owner=$2,lease_expires_at=$3,updated_at=$1,version=version+1 WHERE command_id=$4 RETURNING *`, [now.toISOString(), workerId, new Date(now.getTime() + leaseMs).toISOString(), row.command_id]);
