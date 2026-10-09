@@ -485,3 +485,11 @@ Jopia's retained general worker is disabled. D05–D07 remain open. The contract
 note's data-timing check shows Jopia's retained reservations expire before
 2026-10-12 while Buno's V2 data on Lat's host stays valid; this is an input to the
 unrecorded UAT host decision.
+
+J5 then ran a live V2 custody rehearsal on Jopia's retained host
+([record](handoffs/JOPIA-J5-LIVE-CUSTODY-REHEARSAL-2026-10-09.md)): transfer through
+OCR receipt, local release, cancellation, compromise, J4 expiry with alert
+acknowledgement, and a live J3 rejection all PASS, with 18 VALID Fabric
+transactions. It found and fixed TP-JOP-D09 (receipt payload) and recorded D10
+(no reconciliation resolve route) and D11 (unpatched `fast-jwt` on retained
+runtimes). Browser timing, Lat's UI and UAT remain NOT_RUN.

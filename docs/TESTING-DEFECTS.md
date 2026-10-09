@@ -71,6 +71,9 @@ observation; synthetic reproductions only. Contract and reruns:
 | TP-JOP-D06 | 2026-10-09 | Low / Jopia | NFR-09 | `tests/inbound-ocr/static-boundary.sh` requires the former branch name, so it fails on every other branch | Open |
 | TP-JOP-D07 | 2026-10-09 | Medium / Jopia | FR-06/07 | V2 RPS/BROA functions exist in `services/coordination` but no API exposes their read-only explanation for V2 requests | Open; optional before UAT |
 | TP-JOP-D08 | 2026-10-09 | Medium / Jopia | FR-12, NFR-05 | A retry of `POST /api/v2/reconciliation` with the same key and body returned `409 V2_IDEMPOTENCY_CONFLICT`, because the server event time changed the command digest. Expected an exact replay | Fixed on `codex/jopia-uat-backend`; reconciliation retry test failed before and PASSES after |
+| TP-JOP-D09 | 2026-10-09 | High / Jopia | FR-10/11, NFR-05 | Live J5 OCR receipt of in-transit stock failed at `RecordInboundReceipt` with `CORE_FIELD_NOT_ALLOWED`: the projection-only `captureId` reached the ledger payload. Expected only the chaincode's exact fields | Fixed in `d8cb0c3`; route regression fails before and passes after; live receipt committed ([J5 record](handoffs/JOPIA-J5-LIVE-CUSTODY-REHEARSAL-2026-10-09.md)) |
+| TP-JOP-D10 | 2026-10-09 | Medium / Jopia | FR-12, BR-INV | The operator allowlist names `POST /reconciliation/{id}/resolve` but no route exists, so a reconciliation hold cannot be released | Open |
+| TP-JOP-D11 | 2026-10-09 | High / Jopia; Lat host | FR-12, NFR-01 | Retained runtimes installed before the patch still run `fast-jwt` 6.3.2 (GHSA-x937-hj6v-793p) until `npm ci` | Fixed on Jopia's host by the J5 redeploy; Lat's host pending its post-T0 redeploy |
 
 TP-JOP-D02's bound is 300 seconds. A fresh persistent development seed applied
 more than five minutes after its preview is rejected without queuing; both
