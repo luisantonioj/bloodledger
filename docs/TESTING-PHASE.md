@@ -500,3 +500,11 @@ UAT script needs issue #36. Its backend part is ported:
 queuing (chaincode check deferred), and UAT places reconciliation holds only (D10
 deferred). D05 and D06 are fixed. Lat's issue #36 UI work and the UAT runbook (J9)
 remain open.
+
+J9 preparation: the [UAT host runbook](UAT-RUNBOOK.md) covers the timeline, backup,
+baseline deploy with `npm ci`, the guarded worker (`uat-worker.sh`), the dry-run
+checklist, the Monday 07:00 go/no-go and incident handling, with each command
+marked Validated or NOT_RUN. It fixed TP-JOP-D12 (capture PWA not served on
+retained hosts). Requesting-hospital receipt and the end-to-end capture scan are
+still NOT_RUN live, and the expiry action cannot be demonstrated with V2 data
+before 2026-10-13. The dry run itself remains NOT_RUN.
