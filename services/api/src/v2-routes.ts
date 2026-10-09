@@ -12,6 +12,7 @@ import type { CensusStore } from "./census-worker.js";
 import type { V2ProjectionReader } from "./database-v2.js";
 import { validateInboundOcrInput } from "./inbound-ocr-policy.js";
 import { isReconciliationReasonCode, RECONCILIATION_POLICY_VERSION, RECONCILIATION_REASONS } from "./reconciliation-policy.js";
+import { COMPROMISE_POLICY_VERSION, COMPROMISE_REASONS, isCompromiseReasonCode } from "./compromise-policy.js";
 import { DOH_CENSUS_DISPLAY_ORDER, DOH_CENSUS_DISPLAY_POLICY_VERSION } from "./report-policy.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
@@ -207,6 +208,11 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (Date.parse(component.expiresAt) > Date.parse(evaluationTime)) throw new ApiFailure(409, "COMPONENT_LABEL_NOT_EXPIRED", "The printed label expiry has not been reached.");
     const payload = { componentId, expectedVersion: Number(body.expectedVersion), evaluationTime, eventTime: evaluationTime, actorUserId: principal.userId, correlationId, policyVersion: selectCorePolicy(principal, version) };
     return enqueue(request, reply, "COMPONENT", componentId, "EVALUATE_COMPONENT_EXPIRY", payload, principal, requestDigest);
+  });
+
+  app.get("/api/v2/reservations/compromise-reasons", async (request) => {
+    const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-03"]);
+    return { policyVersion: COMPROMISE_POLICY_VERSION, reasons: COMPROMISE_REASONS, effect: "QUARANTINE_PENDING_MANUAL_REVIEW", freeTextAllowed: false, classification: "SIMULATION_ONLY" as const };
   });
 
   app.get<{ Querystring: { limit?: string; cursor?: string } }>("/api/v2/reservations", async (request) => {
@@ -427,6 +433,8 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     };
     if (!hasKeys(body, allowedActionKeys[action] ?? [])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Reservation action input is invalid.");
     if (!Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1) throw new ApiFailure(400, "V2_VERSION_INVALID", "Expected version is invalid.");
+    // BL-DEC-S6-2026-09-23-01: enforced here before queuing; the independent chaincode check is deferred until after UAT.
+    if (action === "compromise" && !isCompromiseReasonCode(body.reasonCode)) throw new ApiFailure(400, "COMPROMISE_REASON_INVALID", "The incident reason is not supported by the active synthetic policy.");
     const roleMap: Record<string, readonly WebPrincipal["roleId"][]> = { prepare: ["ROLE-01", "ROLE-02"], dispatch: ["ROLE-01", "ROLE-02"], transit: ["ROLE-01", "ROLE-02"], receive: ["ROLE-03"], cancel: ["ROLE-01", "ROLE-02", "ROLE-03"], "local-release-complete": ["ROLE-01", "ROLE-02"], compromise: ["ROLE-01", "ROLE-02", "ROLE-03"] };
     const roles = roleMap[action]; if (!roles) throw new ApiFailure(404, "V2_ACTION_NOT_FOUND", "Reservation action is not supported."); authorized(principal, roles);
     if (!dependencies.projection?.getReservation) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "The reservation projection is not available.");
@@ -437,6 +445,7 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const operationByAction: Record<string, string> = { prepare: "PREPARE_RESERVATION", dispatch: "DISPATCH_RESERVATION", transit: "START_RESERVATION_TRANSIT", receive: "RECEIVE_RESERVATION", cancel: "CANCEL_RESERVATION", compromise: "COMPROMISE_RESERVATION", "local-release-complete": "COMPLETE_LOCAL_RELEASE" };
     const payload: Record<string, unknown> = { reservationId: request.params.reservationId, expectedVersion: Number(body.expectedVersion), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: selectCorePolicy(principal, version) };
     for (const key of ["preparedEvidenceDigest", "preparedEvidenceId", "preparedAt", "reasonCode"] as const) if (body[key] !== undefined) payload[key] = body[key];
+    if (action === "compromise") payload.compromisePolicyVersion = COMPROMISE_POLICY_VERSION;
     return enqueue(request, reply, "TRANSFER", request.params.reservationId, operationByAction[action], payload, principal);
   });
 }
