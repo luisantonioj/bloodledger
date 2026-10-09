@@ -2,8 +2,8 @@
 import { createHmac } from 'node:crypto';
 import { canonical, digest, id } from './scenario.mjs';
 
-export const SCENARIO_FILE_SHA256 = '4ad33820481b1e331e71ac03bbf37ed719096a3fc33c6321829a73d7e3b5fe70';
-export const SCENARIO_SHA256 = '311395e58126cc7af9e72ad8ecc5cf7708e868531eadb0c1924743901e8f8fc8';
+import { validateReviewedScenarioBytes } from './stock-review.mjs';
+export { SCENARIO_FILE_SHA256, SCENARIO_SHA256 } from './stock-review.mjs';
 export const PREVIEW_SCHEMA = 'OCR_OPERATIONAL_STOCK_PREVIEW_V1';
 export const EXECUTION_SCHEMA = 'OCR_OPERATIONAL_STOCK_EXECUTION_V1';
 export const INSTITUTION_OPERATOR_MODE = 'INSTITUTION_OPERATOR_V1';
@@ -14,12 +14,7 @@ export function unseal(value, approved) {
   requireStock(manifestSha256 === digest(unsigned) && manifestSha256 === approved, 'STOCK_MANIFEST_APPROVAL_INVALID');
   return unsigned;
 }
-export function validateScenarioBytes(bytes) {
-  requireStock(digest(bytes.toString('utf8')) === SCENARIO_FILE_SHA256, 'STOCK_SCENARIO_FILE_MISMATCH');
-  const scenario = JSON.parse(bytes);
-  requireStock(digest(scenario) === SCENARIO_SHA256, 'STOCK_SCENARIO_CANONICAL_MISMATCH');
-  return scenario;
-}
+export const validateScenarioBytes = validateReviewedScenarioBytes;
 export function requirePopulationWindow(scenario, now) {
   const time = new Date(now).getTime();
   requireStock(Number.isFinite(time) && time >= Date.parse(scenario.populationNotBefore) && time < Date.parse(scenario.t0), 'STOCK_POPULATION_WINDOW_CLOSED');
@@ -29,7 +24,7 @@ export function verificationWindow(scenario, now) {
 }
 export function allocateLabels(scenario, targetSha256, start, lookupKey) {
   requireStock(Number.isSafeInteger(start) && start >= 1 && start + scenario.units.length <= 10000, 'STOCK_LABEL_RANGE_INVALID');
-  const runId = id('STOCK_', `${targetSha256}|${SCENARIO_SHA256}`);
+  const runId = id('STOCK_', `${targetSha256}|${digest(scenario)}`);
   const collection = new Date(scenario.units[0].collectedAt).toISOString();
   return scenario.units.map((unit, index) => {
     const donationNumber = `MM${collection.slice(2,4)}-${collection.slice(5,7)}-${String(start + index).padStart(4,'0')}`;
@@ -105,4 +100,9 @@ export function verifyOperationalCensus(snapshot, components) {
     requireStock(row.availableCount === available.length && row.reservedCount === reserved.length && row.reportableCount === available.length+reserved.length && row.forecastEligibleAvailableCount === available.filter(c=>Date.parse(c.expiresAt)>Date.parse(snapshot.capturedAt)).length,'STOCK_CENSUS_COUNTS_MISMATCH');
   }
   requireStock(seen.size === 40,'STOCK_CENSUS_COVERAGE_INVALID');
+}
+
+export function verifyCapturedCensus(scenario, snapshot) {
+  requireStock(snapshot && snapshot.scheduledFor === new Date(scenario.t0).toISOString() && verificationWindow(scenario,snapshot.capturedAt), 'STOCK_PERSISTED_CENSUS_WINDOW_INVALID');
+  requireStock(Date.parse(snapshot.capturedAt) <= Date.now(), 'STOCK_PERSISTED_CENSUS_FUTURE_INVALID');
 }

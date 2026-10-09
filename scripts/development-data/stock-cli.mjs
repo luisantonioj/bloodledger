@@ -1,24 +1,25 @@
 // TP-STOCK-01: confirmed OCR, durable queue, independent commitment evidence.
 import { readFile } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { canonical, digest, id, ledgerCommand, processSavedCommand } from './scenario.mjs';
 import { recognizeScenarios } from './ocr.mjs';
 import { privateJson, savePrivate, openInstitutionRuntime } from './institution-maintenance.mjs';
 import { preservationSnapshot, verifyPreservation } from './stock-preservation.mjs';
-import { SCENARIO_FILE_SHA256, SCENARIO_SHA256, PREVIEW_SCHEMA, EXECUTION_SCHEMA, requireStock, seal, unseal, allocateLabels, reservationPlan, freezePreview, operationsFor, requirePopulationWindow, verificationWindow, assertPreserved,verifyOperationalCensus } from './stock-plan.mjs';
+import { PREVIEW_SCHEMA, EXECUTION_SCHEMA, requireStock, seal, unseal, allocateLabels, reservationPlan, freezePreview, operationsFor, requirePopulationWindow, verificationWindow, assertPreserved,verifyOperationalCensus,verifyCapturedCensus } from './stock-plan.mjs';
 import { keyringFromEnvironment } from '../../services/api/build/src/donation-crypto.js';
 import { PostgresV2CommandStore } from '../../services/api/build/src/v2-command.js';
 import { PostgresV2Projector, PostgresV2ProjectionReader } from '../../services/api/build/src/database-v2.js';
 import { PostgresMlInventorySnapshotStore, INTERNAL_ML_SNAPSHOT_POLICY_VERSION } from '../../services/api/build/src/census-worker.js';
+
+import { fileDigest, resolveScenarioReview, validateReviewedScenarioBytes, validateExecutionReview, validationOwner } from './stock-review.mjs';
 
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const fieldEqual = (a,b) => requireStock(canonical(a) === canonical(b), 'STOCK_EVIDENCE_MISMATCH');
 const readAsset = async (runtime, componentId) => JSON.parse(Buffer.from(await runtime.ledger.contract.evaluateTransaction('ReadComponent', JSON.stringify({ actorUserId: runtime.principals.coordinator.userId, componentId }))).toString('utf8'));
 
 export function journalProvenance(execution) {
-  return {schemaVersion:execution.schemaVersion,manifestSha256:execution.manifestSha256,previewSha256:execution.previewSha256,scenarioSha256:execution.scenarioSha256,policySha256:execution.policySha256,principals:execution.principals,
+  return {schemaVersion:execution.schemaVersion,manifestSha256:execution.manifestSha256,previewSha256:execution.previewSha256,scenarioSha256:execution.scenarioSha256,policySha256:execution.policySha256,principals:execution.principals,scenarioReview:execution.scenarioReview,
     operations:execution.operations.map(({account,path,idempotencyKey,commandId,payloadSha256})=>({account,path,idempotencyKey,commandId,payloadSha256})),
     components:execution.labels.map(({unitKey,componentId,donationId})=>({unitKey,componentId,donationId})),
     reservations:execution.reservations};
@@ -54,9 +55,11 @@ export function windowBoundLedger(ledger, scenario, now = () => new Date()) {
   };
 }
 
-async function bindRuntime(runtime, config, execution) {
+async function bindRuntime(runtime, config, execution, review) {
   requireStock(config.targetSha256 === runtime.targetSha256 && config.policySha256 === runtime.policySha256, 'STOCK_TARGET_POLICY_APPROVAL_REQUIRED');
+  if (review?.targetSha256) requireStock(review.targetSha256 === runtime.targetSha256 && review.policySha256 === runtime.policySha256, 'STOCK_SCENARIO_REVIEW_TARGET_DRIFT');
   if (execution) {
+    validateExecutionReview(execution, review);
     requireStock(execution.targetSha256 === runtime.targetSha256 && execution.policySha256 === runtime.policySha256 && execution.policyVersion === runtime.policyVersion && execution.classification === 'SIMULATION_ONLY', 'STOCK_EXECUTION_TARGET_DRIFT');
     fieldEqual(execution.principals, runtime.principals);
   }
@@ -95,14 +98,14 @@ function countStates(components) {
   return result;
 }
 
-async function preview(runtime, config, options) {
-  const archiveSha256 = createHash('sha256').update(await readFile(options.archive)).digest('hex');
-  requireStock(archiveSha256 === 'cf94af36cbc672d58377b13c0e3e9ebbd922289e464f15e9214e03d4abb2c206','STOCK_ARCHIVE_HASH_MISMATCH');
-  const scenario = JSON.parse(await readFile(options.scenario,'utf8'));
-  requireStock(createHash('sha256').update(await readFile(options.scenario)).digest('hex') === SCENARIO_FILE_SHA256 && digest(scenario) === SCENARIO_SHA256, 'STOCK_SCENARIO_HASH_MISMATCH');
+async function preview(runtime, config, options, review) {
+  const archiveSha256 = fileDigest(await readFile(options.archive));
+  requireStock(archiveSha256 === review.archiveSha256,'STOCK_ARCHIVE_HASH_MISMATCH');
+  const scenario = validateReviewedScenarioBytes(await readFile(options.scenario), review);
   requirePopulationWindow(scenario,new Date());
-  // The workbook and generator independently bind every series and member.
-  execFileSync('python3',['scripts/operational-scenario/verify.py','--workbook',options.workbook,'--manifest',options.scenario,'--sha256',SCENARIO_FILE_SHA256],{stdio:'pipe'});
+  requireStock(fileDigest(await readFile('scripts/operational-scenario/scenario.py')) === review.generatorFileSha256 && fileDigest(await readFile('scripts/operational-scenario/verify.py')) === review.verifierFileSha256, 'STOCK_SCENARIO_VERIFIER_REVISION_MISMATCH');
+  // Run only repository-owned, reviewed Buno code, never a path from an artifact.
+  execFileSync('python3',['scripts/operational-scenario/verify.py','--workbook',options.workbook,'--manifest',options.scenario,'--sha256',review.scenarioFileSha256],{stdio:'pipe'});
   await requireQuiescent(runtime.pool);
   const baseline = await baselineComponents(runtime);
   const labels = allocateLabels(scenario,runtime.targetSha256,config.labelSequenceStart,keyringFromEnvironment().lookupKey);
@@ -112,13 +115,13 @@ async function preview(runtime, config, options) {
     const ledgerIdentity = Buffer.from(await runtime.ledger.contract.evaluateTransaction('ReadComponentByIdentity',JSON.stringify({actorUserId:runtime.principals.coordinator.userId,componentType:label.componentType,donationNoDigest:label.lookupHmac,issuerInstitutionId:label.issuerInstitutionId}))).toString('utf8');
     requireStock(collisions.rows.length === 0 && ledgerIdentity === '', 'STOCK_LABEL_IDENTITY_COLLISION');
   }
-  const runId = id('STOCK_',`${runtime.targetSha256}|${SCENARIO_SHA256}`);
+  const runId = id('STOCK_',`${runtime.targetSha256}|${digest(scenario)}`);
   const reservations = reservationPlan(scenario,labels,baseline,new Date().toISOString(),runId);
   const baselineFingerprints = await preservationSnapshot(runtime.pool);
   const recognized = await recognizeScenarios(labels);
   requirePopulationWindow(scenario,new Date());
   assertPreserved(baselineFingerprints,await preservationSnapshot(runtime.pool));
-  const value = seal({ schemaVersion:PREVIEW_SCHEMA, classification:'SIMULATION_ONLY',runId,scenario,archiveSha256,scenarioSha256:SCENARIO_SHA256,scenarioFileSha256:SCENARIO_FILE_SHA256, labels:recognized,reservations,baselineComponents:baseline,baselineFingerprints,target:runtime.target,targetSha256:runtime.targetSha256,policySha256:runtime.policySha256,policyVersion:runtime.policyVersion,principals:runtime.principals,generatedAt:new Date().toISOString() });
+  const value = seal({ schemaVersion:PREVIEW_SCHEMA, classification:'SIMULATION_ONLY',runId,scenario,archiveSha256,scenarioSha256:review.scenarioSha256,scenarioFileSha256:review.scenarioFileSha256,scenarioReview:review, labels:recognized,reservations,baselineComponents:baseline,baselineFingerprints,target:runtime.target,targetSha256:runtime.targetSha256,policySha256:runtime.policySha256,policyVersion:runtime.policyVersion,principals:runtime.principals,generatedAt:new Date().toISOString() });
   await savePrivate(options.output,value);
   console.log(canonical({runId,previewSha256:value.manifestSha256,recognizedUnits:522,confirmationRequired:'Review all recognized fields, then confirm this exact preview hash. Confirmation records the actual time and a new execution hash.'}));
 }
@@ -234,15 +237,47 @@ async function reconcile(runtime,execution,receipts) {
   return {series,newScenario:countStates(added),combined:countStates(rows),reservations:24,memberLinks:36,preservation:'PASS',currentLedgerAssetsVerified:rows.length};
 }
 
-async function execute(runtime,config,options,action,execution) {
-  requireStock(execution.schemaVersion === EXECUTION_SCHEMA && execution.scenarioSha256 === SCENARIO_SHA256 && digest(execution.scenario) === SCENARIO_SHA256 && execution.archiveSha256 === 'cf94af36cbc672d58377b13c0e3e9ebbd922289e464f15e9214e03d4abb2c206','STOCK_EXECUTION_SCHEMA_INVALID');
+export async function reconcileStockCensus(runtime,execution,existing,observedAt = new Date(),store = new PostgresMlInventorySnapshotStore(runtime.pool)) {
+  let census = null;
+  let censusApiStatus = null;
+  const inWindow = verificationWindow(execution.scenario,observedAt);
+  if(inWindow) {
+    const scheduled = new Date(execution.scenario.t0);
+    const snapshotId = id('CENSUS_',`INST_MEDIATRIX|${scheduled.toISOString()}|${INTERNAL_ML_SNAPSHOT_POLICY_VERSION}`);
+    await runtime.pool.query('UPDATE app.operational_stock_runs SET census_snapshot_id=$2 WHERE run_id=$1 AND (census_snapshot_id IS NULL OR census_snapshot_id=$2)',[execution.runId,snapshotId]);
+    census = await store.capture('INST_MEDIATRIX',scheduled,'MANUAL',observedAt);
+    requireStock(census.snapshotId === snapshotId && census.groups.reduce((n,g)=>n+g.bloodTypes.length,0) === 40,'STOCK_CENSUS_RECONCILIATION_MISMATCH');
+  } else if(existing?.census_snapshot_id) {
+    // An ordinary restart after the window verifies the original capture;
+    // it must not create a newly backdated snapshot or erase a genuine PASS.
+    census = await store.get(existing.census_snapshot_id,'INST_MEDIATRIX');
+    requireStock(census,'STOCK_PERSISTED_CENSUS_MISSING');
+    const expectedId = id('CENSUS_',`INST_MEDIATRIX|${new Date(execution.scenario.t0).toISOString()}|${INTERNAL_ML_SNAPSHOT_POLICY_VERSION}`);
+    requireStock(census.snapshotId === existing.census_snapshot_id && census.snapshotId === expectedId,'STOCK_PERSISTED_CENSUS_ID_MISMATCH');
+  }
+  if(census) {
+    verifyCapturedCensus(execution.scenario,census);
+    verifyOperationalCensus(census,(await runtime.client.read('coordinator','/api/v2/components')).components);
+    const businessDate = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date(execution.scenario.t0));
+    const evidence = await runtime.client.read('coordinator',`/api/v2/analytics/inventory-evidence?businessDate=${businessDate}`);
+    requireStock(evidence.snapshot?.snapshotId === census.snapshotId && evidence.snapshot.persistedSeries === 40 && ['CURRENT','STALE'].includes(evidence.status),'STOCK_CENSUS_API_MISMATCH');
+    for(const key of ['capturedAt','scheduledFor','sourceProjectionDigest','groups']) fieldEqual(evidence.snapshot[key],census[key]);
+    requireStock(!inWindow || evidence.status === 'CURRENT','STOCK_CENSUS_API_MISMATCH');
+    censusApiStatus = evidence.status;
+  }
+  return {census,censusApiStatus,inWindow};
+}
+
+async function execute(runtime,config,options,action,execution,review) {
+  requireStock(execution.schemaVersion === EXECUTION_SCHEMA,'STOCK_EXECUTION_SCHEMA_INVALID');
+  validateExecutionReview(execution,review);
   requirePopulationWindow(execution.scenario,execution.confirmedAt);
   const plannedLabels = allocateLabels(execution.scenario,runtime.targetSha256,config.labelSequenceStart,keyringFromEnvironment().lookupKey);
   requireStock(plannedLabels.length === execution.labels.length,'STOCK_EXECUTION_LABEL_MAPPING_INVALID');
   for(let index=0;index<plannedLabels.length;index++) for(const [key,value] of Object.entries(plannedLabels[index])) fieldEqual(execution.labels[index][key],value);
   fieldEqual(execution.operations,operationsFor(execution));
   requireStock(digest(execution.reservations) === digest(reservationPlan(execution.scenario,execution.labels,execution.baselineComponents,execution.confirmedAt,execution.runId)),'STOCK_EXECUTION_RESERVATION_INVALID');
-  requireStock(execution.runId === id('STOCK_',`${runtime.targetSha256}|${SCENARIO_SHA256}`),'STOCK_RUN_ID_INVALID');
+  requireStock(execution.runId === id('STOCK_',`${runtime.targetSha256}|${review.scenarioSha256}`),'STOCK_RUN_ID_INVALID');
   if(action !== 'verify') await validateBackup(options,execution);
   requireStock(config.writersQuiesced === true,'STOCK_WRITER_QUIESCENCE_REQUIRED');
   requireStock(!(options['pause-after-submit'] || options['pause-after-commit'] || options['stop-after']) || config.validationFaultInjection === true,'STOCK_FAULT_INJECTION_NOT_APPROVED');
@@ -256,7 +291,7 @@ async function execute(runtime,config,options,action,execution) {
       requireStock(action !== 'verify','STOCK_RUN_NOT_FOUND');
       requirePopulationWindow(execution.scenario,new Date());
       assertPreserved(execution.baselineFingerprints,await preservationSnapshot(runtime.pool));
-      await runtime.pool.query("INSERT INTO app.operational_stock_runs(run_id,scenario_sha256,manifest_sha256,target_sha256,backup_sha256,manifest,confirmed_at,classification) VALUES($1,$2,$3,$4,$5,$6,$7,'SIMULATION_ONLY')",[execution.runId,SCENARIO_SHA256,execution.manifestSha256,runtime.targetSha256,execution.backupSha256,journalProvenance(execution),execution.confirmedAt]);
+      await runtime.pool.query("INSERT INTO app.operational_stock_runs(run_id,scenario_sha256,manifest_sha256,target_sha256,backup_sha256,manifest,confirmed_at,classification) VALUES($1,$2,$3,$4,$5,$6,$7,'SIMULATION_ONLY')",[execution.runId,review.scenarioSha256,execution.manifestSha256,runtime.targetSha256,execution.backupSha256,journalProvenance(execution),execution.confirmedAt]);
     }
     await verifyPreservation(runtime.pool,execution);
     const receipts = [];
@@ -267,22 +302,12 @@ async function execute(runtime,config,options,action,execution) {
       if(Number(options['stop-after']) === receipts.length) throw new Error('STOCK_REQUESTED_SAFE_PAUSE');
     }
     const reconciliation = await reconcile(runtime,execution,receipts);
-    let census = null;
-    const inWindow = verificationWindow(execution.scenario,new Date());
-    if(inWindow) {
-      const scheduled = new Date(execution.scenario.t0);
-      const snapshotId = id('CENSUS_',`INST_MEDIATRIX|${scheduled.toISOString()}|${INTERNAL_ML_SNAPSHOT_POLICY_VERSION}`);
-      await runtime.pool.query('UPDATE app.operational_stock_runs SET census_snapshot_id=$2 WHERE run_id=$1 AND (census_snapshot_id IS NULL OR census_snapshot_id=$2)',[execution.runId,snapshotId]);
-      census = await new PostgresMlInventorySnapshotStore(runtime.pool).capture('INST_MEDIATRIX',scheduled,'MANUAL',new Date());
-      requireStock(census.snapshotId === snapshotId && census.groups.reduce((n,g)=>n+g.bloodTypes.length,0) === 40,'STOCK_CENSUS_RECONCILIATION_MISMATCH');
-      verifyOperationalCensus(census,(await runtime.client.read('coordinator','/api/v2/components')).components);
-      const businessDate = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());
-      const evidence = await runtime.client.read('coordinator',`/api/v2/analytics/inventory-evidence?businessDate=${businessDate}`);
-      requireStock(evidence.snapshot?.snapshotId === census.snapshotId && evidence.snapshot.persistedSeries === 40 && evidence.status === 'CURRENT','STOCK_CENSUS_API_MISMATCH');
+    const {census,censusApiStatus,inWindow} = await reconcileStockCensus(runtime,execution,existing);
+    if(census) {
       await verifyPreservation(runtime.pool,execution);
-      await runtime.pool.query('UPDATE app.operational_stock_runs SET writer_lock=false WHERE run_id=$1',[execution.runId]);
+      if(inWindow) await runtime.pool.query('UPDATE app.operational_stock_runs SET writer_lock=false WHERE run_id=$1',[execution.runId]);
     }
-    const report = {classification:'SIMULATION_ONLY',hostValidation:'JOPIA_SELF_VALIDATION',runId:execution.runId,executionSha256:execution.manifestSha256,targetSha256:runtime.targetSha256,policySha256:runtime.policySha256,verifiedAt:new Date().toISOString(),t0Verification:inWindow?'PASS':Date.now()<Date.parse(execution.scenario.t0)?'PENDING':'MISSED_WINDOW',...reconciliation,receipts,census,nearExpiry:'DISABLED_UNAPPROVED_POLICY',v4Default:true,v5:'SEPARATE_APPROVAL_REQUIRED'};
+    const report = {classification:'SIMULATION_ONLY',hostValidation:validationOwner(config),runId:execution.runId,executionSha256:execution.manifestSha256,targetSha256:runtime.targetSha256,policySha256:runtime.policySha256,verifiedAt:new Date().toISOString(),t0Verification:census?'PASS':Date.now()<Date.parse(execution.scenario.t0)?'PENDING':'MISSED_WINDOW',...reconciliation,receipts,census,censusApiStatus,nearExpiry:'DISABLED_UNAPPROVED_POLICY',v4Default:true,v5:'SEPARATE_APPROVAL_REQUIRED'};
     await savePrivate(options.report,report);
     console.log(canonical({runId:execution.runId,validTransactions:receipts.length,newUnits:522,totalUnits:531,t0Verification:report.t0Verification,report:options.report}));
   } finally {await lock.query('SELECT pg_advisory_unlock_all()');lock.release();}
@@ -293,21 +318,33 @@ export async function main(args = process.argv.slice(2)) {
   requireStock(['inspect','preview','confirm','apply','resume','verify'].includes(action),'STOCK_ACTION_INVALID');
   for(let i=0;i<args.length;i+=2) {
     const key = args[i]?.replace(/^--/,'');
-    requireStock(['config','scenario','archive','workbook','manifest','approve-manifest','output','report','backup','approve-backup','stop-after','pause-after-submit','pause-after-commit'].includes(key) && args[i+1] && !options[key],'STOCK_ARGUMENT_INVALID');
+    requireStock(['config','scenario','archive','workbook','manifest','approve-manifest','output','report','backup','approve-backup','stop-after','pause-after-submit','pause-after-commit','scenario-review','approve-scenario-review'].includes(key) && args[i+1] && !options[key],'STOCK_ARGUMENT_INVALID');
     options[key] = args[i+1];
   }
   if (['apply','resume','verify'].includes(action)) {
     requireStock(options.report && !options.output, 'STOCK_REPORT_REQUIRED');
   }
+  requireStock(Boolean(options['scenario-review']) === Boolean(options['approve-scenario-review']), 'STOCK_SCENARIO_REVIEW_APPROVAL_REQUIRED');
+  const review = resolveScenarioReview(options['scenario-review'] ? await privateJson(options['scenario-review']) : undefined, options['approve-scenario-review']);
   const config = await privateJson(options.config);
+  validationOwner(config);
   const runtime = await openInstitutionRuntime(config,true);
   try {
-    if(action === 'inspect') {console.log(canonical({target:runtime.target,targetSha256:runtime.targetSha256,principals:runtime.principals,policySha256:runtime.policySha256,policyVersion:runtime.policyVersion,classification:'SIMULATION_ONLY'}));return;}
-    await bindRuntime(runtime,config);
-    if(action === 'preview') return await preview(runtime,config,options);
+    if(action === 'inspect') {
+      const inspection = {target:runtime.target,targetSha256:runtime.targetSha256,principals:runtime.principals,policySha256:runtime.policySha256,policyVersion:runtime.policyVersion,classification:'SIMULATION_ONLY',hostValidation:validationOwner(config)};
+      if(options.output) {
+        inspection.baselineFingerprints = await preservationSnapshot(runtime.pool);
+        inspection.counts = (await runtime.pool.query("SELECT (SELECT count(*) FROM app.v2_components)::int AS operational, (SELECT count(*) FROM app.synthetic_inventory_completed_units)::int AS historical, (SELECT count(*) FROM app.operational_stock_runs)::int AS stock_runs, (SELECT count(*) FROM app.application_users WHERE account_kind='PRIMARY' AND status='ACTIVE')::int AS primary_accounts, (SELECT count(*) FROM app.institution_operators)::int AS operators")).rows[0];
+        inspection.migrations = (await runtime.pool.query('SELECT name FROM public.pgmigrations ORDER BY name')).rows.map(row=>row.name);
+        await savePrivate(options.output,inspection);
+      }
+      console.log(canonical(inspection));return;
+    }
+    await bindRuntime(runtime,config,undefined,review);
+    if(action === 'preview') return await preview(runtime,config,options,review);
     const manifest = await privateJson(options.manifest);
     unseal(manifest,options['approve-manifest']);
-    await bindRuntime(runtime,config,manifest);
+    await bindRuntime(runtime,config,manifest,review);
     if(action === 'confirm') {
       const backupSha256 = await validateBackup(options,{...manifest,backupSha256:options['approve-backup']});
       assertPreserved(manifest.baselineFingerprints,await preservationSnapshot(runtime.pool));
@@ -316,7 +353,7 @@ export async function main(args = process.argv.slice(2)) {
       const frozen = seal({...unsigned,backupSha256});
       await savePrivate(options.output,frozen);
       console.log(canonical({executionSha256:frozen.manifestSha256,previewSha256:frozen.previewSha256,confirmedAt:frozen.confirmedAt,commands:frozen.operations.length,applyRequires:'Exact execution hash, validated backup, approved target and quiesced writers.'}));
-    } else await execute(runtime,config,options,action,manifest);
+    } else await execute(runtime,config,options,action,manifest,review);
   } finally {await runtime.close();}
 }
 if(process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch(error=>{console.error(/^[A-Z][A-Z0-9_]+$/.test(error.message)?error.message:'STOCK_PREREQUISITE_OR_OPERATION_FAILED');process.exitCode=2;});
