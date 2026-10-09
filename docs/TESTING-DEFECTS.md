@@ -54,3 +54,23 @@ recorded in the frontend validation record. The final runtime rerun tests
 `60fd148` is incorporated as `d0ceeed`; its evidence-only commit `daf5a0c` is
 incorporated as `b5601cc`, preserving Jopia authorship. No new application
 defect was found in the real rerun.
+
+## Jopia backend findings — 2026-10-09
+
+**Owner:** Jopia (self-validation disclosed). Source review and live retained-host
+observation; synthetic reproductions only. Contract and reruns:
+[UAT backend contract note](handoffs/JOPIA-TO-LAT-UAT-BACKEND-CONTRACT-2026-10-09.md).
+
+| ID | Discovered | Severity/owner | Requirements | Source observation / expected behavior | Status/evidence |
+|---|---|---|---|---|---|
+| TP-JOP-D01 | 2026-10-09 | Medium / Jopia | FR-12, NFR-10 | Framework 4xx errors (empty/malformed JSON, 413, 415) returned `500 INTERNAL_ERROR`; a JSON-typed bodiless logout was not revoked. Expected stable 4xx codes | Fixed on `codex/jopia-uat-backend`; request-rejection tests PASS |
+| TP-JOP-D02 | 2026-10-09 | High / Jopia | FR-01/02/06/08, NFR-05 | V2 commands accepted any client `eventTime`/`requestTime`; backdating could reserve label-expired stock or inflate RPS wait. Expected server-clock bound with replay and approved-population exemptions | Fixed on `codex/jopia-uat-backend`; command-time-window tests PASS |
+| TP-JOP-D03 | 2026-10-09 | High / Jopia | NFR-09/12 | After a Docker Desktop restart the stopped peer could not remount its Docker socket, taking the ledger down. Expected `start` to recover only the peer with volumes preserved | Recovered on Jopia's host (height 1158, volumes unchanged); `start` recovery and operations test PASS |
+| TP-JOP-D04 | 2026-10-09 | High / Jopia; display Lat | FR-08/09, BL-INV-03 | No V2 path submits `EVALUATE_COMPONENT_EXPIRY`; label-expired units stay `AVAILABLE` in reads and the EXPIRED alert list stays empty. Chaincode FEFO already excludes them | Open; J4 proposed in the contract note |
+| TP-JOP-D05 | 2026-10-09 | Medium / Jopia | FR-05, NFR-09 | `POST /api/v2/transfers` is implemented but absent from `openapi-v2.json` | Open |
+| TP-JOP-D06 | 2026-10-09 | Low / Jopia | NFR-09 | `tests/inbound-ocr/static-boundary.sh` requires the former branch name, so it fails on every other branch | Open |
+| TP-JOP-D07 | 2026-10-09 | Medium / Jopia | FR-06/07 | V2 RPS/BROA functions exist in `services/coordination` but no API exposes their read-only explanation for V2 requests | Open; optional before UAT |
+
+TP-JOP-D02's bound is 300 seconds. A fresh persistent development seed applied
+more than five minutes after its preview is rejected without queuing; both
+retained hosts are already seeded.

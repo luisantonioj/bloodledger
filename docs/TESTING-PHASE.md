@@ -464,3 +464,15 @@ publishes the proposed successor window, pinned hashes and local software
 validation. This completes artifact preparation only; Jopia's review of the
 successor and actual Lat target, followed by explicit execution confirmation,
 remains required. No target population or Testing gate is accepted by this record.
+
+## Jopia UAT backend hardening — 2026-10-09
+
+Under the user's Jopia instruction, TP-08 remediation on `codex/jopia-uat-backend`
+fixes [TP-JOP-D01–D03](TESTING-DEFECTS.md#jopia-backend-findings--2026-10-09):
+stable framework 4xx codes, a 300-second server-clock bound on new V2 command
+times (retries and exact approved population operations exempt), and peer-only
+recovery from a stale Docker socket mount. The
+[contract note](handoffs/JOPIA-TO-LAT-UAT-BACKEND-CONTRACT-2026-10-09.md) records
+the frontend handling, the proposed J4 expiry state and the checks run. This is
+**JOPIA_SELF_VALIDATION**: Lat's browser rerun and live retained-host deployment are
+NOT_RUN. D04–D07 remain open. No chaincode, policy, lifecycle, UAT or exit gate changes.
