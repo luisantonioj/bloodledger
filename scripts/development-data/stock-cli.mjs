@@ -252,6 +252,8 @@ export async function reconcileStockCensus(runtime,execution,existing,observedAt
     // it must not create a newly backdated snapshot or erase a genuine PASS.
     census = await store.get(existing.census_snapshot_id,'INST_MEDIATRIX');
     requireStock(census,'STOCK_PERSISTED_CENSUS_MISSING');
+    const expectedId = id('CENSUS_',`INST_MEDIATRIX|${new Date(execution.scenario.t0).toISOString()}|${INTERNAL_ML_SNAPSHOT_POLICY_VERSION}`);
+    requireStock(census.snapshotId === existing.census_snapshot_id && census.snapshotId === expectedId,'STOCK_PERSISTED_CENSUS_ID_MISMATCH');
   }
   if(census) {
     verifyCapturedCensus(execution.scenario,census);

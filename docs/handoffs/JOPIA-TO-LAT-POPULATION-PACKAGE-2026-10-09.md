@@ -100,6 +100,7 @@ git fetch origin codex/jopia-lat-population-handoff
 git merge-base --is-ancestor eb12ee2c28aa5f1810e325fdb1b074c4801eea27 "$PACKAGE_COMMIT"
 git merge-base --is-ancestor c4f99c9c420a380ae64b1a444fc353fff666bd2e "$PACKAGE_COMMIT"
 git merge --ff-only "$PACKAGE_COMMIT"
+npm ci --ignore-scripts
 # If a later Lat commit diverges, stop for a scoped reviewed merge; preserve edits.
 export BLOODLEDGER_DEV_PRIVATE_DIR="$LAT_POPULATION_PRIVATE"
 export BLOODLEDGER_DEV_ENV_FILE="$LAT_RUNTIME_ENV"
@@ -354,8 +355,7 @@ HTTP fixtures are separate software regression, never local population proof.
 
 ## Evidence record and remaining boundaries
 
-Package-specific checks and exact grouped commits are recorded below after
-execution. They are **JOPIA_SELF_VALIDATION of tooling**, not Lat local stock
+Package-specific checks and exact grouped commits are recorded below. They are **JOPIA_SELF_VALIDATION of tooling**, not Lat local stock
 acceptance. Buno's original scenario/source tests remain attributed to their
 owner. Lat fills actual target/backup/review/preview/execution hashes, lifecycle,
 per-series/local-ledger/census/browser/preservation/replay/restart results and
@@ -365,3 +365,69 @@ V4 default; V5 binding/job/persistence/activation separate. Near-expiry remains
 disabled. Human UAT, research custody/consent/instrument, RQ-07/RQ-14, physical
 Android OCR, full NFR-06, clinical/regulatory readiness, deployment and Testing
 exit remain open. PR26/27/28/29/30 remain open where integration is unresolved.
+
+
+### Jopia package verification
+
+Technical preparation **PASS / JOPIA_SELF_VALIDATION**, with no Lat-local
+population result. Toolchain: Node 24.17.0, npm 11.13.0, Python 3.12.3;
+canonical WSL Linux checkout. The default sandbox command launcher initially
+failed before process creation; reviewed escalated shell access recovered it.
+No automatic approval rejection occurred.
+
+Grouped commits:
+
+1. `41ad224b28562cd729889a6d08b5e72bd7c08cae` — target-specific contract, selected
+   Testing follow-up and exact command/approval package.
+2. `3b3c5cd13533f0550e66bf7855731cc2910e13e0` — exact reviewed successor hashes,
+   original-census restart verification, identity/volume checkpoint and tests.
+3. `43243c7595437455988ea1c45218e5fe52667766` — compatible transitive JWT patch
+   and cached exp-without-iat regression; no authentication policy change.
+4. Final validation group — strengthens journaled census-ID binding and records
+   these results; exact published head is returned in the PR comments.
+
+| Check | Result / evidence boundary |
+| --- | --- |
+| Buno original source regression | PASS: 31 tests; original generator/verifier bytes unchanged. No new scenario generated. |
+| Population/review/restart tests | PASS: 32 tests, including wrong review/hash/date/target metadata, expiry boundaries, global FEFO, saved-envelope retry, missing/late/changed census and identity/mount changes. Test fixtures are not accepted ledger evidence. |
+| API/authentication | PASS: 126 tests and type/static checks, including cached token replay after expiry without issued-at. |
+| Chaincode baseline | PASS: 42 tests plus format/lint/type/static checks; no chaincode source/policy changed. |
+| Frontend baseline | PASS: 80 units and TypeScript; Vite build PASS into private temporary output. No frontend source changed. |
+| Read-only identity/store checkpoint smoke | PASS on Jopia only: 77 identity/channel/runtime files and five named volumes; capture/compare fingerprint `350143347558d642a56ecdda52163b0f13f0d3cacddee7de9c910a18f5e8c372`. No service restart; not Lat's checkpoint. |
+| Dependency audit | Initial FAIL: newly published moderate fast-jwt advisory; fixed to exactly 6.3.4. Final PASS: zero vulnerabilities. |
+| Secret/format/diff | PASS: full Git history/index/candidate Gitleaks 8.30.1, pinned image digest per local-development guide, repository JSON checks and diff check. |
+| Lat fresh target/lifecycle/source delivery/preview/execution | BLOCKED / NOT_RUN; Buno successor and Lat-host evidence are unavailable here. |
+| Lat local API/ledger/census/navigation/replay/restart acceptance | NOT_RUN in this package; original PR29 evidence retains Lat attribution and its nine-unit scope. |
+
+The unmodified default `npm run check:web` encountered an existing root-owned
+ignored `apps/web/dist/assets` EACCES. No ownership change or removal was used;
+TypeScript plus the same Vite builder passed with an alternate private outDir.
+The new JWT regression initially caught stale installed 6.3.2 bytes despite a
+6.3.4 lockfile; ignored npm cache metadata was moved to private temporary
+storage, the lockfile installation refreshed, actual bytes checked as 6.3.4
+and all 126 API tests then passed. These initial failures are not counted as
+passing runs.
+
+Reproduce package checks (outside live population):
+
+```bash
+python3 -m unittest discover -s scripts/operational-scenario -v
+node --test tests/development-data/*.test.mjs
+npm run check:format
+npm run check:api
+npm run test:api
+npm run check:inventory-contract
+npm run test:inventory-contract
+npm run test:web
+npm exec --workspace @bloodledger/web -- tsc -b --pretty false
+npm exec --workspace @bloodledger/web -- vite build \
+  --outDir /tmp/bloodledger-lat-package-web --emptyOutDir
+npm audit --audit-level=low
+npm run scan:secrets
+git diff --check
+```
+
+Security source: [maintainer-reviewed GHSA-x937-hj6v-793p](https://github.com/advisories/GHSA-x937-hj6v-793p),
+updated/published to the advisory database October 8. Only fast-jwt's locked
+version/resolution/integrity moved from 6.3.2 to verified 6.3.4. No broad audit
+fix, package-manifest change or credential/role change was applied.
