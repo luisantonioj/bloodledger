@@ -475,4 +475,13 @@ recovery from a stale Docker socket mount. The
 [contract note](handoffs/JOPIA-TO-LAT-UAT-BACKEND-CONTRACT-2026-10-09.md) records
 the frontend handling, the proposed J4 expiry state and the checks run. This is
 **JOPIA_SELF_VALIDATION**: Lat's browser rerun and live retained-host deployment are
-NOT_RUN. D04–D07 remain open. No chaincode, policy, lifecycle, UAT or exit gate changes.
+NOT_RUN. No chaincode, policy, lifecycle, UAT or exit gate changes.
+
+J4 then adds read-time `expiryState` and an operator-verified
+`POST /api/v2/components/{id}/expiry` that queues the existing deterministic
+`EVALUATE_COMPONENT_EXPIRY` with a server evaluation time (D04, API side), and
+makes reconciliation retries replay (D08). Live submission waits for J5 because
+Jopia's retained general worker is disabled. D05–D07 remain open. The contract
+note's data-timing check shows Jopia's retained reservations expire before
+2026-10-12 while Buno's V2 data on Lat's host stays valid; this is an input to the
+unrecorded UAT host decision.

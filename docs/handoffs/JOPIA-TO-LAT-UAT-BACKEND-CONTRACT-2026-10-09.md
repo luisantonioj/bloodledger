@@ -8,9 +8,11 @@ its independent browser rerun. Machine-readable truth is
 and [`openapi.json`](../../services/api/openapi.json) (`RequestRejected`); this note
 explains them and does not replace them.
 
-No request field, response field, route, chaincode, policy, lifecycle sequence or
-migration changes. The approved population package and its frozen confirmation
-time remain valid.
+Sections 1, 2 and the reconciliation retry fix change no request or response
+field. Section 3 adds one response field (`expiryState`) and one route using an
+already provisioned operator capability. There are no chaincode, policy,
+lifecycle sequence or migration changes. The approved population package and its
+frozen confirmation time remain valid.
 
 ## 1. Framework request rejections keep their 4xx status (TP-JOP-D01)
 
@@ -67,18 +69,73 @@ preview. A fresh seed applied more than five minutes after its preview is
 rejected without queuing. Both retained hosts are already seeded; regenerate the
 preview if a new host needs it.
 
-## 3. Proposed next: expiry display state (J4) — not implemented
+## 3. Expiry display state and evaluation action (J4, TP-JOP-D04)
 
-**Status: Proposed.** Do not ship UI against this until Jopia records it as
-Accepted in this file and in `openapi-v2.json`.
+**Status: Accepted by Jopia and implemented on 2026-10-09.** Contract:
+`ComponentProjection.expiryState` and `POST /components/{componentId}/expiry`
+(`ExpiryEvaluationRequest`) in `openapi-v2.json`.
 
-- V2 component reads gain `expiryState`: `CURRENT`,
-  `LABEL_EXPIRED_PENDING_EVALUATION` (printed expiry passed, ledger still
-  `AVAILABLE`/`RESERVED`) or `EXPIRED` (ledger-evaluated). `inventoryStatus`
-  values do not change.
-- A ROLE-01/ROLE-02 operator action queues `EVALUATE_COMPONENT_EXPIRY` with a
-  server evaluation time, through the existing operator verification and command
-  status flow. Chaincode FEFO already excludes label-expired units.
+### Read state
+
+`GET /api/v2/components` and `GET /api/v2/components/{componentId}` now always
+include `expiryState`, computed from the server clock at read time.
+`inventoryStatus` values do not change.
+
+| `expiryState` | Meaning |
+|---|---|
+| `CURRENT` | Printed label expiry not yet reached |
+| `LABEL_EXPIRED_PENDING_EVALUATION` | Label expiry at or before now; ledger still `AVAILABLE` or `RESERVED` |
+| `EXPIRED` | Ledger-evaluated (`inventoryStatus` is `EXPIRED`); appears in V2 alerts |
+| `LABEL_EXPIRED_NOT_IN_INVENTORY` | Label expiry passed for another status, for example `IN_TRANSIT` |
+
+Chaincode FEFO already excludes label-expired units from reservation. Do not
+present a `LABEL_EXPIRED_PENDING_EVALUATION` unit as usable stock.
+
+### Evaluation action
+
+`POST /api/v2/components/{componentId}/expiry` with body
+`{ "correlationId", "expectedVersion" }`, where `expectedVersion` is the
+component's `inventoryVersion`. Use the standard `Idempotency-Key` and
+operator-verification flow; the server sets `evaluationTime`. Response is
+`202` with a command envelope; acceptance is not ledger commitment, so poll the
+command status. A committed command moves the unit to `EXPIRED`, which then
+appears in the V2 alert list for acknowledgement.
+
+- Allowed: ROLE-01/ROLE-02 operators with `inventory:expiry`, own custody only,
+  `AVAILABLE` stock whose label expiry has been reached.
+- `409` codes: `COMPONENT_LABEL_NOT_EXPIRED`,
+  `COMPONENT_EXPIRY_RESERVATION_ACTIVE` (cancel the reservation first),
+  `COMPONENT_ALREADY_EXPIRED`, `COMPONENT_EXPIRY_TRANSITION_INVALID`,
+  `COMPONENT_VERSION_CONFLICT` (refresh), `V2_1_CONTRACT_REQUIRED`,
+  `V2_IDEMPOTENCY_CONFLICT`.
+- A retry with the same key replays the original evaluation time.
+- During an active approved population run the writer lock rejects it, so T0
+  counts cannot change.
+
+**Frontend action (Lat):**
+
+1. Map `POST /api/v2/components/{id}/expiry` to `inventory:expiry` in
+   `apps/web/src/auth/operator-actions.ts`.
+2. Show `expiryState` in inventory and detail views.
+3. Offer the action only for `LABEL_EXPIRED_PENDING_EVALUATION` with
+   `inventoryStatus` `AVAILABLE`; for `RESERVED`, point to cancelling the
+   reservation.
+
+### Reconciliation retry (TP-JOP-D08)
+
+A retry of `POST /api/v2/reconciliation` with the same `Idempotency-Key` and body
+used to return `409 V2_IDEMPOTENCY_CONFLICT`, because the server-set event time
+changed the command digest. It now replays the original command. The request
+shape is unchanged.
+
+### UAT data timing
+
+| Host | Label expiry of current stock (Asia/Manila) | On 2026-10-12 |
+|---|---|---|
+| Lat, Buno V2 scenario | Reserved: Oct 13 08:00–09:00; available: Oct 16 or later | All valid |
+| Jopia, retained T0 data | 1 available: Oct 8; 36 reserved: Oct 11 08:00–09:00; 52 available: Oct 13 | 37 label-expired, all 36 reservations holding expired stock |
+
+This favours Lat's host for UAT. It is an input to the host decision, not the decision.
 
 ## Validation (Jopia self-validation)
 
@@ -86,7 +143,7 @@ Native Node 24.17.0 on Jopia's WSL2 host, 2026-10-09:
 
 | Check | Result |
 |---|---|
-| `npm run test:api` | 135 passed, including 10 new J2/J3 tests |
+| `npm run test:api` | 140 passed, including 10 J2/J3 tests and 5 J4/reconciliation tests |
 | `npm run check:api` (with ripgrep 14.1.1) | Passed |
 | `npm run test:development-data` | 35 passed |
 | `npm run test:operations`, `npm run check:operations` | Passed, including the stale peer-socket start case |
@@ -95,5 +152,6 @@ Native Node 24.17.0 on Jopia's WSL2 host, 2026-10-09:
 | `bash tests/accounts/postgres-integration.sh` (disposable PostgreSQL 17.10, no network) | 150 assertions passed, including the operational-stock probe through the changed population gate |
 
 Not run here: Lat's browser rerun and a live Fabric command after deployment to a
-retained host. Deploy to the UAT host only after Buno's T0 verification window
+retained host. Jopia's retained general worker is disabled, so a live
+`EVALUATE_COMPONENT_EXPIRY` submission is deferred to the J5 rehearsal. Deploy to the UAT host only after Buno's T0 verification window
 closes (2026-10-11 16:00 Manila).
