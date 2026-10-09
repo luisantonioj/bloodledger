@@ -636,6 +636,8 @@ export function interviewCorePayload(command: Pick<V2Command, "operation" | "pay
       ? (() => { const { transferId: _projectionTransfer, ...ledgerPayload } = command.payload; return ledgerPayload; })()
     : command.operation === "RESERVE_LOCAL_RELEASE"
       ? (() => { const { localReleaseId: _projectionRelease, ...ledgerPayload } = command.payload; return ledgerPayload; })()
+    : command.operation === "RECEIVE_INBOUND_COMPONENT"
+      ? (() => { const { captureId: _projectionCapture, ...ledgerPayload } = command.payload; return ledgerPayload; })()
     : command.operation === "PLACE_RECONCILIATION_HOLD"
       ? (() => { const { reconciliationPolicyVersion: _policyEvidence, ...ledgerPayload } = command.payload; return ledgerPayload; })()
       : command.payload;
