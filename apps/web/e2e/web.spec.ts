@@ -222,17 +222,16 @@ test("login fails safely, then accepts only the server-returned principal and ca
     if (path === "/api/v1/dashboard") return fulfillJson(route, responses[path]);
     return fulfillJson(route, {}, 404);
   });
+  await page.route("**/api/v2/**", route => new URL(route.request().url()).pathname === "/api/v2/dashboard" ? fulfillJson(route, responses["/api/v1/dashboard"]) : fulfillJson(route, {}, 404));
   await page.goto("/");
   await expect(page.locator(".auth-hero")).toBeVisible();
   await expect(page.locator(".auth-card")).toBeVisible();
   await expect(page.getByRole("heading", { name: "One ledger. Clear custody. Every unit accounted for." })).toBeVisible();
   await expect(page.getByText("Server-assigned access", { exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Apply for access" }).click();
-  await expect(page.getByRole("heading", { name: "How will your facility participate?" })).toBeVisible();
-  await expect(page.getByText("Frontend preview only", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: /Apply as a Blood Bank/ }).click();
-  await expect(page.getByRole("heading", { name: "Institution qualification" })).toBeVisible();
-  await expect(page.getByText("Step 1 of 4 · Facility", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Apply for synthetic access" })).toBeVisible();
+  await expect(page.getByLabel("Private invitation secret")).toBeVisible();
+  await expect(page.getByText("A PRC invitation is required.", { exact: false })).toBeVisible();
   await page.getByRole("tab", { name: "Sign in" }).click();
   await expect(page.getByText("Server-assigned access", { exact: true })).toBeVisible();
   await page.getByLabel("Username").fill("synth_browser_user");
@@ -1018,7 +1017,7 @@ for (const scenario of ["STALE", "V5_FORECAST_FUTURE_GENERATED", "MODEL_ARTIFACT
     if (scenario === "STALE") { await expect(page.getByText("Forecast is stale", { exact: true })).toBeVisible(); await expect(page.locator(".forecast-table tbody tr")).toHaveCount(20); }
     else {
       await expect(page.locator(".forecast-table tbody tr")).toHaveCount(0);
-      if (scenario === "401") await expect(page.getByText("Your session has expired. Sign in again to view forecasts.")).toBeVisible();
+      if (scenario === "401") await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
       else if (scenario === "403") await expect(page.getByText("Your session is not authorized to view this forecast.")).toBeVisible();
       else if (["network", "malformed"].includes(scenario)) await expect(page.getByText("Unable to load validated forecast evidence. Please retry.")).toBeVisible();
       else await expect(page.getByText("Forecast unavailable", { exact: true })).toBeVisible();

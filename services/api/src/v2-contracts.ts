@@ -14,6 +14,7 @@ export const V2_COMPONENT_TYPES = [
 ] as const;
 export const INTERVIEW_V2_1_COMPONENT_TYPES = [...V2_COMPONENT_TYPES, "CRYOPRECIPITATE"] as const;
 export type V2ComponentType = (typeof V2_COMPONENT_TYPES)[number];
+export type V21ComponentType = (typeof INTERVIEW_V2_1_COMPONENT_TYPES)[number];
 
 export const V2_INVENTORY_STATUSES = [
   "AVAILABLE", "RESERVED", "DISPATCHED", "IN_TRANSIT", "RECEIVED",
@@ -33,16 +34,15 @@ export interface V2ComponentView {
   componentId: string;
   donationId: string;
   issuerInstitutionId: string;
-  donationNumberDigest: string;
-  componentType: V2ComponentType;
+  componentType: V21ComponentType;
   bloodType: V2BloodType;
   collectedAt: string;
   expiresAt: string;
   institutionId: string;
-  status: V2InventoryStatus;
-  reservationPurpose: V2ReservationPurpose | null;
+  inventoryStatus: V2InventoryStatus;
   reservationId: string | null;
-  version: number;
+  reservationVersion: number | null;
+  inventoryVersion: number;
   policyVersion: CorePolicyVersion;
   classification: typeof V2_CLASSIFICATION;
 }

@@ -101,6 +101,12 @@ function safeCommand(command: Awaited<ReturnType<V2CommandStore["enqueue"]>>["co
 }
 
 export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDependencies): void {
+  // Check before intake can create its provisional capture row. Authentication,
+  // action-bound grants and institution authorization still run in each route.
+  app.addHook("preHandler", async request => {
+    const path = request.url.split("?")[0];
+    if (["POST","PUT","PATCH","DELETE"].includes(request.method) && path.startsWith("/api/v2/") && !path.startsWith("/api/v2/auth/")) await dependencies.store.assertPopulationRequest?.(path, request.body, request.headers["idempotency-key"]);
+  });
   const restore = dependencies.restore;
   if (dependencies.developmentRead) registerDevelopmentReads(app, dependencies.developmentRead, restore, dependencies.webOrigin);
   const sameOrigin = (request: FastifyRequest) => { if (request.headers.origin !== dependencies.webOrigin) throw new ApiFailure(403, "ORIGIN_FORBIDDEN", "Request origin is not permitted."); };
@@ -266,8 +272,23 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const releaseId = requiredBodyString(body, "releaseId", /^REL_[A-Z0-9_-]{1,56}$/); const bloodType = requiredBodyString(body, "bloodType"); const componentType = requiredBodyString(body, "componentType");
     const supportedComponents = version === "V2.1" ? COMPONENT_TYPES_V21 : COMPONENT_TYPES;
     if (!(BLOOD_TYPES as readonly string[]).includes(bloodType) || !(supportedComponents as readonly string[]).includes(componentType) || !Number.isSafeInteger(body.quantity) || Number(body.quantity) < 1) throw new ApiFailure(400, "V2_INPUT_INVALID", "Local-release input is invalid.");
-    const payload = { releaseId, sourceInstitutionId: principal.institutionId, bloodType, componentType, quantity: Number(body.quantity), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: selectCorePolicy(principal, version) };
-    return enqueue(request, reply, "LOCAL_RELEASE", releaseId, "RESERVE_LOCAL_RELEASE", payload, principal);
+    const eventTime = requiredUtc(body, "eventTime");
+    const correlationId = requiredBodyString(body, "correlationId", CORRELATION_PATTERN);
+    const idempotencyKey = requiredHeader(request);
+    const requestDigest = createHash("sha256").update(JSON.stringify(body), "utf8").digest("hex");
+    const previous = await dependencies.store.get(generatedId("CMD_", idempotencyKey), principal.institutionId, principal.userId);
+    if (previous) {
+      if (previous.operation !== "RESERVE_LOCAL_RELEASE" || previous.resourceId !== releaseId || previous.payloadSha256 !== requestDigest) throw new ApiFailure(409, "V2_IDEMPOTENCY_CONFLICT", "Idempotency key was used for a different command.");
+      return enqueue(request, reply, "LOCAL_RELEASE", releaseId, "RESERVE_LOCAL_RELEASE", previous.payload, principal, requestDigest);
+    }
+    if (!dependencies.projection) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Local release requires the current inventory projection.");
+    const eligible = (await dependencies.projection.listComponents(principal.institutionId, principal.roleId))
+      .filter(component => component.institutionId === principal.institutionId && component.inventoryStatus === "AVAILABLE" && component.bloodType === bloodType && component.componentType === componentType && Date.parse(component.expiresAt) > Date.parse(eventTime))
+      .sort((a,b) => Date.parse(a.expiresAt) - Date.parse(b.expiresAt) || a.componentId.localeCompare(b.componentId));
+    if (eligible.length < Number(body.quantity)) throw new ApiFailure(409, "RESERVATION_INSUFFICIENT_STOCK", "Eligible stock is insufficient for this release.");
+    const selected = eligible.slice(0, Number(body.quantity));
+    const payload = { reservationId: generatedId("RES_", idempotencyKey), localReleaseId: releaseId, purpose: "LOCAL_RELEASE", destinationInstitutionId: null, sourceInstitutionId: principal.institutionId, bloodType, componentType, quantity: Number(body.quantity), selectedComponentIds: selected.map(component => component.componentId), expectedComponentVersions: selected.map(component => component.inventoryVersion), actorUserId: principal.userId, eventTime, correlationId, policyVersion: selectCorePolicy(principal, version) };
+    return enqueue(request, reply, "LOCAL_RELEASE", releaseId, "RESERVE_LOCAL_RELEASE", payload, principal, requestDigest);
   });
 
   app.post("/api/v2/reconciliation", async (request, reply) => {

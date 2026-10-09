@@ -5,6 +5,9 @@ interface ApiErrorBody {
 }
 
 export interface CapturePrincipal {
+  accountId?: string;
+  verificationRequired?: boolean;
+  operators?: {operatorId: string; roleId: string; actionCapabilities?: string[]}[];
   userId: string;
   displayName: string;
   institutionId: string;
@@ -81,7 +84,20 @@ export async function submitInboundCapture(
   idempotencyKey: string,
   capture: InboundOcrCapture,
   contractVersion: ContractVersion,
+  operator?: {operatorId: string; pin: string},
+  isCurrent: () => boolean = () => true,
 ): Promise<InboundCaptureResult> {
+  let verificationId: string | undefined;
+  if (operator) {
+    const verified = await fetch("/api/v2/auth/operator-verifications", {
+      method:"POST",credentials:"same-origin",headers:{"content-type":"application/json"},
+      body:JSON.stringify({...operator,action:"POST /api/v2/inbound-captures",payload:capture,idempotencyKey}),
+    });
+    const body = await safeJson(verified);
+    if (!verified.ok) throw apiError(body,"OPERATOR_VERIFICATION_FAILED",verified.status);
+    verificationId = (body as {verificationId: string}).verificationId;
+  }
+  if(!isCurrent()) throw new ApiError("AUTH_SESSION_REVOKED",401);
   const response = await fetch("/api/v2/inbound-captures", {
     method: "POST",
     credentials: "same-origin",
@@ -89,6 +105,7 @@ export async function submitInboundCapture(
       "content-type": "application/json",
       "idempotency-key": idempotencyKey,
       "x-bloodledger-contract-version": contractVersion,
+      ...(verificationId ? {"Operator-Verification":verificationId} : {}),
     },
     body: JSON.stringify(capture),
   });

@@ -11,7 +11,7 @@ const coordinator = { userId: "USR_SYNTH_REVIEW_ROLE02", roleId: "ROLE-02" as co
 const recipient = { userId: "USR_SYNTH_REVIEW_ROLE03", roleId: "ROLE-03" as const, institutionId: "INST_SYNTH_SECONDARY_REVIEW" };
 
 test("NFR-02 Gateway payload preserves saved policies, legacy default and safe inbound fields", () => {
-  for (const policyVersion of ["INTERVIEW_DERIVED_CORE_V2", "INTERVIEW_DERIVED_CORE_V2_1", "PERSISTENT_DEVELOPMENT_CORE_V1"]) {
+  for (const policyVersion of ["INTERVIEW_DERIVED_CORE_V2", "INTERVIEW_DERIVED_CORE_V2_1", "PERSISTENT_DEVELOPMENT_CORE_V1", "SYNTHETIC_INSTITUTION_CORE_V1"]) {
     const payload = interviewCorePayload({ operation: "REGISTER_INBOUND_COMPONENT", idempotencyKey: "IDEM_RETAINED_GATEWAY", payload: { policyVersion, actorUserId: coordinator.userId, donationNoLookupHmac: "a".repeat(64), donationNoCiphertext: "SYNTHETIC_PRIVATE_TEST_FIELD", captureId: "CAP_SYNTHETIC_GATEWAY" } });
     assert.equal(payload.policyVersion, policyVersion); assert.equal(payload.donationNoDigest, "a".repeat(64));
     assert.equal(payload.donationNoCiphertext, undefined); assert.equal(payload.captureId, undefined);

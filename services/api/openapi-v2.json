@@ -141,7 +141,14 @@
         ],
         "responses": {
           "200": {
-            "description": "A component in the authorized institution scope"
+            "description": "Committed component in authenticated custody scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentProjection"
+                }
+              }
+            }
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -3070,7 +3077,7 @@
       },
       "LocalReleaseRequest": {
         "type": "object",
-        "description": "Exact request body for POST /local-releases. ROLE-01 and ROLE-02 only.",
+        "description": "Exact request body for POST /local-releases. ROLE-01 and ROLE-02 only. V2.1 allows CRYO. The server freezes globally eligible FEFO members and current versions; canonical chaincode validates them before acceptance. No local-release detail read is exposed.",
         "required": [
           "bloodType",
           "componentType",
@@ -4340,6 +4347,81 @@
             }
           }
         }
+      },
+      "ComponentProjection": {
+        "type": "object",
+        "description": "Actual operational V2.1 component projection. V2 list reads omit CRYO. Purpose is read from reservation detail; Donation No. material is excluded. institutionId is the current custodian.",
+        "required": [
+          "componentId",
+          "donationId",
+          "issuerInstitutionId",
+          "bloodType",
+          "collectedAt",
+          "expiresAt",
+          "institutionId",
+          "inventoryStatus",
+          "policyVersion",
+          "componentType",
+          "reservationId",
+          "reservationVersion",
+          "inventoryVersion",
+          "classification"
+        ],
+        "properties": {
+          "componentId": {
+            "type": "string"
+          },
+          "donationId": {
+            "type": "string"
+          },
+          "issuerInstitutionId": {
+            "type": "string"
+          },
+          "bloodType": {
+            "$ref": "#/components/schemas/BloodType"
+          },
+          "collectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "institutionId": {
+            "type": "string"
+          },
+          "inventoryStatus": {
+            "type": "string"
+          },
+          "policyVersion": {
+            "type": "string"
+          },
+          "componentType": {
+            "$ref": "#/components/schemas/ComponentTypeV21"
+          },
+          "reservationId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reservationVersion": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "inventoryVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        },
+        "additionalProperties": false
       }
     },
     "responses": {
@@ -4412,7 +4494,7 @@
                 "components": {
                   "type": "array",
                   "items": {
-                    "$ref": "../../contracts/core-v2.schema.json"
+                    "$ref": "#/components/schemas/ComponentProjection"
                   }
                 },
                 "classification": {

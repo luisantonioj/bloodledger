@@ -10,4 +10,5 @@ try{
   await runner({dbClient:client,direction:'up',dir:new URL('../../../database/migrations',import.meta.url).pathname,ignorePattern:'README\\.md',migrationsSchema:'public',migrationsTable:'pgmigrations',log:()=>{}});
 }finally{await client.end();}
 process.env.POSTGRES_DB='bloodledger_accounts_test';process.env.POSTGRES_MIGRATOR_USER='bloodledger_migrator';process.env.POSTGRES_APP_USER='bloodledger_app';
+await import('./jopia-account-migration-probe.mjs');
 await import('./institution-accounts-probe.mjs');

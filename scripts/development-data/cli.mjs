@@ -10,6 +10,7 @@ import { PostgresV2Projector } from '../../services/api/build/src/database-v2.js
 import { PostgresSessionRepository } from '../../services/api/build/src/database-session.js';
 import { verifyPassword } from '../../services/api/build/src/session.js';
 import { PostgresMlInventorySnapshotStore } from '../../services/api/build/src/census-worker.js';
+import { INSTITUTION_OPERATOR_MODE } from './stock-plan.mjs';
 import policy from '../../chaincode/policy/interview-core-v2-1.json' with {type:'json'};
 import developmentPolicy from '../../chaincode/policy/persistent-development-core-v1.json' with {type:'json'};
 
@@ -20,6 +21,10 @@ if(!['inspect','preview','apply','resume','verify','census'].includes(action)) t
 if(existsSync('.env')) process.loadEnvFile('.env');
 if(!options.config || ((await stat(options.config)).mode & 0o077)!==0) throw new Error('SEED_PRIVATE_CONFIG_PERMISSIONS_REQUIRED');
 const config=JSON.parse(await readFile(options.config,'utf8'));
+if(config.authenticationMode===INSTITUTION_OPERATOR_MODE) {
+  const {institutionMaintenance}=await import('./institution-maintenance.mjs');
+  return institutionMaintenance(action,options,config);
+}
 if(config.classification!=='SIMULATION_ONLY'||config.scope!=='PERSISTENT_LOCAL_DEVELOPMENT') throw new Error('SEED_CONFIG_SCOPE_REQUIRED');
 const pgHost=process.env.DEVELOPMENT_PG_HOST??'127.0.0.1';
 if(!['127.0.0.1','localhost','postgres'].includes(pgHost)||process.env.POSTGRES_DB!=='bloodledger_dev'||process.env.POSTGRES_APP_USER!=='bloodledger_app') throw new Error('SEED_LOCAL_TARGET_REQUIRED');
@@ -36,7 +41,13 @@ try {
   const repo=new PostgresSessionRepository(pool);const principals={};const policyVersions={};const policySha256={};
   for(const name of ['coordinator','recipient']) {
     const privateAccount=config.accounts?.[name];if(!privateAccount) throw new Error('SEED_ACCOUNT_MAPPING_REQUIRED');
-    const credential=await repo.findCredential(privateAccount.username);
+    let credential=await repo.findCredential(privateAccount.username);
+    // Existing frozen runs retain their original actors after institution migration.
+    // Maintenance verification/recovery is not interactive login authorization.
+    if(!credential && ['verify','resume'].includes(action)) {
+      const retained=(await pool.query("SELECT u.user_id,u.institution_id,u.password_salt,u.password_verifier,r.role_id FROM app.application_users u JOIN app.user_role_assignments r USING(user_id) WHERE u.username=$1 AND u.account_kind IN ('OPERATOR','RETIRED')",[privateAccount.username])).rows[0];
+      if(retained)credential={userId:retained.user_id,institutionId:retained.institution_id,roleId:retained.role_id,saltHex:retained.password_salt,verifierHex:retained.password_verifier};
+    }
     if(!credential||!await verifyPassword(privateAccount.password,credential)) throw new Error('SEED_ACCOUNT_CREDENTIAL_INVALID');
     const activePolicy=developmentPolicy.developmentActorIds.includes(credential.userId)?developmentPolicy:policy;
     const actor=activePolicy.actors[credential.userId];
@@ -94,7 +105,7 @@ try {
           } else {
             const ownership=(await pool.query('SELECT seed_id FROM app.development_seed_commands WHERE command_id=$1',[commandId])).rows[0];
             if(ownership&&ownership.seed_id!==manifest.seedId) throw new Error('SEED_OWNERSHIP_MISMATCH');
-            if(!command||!ownership) {const response=await request(name,path,payload,key);if(response.commandId!==commandId) throw new Error('SEED_COMMAND_ID_MISMATCH');command=await store.get(commandId,principals[name].institutionId,principals[name].userId);}
+            if(!command||!ownership) {if(action==='resume' && !(await repo.findCredential(config.accounts[name].username)))throw new Error('SEED_RETIRED_ACCOUNT_NEW_COMMAND_FORBIDDEN');const response=await request(name,path,payload,key);if(response.commandId!==commandId) throw new Error('SEED_COMMAND_ID_MISMATCH');command=await store.get(commandId,principals[name].institutionId,principals[name].userId);}
             if(!command||['FAILED','CONFLICT'].includes(command.status)) throw new Error('SEED_COMMAND_FAILED');
             await pool.query('INSERT INTO app.development_seed_commands(seed_id,command_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[manifest.seedId,commandId]);
           }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ApiError,
   createSession,
@@ -10,11 +10,11 @@ import {
 } from "./api-client";
 import {
   CAPTURE_POLICY_VERSION,
-  ENABLED_ISSUER_INSTITUTION_ID,
+  issuerForDonationNumber,
   OCR_ENGINE_VERSION,
   contractVersionFor,
 } from "./capture-policy";
-import { deleteLegacyCaptureQueue, listStoredCommands, saveStoredCommand } from "./offline-queue";
+import { listStoredCommands, saveStoredCommand } from "./offline-queue";
 import type { RecognitionResult } from "./recognition";
 import type { InboundOcrCapture, StoredCommandReceipt, V2Command } from "./types";
 
@@ -24,9 +24,12 @@ function newEvidenceId(prefix: "IDEM_INBOUND_" | "CORR_"): string {
   return prefix + crypto.randomUUID().replaceAll("-", "").toUpperCase();
 }
 
-function commandReceipt(command: V2Command, recognition: RecognitionResult, idempotencyKey: string): StoredCommandReceipt {
+function commandReceipt(command: V2Command, recognition: RecognitionResult, idempotencyKey: string, principal: CapturePrincipal, operatorId?: string): StoredCommandReceipt {
   return {
     idempotencyKey,
+    accountId: principal.accountId ?? principal.userId,
+    institutionId: principal.institutionId,
+    operatorId: operatorId ?? principal.userId,
     commandId: command.commandId,
     resourceId: command.resourceId,
     statusUrl: command.statusUrl,
@@ -36,7 +39,7 @@ function commandReceipt(command: V2Command, recognition: RecognitionResult, idem
     safeErrorCode: command.safeErrorCode,
     bloodType: recognition.label.bloodType,
     componentType: recognition.label.componentType,
-    issuerInstitutionId: ENABLED_ISSUER_INSTITUTION_ID,
+    issuerInstitutionId: issuerForDonationNumber(recognition.label.donationNumber),
     classification: "SIMULATION_ONLY",
   };
 }
@@ -54,10 +57,16 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
 
-  const refreshEvents = async () => setEvents(await listStoredCommands());
+  const epoch = useRef(0);
+  const [operatorId, setOperatorId] = useState("");
+  const [pin, setPin] = useState("");
+  const owner = principal ? {accountId:principal.accountId ?? principal.userId,institutionId:principal.institutionId} : undefined;
+  const refreshEvents = async (current=epoch.current) => {const receipts=owner ? await listStoredCommands(owner) : [];if(current===epoch.current)setEvents(receipts);};
+  function clearSession() {epoch.current++;setPrincipal(undefined);setRecognition(undefined);setAttempt(undefined);setImage(undefined);setEvents([]);setPin("");setOperatorId("");setBusy(false);}
+
 
   useEffect(() => {
-    void deleteLegacyCaptureQueue().then(refreshEvents);
+    // Legacy receipts without explicit ownership remain quarantined in IndexedDB.
     restoreSession()
       .then(setPrincipal)
       .catch(() => undefined)
@@ -76,7 +85,8 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (!principal) return;
+    if (!principal || !owner) return;
+    const current=epoch.current;
     let closed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let failures = 0;
@@ -88,9 +98,11 @@ export function App() {
         return;
       }
       try {
-        for (const receipt of await listStoredCommands()) {
+        for (const receipt of await listStoredCommands(owner)) {
+          if (closed || current!==epoch.current) return;
           if (TERMINAL_COMMAND_STATES.has(receipt.status)) continue;
           const command = await fetchCommandStatus(receipt.statusUrl);
+          if (closed || current!==epoch.current) return;
           await saveStoredCommand({
             ...receipt,
             status: command.status,
@@ -98,11 +110,11 @@ export function App() {
           });
         }
         failures = 0;
-        await refreshEvents();
+        if (!closed && current===epoch.current) await refreshEvents(current);
       } catch (error) {
         failures += 1;
         if (error instanceof ApiError && error.status === 401) {
-          setPrincipal(undefined);
+          if (!closed && current===epoch.current) clearSession();
           setMessage("Session expired. Sign in again to resume command-status checks.");
         } else {
           setMessage("Command status is temporarily unavailable. No intake command was resubmitted.");
@@ -124,6 +136,9 @@ export function App() {
     setBusy(true);
     try {
       const restored = await createSession(username, password);
+      epoch.current++;
+      setEvents([]);setRecognition(undefined);setAttempt(undefined);setPin("");
+      setOperatorId(restored.operators?.find(o=>o.actionCapabilities?.includes("inventory:capture"))?.operatorId ?? "");
       setPrincipal(restored);
       setPassword("");
       setMessage("Authenticated as " + restored.displayName + ".");
@@ -135,22 +150,22 @@ export function App() {
   }
 
   async function signOut() {
+    clearSession();setBusy(true);
     await endSession().catch(() => undefined);
-    setPrincipal(undefined);
-    setRecognition(undefined);
-    setAttempt(undefined);
-    setImage(undefined);
-    setMessage("Signed out. Volatile OCR values were cleared.");
+    setBusy(false);setMessage("Signed out. Volatile OCR and verification values were cleared.");
   }
 
   async function runRecognition() {
     if (image === undefined) return;
+    const current=epoch.current;
     setBusy(true);
     setRecognition(undefined);
     setAttempt(undefined);
     try {
       const { recognizeInboundLabel } = await import("./recognition");
-      setRecognition(await recognizeInboundLabel(image));
+      const result=await recognizeInboundLabel(image);
+      if(current!==epoch.current)return;
+      setRecognition(result);
       setMessage("Review all five extracted fields. Exact Donation No. remains only in memory.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "CAPTURE_RECOGNITION_FAILED");
@@ -170,7 +185,7 @@ export function App() {
     const capture: InboundOcrCapture = {
       captureMethod: "OCR",
       capturePolicyVersion: CAPTURE_POLICY_VERSION,
-      issuerInstitutionId: ENABLED_ISSUER_INSTITUTION_ID,
+      issuerInstitutionId: issuerForDonationNumber(recognition.label.donationNumber),
       donationNumber: recognition.label.donationNumber,
       bloodType: recognition.label.bloodType,
       bloodTypeEvidence: { source: "OCR_LABEL", confirmed: true },
@@ -194,15 +209,22 @@ export function App() {
       },
     };
 
-    setBusy(true);
+    const current=epoch.current;
+    const verifiedOperator = principal.verificationRequired ? {operatorId:operatorId || principal.operators?.find(o=>o.actionCapabilities?.includes("inventory:capture"))?.operatorId || "",pin} : undefined;
+    if(verifiedOperator && (!verifiedOperator.operatorId || !/^[0-9]{8}$/.test(pin))){setMessage("Choose an authorized operator and enter the eight-digit PIN.");return;}
+    setPin("");setBusy(true);
     try {
       const result = await submitInboundCapture(
         confirmation.idempotencyKey,
         capture,
-        contractVersionFor(capture.componentType),
+        principal.accountId ? "V2.1" : contractVersionFor(capture.componentType),
+        verifiedOperator,
+        () => current===epoch.current,
       );
+      if(current!==epoch.current)return;
       if ("commandId" in result) {
-        await saveStoredCommand(commandReceipt(result, recognition, confirmation.idempotencyKey));
+        await saveStoredCommand(commandReceipt(result, recognition, confirmation.idempotencyKey, principal, verifiedOperator?.operatorId));
+        if(current!==epoch.current)return;
         setMessage("Intake accepted as " + result.status + ". It is not committed inventory yet.");
       } else {
         setMessage("Already registered as component " + result.componentId + ". No duplicate was created.");
@@ -210,8 +232,10 @@ export function App() {
       setRecognition(undefined);
       setAttempt(undefined);
       setImage(undefined);
-      await refreshEvents();
+      await refreshEvents(current);
     } catch (error) {
+      if(current!==epoch.current)return;
+      if(error instanceof ApiError && error.status===401){clearSession();setMessage("Session expired. Sign in again.");return;}
       const code = error instanceof ApiError ? error.code : "API_UNAVAILABLE";
       setMessage(code + ". The confirmed value remains volatile; retry uses the same idempotency key.");
     } finally {
@@ -219,7 +243,8 @@ export function App() {
     }
   }
 
-  const captureRole = principal && ["ROLE-01", "ROLE-02"].includes(principal.roleId);
+  const captureOperators = principal?.operators?.filter(o=>o.actionCapabilities?.includes("inventory:capture")) ?? [];
+  const captureRole = principal && (principal.accountId ? captureOperators.length > 0 : ["ROLE-01", "ROLE-02"].includes(principal.roleId));
 
   return (
     <main className="capture-app">
@@ -273,7 +298,7 @@ export function App() {
             <section className="card capture-card">
               <div className="card-heading">
                 <span className="step-number">1</span>
-                <div><h2><span className="visually-hidden">1. </span>Capture printed label</h2><p>Issuer is fixed to {ENABLED_ISSUER_INSTITUTION_ID}; receiving custody is {principal.institutionDisplayName}.</p></div>
+                <div><h2><span className="visually-hidden">1. </span>Capture printed label</h2><p>Issuer comes from the validated synthetic donation format; receiving custody is {principal.institutionDisplayName}.</p></div>
                 <span className="method-chip">OCR ONLY</span>
               </div>
 
@@ -326,8 +351,8 @@ export function App() {
                   <div key={key}><dt>{key}</dt><dd>{value}</dd></div>
                 ))}
               </dl>
-              <p className="confirmation-policy">Contract: {contractVersionFor(recognition.label.componentType)}. Fields cannot be edited; recapture if any value is wrong.</p>
-              <div className="confirmation-actions"><button type="button" disabled={busy || !isOnline} onClick={() => void confirmAndSubmit()}>{busy ? "Submitting…" : attempt ? "Retry same confirmed intake" : "I confirm every field"}</button></div>
+              <p className="confirmation-policy">Contract: {principal?.accountId ? "V2.1" : contractVersionFor(recognition.label.componentType)}. Fields cannot be edited; recapture if any value is wrong.</p>
+              <div className="confirmation-actions">{principal?.verificationRequired && <div className="form-grid"><label>Operator<select value={operatorId || captureOperators[0]?.operatorId || ""} onChange={event=>setOperatorId(event.target.value)}>{captureOperators.map(operator=><option key={operator.operatorId} value={operator.operatorId}>{operator.roleId} · {operator.operatorId}</option>)}</select></label><label>Operator PIN<input type="password" inputMode="numeric" minLength={8} maxLength={8} autoComplete="off" value={pin} onChange={event=>setPin(event.target.value)}/></label></div>}<button type="button" disabled={busy || !isOnline} onClick={() => void confirmAndSubmit()}>{busy ? "Submitting…" : attempt ? "Retry same confirmed intake" : "I confirm every field"}</button></div>
             </section>
           )}
         </div>

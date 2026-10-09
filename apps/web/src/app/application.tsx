@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Principal } from "../auth/permissions";
+import { OperatorVerification } from "../auth/operator-verification";
 import { ApplicationShell } from "../components/layout/application-shell";
 import { visibleNavigation } from "../config/navigation";
 import { AccessPage } from "../features/auth/access-page";
@@ -19,6 +20,12 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    const ended = () => { setPrincipal(undefined); setPath("/"); };
+    addEventListener("bloodledger:session-ended", ended);
+    return () => removeEventListener("bloodledger:session-ended", ended);
+  }, []);
+
+  useEffect(() => {
     const onPopState = () => setPath(location.pathname);
     addEventListener("popstate", onPopState);
     return () => removeEventListener("popstate", onPopState);
@@ -30,13 +37,16 @@ export function App() {
   }
 
   async function signOut() {
-    await requestJson("/api/v1/auth/session", { method: "DELETE" }).catch(() => undefined);
+    setLoading(true);
     setPrincipal(undefined);
     navigate("/");
+    await requestJson("/api/v1/auth/session", { method: "DELETE" }).catch(() => undefined);
+    setLoading(false);
   }
 
   if (loading) return <main className="login-panel"><h1>Restoring session...</h1></main>;
   if (!principal) return <AccessPage onAuthenticated={setPrincipal}/>;
 
-  return <ApplicationShell principal={principal} path={path} navigation={visibleNavigation(principal)} onNavigate={navigate} onSignOut={() => void signOut()}><PageContent path={path} principal={principal}/></ApplicationShell>;
+  const navigation = visibleNavigation(principal);
+  return <OperatorVerification key={principal.accountId ?? principal.userId} principal={principal}><ApplicationShell principal={principal} path={path} navigation={navigation} onNavigate={navigate} onSignOut={() => void signOut()}>{navigation.some(item => item.href === path) ? <PageContent key={principal.userId + path} path={path} principal={principal}/> : <div className="empty" role="alert">This account cannot access this page.</div>}</ApplicationShell></OperatorVerification>;
 }

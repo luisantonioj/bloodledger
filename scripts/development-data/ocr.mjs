@@ -40,6 +40,7 @@ export async function recognizeScenarios(scenarios) {
       const parsed=parseInboundOcrLines(lines);
       for(const key of Object.keys(parsed.label)) if(parsed.label[key]!==scenario[key]) throw new Error('SEED_OCR_EXACT_VALUE_MISMATCH');
       evidence.push({...scenario,ocr:parsed.fieldConfidence,capturedAt:new Date().toISOString(),engine:'TESSERACT_JS',engineVersion:'7.0.0',ocrMethod:'GENERATED_SYNTHETIC_LABEL_FIELD_REGIONS'});
+      if(evidence.length%25===0||evidence.length===scenarios.length)console.error(`OCR_PROGRESS ${evidence.length}/${scenarios.length}`);
     }
     return evidence;
   } finally {await worker.terminate();await browser.close();}
