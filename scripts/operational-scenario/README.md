@@ -1,14 +1,16 @@
-# Synthetic operational scenario 522 — Buno preparation
+# Synthetic operational scenario 522 V2 — Buno preparation
 
-Status: **Proposed, SIMULATION_ONLY**. Implements PR26's offline scenario
-preparation against retained integration `954f170b840fce1a346bb3bd393748a731be1913`.
-Jopia owns PR27 population. Neither this generator nor its validation submits a
-command, approves an institution binding, or grants permission to populate.
+Status: **Proposed, SIMULATION_ONLY**. This successor responds to Lat's PR30
+and Jopia's PR31 at exact head `a66528934432ebbb35eb1f45617909ca59374824`.
+It supersedes V1 only for unsubmitted work because V1's population deadline
+passed. V1 evidence remains historical and immutable. Neither this generator
+nor its validator submits a command, accepts Jopia's review, approves Lat's
+target, or grants permission to populate.
 
 ## Contract
 
 `scenario.py` is schema/generator version `OPERATIONAL_SCENARIO_V1` /
-`SYNTHETIC_OPERATIONAL_STOCK_522_V1`. It requires the exact original V5 workbook
+`SYNTHETIC_OPERATIONAL_STOCK_522_V2`. It requires the exact original V5 workbook
 bytes and opens only `Synthetic_Daily_Stocks`. The 2026-10-07 counts for
 `SIM_INSTITUTION_01` supply **only** the twenty-series count distribution.
 Historical dates, Donation No., collection/expiry and reservation purpose are
@@ -42,10 +44,10 @@ is a fact about that isolated operational state, not workbook source coverage.
 
 ## Frozen proposed execution window and nonclinical date policy
 
-T0 is **2026-10-09 08:00 Asia/Manila** (`2026-10-09T00:00:00Z`).
-Population may start no earlier than **2026-10-08 16:00 Manila**
-(`2026-10-08T08:00:00Z`) and must finish before T0 to establish the target at T0.
-Verify during `[T0, 2026-10-09T08:00:00Z)` (08:00–16:00 Manila).
+T0 is **2026-10-11 08:00 Asia/Manila** (`2026-10-11T00:00:00Z`).
+Population may start no earlier than **2026-10-10 16:00 Manila**
+(`2026-10-10T08:00:00Z`) and must finish before T0 to establish the target at T0.
+Verify during `[T0, 2026-10-11T08:00:00Z)` (08:00–16:00 Manila).
 This is Buno's **proposal**, not an approved execution window. If it is missed,
 stop; issue a new scenario version, new dates and new reviewed hashes. Never
 silently renew dates, reuse a version for changed bytes, or backdate to Oct 7.
@@ -54,11 +56,11 @@ All collection timestamps are T0 minus 24 hours. Reserved transfer units
 expire T0 plus 48 hours; local-release units plus 49 hours. Available units
 expire after T0 by WB 120h, PRBC 144h, FFP 168h, PC 96h, CRYO 192h.
 These intentionally arbitrary technical offsets are
-`SYNTHETIC_522_DATES_V1`, **not clinical shelf lives**. They keep all target
+`SYNTHETIC_522_DATES_V2`, **not clinical shelf lives**. They keep all target
 units unexpired throughout verification and create ties for FEFO tests.
 Near-expiry alerts remain disabled; recommendations remain nonautonomous.
 
-## Population contract and blockers (PR27)
+## Population contract and blockers (PR30/31)
 
 1. Jopia reviews exact manifest, binding, date policy, window and target
    fingerprint. Reinspect retained target before mutation; the handoff's
@@ -109,7 +111,7 @@ Never place the XLSX, generated manifest or synthetic label material in Git.
 python3 -m unittest discover -s scripts/operational-scenario -v
 python3 scripts/operational-scenario/scenario.py \
   --workbook "$WORKBOOK" --revision "$GENERATOR_COMMIT" \
-  --generated-at 2026-10-08T06:46:27Z --output "$OUT/scenario.json"
+  --generated-at "$GENERATED_AT" --output "$OUT/scenario.json"
 python3 scripts/operational-scenario/verify.py \
   --workbook "$WORKBOOK" --manifest "$OUT/scenario.json" --sha256 "$REVIEWED_FILE_SHA"
 ```

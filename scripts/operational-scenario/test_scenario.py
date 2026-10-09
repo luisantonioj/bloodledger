@@ -33,6 +33,8 @@ class ScenarioTests(unittest.TestCase):
 
     def test_success_and_zero_series(self):
         result = s.validate(self.data)
+        self.assertEqual(self.data["scenarioVersion"], "SYNTHETIC_OPERATIONAL_STOCK_522_V2")
+        self.assertEqual(self.data["datePolicy"]["version"], "SYNTHETIC_522_DATES_V2")
         self.assertEqual((result["units"], result["donations"], result["series"]), (522, 522, 20))
         self.assertEqual(result["reservedByPurpose"], {"TRANSFER": 18, "LOCAL_RELEASE": 18})
         self.assertEqual(sum(r["closing"] == 0 for r in self.data["counts"]), 18)
@@ -77,7 +79,12 @@ class ScenarioTests(unittest.TestCase):
         self.reject(lambda d: d["units"][0].update(expiresAt="2026-10-07T00:00:00Z"))
 
     def test_collection_after_t0(self):
-        self.reject(lambda d: d["units"][0].update(collectedAt="2026-10-10T00:00:00Z"))
+        self.reject(lambda d: d["units"][0].update(collectedAt="2026-10-12T00:00:00Z"))
+
+    def test_expired_v1_identity_is_rejected(self):
+        self.reject(
+            lambda d: d.update(scenarioVersion="SYNTHETIC_OPERATIONAL_STOCK_522_V1")
+        )
 
     def test_wrong_date_policy(self):
         self.reject(lambda d: d["datePolicy"].update(nearExpiryEnabled=True))

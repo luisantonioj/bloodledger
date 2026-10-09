@@ -1,4 +1,4 @@
-"""Verify private manifest bytes, source workbook and exact deterministic replay."""
+"""Verify successor manifest bytes, source lineage and exact deterministic replay."""
 
 import argparse
 import json
@@ -10,6 +10,7 @@ import scenario as s
 def verify(workbook, manifest, expected_sha):
     s.require(s.file_sha(manifest) == expected_sha, "manifest byte hash mismatch")
     data = json.loads(manifest.read_bytes())
+    s.require(data["scenarioVersion"] == s.VERSION, "scenario version mismatch")
     s.require(
         data["generator"]["fileSha256"] == s.file_sha(s.__file__),
         "generator file mismatch; use recorded revision",
