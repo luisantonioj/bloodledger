@@ -30,12 +30,19 @@ export function useCommandStatus(onTerminal?: () => void) {
       }
       try {
         const next = await readCommand(command.statusUrl);
+        if (closed) return;
+        if (next.commandId !== command.commandId || next.resourceId !== command.resourceId ||
+            next.resourceType !== command.resourceType || next.statusUrl !== command.statusUrl ||
+            next.correlationId !== command.correlationId || next.acceptedAt !== command.acceptedAt) {
+          throw new Error("V2_COMMAND_IDENTITY_MISMATCH");
+        }
         failures = 0;
         setPollError("");
         setCommand(next);
         if (COMMAND_PRESENTATION[next.status].terminal) callback.current?.();
         if (!COMMAND_PRESENTATION[next.status].terminal) timer = setTimeout(() => void poll(), 2_000);
       } catch (error) {
+        if (closed) return;
         failures += 1;
         setPollError(error instanceof Error ? error.message : "Command status is unavailable.");
         timer = setTimeout(() => void poll(), Math.min(30_000, 2_000 * (2 ** failures)));

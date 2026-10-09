@@ -172,7 +172,11 @@ export async function readInboundIntake(): Promise<InboundIntakeResponse> {
 
 export async function readCommand(statusUrl: string): Promise<V2Command> {
   if (!/^\/api\/v2\/commands\/[A-Za-z0-9_-]+$/.test(statusUrl)) throw new Error("V2_STATUS_URL_INVALID");
-  return parseV2Command(await requestJson<unknown>(statusUrl, {}, "V2 command status is unavailable."));
+  const command = parseV2Command(await requestJson<unknown>(statusUrl, {}, "V2 command status is unavailable."));
+  if (command.statusUrl !== statusUrl || statusUrl !== "/api/v2/commands/" + command.commandId) {
+    throw new Error("V2_COMMAND_IDENTITY_MISMATCH");
+  }
+  return command;
 }
 
 export function submitV2Transfer(payload: object & { componentType: V2ComponentType }, keys: MutationKeys): Promise<V2Command> {

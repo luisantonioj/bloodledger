@@ -4,10 +4,14 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 repository_root="$PWD"
 model_path="${BLOODLEDGER_V5_MODEL_TEST_PATH:-}"
-if [[ -z "$model_path" || ! -f "$model_path" ]]; then
-  echo 'Set BLOODLEDGER_V5_MODEL_TEST_PATH to the external selected_model.json' >&2
+if ! command -v node >/dev/null 2>&1; then
+  echo 'BLOCKED: Producer Node runtime unavailable' >&2
   exit 2
 fi
+# Fail closed before creating temporary files or database containers.
+node tests/forecasting/v5-runtime-prerequisites.mjs --producer
+model_path="$(realpath -- "$model_path")"
+forecasting_image="$(node --input-type=module -e 'import { V5_FORECASTING_IMAGE } from "./tests/forecasting/v5-runtime-prerequisites.mjs"; process.stdout.write(V5_FORECASTING_IMAGE);')"
 probe_root="$(mktemp -d)"
 probe_container="bloodledger-v5-forecast-check-$$"
 created=false
@@ -67,7 +71,7 @@ forecast_run=(docker run --rm --network "container:$probe_container" --env-file 
   --env "BLOODLEDGER_V5_APPROVED_BINDING_SHA256=$(cat "$probe_root/binding-hash")" \
   --user "$(id -u):$(id -g)" -v "$repository_root/services/forecasting:/workspace/repository:ro" \
   -v "$probe_root:/workspace/tmp" -v "$model_path:/workspace/model.json:ro" \
-  -w /workspace/repository -e PYTHONPATH=src --entrypoint python bloodledger-forecasting:latest)
+  -w /workspace/repository -e PYTHONPATH=src --entrypoint python "$forecasting_image")
 for hour in 12 13; do
   "${forecast_run[@]}" -m bloodledger_forecasting.runtime_v5_cli \
     --model /workspace/model.json --binding /workspace/tmp/binding.json \

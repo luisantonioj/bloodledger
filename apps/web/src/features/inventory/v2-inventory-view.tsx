@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ApiRequestError } from "../../services/api/client";
 import { BloodTypeBadge } from "../../components/ui/aggregate-tables";
 import { formatManilaDateTime, humanizeCode, statusClassName } from "../../components/ui/display";
 import type { Principal } from "../../auth/permissions";
@@ -17,11 +18,14 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [refreshedAt, setRefreshedAt] = useState<string>();
+  const requestSequence = useRef(0);
   const canReadIntake = ["ROLE-01", "ROLE-02"].includes(principal.roleId);
 
   const refresh = useCallback(async () => {
+    const current = ++requestSequence.current;
     if (!navigator.onLine) {
       setError("Offline. The last confirmed component projection is preserved below.");
+      setBusy(false);
       return;
     }
     setBusy(true);
@@ -30,29 +34,49 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
         readV2Components(version),
         canReadIntake ? readInboundIntake() : Promise.resolve(undefined),
       ]);
+      if (current !== requestSequence.current) return;
+      if (components.components.some(component => component.institutionId !== principal.institutionId)) {
+        throw new Error("V2_COMPONENT_SCOPE_MISMATCH");
+      }
       setData(components);
       setIntake(intakeStatus);
       setRefreshedAt(new Date().toISOString());
       setError("");
     } catch (reason) {
+      if (current !== requestSequence.current) return;
+      if ((reason instanceof ApiRequestError && [401, 403].includes(reason.status)) ||
+          (reason instanceof Error && ["V2_COMPONENT_SCOPE_MISMATCH", "V2_COMPONENT_RESPONSE_INVALID"].includes(reason.message))) {
+        setData(undefined);
+        setIntake(undefined);
+        setRefreshedAt(undefined);
+      }
       setError(reason instanceof Error ? reason.message : "V2 component inventory is unavailable.");
     } finally {
-      setBusy(false);
+      if (current === requestSequence.current) setBusy(false);
     }
-  }, [canReadIntake, version]);
+  }, [canReadIntake, principal.institutionId, version]);
 
   useEffect(() => {
+    setData(undefined);
+    setIntake(undefined);
+    setRefreshedAt(undefined);
     void refresh();
     const timer = setInterval(() => {
       if (!document.hidden) void refresh();
     }, 5_000);
-    return () => clearInterval(timer);
+    return () => { ++requestSequence.current; clearInterval(timer); };
   }, [refresh]);
 
   return <div className="v2-inventory">
     <div className="v2-scope-bar">
       <div><span className="eyebrow">INTERVIEW_DERIVED_CORE_V2</span><strong>{principal.institutionDisplayName}</strong><small>Institution scope comes from the authenticated session.</small></div>
-      <label>Contract view<select value={version} onChange={(event) => setVersion(event.target.value as V2ContractVersion)}><option value="V2">V2 core components</option><option value="V2.1">V2.1 including cryoprecipitate</option></select></label>
+      <label>Contract view<select value={version} onChange={(event) => {
+        ++requestSequence.current;
+        setData(undefined);
+        setIntake(undefined);
+        setRefreshedAt(undefined);
+        setVersion(event.target.value as V2ContractVersion);
+      }}><option value="V2">V2 core components</option><option value="V2.1">V2.1 including cryoprecipitate</option></select></label>
       <button className="button compact" onClick={() => void refresh()} disabled={busy}>{busy ? "Refreshing…" : "Refresh"}</button>
     </div>
 

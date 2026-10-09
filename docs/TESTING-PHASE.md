@@ -296,3 +296,77 @@ accountable review is closed by these checks.
 ## ML V5 backend follow-up — 2026-09-30
 
 The user authorized Jopia-owned V5 backend implementation from PR #19. The [candidate integration contract](ML-RUNTIME-INTEGRATION-V5.md) and [implementation plan](ML-V5-JOPIA-IMPLEMENTATION-PLAN.md) track this work. V4 remains active until Buno calculation review, Lat frontend/browser validation, synthetic institution-binding decision and explicit activation. This does not close UAT or RQ-07.
+
+
+## PR #21 Jopia review follow-up — 2026-10-01
+
+The user authorized implementation of review findings plus the read-only internal
+ML census API and independent Lat frontend consumer. [The integration contract](ML-RUNTIME-INTEGRATION-V5.md#pr-21-follow-up--independent-browser-inventory-evidence)
+was updated before dependent evidence records. [Jopia self-validation](ML-V5-PR21-JOPIA-VALIDATION.md)
+records the reviewed head, grouped commits, API/web/coordination checks, real
+isolated producer/database/cookie/browser flow, security dispositions and
+remaining gates. It does not close BL-TST-02, RQ-07, RQ-14, physical OCR, full
+NFR-06 or human UAT. Lat retains resulting frontend review; Buno retains research
+and UAT coordination. V4 remains default, with no concrete binding, activation,
+DOH capture/export policy activation, autonomous recommendation or deployment.
+
+
+## Lat PR #22 incorporation review — 2026-10-07
+
+Lat's [authoritative frontend review and reruns](frontend/VALIDATION.md#lat-pr-22-incorporation-review--2026-10-07)
+record accepted grouped fixes in PR #21, a scoped dependency audit fix, passing
+API/web/coordination/static/security checks, 43 mocked browser passes with seven
+existing skips, and disposable database evidence. Complete real producer →
+cookie → browser acceptance is BLOCKED by unavailable external pinned model and
+forecasting image; Jopia's previous success is not Lat's rerun. Both GitHub PRs
+remain unmerged. SIMULATION_ONLY and binding/activation, RQ-07/RQ-14, UAT,
+physical OCR and full Fabric-to-browser NFR-06 gates remain unchanged.
+
+## Lat scoped frontend testing — 2026-10-07
+
+The independent frontend slice on `codex/lat-testing-traceability` completes
+selected TP-01/TP-03/TP-08 preparation, regression and remediation. The
+[traceability register](TESTING-TRACEABILITY.md) links seven scenario groups;
+the [defect register](TESTING-DEFECTS.md) records five fixed frontend findings.
+[Lat's self-validation](frontend/VALIDATION.md#lat-testing-phase-frontend-regression--2026-10-07)
+records 14 focused browser passes, 57 full mocked browser passes with seven
+existing retired-fixture skips, 62 unit passes and applicable build,
+repository/security checks. This scoped evidence does not complete BL-TST-01,
+TP-02's full integrated baseline, human UAT or Testing-phase acceptance. Groupmate
+handoff responses are reserved for subsequent work; real V5, physical OCR,
+full Fabric-to-browser latency and owner/research gates remain open.
+## Jopia PR #21 incorporation re-review — 2026-10-07
+
+[Jopia’s source re-review, native validation and runtime handoff](ML-V5-PR21-JOPIA-VALIDATION.md#jopia-incorporation-re-review-and-runtime-prerequisites--2026-10-07)
+record identical incorporated patches and implementation
+`60fd148740c9ce45b379bec1633923fceef39d11`. Native prerequisite/regression,
+117-test forecasting, census, producer and real cookie/Chromium checks passed.
+The original frozen model and exact pinned image were recovered, verified,
+exported and reimported; the external transfer package and safe aggregates are
+recorded there. Current audit and secret scanning passed. Grouped publication
+is tracked by the follow-up draft PR. These are Jopia’s disclosed self-validation;
+prior owner evidence retains its attribution. Lat’s own real browser rerun and
+frontend decision remain pending, so complete live V5 acceptance remains BLOCKED.
+No Testing-phase exit, binding/activation, RQ-07/RQ-14 or UAT gate is closed.
+
+## Lat real V5 runtime follow-up — 2026-10-07
+
+[Lat's verified transfer and real rerun](frontend/VALIDATION.md#lat-verified-runtime-transfer-and-real-v5-rerun--2026-10-07)
+passed at `b5601cc`: original model/image checks, native prerequisites, isolated
+producer/database and official-cookie Chromium flow without interception.
+The previously unavailable artifact blocker is resolved for this isolated
+boundary. Twenty forecast series, forty census combinations, verified zeros,
+scope, stale/failure and logout behavior pass under Lat self-validation. V4
+remains default; all binding/activation, research/UAT, physical OCR, full
+Fabric-to-browser latency and phase-acceptance gates remain unchanged.
+
+## Lat local pre-handoff preparation — 2026-10-07
+
+[The scoped review package](frontend/LAT-PRE-HANDOFF-REVIEW.md) reconciles current
+V5 and migration statuses with Lat's own passing real rerun, records exact fix
+revisions and preserves requirement-level incomplete boundaries. Final web
+regression passed 57 cases with seven retired V1 skips; capture passed build,
+14 units and three Desktop Chromium synthetic-OCR cases. Physical Android,
+V2 offline replay, full Fabric-to-browser latency, integrated phase regression
+and UAT remain unexecuted or gated. Publication and groupmate handoff are not
+performed; accountable phase acceptance and TP-G01–06 remain open.

@@ -322,3 +322,14 @@ foreign keys include source institution scope. A database insert guard checks th
 saved V5 run/model/payload, forecast series and current snapshot digest/time.
 Runtime grants remain SELECT/INSERT only. This is simulation evidence under the
 existing disabled `SYNTHETIC_OPTIMIZATION_V2_1` policy; it cannot approve transfers.
+
+
+## Internal ML snapshot browser evidence — PR #21 follow-up
+
+The read-only [OpenAPI V2](../services/api/openapi-v2.json) inventory-evidence
+endpoint reuses `app.ml_inventory_snapshots` and its explicit 40 count rows.
+Persisted coverage, counts, policy/schema/header metadata and digest are checked
+before reconstruction; missing rows cannot become verified zero. Readers
+preserve PostgreSQL timestamp milliseconds. This follow-up adds no migration
+or capture behavior; DOH reporting/export policy remains separate. See the
+[integration contract](../docs/ML-RUNTIME-INTEGRATION-V5.md#pr-21-follow-up--independent-browser-inventory-evidence).

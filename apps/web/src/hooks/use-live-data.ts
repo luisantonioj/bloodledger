@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { requestJson } from "../services/api/client";
+import { ApiRequestError, requestJson } from "../services/api/client";
 import { pollingDelay } from "./polling";
 
 export function useLiveData<T>(endpoint:string|null) {
@@ -19,9 +19,17 @@ export function useLiveData<T>(endpoint:string|null) {
     const run=async()=>{
       if(closed||document.hidden)return;
       const current=++attempt;
-      controller?.abort(); controller=new AbortController(); setBusy(true);
-      try { setData(await requestJson<T>(endpoint,{signal:controller.signal},"The data service is unavailable.")); setError(""); failures=0; }
-      catch(reason) { if(!controller.signal.aborted){ failures++; setError(reason instanceof Error?reason.message:"The data service is unavailable."); } }
+      controller?.abort(); controller=new AbortController(); const signal=controller.signal; setBusy(true);
+      try {
+        const next=await requestJson<T>(endpoint,{signal},"The data service is unavailable.");
+        if(closed||signal.aborted||current!==attempt)return;
+        setData(next); setError(""); failures=0;
+      }
+      catch(reason) { if(!closed&&!signal.aborted&&current===attempt){
+        failures++;
+        if(reason instanceof ApiRequestError&&(reason.status===401||reason.status===403))setData(undefined);
+        setError(reason instanceof Error?reason.message:"The data service is unavailable.");
+      } }
       finally { if(!closed&&current===attempt){ setBusy(false); timer=globalThis.setTimeout(()=>void run(),pollingDelay(failures)); } }
     };
     const visible=()=>{ globalThis.clearTimeout(timer); if(!document.hidden)void run(); };

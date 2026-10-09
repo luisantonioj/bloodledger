@@ -1,10 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   V2_COMMAND_STATUSES,
   contractVersionFor,
   parseComponentsResponse,
   parseV2Command,
+  readCommand,
 } from "./v2";
+
+afterEach(() => vi.unstubAllGlobals());
 
 function command(status: (typeof V2_COMMAND_STATUSES)[number]) {
   return {
@@ -22,6 +25,20 @@ function command(status: (typeof V2_COMMAND_STATUSES)[number]) {
 }
 
 describe("Sprint 6 V2 frontend contracts", () => {
+  // TP-LAT-006 / FR-11–12: status reads stay bound to the requested command.
+  it.each([
+    { commandId: "CMD_OTHER" },
+    { statusUrl: "/api/v2/commands/CMD_OTHER" },
+  ])("rejects a status response with unrelated command identity %j", async (override) => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ...command("COMMITTED"), ...override }))));
+    await expect(readCommand(command("QUEUED").statusUrl)).rejects.toThrow("V2_COMMAND_IDENTITY_MISMATCH");
+  });
+
+  it("accepts a status transition for the requested command", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(command("COMMITTED")))));
+    await expect(readCommand(command("QUEUED").statusUrl)).resolves.toMatchObject({ status: "COMMITTED" });
+  });
+
   it.each(V2_COMMAND_STATUSES)("parses truthful command state %s", (status) => {
     expect(parseV2Command(command(status)).status).toBe(status);
   });

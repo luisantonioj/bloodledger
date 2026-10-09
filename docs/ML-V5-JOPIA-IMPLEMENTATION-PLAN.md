@@ -1,9 +1,9 @@
 # ML V5 — Jopia implementation plan
 
-Status: Jopia full-backend inactive candidate implemented on 2026-09-30; Buno/Lat review and activation pending. Validation is recorded in [Jopia's evidence](ML-V5-JOPIA-VALIDATION.md).
+Status: Inactive backend merged in PR #20 on 2026-09-30 after Buno formal approval; Lat’s PR #21 resulting frontend review, concrete binding and activation remain pending. The authorized PR #21 follow-up is recorded in [Jopia review validation](ML-V5-PR21-JOPIA-VALIDATION.md). Validation is recorded in [Jopia's evidence](ML-V5-JOPIA-VALIDATION.md).
 Active perspective and integration owner: Jopia. Research owner/reviewer: Buno.
 Frontend owner: Lat. Classification: SIMULATION_ONLY.
-This plan is not Buno agreement, activation approval, or completed integration.
+The original proposals below precede Buno’s [formal inactive-backend approval](https://github.com/luisantonioj/bloodledger/pull/20#pullrequestreview-5367073735). They do not authorize activation or a concrete institution binding.
 
 ## Source and branch decision
 

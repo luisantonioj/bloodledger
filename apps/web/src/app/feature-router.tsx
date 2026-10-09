@@ -1,4 +1,5 @@
 import type { Principal } from "../auth/permissions";
+import type { ReactNode } from "react";
 import { AccountsParityPreview } from "../features/accounts/accounts-parity-preview";
 import { AnalyticsPreview } from "../features/analytics/analytics-preview";
 import { AuditView } from "../features/audit/audit-view";
@@ -18,15 +19,16 @@ export function FeatureRouter({path,canAcknowledge=false,canSubmitTransfer=false
   if(path==="/accounts"&&principal)return <AccountsParityPreview principal={principal}/>;
   if(path==="/analytics"&&principal)return <AnalyticsPreview principal={principal}/>;
   if(path==="/profile"&&principal)return <ProfileParityPreview principal={principal}/>;
-  if(path==="/inventory"&&principal)return <V2InventoryView principal={principal}/>;
+  if(path==="/inventory"&&principal)return <V2InventoryView key={[principal.userId,principal.institutionId,principal.roleId].join(":")} principal={principal}/>;
   if(!endpoint[path])return <div className="empty"><strong>Data unavailable</strong>The official feature API is not implemented yet. Runtime mock fallback is disabled.</div>;
   if(!state.data&&state.busy)return <div className="empty" aria-live="polite"><strong>Loading authorized data</strong>Waiting for the official API.</div>;
   if(!state.data)return <div className="empty" role="alert"><strong>Unable to load data</strong>{state.error}<br/><button className="button" onClick={state.manual}>Retry</button></div>;
   if(path==="/")return <DashboardView data={state.data as Dashboard} canCapture={canCapture} refreshError={state.error} onRetry={state.manual}/>;
-  if(path==="/consortium")return <ConsortiumView data={state.data as Consortium}/>;
-  if(path==="/audit")return <AuditView data={state.data as Audit}/>;
-  if(path==="/reporting")return <ReportView data={state.data as Report}/>;
-  if(path==="/alerts")return <AlertsView data={state.data as Alerts} canAcknowledge={canAcknowledge} onRefresh={state.manual}/>;
-  if(path==="/transfers"&&principal)return <TransferExplorer data={state.data as Transfers} canSubmit={false} canReject={false} canCancel={false} canCancelApproved={false} canDispatch={false} canStartTransit={false} canDelay={false} canResume={false} canReceive={false} canPreviewExport={canPreviewTransferExport} receiptInstitutionId={principal.institutionId} onRefresh={state.manual} principal={principal}/>;
+  const withRefreshState=(view:ReactNode)=><>{state.error&&<div className="v2-inline-state warning" role="status"><strong>Update unavailable</strong><span>{state.error}</span><span>Showing the last successfully loaded data.</span><button className="button compact" onClick={state.manual}>Retry update</button></div>}{view}</>;
+  if(path==="/consortium")return withRefreshState(<ConsortiumView data={state.data as Consortium}/>);
+  if(path==="/audit")return withRefreshState(<AuditView data={state.data as Audit}/>);
+  if(path==="/reporting")return withRefreshState(<ReportView data={state.data as Report}/>);
+  if(path==="/alerts")return withRefreshState(<AlertsView data={state.data as Alerts} canAcknowledge={canAcknowledge} onRefresh={state.manual}/>);
+  if(path==="/transfers"&&principal)return withRefreshState(<TransferExplorer data={state.data as Transfers} canSubmit={false} canReject={false} canCancel={false} canCancelApproved={false} canDispatch={false} canStartTransit={false} canDelay={false} canResume={false} canReceive={false} canPreviewExport={canPreviewTransferExport} receiptInstitutionId={principal.institutionId} onRefresh={state.manual} principal={principal}/>);
   return <div className="empty"><strong>Data unavailable</strong>The selected official feature API is not implemented.</div>;
 }
