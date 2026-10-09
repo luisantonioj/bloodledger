@@ -48,7 +48,7 @@ Run `R1`: 2026-10-09 14:53–15:08 UTC. Combination chosen by the harness:
 | A — transfer and receipt | Request (Medix), FEFO reservation, prepare, dispatch, transit (Mediatrix), OCR receipt (Medix) | **PASS after fix**: first receipt `FAILED CORE_FIELD_NOT_ALLOWED` (TP-JOP-D09); retry committed. Component held by `INST_SYNTH_MEDIX` as `RECEIVED`; reservation `RECEIVED` v5 |
 | B — local release | Server FEFO reservation, prepare, completion | **PASS**: reservation `COMPLETED`; component `RELEASED` |
 | C — cancel | Request, reservation, cancel | **PASS**: reservation `CANCELLED`; component back to `AVAILABLE` |
-| D — compromise | Request, reservation, prepare, dispatch, compromise | **PASS**: reservation and component `COMPROMISED` (synthetic reason code) |
+| D — compromise | Request, reservation, prepare, dispatch, compromise | **PASS**: reservation and component `COMPROMISED` (synthetic free-form reason, accepted before `SYNTHETIC_COMPROMISE_REASONS_V1` was enforced; the harness now uses an approved code) |
 | E — J4 expiry | Read, evaluate, alert acknowledgement | **PASS**: `LABEL_EXPIRED_PENDING_EVALUATION`/`AVAILABLE` → `EXPIRED`/`EXPIRED`; V2 alert listed and acknowledged |
 
 C and D used the same component. Once C's cancellation returned it to stock, it

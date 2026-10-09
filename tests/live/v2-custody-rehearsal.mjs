@@ -160,7 +160,7 @@ try {
     const unitD = await reserve('D2', 'D', bloodType, componentType);
     await prepare('D3', id('RES', 'D'));
     await act('coordinator', 'D4', id('RES', 'D'), 'dispatch');
-    await act('coordinator', 'D5', id('RES', 'D'), 'compromise', { reasonCode: 'SYNTHETIC_REHEARSAL_DAMAGE' });
+    await act('coordinator', 'D5', id('RES', 'D'), 'compromise', { reasonCode: 'HANDLING_OR_CUSTODY_DEVIATION_REPORTED' });
     summary.scenarios.D = { result: 'PASS', componentId: unitD.componentId, final: await reservation(id('RES', 'D')).then(r => ({ status: r.status, components: r.components.map(c => c.inventoryStatus) })) };
 
   }

@@ -137,6 +137,41 @@ shape is unchanged.
 
 This favours Lat's host for UAT. It is an input to the host decision, not the decision.
 
+## 4. Issue #36 backend: compromise vocabulary and reconciliation scope
+
+**Status: Accepted by Jopia on 2026-10-09 for the 2026-10-12 UAT.** The UAT host is
+Lat's retained host, and the UAT script needs issue #36's reservation actions,
+reconciliation-hold workspace, compromise selector and command recovery.
+
+### Compromise reasons (`BL-DEC-S6-2026-09-23-01`, ported unchanged)
+
+- `GET /api/v2/reservations/compromise-reasons` (ROLE-01/02/03) returns
+  `SYNTHETIC_COMPROMISE_REASONS_V1`: `TEMPERATURE_EXCURSION_REPORTED`,
+  `CONTAINER_DAMAGE_OR_LEAK_REPORTED`, `VISIBLE_COMPONENT_ABNORMALITY_REPORTED`,
+  `HANDLING_OR_CUSTODY_DEVIATION_REPORTED`, with `effect`
+  `QUARANTINE_PENDING_MANUAL_REVIEW` and `freeTextAllowed: false`.
+- `POST /api/v2/reservations/{id}/compromise` now rejects any other `reasonCode`
+  with `400 COMPROMISE_REASON_INVALID` before queuing. Allowed from `DISPATCHED`,
+  `IN_TRANSIT` or `RECEIVED`.
+- The policy version is kept in off-chain command evidence. The independent
+  chaincode check is deferred until after UAT, so the lifecycle is unchanged.
+
+**Frontend action (Lat):** build the selector only from the discovery response,
+require explicit confirmation, and never offer free text. Describe the effect as
+quarantine pending manual review, never as a clinical or disposal decision.
+
+### Reconciliation (TP-JOP-D10)
+
+UAT **places** holds only. `POST /api/v2/reconciliation` with a reason from
+`GET /api/v2/reconciliation/reasons` takes the unit out of usable stock. There is
+no release route until a resolution list is approved, so do not show a release
+control. Held units on the UAT host stay held.
+
+### Contract corrections
+
+`openapi-v2.json` now documents `POST /transfers` (D05) and serves the reasons
+read at `/reconciliation/reasons` (it was listed as `GET /reconciliation`).
+
 ## Validation (Jopia self-validation)
 
 Native Node 24.17.0 on Jopia's WSL2 host, 2026-10-09:

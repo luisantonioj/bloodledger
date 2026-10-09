@@ -493,3 +493,10 @@ acknowledgement, and a live J3 rejection all PASS, with 18 VALID Fabric
 transactions. It found and fixed TP-JOP-D09 (receipt payload) and recorded D10
 (no reconciliation resolve route) and D11 (unpatched `fast-jwt` on retained
 runtimes). Browser timing, Lat's UI and UAT remain NOT_RUN.
+
+Jopia decided on 2026-10-09 that Lat's retained host is the UAT host and that the
+UAT script needs issue #36. Its backend part is ported:
+`BL-DEC-S6-2026-09-23-01` compromise vocabulary is enforced by the API before
+queuing (chaincode check deferred), and UAT places reconciliation holds only (D10
+deferred). D05 and D06 are fixed. Lat's issue #36 UI work and the UAT runbook (J9)
+remain open.
