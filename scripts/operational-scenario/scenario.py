@@ -1,4 +1,4 @@
-"""PR26: external-only SIMULATION_ONLY fixture; never submits inventory commands."""
+"""PR30/31 successor fixture; external-only and never submits inventory commands."""
 
 import argparse
 import hashlib
@@ -11,10 +11,10 @@ from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 
-VERSION = "SYNTHETIC_OPERATIONAL_STOCK_522_V1"
+VERSION = "SYNTHETIC_OPERATIONAL_STOCK_522_V2"
 SCHEMA = "OPERATIONAL_SCENARIO_V1"
 SOURCE_SHA = "5c5997bd4df26f6f0d52d7ea13dde0172706faaa15308ebc87f241f44c241ddb"
-BASELINE = "954f170b840fce1a346bb3bd393748a731be1913"
+BASELINE = "a66528934432ebbb35eb1f45617909ca59374824"
 BLOOD = dict(
     zip(
         ["A+", "B+", "O+", "AB+"],
@@ -37,7 +37,7 @@ COMPONENT = dict(
 )
 # Deliberately technical intervals, not clinical shelf lives. Relative to T0.
 HOURS = dict(zip(COMPONENT.values(), [120, 144, 168, 96, 192], strict=True))
-T0 = "2026-10-09T00:00:00Z"
+T0 = "2026-10-11T00:00:00Z"
 NS = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 
 
@@ -255,7 +255,7 @@ def build(counts, revision, generated_at):
             ),
         },
         "datePolicy": {
-            "version": "SYNTHETIC_522_DATES_V1",
+            "version": "SYNTHETIC_522_DATES_V2",
             "clinicalPolicy": False,
             "collectionHoursBeforeT0": 24,
             "availableExpiryHoursAfterT0": HOURS,
@@ -310,7 +310,7 @@ def validate(data):
     require(
         data["datePolicy"]
         == {
-            "version": "SYNTHETIC_522_DATES_V1",
+            "version": "SYNTHETIC_522_DATES_V2",
             "clinicalPolicy": False,
             "collectionHoursBeforeT0": 24,
             "availableExpiryHoursAfterT0": HOURS,

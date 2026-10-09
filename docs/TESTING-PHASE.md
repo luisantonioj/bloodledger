@@ -458,3 +458,9 @@ records prerequisites, evidence, exact commands and unresolved inputs. A new
 Buno scenario/verifier and actual Lat target/preview/execution review remain
 required before local submission. Jopia self-validation and Lat local validation
 are recorded separately; V4 stays default and V5 approval remains separate.
+
+Buno's [V2 scenario evidence](handoffs/BUNO-OPERATIONAL-STOCK-522-V2-EVIDENCE.md)
+publishes the proposed successor window, pinned hashes and local software
+validation. This completes artifact preparation only; Jopia's review of the
+successor and actual Lat target, followed by explicit execution confirmation,
+remains required. No target population or Testing gate is accepted by this record.
