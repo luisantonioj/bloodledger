@@ -70,7 +70,9 @@ scripts/bloodledger-dev.sh reset-all --dry-run
   domain tables or feature data.
 - `start` requires the bootstrap marker, channel artifact, and health package,
   starts existing state, and succeeds only after consolidated health. It does
-  not migrate, enroll, join, deploy, invoke, or reset implicitly.
+  not migrate, enroll, join, deploy, invoke, or reset implicitly. When the
+  stopped peer last failed on its Docker socket mount, it recreates only
+  `peer0-mediatrix` first; named volumes and identities are preserved.
 - `status` is read-only. It checks container health, authenticated PostgreSQL
   access, migration status, CA readiness, peer/orderer operations health,
   channel participation and membership, the committed health-contract
@@ -352,6 +354,7 @@ Add an entry only after the problem is observed:
 | 2026-07-16 | Jopia Windows 11/Ubuntu 24.04 host | Consolidated status refreshed public CA metadata below an administrator MSP path | `fabric-ca-client getcainfo` used the CA server image's default client home | Status now runs each CA check with a temporary client home/MSP and deletes it afterward; a complete generated-tree digest remained unchanged | Fabric CA `1.5.15` |
 | 2026-07-16 | Jopia Windows 11/Ubuntu 24.04 host | Level 2 preview refused the correctly labeled `postgres-data` volume | Bash dynamic scoping initialized the expected PostgreSQL volume name from the preceding Fabric loop variable | Volume validation now initializes its key and expected name in separate local statements; automated named-volume regression and live Level 2 preview/reset/recreate passed | Bash in Ubuntu `24.04.4 LTS`, Compose `5.3.0` |
 | 2026-07-16 | Jopia Windows 11/Ubuntu 24.04 host | Initial S1-09 preflight could not reach Docker from WSL | Docker Desktop had not been opened, so WSL integration and the Docker Engine were unavailable | Jopia opened Docker Desktop; `doctor`, the README workflow, service health, restart, both reset levels, recreation, and the pinned secret scan then passed without a version or configuration change | Docker Desktop `4.82.0`, Engine `29.6.1`, Compose `5.3.0` |
+| 2026-10-09 | Jopia Windows 11/Ubuntu 24.04 host | After a Docker Desktop restart the peer stayed `Exited (127)`; chaincode containers and the persistent API/web had stopped | The peer container kept a Docker Desktop WSL socket bind path that no longer existed, so `/var/run/docker.sock` could not be mounted | `docker compose --project-name bloodledger --env-file .env up -d --no-deps --force-recreate --wait peer0-mediatrix`; peer healthy at the prior height 1158, chaincode containers relaunched, all five named volumes unchanged. `start` now applies this recovery automatically | Engine `29.6.1`, Compose `5.3.0`, Fabric peer `2.5.16` |
 
 Do not populate troubleshooting with speculative errors copied from external
 guides. A fix belongs here only after it is reproduced and verified against the

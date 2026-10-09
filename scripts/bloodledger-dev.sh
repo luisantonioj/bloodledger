@@ -315,11 +315,27 @@ bootstrap() {
   status
 }
 
+# Docker Desktop can move its WSL socket bind path across restarts, so a stopped
+# peer cannot start again. Recreating only the peer keeps its named volumes and
+# bind-mounted identities; no other service, volume, or generated file changes.
+recover_stale_peer_socket() {
+  local container running error
+  container="$(compose_command ps --all --quiet peer0-mediatrix)"
+  [[ -n "${container}" ]] || return 0
+  running="$(docker inspect --format '{{.State.Running}}' "${container}")"
+  [[ "${running}" == false ]] || return 0
+  error="$(docker inspect --format '{{.State.Error}}' "${container}")"
+  [[ "${error}" == *"/var/run/docker.sock"* ]] || return 0
+  printf 'peer0-mediatrix has a stale Docker socket mount; recreating only that container with its volumes preserved\n'
+  compose_command up --detach --wait --no-deps --force-recreate peer0-mediatrix
+}
+
 start() {
   require_operational_context
   [[ -f "${generated_root}/.identity-bootstrap-complete" ]] || fail "Bootstrap is required: Fabric identities are absent"
   [[ -f "${generated_root}/channel-artifacts/bloodledger-dev.block" ]] || fail "Bootstrap is required: channel artifact is absent"
   [[ -f "${health_build_root}/package-id.txt" ]] || fail "Bootstrap is required: health contract package is absent"
+  recover_stale_peer_socket
   compose_command up --detach --wait "${project_services[@]}"
   status
 }
