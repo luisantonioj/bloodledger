@@ -32,6 +32,71 @@ V1 population is permitted in [2026-10-08T08:00:00Z,
 review. Submitted evidence may be recovered afterward, but unsubmitted work
 must stop and T0 acceptance cannot be invented.
 
+## Lat retained-target successor review — 2026-10-09
+
+PR30 selects a target-specific TP-STOCK-01 follow-up. The user authorized Jopia
+to prepare and publish the reviewed package on 2026-10-09. This permits tooling,
+source/target inspection and review preparation; the original V1 deadline and
+Jopia's populated-target approval cannot authorize new work on Lat's host.
+Buno must publish the new scenario dates, hashes and replay verifier before any
+successor population. No replacement window is chosen in this change.
+
+The runner now accepts `--scenario-review "$PRIVATE/scenario-review.json"`
+paired with `--approve-scenario-review "$SCENARIO_REVIEW_SHA"` for preview,
+confirm, apply, resume and verify. The review file is a mode-0600 sealed JSON
+object; `manifestSha256` is the canonical digest of the remaining fields,
+using the existing `seal` function. Its machine-checked contract and original
+V1 constants live in [stock-review.mjs](../scripts/development-data/stock-review.mjs).
+The file records actual ACCEPTED review/reference, source workbook/count hashes,
+scenario schema/version/file/canonical/archive hashes, generator commit/file
+and verifier file hashes, target/policy hashes and actual scenario generation/population/T0/end
+instants. Obtain those values from independently published Buno evidence and
+fresh local inspection, not only from checksums in the received archive.
+Accepted status and the CLI digest record an actual review decision; setting
+those fields cannot manufacture human approval.
+
+Only a newly versioned `SYNTHETIC_OPERATIONAL_STOCK_522_V2` or later, retaining
+`OPERATIONAL_SCENARIO_V1`'s supported shape and the original workbook/count
+lineage, is supported by this extension. A changed shape, mapping, workflow
+count or clinical policy requires a separately reviewed implementation. The
+repository-owned Buno generator/verifier files must match the reviewed hashes;
+Python independently replays the entire supplied scenario against the original
+workbook. The current Buno verifier is frozen to V1, so it must be superseded
+by Buno's reviewed successor code before a new scenario can pass. No private
+artifact chooses an executable path. The legacy invocation remains pinned to
+exact V1 bytes for recovery, with unchanged original target/scenario-derived
+IDs and submission-window guards.
+
+New run/component/request IDs use the actual reviewed canonical scenario
+hash and target. Labels still use collision-checked Donation No. references;
+changing a scenario version cannot bypass label collisions or global FEFO.
+The execution freezes the full review and requires the identical review on
+replay. A different target, policy, scenario, archive, payload, principal or
+review digest stops before adopting saved work.
+
+Set private configuration `hostValidation=LAT_LOCAL_VALIDATION` for actual
+Lat-host execution; legacy Jopia configuration defaults to
+`JOPIA_SELF_VALIDATION`. This is attribution, not independent acceptance.
+`stock inspect --output` optionally saves local counts, migration names and
+baseline domain/account/operator fingerprints. The new read-only
+[retained-file checkpoint](../scripts/development-data/retained-files.mjs)
+hashes identity/channel/private-runtime bytes and modes and records named
+volume creation times and all five store mount sets. It does not copy keys,
+reenroll, recreate stores or restore backups. Compare it after lifecycle,
+population and ordinary restart. Both outputs remain private.
+
+A later `stock verify` uses a journaled, persisted T0 census if the verification
+window has elapsed. It checks original scheduled/capture instants, complete
+forty-series counts, digest and authenticated API evidence, without creating a
+late backdated capture. Historical T0 PASS can coexist with API STALE; report
+both. No saved census means MISSED_WINDOW, never PASS. This supports honest
+next-day laptop restart checks while preserving the original capture.
+
+[Lat's executable package and unresolved review inputs](handoffs/JOPIA-TO-LAT-POPULATION-PACKAGE-2026-10-09.md)
+contain exact prerequisites, lifecycle/backup commands and acceptance steps.
+Lat's data remains unpopulated by this preparation. V4 default, separate V5
+approval and all existing research/clinical gates remain unchanged.
+
 ## Population and preservation contract
 
 Start from retained integration `954f170b840fce1a346bb3bd393748a731be1913`, not

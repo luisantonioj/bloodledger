@@ -445,3 +445,16 @@ navigation, pending/error states, scope/logout/restart acceptance remain
 NOT_RUN. V4 remains default; V5 persistence/binding/job approval is separate.
 This technical pass does not close BL-TST-02, RQ decisions, UAT, physical OCR,
 full latency, clinical/deployment gates or Testing-phase exit.
+
+
+## Lat retained stock-population package follow-up — 2026-10-09
+
+The user authorized Jopia to review PR27/PR30, prepare a preservation-safe local
+population package, coordinate new Buno dates/hashes and publish grouped work.
+This extends selected TP-STOCK-01 preparation under BL-TST-01; it does not mark
+Lat's population or any Testing gate complete. The [population contract](OPERATIONAL-STOCK-POPULATION.md#lat-retained-target-successor-review--2026-10-09)
+owns successor-review/recovery controls. [The target-specific handoff](handoffs/JOPIA-TO-LAT-POPULATION-PACKAGE-2026-10-09.md)
+records prerequisites, evidence, exact commands and unresolved inputs. A new
+Buno scenario/verifier and actual Lat target/preview/execution review remain
+required before local submission. Jopia self-validation and Lat local validation
+are recorded separately; V4 stays default and V5 approval remains separate.
