@@ -109,7 +109,7 @@ export function parseV2Command(value: unknown): V2Command {
   };
 }
 
-function parseComponent(value: unknown): V2Component {
+export function parseV2Component(value: unknown): V2Component {
   const body = record(value, "V2_COMPONENT_RESPONSE_INVALID");
   const bloodType = requiredString(body.bloodType, "V2_COMPONENT_RESPONSE_INVALID") as V2BloodType;
   const componentType = requiredString(body.componentType, "V2_COMPONENT_RESPONSE_INVALID") as V2ComponentType;
@@ -139,7 +139,7 @@ export function parseComponentsResponse(value: unknown): V2ComponentsResponse {
   if (body.scope !== "INSTITUTION" || body.classification !== "SIMULATION_ONLY" || !Array.isArray(body.components)) {
     throw new Error("V2_COMPONENT_RESPONSE_INVALID");
   }
-  return { scope: "INSTITUTION", components: body.components.map(parseComponent), classification: "SIMULATION_ONLY" };
+  return { scope: "INSTITUTION", components: body.components.map(parseV2Component), classification: "SIMULATION_ONLY" };
 }
 
 export function contractVersionFor(componentType: V2ComponentType): V2ContractVersion {

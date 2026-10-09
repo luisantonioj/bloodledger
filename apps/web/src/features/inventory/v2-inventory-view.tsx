@@ -4,6 +4,8 @@ import { ApiRequestError } from "../../services/api/client";
 import { BloodTypeBadge } from "../../components/ui/aggregate-tables";
 import { formatManilaDateTime, humanizeCode, statusClassName } from "../../components/ui/display";
 import { canAct, type Principal } from "../../auth/permissions";
+import { V2RecordExplorer } from "./v2-record-explorer";
+import { selectionFromSearch, type RecordSelection } from "../../services/api/v2-navigation";
 import {
   readInboundIntake,
   readV2Components,
@@ -13,6 +15,7 @@ import {
 } from "../../services/api/v2";
 
 export function V2InventoryView({ principal }: { principal: Principal }) {
+  const [selected, setSelected] = useState<RecordSelection | undefined>(() => selectionFromSearch(location.search));
   const [historical, setHistorical] = useState(false);
   const [version, setVersion] = useState<V2ContractVersion>(principal.accountId ? "V2.1" : "V2");
   const [data, setData] = useState<V2ComponentsResponse>();
@@ -101,16 +104,16 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
     {data && data.components.length > 0 && <>
       <div className="transfer-table-head"><div><strong>Committed component registry</strong><span>Opaque IDs only; Donation No. and OCR material are never returned.</span></div><span>{data.components.length} components</span></div>
       <div className="table-wrap"><table className="data-table inventory-table"><thead><tr><th>Component</th><th>Blood type</th><th>Type</th><th>Status</th><th>Issuer</th><th>Reservation</th><th>Expiry</th><th>Version</th></tr></thead><tbody>{data.components.map((component) => <tr key={component.componentId}>
-        <td><span className="unit-reference mono">{component.componentId}</span><small className="v2-secondary-id">{component.donationId}</small></td>
+        <td><button className="button compact unit-reference mono" aria-label={"Open component " + component.componentId} onClick={() => setSelected({kind:"component", id:component.componentId})}>{component.componentId}</button><small className="v2-secondary-id">{component.donationId}</small></td>
         <td><BloodTypeBadge value={component.bloodType}/></td>
         <td>{humanizeCode(component.componentType)}</td>
         <td><span className={statusClassName(component.inventoryStatus)}>{humanizeCode(component.inventoryStatus)}</span></td>
         <td className="mono">{component.issuerInstitutionId}</td>
-        <td>{component.reservationId ? <><span className="mono">{component.reservationId}</span><small className="v2-secondary-id">Version {component.reservationVersion ?? "pending"}</small></> : "Not reserved"}</td>
+        <td>{component.reservationId ? <><button className="button compact mono" aria-label={"Open reservation " + component.reservationId} onClick={() => setSelected({kind:"reservation", id:component.reservationId!})}>{component.reservationId}</button><small className="v2-secondary-id">Version {component.reservationVersion ?? "pending"}</small></> : "Not reserved"}</td>
         <td className="data-time">{formatManilaDateTime(component.expiresAt)}</td>
         <td>{component.inventoryVersion}</td>
       </tr>)}</tbody></table></div>
       <p className="v2-freshness">Last successful browser refresh: {refreshedAt ? formatManilaDateTime(refreshedAt) : "Unavailable"} · {version} · SIMULATION_ONLY</p>
     </>}
-  </div>}</div>;
+  </div>}{selected && <V2RecordExplorer key={selected.kind + selected.id} initial={selected} principal={principal} onClose={() => setSelected(undefined)}/>}</div>;
 }
