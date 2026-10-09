@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { Principal } from "./permissions";
 import { eligibleOperators } from "./operator-actions";
 import { requestJson, setCommandVerifier, type VerificationRequest } from "../services/api/client";
@@ -11,7 +11,8 @@ export function OperatorVerification({principal, children}: {principal: Principa
   const [busy, setBusy] = useState(false);
   const awaiting = useRef<{resolve: (id: string) => void; reject: (error: Error) => void} | undefined>(undefined);
   const generation = useRef(0);
-  useEffect(() => {
+  // Bind the account epoch before descendants start protected reads on a deep link.
+  useLayoutEffect(() => {
     if (!principal.verificationRequired) return;
     setCommandVerifier(request => new Promise((resolve, reject) => {
       if (awaiting.current) return reject(new Error("Finish the current operator verification first."));
