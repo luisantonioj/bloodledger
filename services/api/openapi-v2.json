@@ -156,6 +156,65 @@
         }
       }
     },
+    "/components/{componentId}/expiry": {
+      "post": {
+        "operationId": "evaluateComponentExpiry",
+        "description": "Queue EVALUATE_COMPONENT_EXPIRY for AVAILABLE stock in the caller custody whose printed label expiry has been reached. ROLE-01 and ROLE-02 only; institution accounts require operator verification for the inventory:expiry capability. A retry with the same Idempotency-Key replays the original server evaluation time. Acceptance is not ledger commitment; poll the command status. Conflicts: COMPONENT_LABEL_NOT_EXPIRED, COMPONENT_EXPIRY_RESERVATION_ACTIVE (cancel the reservation first), COMPONENT_ALREADY_EXPIRED, COMPONENT_EXPIRY_TRANSITION_INVALID, COMPONENT_VERSION_CONFLICT, V2_1_CONTRACT_REQUIRED, V2_IDEMPOTENCY_CONFLICT.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContractVersion"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for institution-account mutations; legacy retained replay remains compatible."
+          },
+          {
+            "name": "componentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^COMP_[A-Z0-9_-]{1,56}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpiryEvaluationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Command"
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
     "/inbound-captures": {
       "post": {
         "operationId": "acceptInboundOcrCapture",
@@ -4377,7 +4436,8 @@
           "reservationId",
           "reservationVersion",
           "inventoryVersion",
-          "classification"
+          "classification",
+          "expiryState"
         ],
         "properties": {
           "componentId": {
@@ -4431,6 +4491,35 @@
           },
           "classification": {
             "const": "SIMULATION_ONLY"
+          },
+          "expiryState": {
+            "type": "string",
+            "enum": [
+              "CURRENT",
+              "LABEL_EXPIRED_PENDING_EVALUATION",
+              "EXPIRED",
+              "LABEL_EXPIRED_NOT_IN_INVENTORY"
+            ],
+            "description": "Read-time comparison of the printed label expiry with the server clock and ledger status; it never changes inventoryStatus. LABEL_EXPIRED_PENDING_EVALUATION is AVAILABLE or RESERVED stock whose label expiry is at or before now; EXPIRED is ledger-evaluated; LABEL_EXPIRED_NOT_IN_INVENTORY covers other statuses past label expiry."
+          }
+        },
+        "additionalProperties": false
+      },
+      "ExpiryEvaluationRequest": {
+        "type": "object",
+        "description": "Exact request body for POST /components/{componentId}/expiry. ROLE-01 and ROLE-02 only. The server sets evaluationTime and eventTime; expectedVersion is the inventoryVersion that was read.",
+        "required": [
+          "correlationId",
+          "expectedVersion"
+        ],
+        "properties": {
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
           }
         },
         "additionalProperties": false

@@ -43,6 +43,14 @@ export interface V2RouteDependencies {
   enabledIssuerInstitutionIds?: readonly string[];
 }
 
+// Read-time comparison of the printed label with the ledger status; it never changes inventory.
+// The boundary matches EvaluateComponentExpiry: a label is expired once evaluation time reaches it.
+function withExpiryState<T extends { expiresAt: string; inventoryStatus: string }>(component: T, nowMs: number): T & { expiryState: string } {
+  const expiryState = component.inventoryStatus === "EXPIRED" ? "EXPIRED"
+    : Date.parse(component.expiresAt) > nowMs ? "CURRENT"
+    : ["AVAILABLE", "RESERVED"].includes(component.inventoryStatus) ? "LABEL_EXPIRED_PENDING_EVALUATION" : "LABEL_EXPIRED_NOT_IN_INVENTORY";
+  return { ...component, expiryState };
+}
 function hash(value: string): string { return createHash("sha256").update(value, "utf8").digest("hex").toUpperCase(); }
 function generatedId(prefix: string, idempotencyKey: string): string { return `${prefix}${hash(idempotencyKey).slice(0, 40)}`; }
 function hasKeys(body: unknown, expected: readonly string[]): body is Record<string, unknown> {
@@ -154,7 +162,8 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!["ROLE-01","ROLE-02","ROLE-03"].includes(principal.roleId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Regulatory readers receive aggregate reports, not component records.");
     const version = contractVersion(request);
     const components = await dependencies.projection.listComponents(principal.institutionId, principal.roleId);
-    return { scope: "INSTITUTION", components: version === "V2" ? components.filter((component) => component.componentType !== "CRYOPRECIPITATE") : components, classification: "SIMULATION_ONLY" as const };
+    const now = dependencies.clock().getTime();
+    return { scope: "INSTITUTION", components: (version === "V2" ? components.filter((component) => component.componentType !== "CRYOPRECIPITATE") : components).map((component) => withExpiryState(component, now)), classification: "SIMULATION_ONLY" as const };
   });
 
   app.get<{ Params: { componentId: string } }>("/api/v2/components/:componentId", async (request) => {
@@ -166,7 +175,38 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const component = await dependencies.projection.getComponent(request.params.componentId, principal.institutionId, principal.roleId);
     if (!component) throw new ApiFailure(404, "V2_COMPONENT_NOT_FOUND", "The component was not found in the authorized scope.");
     if (version === "V2" && component.componentType === "CRYOPRECIPITATE") throw new ApiFailure(404, "V2_COMPONENT_NOT_FOUND", "The component was not found in the authorized scope.");
-    return component;
+    return withExpiryState(component, dependencies.clock().getTime());
+  });
+
+  app.post<{ Params: { componentId: string } }>("/api/v2/components/:componentId/expiry", async (request, reply) => {
+    sameOrigin(request); const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02"]);
+    const componentId = request.params.componentId;
+    if (!COMPONENT_ID_PATTERN.test(componentId)) throw new ApiFailure(400, "V2_COMPONENT_ID_INVALID", "Component ID is invalid.");
+    const body = request.body;
+    if (!hasKeys(body, ["correlationId", "expectedVersion"]) || !Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1) throw new ApiFailure(400, "V2_INPUT_INVALID", "Expiry evaluation input is invalid.");
+    const correlationId = requiredBodyString(body, "correlationId", CORRELATION_PATTERN);
+    const version = contractVersion(request);
+    const idempotencyKey = requiredHeader(request);
+    // The server sets the evaluation time, so a retry replays the stored payload instead of rebuilding it.
+    const requestDigest = createHash("sha256").update(JSON.stringify({ componentId, body }), "utf8").digest("hex");
+    const previous = await dependencies.store.get(generatedId("CMD_", idempotencyKey), principal.institutionId, principal.userId);
+    if (previous) {
+      if (previous.operation !== "EVALUATE_COMPONENT_EXPIRY" || previous.resourceId !== componentId || previous.payloadSha256 !== requestDigest) throw new ApiFailure(409, "V2_IDEMPOTENCY_CONFLICT", "Idempotency key was used for a different command.");
+      return enqueue(request, reply, "COMPONENT", componentId, "EVALUATE_COMPONENT_EXPIRY", previous.payload, principal, requestDigest);
+    }
+    if (!dependencies.projection) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Expiry evaluation requires the current inventory projection.");
+    const component = await dependencies.projection.getComponent(componentId, principal.institutionId, principal.roleId);
+    if (!component || component.institutionId !== principal.institutionId) throw new ApiFailure(404, "V2_COMPONENT_NOT_FOUND", "The component was not found in the authorized scope.");
+    if (version === "V2" && component.componentType === "CRYOPRECIPITATE") throw new ApiFailure(409, "V2_1_CONTRACT_REQUIRED", "CRYO requires V2.1.");
+    if (component.inventoryStatus === "EXPIRED") throw new ApiFailure(409, "COMPONENT_ALREADY_EXPIRED", "The component is already ledger-expired.");
+    // Ledger expiry clears only the component side of a reservation, so reserved stock is released first.
+    if (component.inventoryStatus === "RESERVED") throw new ApiFailure(409, "COMPONENT_EXPIRY_RESERVATION_ACTIVE", "Cancel the reservation before evaluating expiry.");
+    if (component.inventoryStatus !== "AVAILABLE") throw new ApiFailure(409, "COMPONENT_EXPIRY_TRANSITION_INVALID", "Only available inventory can be evaluated for expiry.");
+    if (component.inventoryVersion !== Number(body.expectedVersion)) throw new ApiFailure(409, "COMPONENT_VERSION_CONFLICT", "The component changed; refresh before evaluating expiry.");
+    const evaluationTime = dependencies.clock().toISOString();
+    if (Date.parse(component.expiresAt) > Date.parse(evaluationTime)) throw new ApiFailure(409, "COMPONENT_LABEL_NOT_EXPIRED", "The printed label expiry has not been reached.");
+    const payload = { componentId, expectedVersion: Number(body.expectedVersion), evaluationTime, eventTime: evaluationTime, actorUserId: principal.userId, correlationId, policyVersion: selectCorePolicy(principal, version) };
+    return enqueue(request, reply, "COMPONENT", componentId, "EVALUATE_COMPONENT_EXPIRY", payload, principal, requestDigest);
   });
 
   app.get<{ Querystring: { limit?: string; cursor?: string } }>("/api/v2/reservations", async (request) => {
@@ -309,8 +349,15 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const version = contractVersion(request);
     const componentId = requiredBodyString(body, "componentId", COMPONENT_ID_PATTERN); const caseId = requiredBodyString(body, "caseId", CASE_ID_PATTERN); const reasonCode = requiredBodyString(body, "reasonCode");
     if (!isReconciliationReasonCode(reasonCode)) throw new ApiFailure(400, "RECONCILIATION_REASON_INVALID", "The reconciliation reason is not supported by the active synthetic policy.");
+    // The server sets the event time, so a retry replays the stored payload instead of rebuilding it.
+    const requestDigest = createHash("sha256").update(JSON.stringify(body), "utf8").digest("hex");
+    const previous = await dependencies.store.get(generatedId("CMD_", requiredHeader(request)), principal.institutionId, principal.userId);
+    if (previous) {
+      if (previous.operation !== "PLACE_RECONCILIATION_HOLD" || previous.resourceId !== caseId || previous.payloadSha256 !== requestDigest) throw new ApiFailure(409, "V2_IDEMPOTENCY_CONFLICT", "Idempotency key was used for a different command.");
+      return enqueue(request, reply, "RECONCILIATION", caseId, "PLACE_RECONCILIATION_HOLD", previous.payload, principal, requestDigest);
+    }
     const payload = { componentId, caseId, reasonCode, reconciliationPolicyVersion: RECONCILIATION_POLICY_VERSION, actorUserId: principal.userId, eventTime: dependencies.clock().toISOString(), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: selectCorePolicy(principal, version) };
-    return enqueue(request, reply, "RECONCILIATION", caseId, "PLACE_RECONCILIATION_HOLD", payload, principal);
+    return enqueue(request, reply, "RECONCILIATION", caseId, "PLACE_RECONCILIATION_HOLD", payload, principal, requestDigest);
   });
 
   app.get("/api/v2/reconciliation/reasons", async (request) => {
