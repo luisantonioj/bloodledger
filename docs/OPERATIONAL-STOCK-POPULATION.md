@@ -3,8 +3,10 @@
 Status: Accepted implementation scope by the user's Jopia instruction on
 2026-10-08. Actual population completed at 2026-10-08T17:44:45.900Z:
 522 new / 531 total units and 559 VALID commitments. Exact replay and ordinary
-populated-state restart passed. Fixed-window persisted T0 acceptance remains
-pending; the current-time dry census passes all 40 combinations.
+populated-state restart passed. Actual fixed-window T0 capture passed at
+2026-10-09T00:15:41.034Z and exact post-restart verification passed at
+2026-10-09T00:39:45.262Z: the same 40-row census remains CURRENT/COMPLETE.
+See the [timed acceptance evidence](handoffs/JOPIA-STOCK-HOST-RECOVERY-2026-10-08.md#fixed-window-t0-acceptance--2026-10-09).
 Classification: **SIMULATION_ONLY**. Jopia owns backend implementation and
 self-validation; Buno owns source/scenario lineage; Lat owns independent
 retained-host and browser verification.
@@ -128,8 +130,9 @@ and refuses a running general synchronization worker.
 The following are handoff commands. Live population completed on the
 reviewed Jopia target; completed prerequisites and actual recovery results are
 recorded in the [host recovery evidence](handoffs/JOPIA-STOCK-HOST-RECOVERY-2026-10-08.md).
-Full population reconciliation, exact replay and populated-state restart passed;
-fixed-window persisted T0 acceptance remains pending. Variables
+Full population reconciliation, exact replay, fixed-window persisted T0 capture
+and ordinary restart with the exact original census/receipts passed on this
+Jopia target. Lat independent UI acceptance remains separate. Variables
 refer to privately held paths and reviewed hashes. Inspection can run before the new migration. Forecast maintenance
 uses this same primary/operator configuration through `run.sh inspect` and
 `run.sh census`; its existing separate binding/job approvals remain mandatory.

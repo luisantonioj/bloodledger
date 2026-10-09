@@ -3,6 +3,7 @@
 import { chromium } from '@playwright/test';
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { canonical } from '../../scripts/development-data/scenario.mjs';
 import { EXECUTION_SCHEMA, SCENARIO_SHA256, unseal } from '../../scripts/development-data/stock-plan.mjs';
 const root = process.cwd();
 async function privateJson(path) {
@@ -18,6 +19,8 @@ assert.equal(manifest.scenarioSha256, SCENARIO_SHA256);
 assert.equal(manifest.labels.length, 522);
 assert.equal(manifest.reservations.length, 24);
 assert.ok(process.env.BLOODLEDGER_BROWSER_REPORT_PATH, 'Private report path is required');
+const t0Report = process.env.BLOODLEDGER_STOCK_T0_REPORT_PATH ? await privateJson(process.env.BLOODLEDGER_STOCK_T0_REPORT_PATH) : null;
+if(t0Report){assert.equal(t0Report.executionSha256,manifest.manifestSha256);assert.equal(t0Report.t0Verification,'PASS');assert.ok(t0Report.census);}
 const policy = JSON.parse(await readFile(root + '/services/api/policy/institution-accounts-v1.json', 'utf8'));
 const base='http://127.0.0.1:5174';const browser=await chromium.launch({headless:true});
 const report={classification:'SIMULATION_ONLY',hostValidation:'JOPIA_SELF_VALIDATION',interception:false,profileWrites:false,executionSha256:manifest.manifestSha256,accounts:[],independentLatAcceptance:'NOT_RUN',navigation:'LAT_IMPLEMENTATION_AND_INDEPENDENT_VERIFICATION_REQUIRED'};
@@ -48,7 +51,19 @@ try{
     const snapshots=(await json('/api/v2/historical-snapshots')).snapshots;const historical=snapshots.find(s=>s.verified_units===522&&s.source_business_date.startsWith('2026-10-07'));assert.ok(historical);
     const historicalIds=new Set();let cursor=null;do{const detail=await json('/api/v2/historical-snapshots/'+historical.snapshot_id+'?limit=100'+(cursor?'&cursor='+cursor:''));for(const unit of detail.units){assert.equal(unit.validation_status,'VALID');assert.equal(unit.collected_at,null);assert.equal(unit.expires_at,null);assert.equal(unit.original_reservation_purpose,null);historicalIds.add(unit.component_id);}cursor=detail.nextCursor;}while(cursor);assert.equal(historicalIds.size,522);report.historicalNullFields='PRESERVED';
     report.states=states;report.reservationCount=manifest.reservations.length;report.reservationMembers=memberCount;report.historicalUnits=522;report.workflowApiLinks='PASS';
-    await page.getByRole('link',{name:'Analytics',exact:true}).click();assert.equal(await page.getByLabel('Forecast version').inputValue(),'SYNTHETIC_FORECAST_V4_RUNTIME_V1');await page.getByLabel('Forecast version').selectOption('SYNTHETIC_FORECAST_V5_RUNTIME_V1');await page.getByText('Forecast unavailable',{exact:true}).waitFor();report.v4Default='PASS';report.v5='UNAVAILABLE_SEPARATE_APPROVAL_REQUIRED';const alerts=await json('/api/v2/alerts');assert.equal(alerts.nearExpiryEligibility,'DISABLED_UNAPPROVED_POLICY');report.nearExpiryEligibility=alerts.nearExpiryEligibility;
+    await page.getByRole('link',{name:'Analytics',exact:true}).click();assert.equal(await page.getByLabel('Forecast version').inputValue(),'SYNTHETIC_FORECAST_V4_RUNTIME_V1');
+    if(t0Report){
+     const census=t0Report.census;const panel=page.locator('.inventory-evidence');
+     await panel.getByText('Current synthetic inventory evidence',{exact:true}).waitFor();
+     await panel.getByText(census.snapshotId,{exact:true}).waitFor();await panel.getByText(census.capturedAt,{exact:true}).waitFor();
+     await panel.getByText('Complete: 40 persisted series; explicit zero rows verified',{exact:true}).waitFor();
+     assert.ok((await panel.textContent()).includes(census.sourceProjectionDigest));
+     const expectedRows=census.groups.flatMap(g=>g.bloodTypes);const tableRows=panel.locator('tbody tr');assert.equal(await tableRows.count(),40);
+     for(let i=0;i<expectedRows.length;i++){const row=expectedRows[i];const cells=await tableRows.nth(i).locator('td').allTextContents();assert.deepEqual(cells.slice(2),[row.availableCount===0?'0 (verified)':String(row.availableCount),String(row.reservedCount),String(row.reportableCount),String(row.forecastEligibleAvailableCount)]);}
+     const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date());const evidence=await json('/api/v2/analytics/inventory-evidence?businessDate='+day);assert.equal(evidence.status,'CURRENT');assert.equal(canonical(evidence.snapshot),canonical({...census,coverage:'COMPLETE',expectedSeries:40,persistedSeries:40}));
+     report.persistedCensusUi={result:'PASS',snapshotId:census.snapshotId,capturedAt:census.capturedAt,sourceProjectionDigest:census.sourceProjectionDigest,renderedRows:40,apiStatus:evidence.status};
+    }
+    await page.getByLabel('Forecast version').selectOption('SYNTHETIC_FORECAST_V5_RUNTIME_V1');await page.getByText('Forecast unavailable',{exact:true}).waitFor();report.v4Default='PASS';report.v5='UNAVAILABLE_SEPARATE_APPROVAL_REQUIRED';const alerts=await json('/api/v2/alerts');assert.equal(alerts.nearExpiryEligibility,'DISABLED_UNAPPROVED_POLICY');report.nearExpiryEligibility=alerts.nearExpiryEligibility;
    }else{
     await page.getByText('No committed V2 components',{exact:true}).waitFor();assert.equal((await context.request.get(base+'/api/v2/components/'+manifest.labels[0].componentId,{headers:{'X-BloodLedger-Contract-Version':'V2.1'}})).status(),404);
     assert.equal((await context.request.get(base+'/api/v2/historical-snapshots')).status(),403);

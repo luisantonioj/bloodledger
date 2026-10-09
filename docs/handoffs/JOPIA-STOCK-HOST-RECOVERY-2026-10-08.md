@@ -5,8 +5,10 @@ follow-up supersedes the account/service/archive prerequisite blockers in
 [the initial implementation evidence](JOPIA-OPERATIONAL-STOCK-IMPLEMENTATION-2026-10-08.md).
 Population acceptance and Lat's independent browser acceptance remain separate.
 The exact live OCR preview was confirmed by the user in this conversation;
-the user subsequently approved the exact execution hash. New operational
-receipts and full population acceptance remain pending.
+the user subsequently approved the exact execution hash. Actual population, exact replay and ordinary inventory restart passed. The
+[fixed-window T0 follow-up](#fixed-window-t0-acceptance--2026-10-09) records
+the actual persisted census and completed replay/restart durability. Independent
+Lat acceptance and V5 approval remain separate.
 
 ## Target and preserved baseline
 
@@ -724,3 +726,221 @@ current-time dry census after exact schema/scenario guards were added.
 Final syntax and full-history/index/candidate Gitleaks checks passed; no
 credential, generated identity, private manifest, envelope or unrelated edit
 is included in the implementation commits.
+
+
+## Fixed-window T0 acceptance — 2026-10-09
+
+The user requested one continuation at October 9 08:00 Asia/Manila. The
+heartbeat fired at `2026-10-09T00:00:01.784Z`; the actual initial clock read
+was `2026-10-09T00:00:39Z`, inside the reviewed verification window. The
+implementation remained `c24f4709b0c3caf7859417110f2deecee72e1a6b` on the
+retained integration ancestry. The existing exact execution/target/policy/backup
+approval was reused. No intake/apply, additional units, live backup restore,
+clock change, re-dating or future snapshot occurred. General queue writers
+remained stopped. Original 110 identity-file hashes and five named-volume
+fingerprints matched at `2026-10-09T00:01:16.476225+00:00`.
+
+`stock verify --report t0-verify-v2.json` returned exit 0 at
+`2026-10-09T00:15:41.034Z` (08:15 Manila) with `t0Verification=PASS`.
+Every original full receipt record, combined/addition counts, twenty-series
+reconciliation, 24 ACTIVE reservations/36 members, 531 current ledger assets
+and baseline preservation matched `population-v2.json`. All 559 original
+commands remained COMMITTED; no replacement transaction was created.
+The progress-log inspection encountered an automatic-approval timeout; its
+permitted read-only retry succeeded without changing the running verification.
+
+| Persisted census evidence | Actual value |
+| --- | --- |
+| Snapshot ID | `CENSUS_0EA1AD6749738409835880A0DD069F0247FFC303` |
+| Scheduled T0 | `2026-10-09T00:00:00.000Z` — October 9 08:00 Manila |
+| Actual capturedAt | `2026-10-09T00:15:38.339Z` — October 9 08:15:38 Manila |
+| Source-projection digest | `574722c8c27123324162e97c741a1ad1616b2695a881c2329e9c994cd3bbe606` |
+| Coverage | 40 actual persisted component/blood-type combinations |
+| Verified reportable zeros | 21 |
+| AVAILABLE / RESERVED | 492 / 37 |
+| Reportable / forecast-eligible AVAILABLE | 529 / 491 |
+| Authenticated API | CURRENT, COMPLETE, 40 expected/persisted series |
+| Writer gate after successful checks | `writer_lock=false` |
+
+The original AVAILABLE component with past expiry remained unchanged and
+excluded from the 491 forecast-eligible AVAILABLE count. IN_TRANSIT/EXPIRED
+are excluded from the 529 reportable count while the full operational total
+stays 531. This is an actual persisted operational census, superseding the
+earlier dry-read-only status; it is not V5 model/job activation or clinical
+forecast accuracy evidence. Recommendation eligibility remains disabled.
+
+The new versioned `tests/development-data/persisted-stock-census.mjs`
+independently read the saved run/snapshot, validated all forty raw PostgreSQL
+count rows, recomputed the existing snapshot digest, compared the original
+T0 report and authenticated component/inventory-evidence API, and checked
+the actual capture instant against the reviewed window. It cannot create
+a snapshot or submit/project an operation. At `2026-10-09T00:16:59.542Z`,
+it passed with the exact original ID/capture/digest and API CURRENT status.
+The original baseline fingerprints still passed after the additive census rows.
+
+Real ordinary-cookie browser before/after T0 restart, an independent
+post-restart commitment read and the full T0-census restart/replay comparison
+remain pending at this checkpoint. No independent Lat acceptance is claimed.
+
+
+### T0 restart and independent durability evidence
+
+Ordinary-cookie Chromium checks passed before restart at
+`2026-10-09T00:17:29.922Z`. The existing versioned browser probe now optionally
+checks the saved T0 report: Analytics displays CURRENT, the exact snapshot ID,
+actual capture time, source digest and all forty available/reserved/reportable/
+eligible rows. All six account scopes, 531 component rows, 24 reservations/36
+members, destination requests, preserved historical null fields and normal
+logout checks passed. There was no interception or saved browser profile.
+
+The tested ordinary restart began at `2026-10-09T00:17:57Z`: stop web/API/peer,
+restart PostgreSQL/orderer/both CAs, wait for healthy infrastructure, start peer,
+then start API/web after infrastructure health. No reset, live restore, volume
+recreation or enrollment ran. At `2026-10-09T00:20:29.901511+00:00`, all original
+110 generated-file hashes and five named-volume identities still matched.
+The general worker remained disabled and competing writers remained quiescent.
+
+Independent saved-stock evidence passed after restart at
+`2026-10-09T00:22:13.087Z`: all 559 original transaction IDs, VALID statuses,
+blocks and signed-envelope hashes matched the pre-replay receipts. The
+canonical original receipt-array digest remains
+`81cf0a503a855e8bc741795663190458026a711010203a6523b35d77667ea014`.
+
+The independent persisted-census helper passed again at
+`2026-10-09T00:21:58.453Z`. Comparison at
+`2026-10-09T00:22:39.974989+00:00` found the same snapshot ID, original
+`2026-10-09T00:15:38.339Z` capture time, source digest and all forty raw
+PostgreSQL count rows. Their canonical SHA-256 is
+`cb960b98f072e586ed11fa7054d71b384970b7f69ec8bb85284fb2adb896701d`.
+Authenticated inventory-evidence remained CURRENT/COMPLETE; the runner-owned
+writer gate remained false. No replacement or re-dated snapshot was created.
+
+Real browser checks after restart passed at `2026-10-09T00:22:36.298Z`.
+Comparison at `2026-10-09T00:23:05.472465+00:00` matched all six account results
+and the complete rendered/API census to the before-restart report. These
+results are **JOPIA_SELF_VALIDATION**; Lat's independent detail navigation and
+pending/error acceptance remain separate.
+
+Tested read-only helper invocations use the existing private directory,
+`EXECUTION_HASH` and runtime exports above. Reports must use fresh filenames;
+the helpers create them with mode 0600 and refuse replacement:
+
+```bash
+# Independently read the saved T0 census and all raw rows; no mutation:
+docker run --rm --init --user "$(id -u):$(id -g)" \
+  --network bloodledger_default \
+  --env-file "$BLOODLEDGER_DEV_ENV_FILE" \
+  -v "$PWD:$PWD" -v "$PRIVATE:/private" -w "$PWD" \
+  -e BLOODLEDGER_REPOSITORY_ROOT="$PWD" \
+  -e BLOODLEDGER_STOCK_CONFIG_PATH=/private/stock-runtime.json \
+  -e BLOODLEDGER_STOCK_EXECUTION_PATH=/private/execution-v2.json \
+  -e BLOODLEDGER_STOCK_EXECUTION_SHA256="$EXECUTION_HASH" \
+  -e BLOODLEDGER_STOCK_T0_REPORT_PATH=/private/t0-verify-v2.json \
+  -e BLOODLEDGER_STOCK_EVIDENCE_REPORT_PATH=/private/t0-census-independent-after-restart.json \
+  bloodledger-development-tools:local \
+  node tests/development-data/persisted-stock-census.mjs
+
+# Real ordinary cookies, retained 5174 -> 3000, including saved T0 UI rows:
+docker run --rm --network container:bloodledger-persistent-api \
+  -v "$PWD:$PWD" -v "$PRIVATE:/private" -w "$PWD" \
+  -e BLOODLEDGER_BROWSER_CONFIG_PATH="$PWD/build/recovery/accounts.json" \
+  -e BLOODLEDGER_STOCK_EXECUTION_PATH=/private/execution-v2.json \
+  -e BLOODLEDGER_STOCK_EXECUTION_SHA256="$EXECUTION_HASH" \
+  -e BLOODLEDGER_STOCK_T0_REPORT_PATH=/private/t0-verify-v2.json \
+  -e BLOODLEDGER_BROWSER_REPORT_PATH=/private/t0-browser-after-restart.json \
+  mcr.microsoft.com/playwright:v1.61.1-noble \
+  node tests/development-data/populated-browser.mjs
+```
+
+The full post-restart `stock verify --report t0-post-restart-v2.json` is still
+running at this evidence checkpoint. Its final reconciliation is recorded
+below only after completion; independent passes above do not substitute for it.
+
+
+Exact private-report comparison uses JSON values, including every original
+receipt and the complete persisted census; object key order is irrelevant:
+
+```bash
+python3 - "$PRIVATE" <<'PY_COMPARE'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1])
+a, b, c = [json.loads((p / name).read_text()) for name in
+           ('population-v2.json', 't0-verify-v2.json', 't0-post-restart-v2.json')]
+keys = ('classification', 'combined', 'currentLedgerAssetsVerified',
+        'executionSha256', 'hostValidation', 'memberLinks', 'nearExpiry',
+        'newScenario', 'policySha256', 'preservation', 'receipts',
+        'reservations', 'runId', 'series', 'targetSha256', 'v4Default', 'v5')
+for key in keys:
+    assert a[key] == b[key] == c[key], key
+assert b['t0Verification'] == c['t0Verification'] == 'PASS'
+assert b['census'] == c['census']
+assert c['preservation'] == 'PASS'
+assert len(c['receipts']) == 559 and c['currentLedgerAssetsVerified'] == 531
+assert len(c['series']) == 20 and c['reservations'] == 24 and c['memberLinks'] == 36
+print('PASS: original receipts, reconciliation, preservation and exact T0 census')
+PY_COMPARE
+```
+
+A subsequent read-only PostgreSQL count found exactly 559 scenario commands,
+559 COMMITTED statuses, 559 saved VALID receipts and 559 distinct transaction
+IDs. The saved run still references the original T0 census with
+`writer_lock=false`. This confirms journal cardinality; direct Fabric evidence
+and authenticated current-state reconciliation remain independently required.
+
+
+### Final T0 acceptance disposition — October 9 08:41 Manila
+
+Full post-restart verification returned exit 0 at
+`2026-10-09T00:39:45.262Z` with `t0Verification=PASS`, inside the same reviewed
+window. Exact comparison at `2026-10-09T00:41:08.215661+00:00` passed against
+both the original population and first T0 reports: all 559 full receipt records,
+531 current ledger assets, ledger/PostgreSQL/authenticated API reconciliation,
+twenty source series, 24 ACTIVE reservations/36 members, target/policy/manifest
+bindings and baseline fingerprints were identical. The complete T0 census is
+identical, including its original capture instant; verification did not create
+a replacement snapshot. No new intake, dispatch or release completion ran.
+
+Original nine operational units/18 receipts and historical 522 units/524
+receipts/current members remain preserved. Historical unknown dates and purpose
+remain null. All six primary accounts/12 operators, original credential/role
+history, 110 generated-file hashes and five named-volume identities remain
+preserved. Reportable/eligible counts deliberately retain actual expiry rules
+without mutating the original AVAILABLE component whose label expiry has passed.
+
+| Final scoped check | Result |
+| --- | --- |
+| Exact reviewed source/scenario/OCR/execution/target/policy/backup | PASS |
+| All 559 original local VALID commitments and 531 current ledger/PG/API assets | PASS |
+| 20 series, 24 ACTIVE reservations, 36 members and workflow request links | PASS |
+| New 522: 486 AVAILABLE / 36 RESERVED; combined 531: 492 / 37 / 1 IN_TRANSIT / 1 EXPIRED | PASS |
+| Original stock/history/receipts/accounts/credentials/identities/volumes | PASS |
+| Actual fixed-window persisted T0: 40 combinations / 21 reportable zeros | PASS |
+| Same census ID/capturedAt/digest/all rows and CURRENT/COMPLETE API after restart | PASS |
+| Runner-owned gate release after success; no competing writer or duplicate command | PASS |
+| Independent QSCC and ordinary-cookie six-account browser/census before/after restart | PASS — JOPIA_SELF_VALIDATION |
+| Helper syntax, JSON formatting and 23 development-data regression tests | PASS |
+| Full-history/index/candidate secret scan and scoped diff checks | PASS |
+| Lat independent detail-navigation/pending/error/scope/logout/restart | NOT_RUN — independent owner evidence remains required |
+| V5 persistence/binding/job activation | BLOCKED — separate approval required |
+| UAT, physical Android OCR, full NFR-06, clinical/deployment/Testing exit | NOT_RUN — outside this scope |
+
+Current Jopia backend/population/T0 acceptance is complete. This supersedes the
+06:04 Manila pending checkpoint and intermediate T0 pending checkpoints above;
+their original observations remain recorded. Lat's integration steps and V5
+gates remain as specified above. No schedule is created for another run.
+
+Private reports remain mode 0600 under the external mode-0700 directory.
+Only their hashes are published here; no labels, credentials, manifests,
+backups, raw receipts or signed envelopes are committed:
+
+| Private evidence file | SHA-256 |
+| --- | --- |
+| `t0-verify-v2.json` | `16463877e34939e41e2e42e77a09cbcec18e5fe4a4dc48925954d49cffdd1b29` |
+| `t0-post-restart-v2.json` | `0fed8269b343169153a61381f079c08419775a931627c7d9824bd99f07c4dbef` |
+| `t0-census-independent-before-restart.json` | `c237410a7fe2cb25af278ce79c8a02fec5b6aff7d6992521b37f77d3aefb38be` |
+| `t0-census-independent-after-restart.json` | `aa5a49dc324bd8127ab09361bee15ac1dca187e1eb0066e862c3bd61766e02a7` |
+| `t0-all-559-after-restart.json` | `593604dc24f2430b6990044de9ef4b2a22d46167cbbac64175dd5b74b20eeeeb` |
+| `t0-browser-before-restart.json` | `e474cd22eee67421f56964ab5e977ca13c6dcdd40c67c3bb373adb9d2c7a5b15` |
+| `t0-browser-after-restart.json` | `f1ed61d9fe5665976730894e10a1fb9598f92c2ee9ef6693e1ae9f900dace390` |
+| `t0-runtime-before-restart.json` | `d4f3e6b1bc1fe03762f425acb7d9d2284fae5a25b57ed386cc3219d60992cfb6` |
+| `t0-runtime-after-restart.json` | `e94f8a0ff1f70e54bdce848ca394735b8965f8e115d1e60ea82704d0785f9071` |

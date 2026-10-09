@@ -428,3 +428,20 @@ integration and independent rerun. TP-G06 is relaxed solely for approved
 synthetic backend evidence; full web/onboarding acceptance, institutional RQ-14,
 UAT, clinical gates and Testing-phase exit remain open. Results are recorded
 only after execution, with disclosed Jopia self-validation.
+
+
+## Controlled operational population T0 verification — 2026-10-09
+
+TP-STOCK-01 technical acceptance on Jopia's reviewed retained target passed:
+522 added / 531 total operational units, 559 original VALID Fabric commitments,
+ledger/PostgreSQL/authenticated API reconciliation, original preservation and
+actual fixed-window forty-row T0 capture. Ordinary infrastructure/service
+restart preserved the original census ID/capture/digest/all rows, complete
+receipts and CURRENT inventory-evidence API. Results, exact hashes, tested
+commands and scoped checks are in the
+[Jopia timed evidence](handoffs/JOPIA-STOCK-HOST-RECOVERY-2026-10-08.md#fixed-window-t0-acceptance--2026-10-09).
+This is **SIMULATION_ONLY / JOPIA_SELF_VALIDATION**. Lat's independent detail
+navigation, pending/error states, scope/logout/restart acceptance remain
+NOT_RUN. V4 remains default; V5 persistence/binding/job approval is separate.
+This technical pass does not close BL-TST-02, RQ decisions, UAT, physical OCR,
+full latency, clinical/deployment gates or Testing-phase exit.
