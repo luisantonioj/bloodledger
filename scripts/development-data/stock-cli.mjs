@@ -16,6 +16,13 @@ import { fileDigest, resolveScenarioReview, validateReviewedScenarioBytes, valid
 
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const fieldEqual = (a,b) => requireStock(canonical(a) === canonical(b), 'STOCK_EVIDENCE_MISMATCH');
+// The runtime role is not granted access to migrator-owned metadata.
+export async function inspectMigrationEvidence(pool) {
+  const {rows:[access]} = await pool.query("SELECT CASE WHEN has_schema_privilege(current_user, 'public', 'USAGE') THEN has_table_privilege(current_user, 'public.pgmigrations', 'SELECT') ELSE false END AS permitted");
+  if (!access?.permitted) return {migrations:null,migrationEvidenceStatus:'REQUIRES_PRIVILEGED_READ'};
+  const {rows} = await pool.query('SELECT name FROM public.pgmigrations ORDER BY name');
+  return {migrations:rows.map(row=>row.name),migrationEvidenceStatus:'VERIFIED'};
+}
 const readAsset = async (runtime, componentId) => JSON.parse(Buffer.from(await runtime.ledger.contract.evaluateTransaction('ReadComponent', JSON.stringify({ actorUserId: runtime.principals.coordinator.userId, componentId }))).toString('utf8'));
 
 export function journalProvenance(execution) {
@@ -335,7 +342,7 @@ export async function main(args = process.argv.slice(2)) {
       if(options.output) {
         inspection.baselineFingerprints = await preservationSnapshot(runtime.pool);
         inspection.counts = (await runtime.pool.query("SELECT (SELECT count(*) FROM app.v2_components)::int AS operational, (SELECT count(*) FROM app.synthetic_inventory_completed_units)::int AS historical, (SELECT count(*) FROM app.operational_stock_runs)::int AS stock_runs, (SELECT count(*) FROM app.application_users WHERE account_kind='PRIMARY' AND status='ACTIVE')::int AS primary_accounts, (SELECT count(*) FROM app.institution_operators)::int AS operators")).rows[0];
-        inspection.migrations = (await runtime.pool.query('SELECT name FROM public.pgmigrations ORDER BY name')).rows.map(row=>row.name);
+        Object.assign(inspection,await inspectMigrationEvidence(runtime.pool));
         await savePrivate(options.output,inspection);
       }
       console.log(canonical(inspection));return;

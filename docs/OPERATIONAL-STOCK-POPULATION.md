@@ -77,8 +77,13 @@ review digest stops before adopting saved work.
 Set private configuration `hostValidation=LAT_LOCAL_VALIDATION` for actual
 Lat-host execution; legacy Jopia configuration defaults to
 `JOPIA_SELF_VALIDATION`. This is attribution, not independent acceptance.
-`stock inspect --output` optionally saves local counts, migration names and
-baseline domain/account/operator fingerprints. The new read-only
+`stock inspect --output` optionally saves local counts and baseline
+domain/account/operator fingerprints. It returns migration names only when
+the current database role can read `public.pgmigrations`; otherwise
+`migrations=null` and `migrationEvidenceStatus=REQUIRES_PRIVILEGED_READ` require
+the separate privileged migration-name read documented in the population
+package. This is missing runtime evidence, not zero migrations, and does not
+grant the application role access to migrator-owned metadata. The new read-only
 [retained-file checkpoint](../scripts/development-data/retained-files.mjs)
 hashes identity/channel/private-runtime bytes and modes and records named
 volume creation times and all five store mount sets. It does not copy keys,
