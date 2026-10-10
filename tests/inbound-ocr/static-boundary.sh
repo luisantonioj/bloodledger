@@ -3,8 +3,10 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root"
 
-[[ "$(git branch --show-current)" == "codex/inbound-ocr-registration-v2" ]]
-if git diff --name-only main...HEAD | rg -n '^(apps/web|apps/capture-pwa|services/forecasting)/'; then
+# The workstream guard belongs to the original inbound branch; the boundary
+# checks below apply on every branch, including main.
+if [[ "$(git branch --show-current)" == "codex/inbound-ocr-registration-v2" ]] &&
+  git diff --name-only main...HEAD | rg -n '^(apps/web|apps/capture-pwa|services/forecasting)/'; then
   echo "Inbound OCR branch must not modify LAT/BUNO workstreams" >&2
   exit 1
 fi
@@ -14,7 +16,8 @@ rg -q 'V2_OCR_REQUIRED' services/api/src/v2-routes.ts services/api/openapi-v2.js
 rg -q 'RegisterInboundComponent|RecordInboundReceipt' chaincode/src/interview-core-contract.ts services/api/src/fabric.ts
 rg -q "INBOUND_CAPTURE" services/api/src/v2-command.ts database/migrations/20260912010000000_add-inbound-ocr-capture-v2.js
 rg -q 'captureMethod.*OCR|INBOUND_OCR_V1' services/api/src/inbound-ocr-policy.ts
-if rg -n 'donationNumber\s*:' services/api/src/v2-routes.ts chaincode/src services/coordination/src; then
+# An explicit `donationNumber: null` (historical units carry none) is allowed.
+if rg -n 'donationNumber\s*:' services/api/src/v2-routes.ts chaincode/src services/coordination/src | rg -v 'donationNumber\s*:\s*null\b'; then
   echo "Raw Donation No. field reached command, Fabric, or coordination code" >&2
   exit 1
 fi

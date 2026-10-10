@@ -6,7 +6,8 @@ export class InstitutionClient {
     this.config = config; this.apiUrl = apiUrl; this.fetcher = fetcher; this.sessions = new Map();
   }
   async response(path, method, payload, headers = {}) {
-    const result = await this.fetcher(this.apiUrl + path, { method, headers: { Origin: 'http://127.0.0.1:5174', 'Content-Type': 'application/json', 'X-BloodLedger-Contract-Version': 'V2.1', ...headers }, ...(payload === undefined ? {} : { body: JSON.stringify(payload) }) });
+    // A JSON content type without a body is rejected before the route runs (for example, logout).
+    const result = await this.fetcher(this.apiUrl + path, { method, headers: { Origin: 'http://127.0.0.1:5174', ...(payload === undefined ? {} : { 'Content-Type': 'application/json' }), 'X-BloodLedger-Contract-Version': 'V2.1', ...headers }, ...(payload === undefined ? {} : { body: JSON.stringify(payload) }) });
     const body = await result.json();
     if (!result.ok) throw new Error(body.error?.code ?? 'STOCK_HTTP_FAILED');
     return { result, body };

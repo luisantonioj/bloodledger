@@ -134,6 +134,14 @@ The integration baseline is `main` at `fbd9a84` plus Lat's frontend branch at
 `codex/s6-frontend-backend-integration`; Lat retains frontend ownership and
 human browser acceptance, and Buno retains human method/lineage review.
 
+### BL-DEC-S6-2026-09-23-01 — Synthetic compromise reporting vocabulary
+
+**Status:** Accepted by Jopia for simulation-only implementation on 2026-09-23.
+
+`SYNTHETIC_COMPROMISE_REASONS_V1` permits only `TEMPERATURE_EXCURSION_REPORTED`, `CONTAINER_DAMAGE_OR_LEAK_REPORTED`, `VISIBLE_COMPONENT_ABNORMALITY_REPORTED`, and `HANDLING_OR_CUSTODY_DEVIATION_REPORTED`. These are reported concerns, not diagnoses or an institutional incident policy. For `FR-10`–`FR-11` and `BR-TRF-07`, an authorized selection marks the reservation and its components `COMPROMISED` and quarantines them pending manual review. It cannot establish clinical usability or disposal. `FR-12`, `BR-SEC-01`–`04`, institution scope, version checks, and idempotency still apply. Operational use remains gated by the institution's approved policy. This version supersedes the prior format-only compromise reason acceptance for new simulation commands; historical evidence is preserved.
+
+**Port record (2026-10-09):** this decision was first recorded on the PR #15 branch (`c35c88f`), which never reached `main`. It is ported unchanged under issue #36. For the 2026-10-12 UAT, Jopia decided that the API enforces the vocabulary before queuing (`GET /api/v2/reservations/compromise-reasons`, `400 COMPROMISE_REASON_INVALID`) and records the policy version in off-chain command evidence. The independent chaincode check is **Deferred** until after UAT, so the approved lifecycle sequence is not changed. Commands accepted before the port keep their recorded free-form codes.
+
 ## 4. Commit groups
 
 1. `docs(sprint-6): authorize interview-aligned core v2`

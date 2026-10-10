@@ -70,6 +70,10 @@ if [[ "${1:-}" == inspect ]]; then
     else
       echo "${*: -1}" | sed 's/^fake-//'
     fi
+  elif [[ "$*" == *State.Running* ]]; then
+    [[ "${FAKE_PEER_SOCKET_STALE:-}" == 1 ]] && echo false || echo true
+  elif [[ "$*" == *State.Error* ]]; then
+    [[ "${FAKE_PEER_SOCKET_STALE:-}" == 1 ]] && echo 'error mounting "/run/desktop/docker.sock" to rootfs at "/var/run/docker.sock"' || echo ''
   elif [[ "$*" == *State.Status* ]]; then
     echo running
   elif [[ "$*" == *State.Health* ]]; then
@@ -201,6 +205,17 @@ touch "${test_root}/network/generated/.identity-bootstrap-complete" \
   "${test_root}/network/generated/channel-artifacts/bloodledger-dev.block" \
   "${test_root}/network/health-contract/build/package-id.txt"
 run_command start | grep -Fq 'BloodLedger development infrastructure is healthy'
+docker_log="${temporary_root}/docker.log"
+FAKE_DOCKER_LOG="${docker_log}" run_command start >/dev/null
+if grep -Fq -- '--force-recreate' "${docker_log}"; then
+  echo "A healthy peer must not be recreated" >&2
+  exit 1
+fi
+stale_start="$(FAKE_PEER_SOCKET_STALE=1 FAKE_DOCKER_LOG="${docker_log}" run_command start)"
+grep -Fq 'stale Docker socket mount' <<<"${stale_start}"
+grep -Fq 'BloodLedger development infrastructure is healthy' <<<"${stale_start}"
+grep -Eq -- ' up --detach --wait --no-deps --force-recreate peer0-mediatrix$' "${docker_log}"
+[[ "$(grep -c -- '--force-recreate' "${docker_log}")" == 1 ]]
 FAKE_UNHEALTHY=unhealthy expect_failure 'ca-mediatrix: unhealthy' status
 FAKE_CHANNEL_FAILURE=1 expect_failure 'Channel membership' status
 FAKE_HEALTH_FAILURE=1 expect_failure 'Health contract lifecycle' status

@@ -36,6 +36,10 @@ const USER_PATTERN = /^USR_[A-Z0-9_-]{1,48}$/;
 const BLOOD_TYPES = ["A_POSITIVE", "O_POSITIVE"] as const;
 const COMPONENTS = ["RED_BLOOD_CELLS", "PLATELETS"] as const;
 const URGENCIES = ["ROUTINE", "URGENT", "CRITICAL"] as const;
+const REQUEST_REJECTIONS: Readonly<Record<number, { code: string; message: string }>> = {
+  413: { code: "REQUEST_BODY_TOO_LARGE", message: "The request body is too large." },
+  415: { code: "REQUEST_MEDIA_TYPE_UNSUPPORTED", message: "The request media type is not supported." },
+};
 
 function equalSecret(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left);
@@ -152,6 +156,14 @@ export async function buildApp(
     }
     if (frameworkError.statusCode === 401 || frameworkError.code?.startsWith("FST_JWT")) {
       void reply.status(401).send({ error: { code: "AUTH_REQUIRED", message: "A valid session is required.", correlationId } });
+      return;
+    }
+    // Framework client errors (unreadable, oversized or unsupported bodies) keep their 4xx status with a stable code.
+    const statusCode = frameworkError.statusCode;
+    if (typeof statusCode === "number" && statusCode >= 400 && statusCode < 500) {
+      const rejected = REQUEST_REJECTIONS[statusCode] ?? { code: "REQUEST_INVALID", message: "The request could not be read." };
+      request.log.warn({ safeErrorCode: frameworkError.code ?? rejected.code, correlationId }, "request rejected");
+      void reply.status(statusCode).send({ error: { code: rejected.code, message: rejected.message, correlationId } });
       return;
     }
     request.log.error({ safeErrorCode: frameworkError.code ?? "UNEXPECTED_FAILURE", correlationId }, "request failed");

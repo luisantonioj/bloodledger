@@ -12,6 +12,7 @@ import type { CensusStore } from "./census-worker.js";
 import type { V2ProjectionReader } from "./database-v2.js";
 import { validateInboundOcrInput } from "./inbound-ocr-policy.js";
 import { isReconciliationReasonCode, RECONCILIATION_POLICY_VERSION, RECONCILIATION_REASONS } from "./reconciliation-policy.js";
+import { COMPROMISE_POLICY_VERSION, COMPROMISE_REASONS, isCompromiseReasonCode } from "./compromise-policy.js";
 import { DOH_CENSUS_DISPLAY_ORDER, DOH_CENSUS_DISPLAY_POLICY_VERSION } from "./report-policy.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
@@ -28,6 +29,7 @@ const URGENCIES = ["ROUTINE", "URGENT", "CRITICAL"] as const;
 const PAGE_CURSOR_PATTERN = /^RES_[A-Z0-9_-]{1,56}$/;
 const CENSUS_CURSOR_PATTERN = /^CENSUS_[A-Z0-9_-]{1,56}$/;
 const COMMAND_CURSOR_PATTERN = /^CMD_[A-Z0-9_-]{1,56}$/;
+const COMMAND_TIME_TOLERANCE_MS = 5 * 60_000;
 
 export interface V2RouteDependencies {
   store: V2CommandStore;
@@ -42,6 +44,14 @@ export interface V2RouteDependencies {
   enabledIssuerInstitutionIds?: readonly string[];
 }
 
+// Read-time comparison of the printed label with the ledger status; it never changes inventory.
+// The boundary matches EvaluateComponentExpiry: a label is expired once evaluation time reaches it.
+function withExpiryState<T extends { expiresAt: string; inventoryStatus: string }>(component: T, nowMs: number): T & { expiryState: string } {
+  const expiryState = component.inventoryStatus === "EXPIRED" ? "EXPIRED"
+    : Date.parse(component.expiresAt) > nowMs ? "CURRENT"
+    : ["AVAILABLE", "RESERVED"].includes(component.inventoryStatus) ? "LABEL_EXPIRED_PENDING_EVALUATION" : "LABEL_EXPIRED_NOT_IN_INVENTORY";
+  return { ...component, expiryState };
+}
 function hash(value: string): string { return createHash("sha256").update(value, "utf8").digest("hex").toUpperCase(); }
 function generatedId(prefix: string, idempotencyKey: string): string { return `${prefix}${hash(idempotencyKey).slice(0, 40)}`; }
 function hasKeys(body: unknown, expected: readonly string[]): body is Record<string, unknown> {
@@ -105,17 +115,26 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
   // action-bound grants and institution authorization still run in each route.
   app.addHook("preHandler", async request => {
     const path = request.url.split("?")[0];
-    if (["POST","PUT","PATCH","DELETE"].includes(request.method) && path.startsWith("/api/v2/") && !path.startsWith("/api/v2/auth/")) await dependencies.store.assertPopulationRequest?.(path, request.body, request.headers["idempotency-key"]);
+    if (["POST","PUT","PATCH","DELETE"].includes(request.method) && path.startsWith("/api/v2/") && !path.startsWith("/api/v2/auth/")) (request as FastifyRequest & { v2PopulationApproved?: boolean }).v2PopulationApproved = await dependencies.store.assertPopulationRequest?.(path, request.body, request.headers["idempotency-key"]) === true;
   });
   const restore = dependencies.restore;
   if (dependencies.developmentRead) registerDevelopmentReads(app, dependencies.developmentRead, restore, dependencies.webOrigin);
   const sameOrigin = (request: FastifyRequest) => { if (request.headers.origin !== dependencies.webOrigin) throw new ApiFailure(403, "ORIGIN_FORBIDDEN", "Request origin is not permitted."); };
+  // Client command times drive ledger expiry eligibility and RPS wait, so a new command must be near the server clock.
+  // Retries of an accepted idempotency key and exact approved population operations keep their recorded times.
+  const assertCommandTimes = async (request: FastifyRequest, principal: WebPrincipal, times: readonly unknown[]) => {
+    if ((request as FastifyRequest & { v2PopulationApproved?: boolean }).v2PopulationApproved) return;
+    if (await dependencies.store.get(generatedId("CMD_", requiredHeader(request)), principal.institutionId, principal.userId)) return;
+    const now = dependencies.clock().getTime();
+    if (times.some(value => typeof value === "string" && Math.abs(Date.parse(value) - now) > COMMAND_TIME_TOLERANCE_MS)) throw new ApiFailure(400, "V2_COMMAND_TIME_OUT_OF_WINDOW", "The command time must be within five minutes of the server clock.");
+  };
   const enqueue = async (request: FastifyRequest, reply: FastifyReply, resourceType: V2ResourceType, resourceId: string, operation: string, payload: Record<string, unknown>, principal: WebPrincipal, payloadSha256?: string) => {
     const idempotencyKey = requiredHeader(request);
     const selectedPolicy = selectCorePolicy(principal, contractVersion(request));
     // Preserve legacy command hashes; only retained development actors need the new authorization version.
     if (["PERSISTENT_DEVELOPMENT_CORE_V1","SYNTHETIC_INSTITUTION_CORE_V1"].includes(selectedPolicy)) payload = { ...payload, policyVersion: selectedPolicy };
     const correlationId = requiredBodyString(payload, "correlationId", CORRELATION_PATTERN);
+    await assertCommandTimes(request, principal, [payload.eventTime, payload.requestTime]);
     const acceptedAt = dependencies.clock().toISOString();
     const result = await dependencies.store.enqueue({ commandId: generatedId("CMD_", idempotencyKey), idempotencyKey, resourceType, resourceId, operation, payload, payloadSha256, correlationId, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, acceptedAt, operatorVersion:principal.operatorVersion, verificationSessionId:principal.verificationSessionId });
     (request as FastifyRequest & { v2Replayed?: boolean }).v2Replayed = result.replayed;
@@ -144,7 +163,8 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!["ROLE-01","ROLE-02","ROLE-03"].includes(principal.roleId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Regulatory readers receive aggregate reports, not component records.");
     const version = contractVersion(request);
     const components = await dependencies.projection.listComponents(principal.institutionId, principal.roleId);
-    return { scope: "INSTITUTION", components: version === "V2" ? components.filter((component) => component.componentType !== "CRYOPRECIPITATE") : components, classification: "SIMULATION_ONLY" as const };
+    const now = dependencies.clock().getTime();
+    return { scope: "INSTITUTION", components: (version === "V2" ? components.filter((component) => component.componentType !== "CRYOPRECIPITATE") : components).map((component) => withExpiryState(component, now)), classification: "SIMULATION_ONLY" as const };
   });
 
   app.get<{ Params: { componentId: string } }>("/api/v2/components/:componentId", async (request) => {
@@ -156,7 +176,43 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const component = await dependencies.projection.getComponent(request.params.componentId, principal.institutionId, principal.roleId);
     if (!component) throw new ApiFailure(404, "V2_COMPONENT_NOT_FOUND", "The component was not found in the authorized scope.");
     if (version === "V2" && component.componentType === "CRYOPRECIPITATE") throw new ApiFailure(404, "V2_COMPONENT_NOT_FOUND", "The component was not found in the authorized scope.");
-    return component;
+    return withExpiryState(component, dependencies.clock().getTime());
+  });
+
+  app.post<{ Params: { componentId: string } }>("/api/v2/components/:componentId/expiry", async (request, reply) => {
+    sameOrigin(request); const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02"]);
+    const componentId = request.params.componentId;
+    if (!COMPONENT_ID_PATTERN.test(componentId)) throw new ApiFailure(400, "V2_COMPONENT_ID_INVALID", "Component ID is invalid.");
+    const body = request.body;
+    if (!hasKeys(body, ["correlationId", "expectedVersion"]) || !Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1) throw new ApiFailure(400, "V2_INPUT_INVALID", "Expiry evaluation input is invalid.");
+    const correlationId = requiredBodyString(body, "correlationId", CORRELATION_PATTERN);
+    const version = contractVersion(request);
+    const idempotencyKey = requiredHeader(request);
+    // The server sets the evaluation time, so a retry replays the stored payload instead of rebuilding it.
+    const requestDigest = createHash("sha256").update(JSON.stringify({ componentId, body }), "utf8").digest("hex");
+    const previous = await dependencies.store.get(generatedId("CMD_", idempotencyKey), principal.institutionId, principal.userId);
+    if (previous) {
+      if (previous.operation !== "EVALUATE_COMPONENT_EXPIRY" || previous.resourceId !== componentId || previous.payloadSha256 !== requestDigest) throw new ApiFailure(409, "V2_IDEMPOTENCY_CONFLICT", "Idempotency key was used for a different command.");
+      return enqueue(request, reply, "COMPONENT", componentId, "EVALUATE_COMPONENT_EXPIRY", previous.payload, principal, requestDigest);
+    }
+    if (!dependencies.projection) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Expiry evaluation requires the current inventory projection.");
+    const component = await dependencies.projection.getComponent(componentId, principal.institutionId, principal.roleId);
+    if (!component || component.institutionId !== principal.institutionId) throw new ApiFailure(404, "V2_COMPONENT_NOT_FOUND", "The component was not found in the authorized scope.");
+    if (version === "V2" && component.componentType === "CRYOPRECIPITATE") throw new ApiFailure(409, "V2_1_CONTRACT_REQUIRED", "CRYO requires V2.1.");
+    if (component.inventoryStatus === "EXPIRED") throw new ApiFailure(409, "COMPONENT_ALREADY_EXPIRED", "The component is already ledger-expired.");
+    // Ledger expiry clears only the component side of a reservation, so reserved stock is released first.
+    if (component.inventoryStatus === "RESERVED") throw new ApiFailure(409, "COMPONENT_EXPIRY_RESERVATION_ACTIVE", "Cancel the reservation before evaluating expiry.");
+    if (component.inventoryStatus !== "AVAILABLE") throw new ApiFailure(409, "COMPONENT_EXPIRY_TRANSITION_INVALID", "Only available inventory can be evaluated for expiry.");
+    if (component.inventoryVersion !== Number(body.expectedVersion)) throw new ApiFailure(409, "COMPONENT_VERSION_CONFLICT", "The component changed; refresh before evaluating expiry.");
+    const evaluationTime = dependencies.clock().toISOString();
+    if (Date.parse(component.expiresAt) > Date.parse(evaluationTime)) throw new ApiFailure(409, "COMPONENT_LABEL_NOT_EXPIRED", "The printed label expiry has not been reached.");
+    const payload = { componentId, expectedVersion: Number(body.expectedVersion), evaluationTime, eventTime: evaluationTime, actorUserId: principal.userId, correlationId, policyVersion: selectCorePolicy(principal, version) };
+    return enqueue(request, reply, "COMPONENT", componentId, "EVALUATE_COMPONENT_EXPIRY", payload, principal, requestDigest);
+  });
+
+  app.get("/api/v2/reservations/compromise-reasons", async (request) => {
+    const { principal } = await restore(request); authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-03"]);
+    return { policyVersion: COMPROMISE_POLICY_VERSION, reasons: COMPROMISE_REASONS, effect: "QUARANTINE_PENDING_MANUAL_REVIEW", freeTextAllowed: false, classification: "SIMULATION_ONLY" as const };
   });
 
   app.get<{ Querystring: { limit?: string; cursor?: string } }>("/api/v2/reservations", async (request) => {
@@ -229,6 +285,7 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const donationId = `DON_${hash(`${capture.issuerInstitutionId}:${encrypted.lookupHmac}`).slice(0, 40)}`;
     const captureEvidenceDigest = createHash("sha256").update(JSON.stringify({ captureId, donationDigest: encrypted.lookupHmac, ocrEvidence: capture.ocrEvidence, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt }), "utf8").digest("hex");
     const payload = { captureMethod: "OCR", captureEvidenceDigest, captureId, componentId, donationId, issuerInstitutionId: capture.issuerInstitutionId, donationNoCiphertext: encrypted.ciphertext, donationNoNonce: encrypted.nonce, donationNoAuthTag: encrypted.authTag, donationNoEncryptionKeyVersion: encrypted.encryptionKeyVersion, donationNoLookupHmac: encrypted.lookupHmac, componentType: capture.componentType, bloodType: capture.bloodType, collectedAt: capture.collectedAt, expiresAt: capture.expiresAt, custodyInstitutionId: principal.institutionId, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: capture.eventTime, correlationId: capture.correlationId, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt, bloodTypeEvidenceSource: capture.bloodTypeEvidence.source, componentEvidenceSource: capture.componentEvidence.source, ocrEngine: capture.ocrEvidence.engine, ocrEngineVersion: capture.ocrEvidence.engineVersion, donationNumberConfidence: capture.ocrEvidence.fieldConfidence.donationNumber, bloodTypeConfidence: capture.ocrEvidence.fieldConfidence.bloodType, policyVersion: selectCorePolicy(principal, version) };
+    await assertCommandTimes(request, principal, [capture.eventTime]);
     await dependencies.projection.recordInboundCapture?.(captureId, payload, dependencies.clock().toISOString());
     const payloadSha256 = createHash("sha256").update(JSON.stringify({ capture, captureId, componentId, donationId, custodyInstitutionId: principal.institutionId }), "utf8").digest("hex");
     return enqueue(request, reply, "INBOUND_CAPTURE", captureId, "REGISTER_INBOUND_COMPONENT", payload, principal, payloadSha256);
@@ -298,8 +355,15 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const version = contractVersion(request);
     const componentId = requiredBodyString(body, "componentId", COMPONENT_ID_PATTERN); const caseId = requiredBodyString(body, "caseId", CASE_ID_PATTERN); const reasonCode = requiredBodyString(body, "reasonCode");
     if (!isReconciliationReasonCode(reasonCode)) throw new ApiFailure(400, "RECONCILIATION_REASON_INVALID", "The reconciliation reason is not supported by the active synthetic policy.");
+    // The server sets the event time, so a retry replays the stored payload instead of rebuilding it.
+    const requestDigest = createHash("sha256").update(JSON.stringify(body), "utf8").digest("hex");
+    const previous = await dependencies.store.get(generatedId("CMD_", requiredHeader(request)), principal.institutionId, principal.userId);
+    if (previous) {
+      if (previous.operation !== "PLACE_RECONCILIATION_HOLD" || previous.resourceId !== caseId || previous.payloadSha256 !== requestDigest) throw new ApiFailure(409, "V2_IDEMPOTENCY_CONFLICT", "Idempotency key was used for a different command.");
+      return enqueue(request, reply, "RECONCILIATION", caseId, "PLACE_RECONCILIATION_HOLD", previous.payload, principal, requestDigest);
+    }
     const payload = { componentId, caseId, reasonCode, reconciliationPolicyVersion: RECONCILIATION_POLICY_VERSION, actorUserId: principal.userId, eventTime: dependencies.clock().toISOString(), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: selectCorePolicy(principal, version) };
-    return enqueue(request, reply, "RECONCILIATION", caseId, "PLACE_RECONCILIATION_HOLD", payload, principal);
+    return enqueue(request, reply, "RECONCILIATION", caseId, "PLACE_RECONCILIATION_HOLD", payload, principal, requestDigest);
   });
 
   app.get("/api/v2/reconciliation/reasons", async (request) => {
@@ -369,6 +433,8 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     };
     if (!hasKeys(body, allowedActionKeys[action] ?? [])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Reservation action input is invalid.");
     if (!Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1) throw new ApiFailure(400, "V2_VERSION_INVALID", "Expected version is invalid.");
+    // BL-DEC-S6-2026-09-23-01: enforced here before queuing; the independent chaincode check is deferred until after UAT.
+    if (action === "compromise" && !isCompromiseReasonCode(body.reasonCode)) throw new ApiFailure(400, "COMPROMISE_REASON_INVALID", "The incident reason is not supported by the active synthetic policy.");
     const roleMap: Record<string, readonly WebPrincipal["roleId"][]> = { prepare: ["ROLE-01", "ROLE-02"], dispatch: ["ROLE-01", "ROLE-02"], transit: ["ROLE-01", "ROLE-02"], receive: ["ROLE-03"], cancel: ["ROLE-01", "ROLE-02", "ROLE-03"], "local-release-complete": ["ROLE-01", "ROLE-02"], compromise: ["ROLE-01", "ROLE-02", "ROLE-03"] };
     const roles = roleMap[action]; if (!roles) throw new ApiFailure(404, "V2_ACTION_NOT_FOUND", "Reservation action is not supported."); authorized(principal, roles);
     if (!dependencies.projection?.getReservation) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "The reservation projection is not available.");
@@ -379,6 +445,7 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const operationByAction: Record<string, string> = { prepare: "PREPARE_RESERVATION", dispatch: "DISPATCH_RESERVATION", transit: "START_RESERVATION_TRANSIT", receive: "RECEIVE_RESERVATION", cancel: "CANCEL_RESERVATION", compromise: "COMPROMISE_RESERVATION", "local-release-complete": "COMPLETE_LOCAL_RELEASE" };
     const payload: Record<string, unknown> = { reservationId: request.params.reservationId, expectedVersion: Number(body.expectedVersion), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: selectCorePolicy(principal, version) };
     for (const key of ["preparedEvidenceDigest", "preparedEvidenceId", "preparedAt", "reasonCode"] as const) if (body[key] !== undefined) payload[key] = body[key];
+    if (action === "compromise") payload.compromisePolicyVersion = COMPROMISE_POLICY_VERSION;
     return enqueue(request, reply, "TRANSFER", request.params.reservationId, operationByAction[action], payload, principal);
   });
 }

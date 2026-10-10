@@ -252,11 +252,20 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/RequestRejected"
+          },
           "401": {
             "$ref": "#/components/responses/Error"
           },
           "403": {
             "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/RequestRejected"
+          },
+          "415": {
+            "$ref": "#/components/responses/RequestRejected"
           }
         }
       },
@@ -311,6 +320,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/RequestRejected"
           },
           "403": {
             "$ref": "#/components/responses/Error"
@@ -1391,6 +1403,16 @@
     "responses": {
       "Error": {
         "description": "Safe failure",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "RequestRejected": {
+        "description": "Framework request rejection on any route: REQUEST_INVALID (400) for an empty or malformed JSON body, including a JSON Content-Type sent without a body; REQUEST_BODY_TOO_LARGE (413); REQUEST_MEDIA_TYPE_UNSUPPORTED (415). The route handler does not run, so a rejected logout does not revoke the session; send DELETE without a Content-Type header.",
         "content": {
           "application/json": {
             "schema": {

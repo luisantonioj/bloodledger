@@ -33,7 +33,8 @@ export interface V2Command extends V2CommandInput {
 }
 
 export interface V2CommandStore {
-  assertPopulationRequest?(path: string, body: unknown, idempotencyKey: unknown): Promise<void>;
+  // Resolves true only for an exact operation of the active approved population manifest.
+  assertPopulationRequest?(path: string, body: unknown, idempotencyKey: unknown): Promise<boolean>;
   enqueue(input: V2CommandInput): Promise<{ command: V2Command; replayed: boolean }>;
   get(commandId: string, institutionId: string, userId: string): Promise<V2Command | null>;
   list(institutionId: string, userId: string, limit: number, cursor?: string, idempotencyKey?: string): Promise<{ commands: V2Command[]; nextCursor: string | null }>;
@@ -107,13 +108,14 @@ export class InMemoryV2CommandStore implements V2CommandStore {
 
 export class PostgresV2CommandStore implements V2CommandStore {
   constructor(private readonly pool: Pool) {}
-  async assertPopulationRequest(path: string, body: unknown, idempotencyKey: unknown): Promise<void> {
+  async assertPopulationRequest(path: string, body: unknown, idempotencyKey: unknown): Promise<boolean> {
     const run = (await this.pool.query<Record<string, unknown>>("SELECT manifest FROM app.operational_stock_runs WHERE writer_lock")).rows[0];
-    if (!run) return;
+    if (!run) return false;
     const manifest = run.manifest as { operations: Array<{ path: string; payloadSha256: string; idempotencyKey: string }> };
     const stable = (value: unknown): string => JSON.stringify(value, (_key, item: unknown) => item && typeof item === "object" && !Array.isArray(item) ? Object.fromEntries(Object.entries(item).sort(([a],[b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
     const digest = createHash("sha256").update(stable(body)).digest("hex");
     if (!manifest.operations.some(operation => operation.path === path && operation.idempotencyKey === idempotencyKey && operation.payloadSha256 === digest)) throw new ApiFailure(409, "V2_CONTROLLED_POPULATION_LOCKED", "Inventory writers are quiesced for an approved simulation population.");
+    return true;
   }
   async enqueue(input: V2CommandInput): Promise<{ command: V2Command; replayed: boolean }> {
     const digest = input.payloadSha256 ?? payloadDigest(input.payload);

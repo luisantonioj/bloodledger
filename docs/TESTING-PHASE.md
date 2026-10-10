@@ -464,3 +464,47 @@ publishes the proposed successor window, pinned hashes and local software
 validation. This completes artifact preparation only; Jopia's review of the
 successor and actual Lat target, followed by explicit execution confirmation,
 remains required. No target population or Testing gate is accepted by this record.
+
+## Jopia UAT backend hardening — 2026-10-09
+
+Under the user's Jopia instruction, TP-08 remediation on `codex/jopia-uat-backend`
+fixes [TP-JOP-D01–D03](TESTING-DEFECTS.md#jopia-backend-findings--2026-10-09):
+stable framework 4xx codes, a 300-second server-clock bound on new V2 command
+times (retries and exact approved population operations exempt), and peer-only
+recovery from a stale Docker socket mount. The
+[contract note](handoffs/JOPIA-TO-LAT-UAT-BACKEND-CONTRACT-2026-10-09.md) records
+the frontend handling, the proposed J4 expiry state and the checks run. This is
+**JOPIA_SELF_VALIDATION**: Lat's browser rerun and live retained-host deployment are
+NOT_RUN. No chaincode, policy, lifecycle, UAT or exit gate changes.
+
+J4 then adds read-time `expiryState` and an operator-verified
+`POST /api/v2/components/{id}/expiry` that queues the existing deterministic
+`EVALUATE_COMPONENT_EXPIRY` with a server evaluation time (D04, API side), and
+makes reconciliation retries replay (D08). Live submission waits for J5 because
+Jopia's retained general worker is disabled. D05–D07 remain open. The contract
+note's data-timing check shows Jopia's retained reservations expire before
+2026-10-12 while Buno's V2 data on Lat's host stays valid; this is an input to the
+unrecorded UAT host decision.
+
+J5 then ran a live V2 custody rehearsal on Jopia's retained host
+([record](handoffs/JOPIA-J5-LIVE-CUSTODY-REHEARSAL-2026-10-09.md)): transfer through
+OCR receipt, local release, cancellation, compromise, J4 expiry with alert
+acknowledgement, and a live J3 rejection all PASS, with 18 VALID Fabric
+transactions. It found and fixed TP-JOP-D09 (receipt payload) and recorded D10
+(no reconciliation resolve route) and D11 (unpatched `fast-jwt` on retained
+runtimes). Browser timing, Lat's UI and UAT remain NOT_RUN.
+
+Jopia decided on 2026-10-09 that Lat's retained host is the UAT host and that the
+UAT script needs issue #36. Its backend part is ported:
+`BL-DEC-S6-2026-09-23-01` compromise vocabulary is enforced by the API before
+queuing (chaincode check deferred), and UAT places reconciliation holds only (D10
+deferred). D05 and D06 are fixed. Lat's issue #36 UI work and the UAT runbook (J9)
+remain open.
+
+J9 preparation: the [UAT host runbook](UAT-RUNBOOK.md) covers the timeline, backup,
+baseline deploy with `npm ci`, the guarded worker (`uat-worker.sh`), the dry-run
+checklist, the Monday 07:00 go/no-go and incident handling, with each command
+marked Validated or NOT_RUN. It fixed TP-JOP-D12 (capture PWA not served on
+retained hosts). Requesting-hospital receipt and the end-to-end capture scan are
+still NOT_RUN live, and the expiry action cannot be demonstrated with V2 data
+before 2026-10-13. The dry run itself remains NOT_RUN.
