@@ -1,5 +1,5 @@
 import { AggregateTable, AlertAggregateTable, TransferSummaryTable } from "../../components/ui/aggregate-tables";
-import { formatManilaDateTime } from "../../components/ui/display";
+import { formatManilaDateTime, humanizeCode } from "../../components/ui/display";
 import type { Report } from "../../services/api/types";
 
 export function ReportView({ data }: { data: Report }) {
@@ -17,7 +17,7 @@ export function ReportView({ data }: { data: Report }) {
       <div><strong>V2 census presentation is not connected</strong><p>Permission-scoped snapshot discovery exists, together with snapshot detail, component TSV, authorized manual catch-up, and a confirmed synthetic display order. This reporting view does not yet present those snapshots. Census capture, copy, and export remain unavailable pending full DOH format approval.</p></div>
       <b>NOT CONNECTED</b>
     </section>
-    <div className="stats report-summary"><article><span>Confirmed units</span><strong>{units}</strong></article><article><span>Aggregate alerts</span><strong>{alerts}</strong></article><article><span>Transfers</span><strong>{transfers}</strong></article><article><span>Classification</span><strong className="scope">Simulation only</strong></article></div>
+    <div className="stats report-summary"><article><span>Confirmed units</span><strong>{units}</strong></article><article><span>Aggregate alerts</span><strong>{alerts}</strong></article><article><span>Transfers</span><strong>{transfers}</strong></article><article><span>Scope</span><strong className="scope">{humanizeCode(data.scope)}</strong></article></div>
     <section className="evidence-section"><header><div><h3>Inventory aggregate</h3><p>Approved committed inventory summary included in the export.</p></div><span>JSON + CSV</span></header><AggregateTable items={data.inventory}/></section>
     <section className="evidence-section"><header><div><h3>Alert aggregate</h3><p>Approved alert summary included as prototype evidence.</p></div><span>Read only</span></header><AlertAggregateTable items={data.alerts}/></section>
     <section className="evidence-section"><header><div><h3>Transfer aggregate</h3><p>Permitted transfer lifecycle counts without operational mutation controls.</p></div><span>Read only</span></header><TransferSummaryTable items={data.transferSummary}/></section>

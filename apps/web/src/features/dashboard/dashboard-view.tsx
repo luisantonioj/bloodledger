@@ -1,25 +1,30 @@
-import { AggregateTable } from "../../components/ui/aggregate-tables";
-import { formatManilaDateTime, humanizeCode } from "../../components/ui/display";
+import { DashboardReadState } from "./dashboard-read-state";
+import { DohDashboardPlaceholder } from "./doh-dashboard-placeholder";
+import { PrcDashboardPlaceholder } from "./prc-dashboard-placeholder";
 import type { Dashboard } from "../../services/api/types";
 import { InventoryOverviewChart } from "./inventory-overview-chart";
+import type { Principal } from "../../auth/permissions";
+import { isRequester } from "./requester-dashboard-data";
+import { RequesterDashboard, type RequesterRequestsState } from "./requester-dashboard";
+import { dashboardSummary } from "./dashboard-summary";
 
-export function DashboardView({data,refreshError,onRetry}:{data:Dashboard;refreshError:string;onRetry:()=>void}) {
+export function DashboardView({data,principal,refreshError,onRetry,requests,loading=false}:{data:Dashboard;principal:Principal;refreshError:string;onRetry:()=>void;requests:RequesterRequestsState;loading?:boolean}) {
   if(data.composition==="ADMINISTRATIVE")return <div className="empty dashboard-empty"><span className="empty-mark" aria-hidden="true">BL</span><strong>Non-clinical workspace</strong>This account has no inventory, custody, transfer, or regulatory dashboard authority.</div>;
   const hasProjection = data.lastSuccessfulProjectionAt !== null;
-  const total=data.inventory.reduce((sum,item)=>sum+item.confirmedCount,0);
-  const pending=data.pendingScans.reduce((sum,item)=>sum+item.count,0);
   return <>
     <div className="stats dashboard-stats">
-      <article><span>Ledger-confirmed units</span><strong>{hasProjection ? total : "—"}</strong><small>{hasProjection ? "units in the current projection" : "No projection available"}</small></article>
-      <article className={pending > 0 ? "accent-warning" : ""}><span>Uncommitted scan states</span><strong>{pending}</strong><small>kept separate from inventory</small></article>
-      <article><span>Last projection</span><strong className="time">{hasProjection ? formatManilaDateTime(data.lastSuccessfulProjectionAt) : "Unavailable"}</strong><small>Asia/Manila display time</small></article>
+      {dashboardSummary(data, principal).map(card => <article key={card.label}>
+        <span>{card.label}</span><strong aria-label={card.value === null ? "Unavailable" : undefined}>{card.value ?? "—"}</strong>
+      </article>)}
     </div>
-    <p className="dashboard-scope">Authorized scope: {humanizeCode(data.scope)}</p>
-    {refreshError&&<p className="notice" role="status">Showing the last confirmed view. Refresh failed: {refreshError} <button className="button" onClick={onRetry}>Retry</button></p>}
-    {data.composition === "OPERATIONAL" && hasProjection && data.inventory.length > 0 && (
+    {refreshError&&<DashboardReadState error={refreshError} retained={hasProjection} onRetry={onRetry}/>}
+    {principal.accountCategory === "DOH" && <DohDashboardPlaceholder principal={principal}/>}
+    {principal.accountCategory === "PRC" && <PrcDashboardPlaceholder principal={principal}/>}
+    {isRequester(principal) && <RequesterDashboard data={data} principal={principal} requests={requests}/>}
+    {!isRequester(principal) && data.composition === "OPERATIONAL" && hasProjection && data.inventory.length > 0 && (
       <InventoryOverviewChart items={data.inventory} />
     )}
-    <div className="dashboard-table-head"><div><strong>Inventory projection</strong><span>Ledger-confirmed totals available to this authenticated scope.</span></div></div>
-    <div className="dashboard-aggregate-table"><AggregateTable items={hasProjection ? data.inventory : []}/></div>
+    {principal.accountCategory === "BLOOD_BANK" && (!hasProjection || data.inventory.length === 0) && <section className="inventory-overview-card" aria-labelledby="inventory-overview-title"><header><div><h2 id="inventory-overview-title">Blood Inventory Overview</h2></div><a className="inventory-overview-link" href="/inventory">View inventory →</a></header><div className="dashboard-inventory-placeholder" aria-live="polite"><strong>{loading?"Loading inventory…":hasProjection?"No inventory records":"Inventory overview unavailable"}</strong><p>{loading?"The inventory overview will appear here once loaded.":hasProjection?"Confirmed inventory will appear here when units are recorded.":"The overview will appear here when inventory data is available."}</p></div></section>}
+    {principal.accountCategory === "BLOOD_BANK" && <RequesterDashboard data={data} principal={principal} requests={requests} bankMode/>}
   </>;
 }

@@ -1,5 +1,6 @@
 :root {
   --primary: #9A1B1B;
+  --focus-ring: var(--primary);
   --primary-hover: #6F0F0F;
   --primary-container: #F6E5E5;
   --on-primary: #FFFFFF;
@@ -11,6 +12,7 @@
   --chrome-raised: #1A2230;
   --chrome-hover: #232C3D;
   --ink: #0E1218;
+  --ink-black: #000000;
   --ink-secondary: #3A4250;
   --ink-muted: #697181;
   --ink-faint: #9098A6;
