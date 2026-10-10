@@ -186,6 +186,7 @@ test("recovery isolates owners, expires terminal details, and keeps a minimal to
   await page.goto("/capture/");
   await page.evaluate(async base => {
     const request=indexedDB.open("bloodledger-inbound-command-status-v2",1);
+    request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains("command-receipts"))request.result.createObjectStore("command-receipts",{keyPath:"commandId"});};
     const db=await new Promise<IDBDatabase>((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
     const tx=db.transaction("command-receipts","readwrite"), store=tx.objectStore("command-receipts");
     store.put(base);store.put({...base,commandId:"CMD_CAPTURE_FOREIGN",accountId:"USR_OTHER",resourceId:"INCAP_FOREIGN"});
@@ -193,7 +194,7 @@ test("recovery isolates owners, expires terminal details, and keeps a minimal to
     await new Promise<void>((resolve,reject)=>{tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});db.close();
   },base);
   await page.reload();await expect(page.getByText("INCAP_CAPTURE_OWN",{exact:true})).toBeVisible();await expect(page.getByText("COMMITTED",{exact:true})).toBeVisible();await expect(page.getByText("INCAP_FOREIGN",{exact:true})).toHaveCount(0);await expect(page.getByText("INCAP_EXPIRED",{exact:true})).toHaveCount(0);expect(polls).toBe(1);
-  const entries=await page.evaluate(async()=>{const r=indexedDB.open("bloodledger-inbound-command-status-v2",1);const db=await new Promise<IDBDatabase>(resolve=>{r.onsuccess=()=>resolve(r.result);});const query=db.transaction("command-receipts").objectStore("command-receipts").getAll();const values=await new Promise<Record<string,unknown>[]>(resolve=>{query.onsuccess=()=>resolve(query.result);});db.close();return values;});
+  const entries=await page.evaluate(async()=>{const r=indexedDB.open("bloodledger-inbound-command-status-v2",1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains("command-receipts"))r.result.createObjectStore("command-receipts",{keyPath:"commandId"});};const db=await new Promise<IDBDatabase>(resolve=>{r.onsuccess=()=>resolve(r.result);});const query=db.transaction("command-receipts").objectStore("command-receipts").getAll();const values=await new Promise<Record<string,unknown>[]>(resolve=>{query.onsuccess=()=>resolve(query.result);});db.close();return values;});
   expect(entries.find(row=>row.commandId==="CMD_CAPTURE_EXPIRED")).toEqual({commandId:"CMD_CAPTURE_EXPIRED",accountId:principal.userId,institutionId:principal.institutionId,expired:true});
   expect(Date.parse(String(entries.find(row=>row.commandId===base.commandId)?.terminalObservedAt))).toBeGreaterThan(Date.now()-30000);
 });
@@ -207,7 +208,7 @@ test("logout clears capture and ignores a delayed recovery response", async ({pa
   });
   await page.goto("/capture/");
   await page.evaluate(async principal=>{
-    const r=indexedDB.open("bloodledger-inbound-command-status-v2",1);const db=await new Promise<IDBDatabase>(resolve=>{r.onsuccess=()=>resolve(r.result);});const tx=db.transaction("command-receipts","readwrite");tx.objectStore("command-receipts").put({accountId:principal.userId,institutionId:principal.institutionId,commandId:"CMD_CAPTURE_LATE",resourceId:"INCAP_LATE",statusUrl:"/api/v2/commands/CMD_CAPTURE_LATE",status:"QUEUED",acceptedAt:"2026-10-10T00:00:00Z",correlationId:"CORR_LATE",classification:"SIMULATION_ONLY"});await new Promise<void>(resolve=>{tx.oncomplete=()=>resolve();});db.close();
+    const r=indexedDB.open("bloodledger-inbound-command-status-v2",1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains("command-receipts"))r.result.createObjectStore("command-receipts",{keyPath:"commandId"});};const db=await new Promise<IDBDatabase>(resolve=>{r.onsuccess=()=>resolve(r.result);});const tx=db.transaction("command-receipts","readwrite");tx.objectStore("command-receipts").put({accountId:principal.userId,institutionId:principal.institutionId,commandId:"CMD_CAPTURE_LATE",resourceId:"INCAP_LATE",statusUrl:"/api/v2/commands/CMD_CAPTURE_LATE",status:"QUEUED",acceptedAt:"2026-10-10T00:00:00Z",correlationId:"CORR_LATE",classification:"SIMULATION_ONLY"});await new Promise<void>(resolve=>{tx.oncomplete=()=>resolve();});db.close();
   },principal);
   await page.reload();await expect.poll(()=>!!release).toBe(true);await page.getByRole("button",{name:/Sign out Synthetic Capture Operator/}).click();release?.();await expect(page.getByText("Signed out. Volatile OCR and verification values were cleared.",{exact:true})).toBeVisible();await expect(page.getByText("INCAP_LATE",{exact:true})).toHaveCount(0);await expect(page.getByRole("heading",{name:"2. Confirm extracted fields"})).toHaveCount(0);
 });

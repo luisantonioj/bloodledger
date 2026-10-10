@@ -21,7 +21,7 @@ export function ReconciliationHold({ component, principal, onRefresh }: { compon
     {component?.inventoryStatus === "RECONCILIATION_HOLD" && <p>This unit is on reconciliation hold pending manual review.</p>}
     {opened && <form onSubmit={event => {event.preventDefault(); void submit();}}><h3>Place reconciliation hold</h3><p>This places a hold for manual review. Release is unavailable in this application.</p>
       <ReasonSelector kind="reconciliation" value={reason} onChange={value => {setReason(value); setConfirmed(false); command.correct();}} disabled={command.locked}/>
-      <label><input type="checkbox" checked={confirmed} disabled={command.locked} onChange={event => {setConfirmed(event.target.checked); command.correct();}}/>I confirm placing this component on reconciliation hold.</label>
+      <label><input type="checkbox" checked={confirmed} disabled={command.locked} onChange={event => {setConfirmed(event.target.checked);}}/>I confirm placing this component on reconciliation hold.</label>
       <button className="button danger" disabled={command.busy || !!command.command || command.requiresCorrection || (!command.ambiguous && (!eligible || !reason || !confirmed))}>{command.busy ? "Submitting hold…" : command.ambiguous ? "Retry same hold command" : "Confirm reconciliation hold"}</button>
     </form>}
     {command.error && <p role="alert">{command.error}</p>}

@@ -15,7 +15,7 @@ export function ReservationActions({ reservation, principal, onRefresh }: { rese
   useEffect(() => { if (!command.locked) { setAction(undefined); setConfirmed(false); setReason(""); command.correct(); } }, [reservation?.version]);
   const prepareValid = action !== "prepare" || (/^EVD_[A-Z0-9_-]+$/.test(evidenceId) && /^[a-f0-9]{64}$/.test(digest) && /(Z|[+-]\d{2}:\d{2})$/.test(preparedAt) && Number.isFinite(Date.parse(preparedAt)) && Date.parse(preparedAt) <= Date.now());
   const ready = action && actions.includes(action) && prepareValid && confirmed && (action !== "compromise" || !!reason);
-  function choose(next: ReservationAction) { setAction(next); setReason(""); setConfirmed(false); command.correct(); }
+  function choose(next: ReservationAction) { if(next !== action)command.correct(); setAction(next); setReason(""); setConfirmed(false); }
   async function submit() {
     if (!reservation || !action || (!ready && !command.ambiguous)) return;
     await command.submit(keys => {
@@ -41,7 +41,7 @@ export function ReservationActions({ reservation, principal, onRefresh }: { rese
       {action === "compromise" && <><p>This records quarantine pending manual review.</p><ReasonSelector kind="compromise" value={reason} onChange={value => {setReason(value); setConfirmed(false); command.correct();}} disabled={command.locked}/></>}
       {action === "receive" && <p>Receipt records RECEIVED stock. It does not make the units usable.</p>}
       {action === "cancel" && <p>Cancellation releases this active reservation. Expired labels still require expiry evaluation.</p>}
-      <label><input type="checkbox" checked={confirmed} onChange={event => {setConfirmed(event.target.checked); command.correct();}}/>I confirm {action === "compromise" ? "quarantine pending manual review" : RESERVATION_ACTION_LABELS[action].toLowerCase()} for this reservation.</label>
+      <label><input type="checkbox" checked={confirmed} onChange={event => {setConfirmed(event.target.checked);}}/>I confirm {action === "compromise" ? "quarantine pending manual review" : RESERVATION_ACTION_LABELS[action].toLowerCase()} for this reservation.</label>
       <p>Expected reservation version: {reservation?.version ?? "Loading current record…"}</p>
     </fieldset><button className="button primary" type="submit" disabled={command.busy || !!command.command || command.requiresCorrection || (!ready && !command.ambiguous)}>{command.busy ? "Submitting command…" : command.ambiguous ? "Retry same reservation command" : "Confirm reservation action"}</button></form>}
     {command.error && <p role="alert">{command.error}</p>}
