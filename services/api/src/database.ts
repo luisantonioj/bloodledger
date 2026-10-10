@@ -75,7 +75,7 @@ export function createPoolFromEnvironment(environment: NodeJS.ProcessEnv = proce
   for (const name of required) {
     if (!environment[name]) throw new Error(`Missing required database setting: ${name}`);
   }
-  return new Pool({
+  const pool = new Pool({
     host: environment.POSTGRES_HOST,
     port: Number(environment.POSTGRES_PORT),
     database: environment.POSTGRES_DB,
@@ -84,6 +84,13 @@ export function createPoolFromEnvironment(environment: NodeJS.ProcessEnv = proce
     max: Number(environment.POSTGRES_POOL_SIZE ?? "10"),
     application_name: "bloodledger_sprint4",
   });
+  // TP-JOP-D14: a PostgreSQL restart fails the affected query instead of ending the process.
+  // pg emits unhandled "error" events on idle pooled clients and on checked-out clients.
+  pool.on("error", (error: Error & { code?: string }) => {
+    console.error(JSON.stringify({ level: "warn", msg: "database connection lost", safeErrorCode: error.code ?? "DATABASE_CONNECTION_LOST" }));
+  });
+  pool.on("connect", (client) => { client.on("error", () => undefined); });
+  return pool;
 }
 
 export class PostgresScanRepository implements ScanRepository {
