@@ -1,13 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  V2_EXPIRY_STATES,
   V2_COMMAND_STATUSES,
   contractVersionFor,
   parseComponentsResponse,
+  parseV2Component,
   parseV2Command,
   readCommand,
+  readCommandByKey,
+  submitExpiryEvaluation,
 } from "./v2";
+import { setCommandVerifier } from "./client";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { setCommandVerifier(); vi.unstubAllGlobals(); });
 
 function command(status: (typeof V2_COMMAND_STATUSES)[number]) {
   return {
@@ -62,6 +67,7 @@ describe("Sprint 6 V2 frontend contracts", () => {
         expiresAt: "2026-10-17T00:00:00.000Z",
         institutionId: "INST_MEDIATRIX",
         inventoryStatus: "AVAILABLE",
+        expiryState: "CURRENT",
         reservationId: null,
         reservationVersion: null,
         inventoryVersion: 1,
@@ -76,5 +82,48 @@ describe("Sprint 6 V2 frontend contracts", () => {
   it("uses V2.1 only for cryoprecipitate", () => {
     expect(contractVersionFor("CRYOPRECIPITATE")).toBe("V2.1");
     expect(contractVersionFor("PLATELETS")).toBe("V2");
+  });
+
+  // J4 / FR-08–09: server state is mandatory and never inferred from the browser clock.
+  const component = { componentId: "COMP_SYNTH_001", donationId: "DON_SYNTH_001", issuerInstitutionId: "INST_MEDIATRIX",
+    componentType: "PLATELETS", bloodType: "A_POSITIVE", collectedAt: "2026-10-01T00:00:00Z", expiresAt: "2026-10-08T00:00:00Z",
+    institutionId: "INST_MEDIATRIX", inventoryStatus: "AVAILABLE", reservationId: null, reservationVersion: null,
+    inventoryVersion: 4, policyVersion: "INTERVIEW_DERIVED_CORE_V2", classification: "SIMULATION_ONLY" };
+  it.each(V2_EXPIRY_STATES)("preserves the server expiry state %s", expiryState => {
+    expect(parseV2Component({ ...component, expiryState }).expiryState).toBe(expiryState);
+  });
+  it.each([undefined, "NEAR_EXPIRY", null])("rejects missing/unknown expiry state %s", expiryState => {
+    expect(() => parseV2Component({ ...component, expiryState })).toThrow("V2_COMPONENT_RESPONSE_INVALID");
+  });
+  it("binds expiry to the operator, original key and expected inventory version with no client time", async () => {
+    const verifier = vi.fn(async () => "VFY_SYNTHETIC"); setCommandVerifier(verifier);
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ ...command("QUEUED"), resourceType: "COMPONENT", resourceId: component.componentId }), { status: 202 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const keys = { idempotencyKey: "IDEM_TEST", correlationId: command("QUEUED").correlationId };
+    await submitExpiryEvaluation(component.componentId, 4, keys);
+    expect(verifier).toHaveBeenCalledWith({ action: "POST /api/v2/components/COMP_SYNTH_001/expiry", idempotencyKey: keys.idempotencyKey, payload: { correlationId: keys.correlationId, expectedVersion: 4 } });
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(init.body))).toEqual({ correlationId: keys.correlationId, expectedVersion: 4 });
+    expect(new Headers(init.headers).get("Operator-Verification")).toBe("VFY_SYNTHETIC");
+    expect(new Headers(init.headers).get("X-BloodLedger-Contract-Version")).toBe("V2.1");
+  });
+});
+
+// issue36 / FR12: recover ambiguous acceptance using an authenticated GET only.
+describe("request-key recovery", () => {
+  it("looks up one scoped command without resubmitting", async () => {
+    const fetchMock=vi.fn<typeof fetch>(async()=>new Response(JSON.stringify({scope:"ACTOR_INSTITUTION",commands:[command("QUEUED")],nextCursor:null,classification:"SIMULATION_ONLY"})));
+    vi.stubGlobal("fetch",fetchMock);
+    await expect(readCommandByKey("IDEM_WEB_SYNTH")).resolves.toMatchObject({commandId:command("QUEUED").commandId});
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v2/commands?idempotencyKey=IDEM_WEB_SYNTH");
+    expect(fetchMock.mock.calls[0]?.[1]).not.toHaveProperty("method","POST");
+  });
+  it("does not turn an empty lookup into a retry", async () => {
+    vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({scope:"ACTOR_INSTITUTION",commands:[],nextCursor:null,classification:"SIMULATION_ONLY"}))));
+    await expect(readCommandByKey("IDEM_WEB_SYNTH")).resolves.toBeUndefined();
+  });
+  it.each([{scope:"GLOBAL"},{nextCursor:"CMD_NEXT"},{commands:[command("QUEUED"),command("QUEUED")]},{commands:[{...command("QUEUED"),statusUrl:"/api/v2/commands/CMD_OTHER"}]}])("rejects ambiguous or mismatched lookup %j", patch=>{
+    vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({scope:"ACTOR_INSTITUTION",commands:[],nextCursor:null,classification:"SIMULATION_ONLY",...patch}))));
+    return expect(readCommandByKey("IDEM_WEB_SYNTH")).rejects.toThrow();
   });
 });

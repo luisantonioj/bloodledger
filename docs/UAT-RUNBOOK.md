@@ -17,12 +17,17 @@ see [J5](handoffs/JOPIA-J5-LIVE-CUSTODY-REHEARSAL-2026-10-09.md)) or **NOT_RUN**
 
 | When | Step | Owner |
 |---|---|---|
-| Sat Oct 10, before 16:00 | Merge PR #35 and Lat's frontend PR, run J8 regression, tag the UAT baseline | Jopia, Lat |
+| Sat Oct 10, before 16:00 | Commit/push frontend work for review; **no retained-host redeploy** | Lat |
 | Sat Oct 10 16:00 → Sun Oct 11 08:00 | Buno's V2 population on Lat's host. **No deploy, no worker, no restart** | Lat, Buno |
-| Sun Oct 11 08:00 → 16:00 | T0 verification window. **No deploy** | Buno, Lat |
+| Sun Oct 11 08:00 → 16:00 | T0 verification window. **No deploy, no worker, no restart** | Buno, Lat |
+| Sun Oct 11 12:00 → 14:00 cutoff | Jopia merges reviewed frontend scope, runs full regression and tags the UAT baseline; unfinished tasks leave the script | Jopia |
 | Sun Oct 11 after 16:00 | Sections 2–4: back up, deploy the baseline, start the worker | Lat, Jopia on call |
 | Sun Oct 11 evening | Section 5: J9 dry run | Lat, Jopia |
 | Mon Oct 12 07:00 | Section 6: go/no-go | Lat, Jopia, Buno |
+
+The frontend review cutoff reflects Jopia’s direct handoff to Lat on October 10,
+superseding the earlier Saturday merge/tag row. Reviewing or merging code does
+not release the retained-host population/T0 hold.
 
 ## 2. Before deploying
 

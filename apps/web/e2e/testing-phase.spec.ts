@@ -2,7 +2,7 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 
 const instant = "2026-10-07T04:00:00.000Z";
-const component = { componentId: "COMP_LAT_INITIAL", donationId: "DON_LAT_INITIAL", issuerInstitutionId: "INST_MEDIATRIX", institutionId: "INST_MEDIATRIX", bloodType: "A_POSITIVE", componentType: "PACKED_RED_BLOOD_CELLS", collectedAt: instant, expiresAt: "2026-11-07T04:00:00.000Z", inventoryStatus: "AVAILABLE", inventoryVersion: 1, reservationId: null, reservationVersion: null, policyVersion: "INTERVIEW_DERIVED_CORE_V2", classification: "SIMULATION_ONLY" };
+const component = { componentId: "COMP_LAT_INITIAL", donationId: "DON_LAT_INITIAL", issuerInstitutionId: "INST_MEDIATRIX", institutionId: "INST_MEDIATRIX", bloodType: "A_POSITIVE", componentType: "PACKED_RED_BLOOD_CELLS", collectedAt: instant, expiresAt: "2026-11-07T04:00:00.000Z", inventoryStatus: "AVAILABLE", expiryState: "CURRENT", inventoryVersion: 1, reservationId: null, reservationVersion: null, policyVersion: "INTERVIEW_DERIVED_CORE_V2", classification: "SIMULATION_ONLY" };
 const aggregate = { institutionId: "INST_MEDIATRIX", institutionDisplayName: "Synthetic Lat Inventory", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", inventoryStatus: "AVAILABLE", confirmedCount: 3, lastProjectedAt: instant };
 const alert = { alertId: "ALERT_LAT_001", unitId: "UNIT_LAT_ALERT", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", institutionId: "INST_MEDIATRIX", alertType: "NEAR_EXPIRY", severity: "WARNING", status: "OPEN", thresholdVersion: "SYNTHETIC_EXPIRY_V1", evaluatedAt: instant, expiresAt: "2026-10-08T04:00:00.000Z", acknowledged: false };
 const report = { reportType: "CITY_INVENTORY_SUMMARY", scope: "CITY_AGGREGATE", generatedAt: instant, inventory: [aggregate], alerts: [], transferSummary: [], disclaimer: "Synthetic prototype report; not an official filing.", classification: "SIMULATION_ONLY" };
@@ -41,6 +41,7 @@ test("TP-LAT-001 inventory clears changed contract evidence and rejects late res
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/inventory");
   await expect(page.getByText("COMP_LAT_INITIAL", { exact: true })).toBeVisible();
+  await page.locator(".bank-view-options summary").click();
   await page.getByLabel("Contract view").selectOption("V2.1");
   await expect.poll(() => started).toBe(true);
   await expect(page.locator(".inventory-table tbody tr")).toHaveCount(0);
@@ -63,7 +64,7 @@ test("TP-LAT-002 foreign inventory rows fail closed after a successful load", as
   await expect(page.getByText("COMP_LAT_INITIAL", { exact: true })).toBeVisible();
   foreign = true;
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
-  await expect(page.getByText("V2 component inventory unavailable", { exact: true })).toBeVisible();
+  await expect(page.getByText("Inventory unavailable", { exact: true })).toBeVisible();
   await expect(page.locator(".inventory-table tbody tr")).toHaveCount(0);
   await expect(page.getByText("COMP_LAT_FOREIGN", { exact: true })).toHaveCount(0);
 });
@@ -83,7 +84,7 @@ for (const status of [401, 403]) for (const feature of ["inventory", "alerts", "
     if (feature === "inventory") await page.getByRole("button", { name: "Refresh", exact: true }).click();
     await expect(page.getByText(marker, { exact: true })).toHaveCount(0);
     if (status === 401) await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
-    else await expect(page.getByText(feature === "inventory" ? "V2 component inventory unavailable" : "Unable to load data", { exact: true })).toBeVisible();
+    else await expect(page.getByText(feature === "inventory" ? "Inventory unavailable" : "Unable to load data", { exact: true })).toBeVisible();
   });
 }
 
@@ -125,13 +126,13 @@ for (const terminal of ["FAILED", "CONFLICT"] as const) {
       return false;
     });
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/transfers");
+    await page.goto("/transfers?newRequest=1");
     await page.getByLabel("Quantity", { exact: true }).fill("0");
-    await page.getByRole("button", { name: "Submit V2 request", exact: true }).click();
+    await page.getByRole("button", { name: "Submit request", exact: true }).click();
     expect(attempts).toHaveLength(0);
     await page.getByLabel("Quantity", { exact: true }).fill("2");
     await page.getByRole("combobox", { name: "Component", exact: true }).selectOption("CRYOPRECIPITATE");
-    await page.getByRole("button", { name: "Submit V2 request", exact: true }).focus();
+    await page.getByRole("button", { name: "Submit request", exact: true }).focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("button", { name: "Retry same request", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Retry same request", exact: true }).click();
@@ -155,8 +156,8 @@ test("TP-LAT-006 command poll rejects another resource identity", async ({ page 
     if (path === "/api/v2/commands/CMD_LAT_REQUEST") { await json(route, { ...command(payload), status: "COMMITTED", resourceId: "TRF_LAT_FOREIGN" }); return true; }
     return false;
   });
-  await page.goto("/transfers");
-  await page.getByRole("button", { name: "Submit V2 request", exact: true }).click();
+  await page.goto("/transfers?newRequest=1");
+  await page.getByRole("button", { name: "Submit request", exact: true }).click();
   await expect(page.getByText(/Status check delayed:/)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Accepted and queued", exact: true })).toBeVisible();
   await expect(page.getByText("TRF_LAT_FOREIGN", { exact: true })).toHaveCount(0);
@@ -166,8 +167,23 @@ test("TP-LAT-006 command poll rejects another resource identity", async ({ page 
 test("TP-LAT-007 reporting describes available discovery and keeps exports gated", async ({ page }) => {
   await mock(page, "ROLE-04");
   await page.goto("/reporting");
-  await expect(page.getByText("V2 census presentation is not connected", { exact: true })).toBeVisible();
-  await expect(page.getByText(/permission-scoped snapshot discovery exists/i)).toBeVisible();
+  await expect(page.getByRole("heading", {name:"DOH census snapshots",exact:true})).toBeVisible();
+  await expect(page.getByRole("button", {name:"Copy or export census",exact:true})).toBeDisabled();
   await expect(page.getByRole("button", { name: "Export fixed-layout PDF", exact: true })).toBeDisabled();
   await expect(page.getByRole("link", { name: "Download simulation CSV", exact: true })).toHaveAttribute("href", "/api/v1/reports/inventory.csv");
+});
+
+const censusIndex = {scope:"REGULATORY_AGGREGATE",displayPolicyVersion:"DOH_CENSUS_COLUMN_ORDER_V1",displayBloodTypeOrder:["O_POSITIVE","A_POSITIVE","B_POSITIVE","AB_POSITIVE","O_NEGATIVE","A_NEGATIVE","B_NEGATIVE","AB_NEGATIVE"],totalColumn:"CALCULATED",reportAvailability:"EXPORT_DISABLED_PENDING_FORMAT",exportAvailable:false,classification:"SIMULATION_ONLY"};
+const censusSnapshot = {snapshotId:"CENSUS_LAT_A",institutionId:"INST_MEDIATRIX",scheduledFor:instant,capturedAt:instant,reportPolicyVersion:"SYNTHETIC_CENSUS_V1",triggerType:"SCHEDULED",classification:"SIMULATION_ONLY"};
+test("issue36 census discovery pages API snapshots and clears them on denial",async({page})=>{
+ let denied=false,posts=0;
+ await mock(page,"ROLE-04",async(route,path)=>{
+  if(path!=="/api/v2/reports/doh-census")return false;
+  if(route.request().method()==="POST")posts++;
+  if(denied){await json(route,{error:{code:"AUTH_SCOPE_FORBIDDEN",message:"Denied"}},403);return true;}
+  const next=new URL(route.request().url()).searchParams.has("cursor");
+  await json(route,{...censusIndex,snapshots:[{...censusSnapshot,snapshotId:next?"CENSUS_LAT_B":"CENSUS_LAT_A"}],nextCursor:next?null:"CENSUS_LAT_A"});return true;
+ });
+ await page.goto("/reporting");const section=page.getByRole("region",{name:"DOH census discovery"});await expect(section.getByText("CENSUS_LAT_A",{exact:true})).toBeVisible();await section.getByRole("button",{name:"Load more census snapshots"}).click();await expect(section.getByText("CENSUS_LAT_B",{exact:true})).toBeVisible();await expect(section.locator("tbody tr")).toHaveCount(2);await expect(section.getByRole("button",{name:"Copy or export census"})).toBeDisabled();expect(posts).toBe(0);
+ denied=true;await section.getByRole("button",{name:"Refresh census snapshots"}).click();await expect(section.getByRole("alert")).toContainText("Denied");await expect(section.locator("tbody tr")).toHaveCount(0);
 });

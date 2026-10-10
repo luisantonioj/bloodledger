@@ -1,5 +1,6 @@
 :root {
   --primary: #9A1B1B;
+  --focus-ring: var(--primary);
   --primary-hover: #6F0F0F;
   --primary-container: #F6E5E5;
   --on-primary: #FFFFFF;
@@ -38,7 +39,7 @@ button:hover:not(:disabled) { border-color: var(--primary-hover); background: va
 button:disabled { cursor: not-allowed; opacity: 0.45; }
 button.secondary { border-color: var(--line); color: var(--ink-secondary); background: var(--surface); }
 button.secondary:hover:not(:disabled) { border-color: var(--line-strong); color: var(--ink); background: var(--surface-subtle); }
-button:focus-visible, input:focus-visible, .scanner-view:has(input:focus-visible) { outline: 3px solid var(--information); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, .scanner-view:has(input:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
 .capture-app { width: min(100% - 32px, 1120px); margin: 0 auto; padding-bottom: 64px; }
 .mobile-header { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); }
@@ -173,3 +174,11 @@ input:disabled { color: var(--ink-muted); background: var(--surface-subtle); }
   .field-review { grid-template-columns: 1fr; }
   .confirmation-actions button { width: 100%; }
 }
+
+/* Shared form interaction rule: focused fields use BloodLedger red across accounts. */
+:is(input,select,textarea):not(:disabled):focus{border-color:var(--focus-ring);outline:3px solid var(--focus-ring);outline-offset:2px}
+
+/* Compact capture presentation inside the bank receipt-style phone. */
+body:has(.receipt-capture){background:var(--surface);min-height:0}.receipt-capture{max-width:none;margin:0;padding:0;background:var(--surface);min-height:0}.receipt-capture .mobile-header,.receipt-capture .capture-hero,.receipt-capture .capture-card>.card-heading,.receipt-capture .session-sign-out,.receipt-capture .queue-heading,.receipt-capture .empty-queue,.receipt-capture .synchronization-card>footer{display:none}.receipt-capture .capture-layout{display:flex;flex-direction:column;gap:14px;padding:0}.receipt-capture .capture-flow{display:flex;flex-direction:column;gap:14px}.receipt-capture .capture-card{border:0;background:transparent;padding:0;box-shadow:none}.receipt-capture .scanner-view{aspect-ratio:3/4;min-height:240px;margin:0;border:0;border-radius:8px;background:var(--chrome-raised)}.receipt-capture .scanner-empty-state{gap:12px}.receipt-capture .scanner-empty-state b{font-size:42px;background:transparent;border:0;box-shadow:none}.receipt-capture .scanner-empty-state strong{font-size:13px}.receipt-capture .scanner-empty-state small{font-size:11px}.receipt-capture .scanner-meta,.receipt-capture .focus-frame small{display:none}.receipt-capture .capture-actions{display:grid;gap:8px;margin-top:14px}.receipt-capture .capture-actions button{min-height:40px;padding:8px 12px;border-radius:5px;font-size:12px}.receipt-capture .privacy-note{font-size:11px;line-height:1.7;margin:12px 0 0}.receipt-capture .synchronization-card{width:100%;margin:0;box-shadow:none}.receipt-capture .synchronization-card .card-heading{padding:12px}.receipt-capture .synchronization-card h2{font-size:14px;font-family:inherit}.receipt-capture .confirmation-card{margin:0;box-shadow:none}.receipt-capture .confirmation-card .card-heading{padding:12px}.receipt-capture .confirmation-card h2{font-size:14px}.receipt-capture .step-number,.receipt-capture .review-chip{display:none}.receipt-capture .capture-access-denied,.receipt-capture .sign-in-card{margin:0}.receipt-capture .sync-message{font-size:11px}.receipt-capture .capture-actions button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}body:has(.receipt-capture){scrollbar-width:none}body:has(.receipt-capture)::-webkit-scrollbar{display:none}
+
+.receipt-capture .scanner-view::before{display:none}.receipt-capture .scanner-empty-state strong{font:600 13px Inter,"Helvetica Neue",system-ui,sans-serif}.receipt-capture .focus-frame{inset:16px;transform:none;width:auto;height:auto;border:1px dashed rgb(255 255 255 / 26%);border-radius:5px}.receipt-capture .focus-frame .corner{display:none}.receipt-capture .capture-actions{margin-left:0;margin-right:0}

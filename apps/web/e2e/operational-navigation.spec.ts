@@ -1,6 +1,6 @@
 // FR-01/03/09/12: HTTP fixtures exercise UI boundaries; not retained-backend acceptance.
 import {expect,test,type Page} from '@playwright/test';
-const component={componentId:'COMP_TEST',donationId:'DON_TEST',issuerInstitutionId:'INST_MEDIATRIX',componentType:'PLATELETS',bloodType:'A_POSITIVE',collectedAt:'2026-10-08T00:00:00Z',expiresAt:'2026-10-12T00:00:00Z',institutionId:'INST_MEDIATRIX',inventoryStatus:'RESERVED',reservationId:'RES_TEST',reservationVersion:1,inventoryVersion:2,policyVersion:'INTERVIEW_DERIVED_CORE_V2',classification:'SIMULATION_ONLY'};
+const component={componentId:'COMP_TEST',donationId:'DON_TEST',issuerInstitutionId:'INST_MEDIATRIX',componentType:'PLATELETS',bloodType:'A_POSITIVE',collectedAt:'2026-10-08T00:00:00Z',expiresAt:'2026-10-12T00:00:00Z',institutionId:'INST_MEDIATRIX',inventoryStatus:'RESERVED',expiryState:'CURRENT',reservationId:'RES_TEST',reservationVersion:1,inventoryVersion:2,policyVersion:'INTERVIEW_DERIVED_CORE_V2',classification:'SIMULATION_ONLY'};
 const reservation={reservationId:'RES_TEST',purpose:'LOCAL_RELEASE',status:'ACTIVE',version:1,sourceInstitutionId:'INST_MEDIATRIX',destinationInstitutionId:null,transferId:null,localReleaseId:'REL_TEST',preparedAt:null,preparedEvidencePresent:false,updatedAt:'2026-10-09T00:00:00Z',components:[{componentId:'COMP_TEST',componentType:'PLATELETS',inventoryStatus:'RESERVED',inventoryVersion:2}],classification:'SIMULATION_ONLY'};
 async function setup(page:Page, failures:number[]=[]){
  let signedIn=true;const paths:string[]=[];
