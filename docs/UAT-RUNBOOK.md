@@ -135,12 +135,15 @@ All must pass; otherwise postpone the affected tasks or the session.
 |---|---|
 | Command stays `QUEUED` | `uat-worker.sh status`, then `start` |
 | `V2_COMMAND_TIME_OUT_OF_WINDOW` | Check the device clock; the UI retries with a fresh time |
-| API unhealthy or 5xx | `docker restart bloodledger-persistent-api`, then `uat-worker.sh start` |
+| API unhealthy or 5xx | `docker restart bloodledger-persistent-api bloodledger-persistent-web` (the web container shares the API network), then `uat-worker.sh start` |
+| PostgreSQL restarted or briefly unavailable | The worker keeps running (TP-JOP-D14); check `uat-worker.sh status` and that queued commands drain |
 | Peer down after a Docker restart | `bash scripts/bloodledger-dev.sh start`, then restart API/web and the worker |
 | Anything else | Stop the task, note the time and step, call Jopia |
 
-Never reset Fabric or the database, restore a backup over the live database, or
-delete volumes during UAT. Record defects with stable IDs; no participant data.
+Do not run builds, test suites or other heavy work on the UAT host during the
+session: on a memory-constrained host they caused PostgreSQL crash-recoveries
+(TP-JOP-D15). Never reset Fabric or the database, restore a backup over the live
+database, or delete volumes during UAT. Record defects with stable IDs; no participant data.
 
 ## 8. Known limitations to state in the UAT script
 
