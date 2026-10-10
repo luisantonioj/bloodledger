@@ -182,10 +182,6 @@ function V2LocalRelease({ onRefresh }: { onRefresh: () => void }) {
   </section>;
 }
 
-function BlockedWorkflow({ title, detail }: { title: string; detail: string }) {
-  return <section className="v2-blocked-workflow"><span aria-hidden="true">!</span><div><strong>{title}</strong><p>{detail}</p></div><b>NOT CONNECTED</b></section>;
-}
-
 export function V2Operations({ principal, onRefresh, showRequest=true, onCancelRequest, initialBloodType, initialComponentType }: { principal: Principal; onRefresh: () => void;showRequest?:boolean;onCancelRequest?:()=>void;initialBloodType?:V2BloodType;initialComponentType?:V2ComponentType }) {
   const recipient = principal.accountId ? canAct(principal, "transfer:request") : principal.roleId === "ROLE-03";
   const sourceOperator = principal.accountId ? canAct(principal, "inventory:local-release") : ["ROLE-01", "ROLE-02"].includes(principal.roleId);
@@ -194,7 +190,6 @@ export function V2Operations({ principal, onRefresh, showRequest=true, onCancelR
     <header className="bank-section-heading"><h2>Facility operations</h2><InformationHelp label="Facility operations">Use the supported request or local-release form available to your operator role. Verification and command status remain part of submission. Accepted commands are tracked until committed, failed or conflicted; they are not immediately confirmed inventory changes.</InformationHelp></header>
     {recipient && showRequest && <V2TransferRequest principal={principal} onRefresh={onRefresh} onCancel={onCancelRequest} initialBloodType={initialBloodType} initialComponentType={initialComponentType}/>}
     {sourceOperator && <V2LocalRelease onRefresh={onRefresh}/>}
-    <details className="bank-workflow-availability"><summary>Workflow availability</summary><BlockedWorkflow title="Canonical reservation actions unavailable" detail="The reservation list below is read-only. Prepare, dispatch, transit, receive, cancel, compromise, and completion controls remain unconnected; do not guess an ID or version."/>
-    {sourceOperator && <BlockedWorkflow title="Reconciliation reason policy unavailable" detail="A command route exists, but the approved reason-code list is still an external decision. The frontend will not invent a reason code."/>}</details>
+    <p>Open a current reservation to use its authorized actions. Place reconciliation holds from component details.</p>
   </div>;
 }

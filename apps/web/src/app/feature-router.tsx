@@ -32,7 +32,7 @@ export function FeatureRouter({path,canAcknowledge=false,canSubmitTransfer=false
   const withRefreshState=(view:ReactNode)=><>{state.error&&<div className="v2-inline-state warning" role="status"><strong>Update unavailable</strong><span>{state.error}</span><span>Showing the last successfully loaded data.</span><button className="button compact" onClick={state.manual}>Retry update</button></div>}{view}</>;
   if(path==="/consortium")return withRefreshState(<ConsortiumView data={state.data as Consortium}/>);
   if(path==="/audit")return withRefreshState(<AuditView data={state.data as Audit}/>);
-  if(path==="/reporting")return withRefreshState(<ReportView data={state.data as Report}/>);
+  if(path==="/reporting")return withRefreshState(<ReportView data={state.data as Report} principal={principal}/>);
   if(path==="/alerts")return withRefreshState(<AlertsView data={normalizeAlerts(state.data as Alerts)} canAcknowledge={principal?.accountId ? canAct(principal,"alert:acknowledge") : canAcknowledge} onRefresh={state.manual}/>);
   if(path==="/transfers"&&principal)return withRefreshState(<TransferExplorer data={state.data as Transfers} canSubmit={false} canReject={false} canCancel={false} canCancelApproved={false} canDispatch={false} canStartTransit={false} canDelay={false} canResume={false} canReceive={false} canPreviewExport={canPreviewTransferExport} receiptInstitutionId={principal.institutionId} onRefresh={state.manual} principal={principal}/>);
   return <div className="empty"><strong>Data unavailable</strong>The selected official feature API is not implemented.</div>;

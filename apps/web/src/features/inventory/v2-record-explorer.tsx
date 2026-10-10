@@ -5,6 +5,9 @@ import { readSelectedRecord, recordErrorMessage, type RecordSelection, type Sele
 import { componentLabel, facilityLabel } from "../transfers/requester-transfer-data";
 import { ExpiryState } from "./expiry-state";
 import { ExpiryEvaluation } from "./expiry-evaluation";
+import { ReconciliationHold } from "./reconciliation-hold";
+import { ReservationActions } from "../transfers/reservation-actions";
+import { CommandRecovery } from "../commands/command-recovery";
 
 export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline = false, headerHelp, renderExtra, renderBody}: {initial: RecordSelection; principal: Principal; onClose: () => void; onRefresh?: () => void; inline?: boolean; headerHelp?: React.ReactNode; renderBody?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode; renderExtra?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode}) {
   const [history, setHistory] = useState<RecordSelection[]>([initial]);
@@ -37,6 +40,7 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
   const component = record?.kind === "component" ? record.value : undefined;
   const reservation = record?.kind === "reservation" ? record.value : undefined;
   const request = record?.kind === "request" ? record.value : undefined;
+  const refresh = () => {setRetry(value => value + 1); onRefresh?.();};
   return <div className={inline ? "requester-inline-detail" : "preview-modal-backdrop"}><section ref={panel} className={inline ? "requester-record-detail" : "preview-modal"} role={inline ? "region" : "dialog"} aria-modal={inline ? undefined : true} aria-labelledby="record-explorer-title" onKeyDown={keyDown}>
     <header><div><h2 id="record-explorer-title">{selected.kind === "component" ? "Component details" : selected.kind === "reservation" ? (renderExtra ? "Transfer details" : "Reservation details") : (renderExtra ? "Request details" : "Transfer request details")}</h2>{(!renderBody || selected.kind === "component") && <p className="mono">{selected.id}</p>}</div><button ref={closeButton} aria-label="Close record details" onClick={onClose}>×</button>{headerHelp}</header>
     <div className="preview-modal-body">
@@ -51,7 +55,7 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
         <dt>Inventory state</dt><dd><span className={statusClassName(component.inventoryStatus)}>{humanizeCode(component.inventoryStatus)}</span></dd>
         <dt>Inventory version</dt><dd>{component.inventoryVersion}</dd><dt>Reservation version</dt><dd>{component.reservationVersion ?? "Not reserved"}</dd>
       </dl>{component.reservationId ? <button className="button" onClick={() => open("reservation", component.reservationId!)}>Open linked reservation</button> : <p>No linked reservation.</p>}<p>Dates describe this unit. Near-expiry alerts remain disabled.</p></>}
-      {selected.kind === "component" && <ExpiryEvaluation key={selected.id} component={component} principal={principal} onRefresh={() => {setRetry(value => value + 1); onRefresh?.();}}/>}
+      {selected.kind === "component" && <ExpiryEvaluation key={"expiry:" + selected.id} component={component} principal={principal} onRefresh={() => {setRetry(value => value + 1); onRefresh?.();}}/>}
       {reservation && !renderBody && <><dl><dt>Purpose</dt><dd>{humanizeCode(reservation.purpose)}</dd><dt>Reservation state</dt><dd>{humanizeCode(reservation.status)}</dd><dt>Version</dt><dd>{reservation.version}</dd><dt>Source institution</dt><dd>{facilityLabel(reservation.sourceInstitutionId, principal)}</dd><dt>Destination</dt><dd>{reservation.destinationInstitutionId ? facilityLabel(reservation.destinationInstitutionId, principal) : "Local release — no destination"}</dd><dt>Preparation evidence</dt><dd>{reservation.preparedEvidencePresent ? "Recorded" : "Not recorded"}</dd></dl>
         {reservation.purpose === "TRANSFER" && reservation.transferId && <button className="button" onClick={() => open("request", reservation.transferId!)}>Open linked transfer request</button>}
         {reservation.purpose === "LOCAL_RELEASE" && <section><h3>Local-release workflow</h3><p className="mono">{reservation.localReleaseId}</p><p>This reservation supplies the local-release purpose and members. A separate local-release detail API is unavailable.</p></section>}
@@ -60,6 +64,9 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
       {request && !renderBody && <dl><dt>Source</dt><dd>{facilityLabel(request.source_institution_id, principal)}</dd><dt>Destination</dt><dd>{facilityLabel(request.destination_institution_id, principal)}</dd>{renderExtra ? <><dt>Blood type</dt><dd>{formatBloodType(request.blood_type)}</dd><dt>Component</dt><dd>{componentLabel(request.component_type)}</dd></> : <><dt>Blood / component</dt><dd>{humanizeCode(request.blood_type)} / {humanizeCode(request.component_type)}</dd></>}<dt>Requested units</dt><dd>{request.quantity}</dd><dt>Request state</dt><dd>{humanizeCode(request.status)}</dd><dt>Ledger reference</dt><dd className="mono">{request.ledger_transaction_id ?? "Pending — no commitment"}</dd></dl>}
       {record && renderBody?.(record, open)}
       {record && renderExtra?.(record, open)}
+      {selected.kind === "reservation" && <ReservationActions key={"actions:" + selected.id} reservation={reservation} principal={principal} onRefresh={refresh}/>}
+      {selected.kind === "component" && <ReconciliationHold key={"hold:" + selected.id} component={component} principal={principal} onRefresh={refresh}/>}
+      {selected.kind !== "request" && <CommandRecovery key={"recovery:" + selected.id} resourceId={selected.id} onRefresh={refresh}/>}
     </div>
   </section></div>;
 }

@@ -7,6 +7,7 @@ import {
   parseV2Component,
   parseV2Command,
   readCommand,
+  readCommandByKey,
   submitExpiryEvaluation,
 } from "./v2";
 import { setCommandVerifier } from "./client";
@@ -105,5 +106,24 @@ describe("Sprint 6 V2 frontend contracts", () => {
     expect(JSON.parse(String(init.body))).toEqual({ correlationId: keys.correlationId, expectedVersion: 4 });
     expect(new Headers(init.headers).get("Operator-Verification")).toBe("VFY_SYNTHETIC");
     expect(new Headers(init.headers).get("X-BloodLedger-Contract-Version")).toBe("V2.1");
+  });
+});
+
+// issue36 / FR12: recover ambiguous acceptance using an authenticated GET only.
+describe("request-key recovery", () => {
+  it("looks up one scoped command without resubmitting", async () => {
+    const fetchMock=vi.fn<typeof fetch>(async()=>new Response(JSON.stringify({scope:"ACTOR_INSTITUTION",commands:[command("QUEUED")],nextCursor:null,classification:"SIMULATION_ONLY"})));
+    vi.stubGlobal("fetch",fetchMock);
+    await expect(readCommandByKey("IDEM_WEB_SYNTH")).resolves.toMatchObject({commandId:command("QUEUED").commandId});
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v2/commands?idempotencyKey=IDEM_WEB_SYNTH");
+    expect(fetchMock.mock.calls[0]?.[1]).not.toHaveProperty("method","POST");
+  });
+  it("does not turn an empty lookup into a retry", async () => {
+    vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({scope:"ACTOR_INSTITUTION",commands:[],nextCursor:null,classification:"SIMULATION_ONLY"}))));
+    await expect(readCommandByKey("IDEM_WEB_SYNTH")).resolves.toBeUndefined();
+  });
+  it.each([{scope:"GLOBAL"},{nextCursor:"CMD_NEXT"},{commands:[command("QUEUED"),command("QUEUED")]},{commands:[{...command("QUEUED"),statusUrl:"/api/v2/commands/CMD_OTHER"}]}])("rejects ambiguous or mismatched lookup %j", patch=>{
+    vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({scope:"ACTOR_INSTITUTION",commands:[],nextCursor:null,classification:"SIMULATION_ONLY",...patch}))));
+    return expect(readCommandByKey("IDEM_WEB_SYNTH")).rejects.toThrow();
   });
 });

@@ -15,7 +15,7 @@ const permissions = {
 const navigation: Record<RoleId, string[]> = {
   "ROLE-01": ["Dashboard", "Blood Inventory", "Blood Unit Transactions", "Requests & Transfers", "Alerts", "Analytics", "Profile"],
   "ROLE-02": ["Dashboard", "Blood Inventory", "Blood Unit Transactions", "Requests & Transfers", "Alerts", "Activity History", "Analytics", "Profile"],
-  "ROLE-03": ["Dashboard", "Requests & Transfers", "Alerts", "Analytics", "Profile"],
+  "ROLE-03": ["Dashboard", "Blood Unit Receipt", "Requests & Transfers", "Alerts", "Analytics", "Profile"],
   "ROLE-04": ["Dashboard", "Blood Inventory", "Requests & Transfers", "Alerts", "Activity History", "Network view", "Reports", "Profile"],
   "ROLE-05": ["Dashboard", "Profile", "Staff Accounts"],
   "ROLE-06": ["Dashboard", "Profile", "Staff Accounts"],
@@ -631,9 +631,9 @@ test("legacy V1 transfer mutations stay unavailable while canonical V2 entry poi
     await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
     if (roleId === "ROLE-03") await page.getByRole("button", {name: "+ New Blood Request", exact:true}).click();
     await expect(page.getByRole("button", { name: canonicalButton, exact: true })).toBeVisible();
-    if (roleId === "ROLE-02") {await page.locator(".bank-workflow-availability summary").click();await expect(page.getByText("Canonical reservation actions unavailable", { exact: true })).toBeVisible();}
+    if (roleId === "ROLE-02") await expect(page.getByText("Open a current reservation to use its authorized actions. Place reconciliation holds from component details.", {exact:true})).toBeVisible();
     await expect(page.getByRole("button", { name: /Approve FEFO selection|Reject request|Cancel transfer|Record dispatch|Start transit|Record receipt/ })).toHaveCount(0);
-    if (roleId === "ROLE-02") await expect(page.getByText("Reconciliation reason policy unavailable", { exact: true })).toBeVisible();
+    if (roleId === "ROLE-02") await expect(page.getByText("Reconciliation reason policy unavailable", { exact: true })).toHaveCount(0);
     await context.close();
   }
 });
@@ -873,7 +873,7 @@ test("inventory exposes loading and empty states without inventing committed dat
   });
   await page.goto("/");
   await page.getByRole("link", { name: "Blood Inventory", exact: true }).click();
-  await expect(page.getByText("Loading V2 component inventory", { exact: true })).toBeVisible();
+  await expect(page.getByText("Loading inventory…", { exact: true })).toBeVisible();
   expect(releaseInventory).toBeDefined();
   releaseInventory?.();
   await expect(page.getByText("No committed V2 components", { exact: true })).toBeVisible();
@@ -891,13 +891,15 @@ test("refresh failure preserves confirmed data and backs off until manual retry"
   });
   await page.goto("/");
   await expect(page.locator(".dashboard-stats")).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("Showing the last confirmed view. Refresh failed: Projection is temporarily unavailable.");
+  await expect(page.getByRole("alert")).toContainText("Your last confirmed view remains available below.");
+  await page.getByText("View details", {exact:true}).click();
+  await expect(page.getByRole("alert")).toContainText("Projection is temporarily unavailable.");
   await expect(page.locator(".dashboard-updated time")).toHaveAttribute("datetime", timestamp);
   expect(dashboardCalls).toBe(2);
   await page.waitForTimeout(2_200);
   expect(dashboardCalls).toBe(2);
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
-  await expect(page.getByRole("status")).toHaveCount(0);
+  await expect(page.getByRole("alert")).toHaveCount(0);
   expect(dashboardCalls).toBe(3);
 });
 

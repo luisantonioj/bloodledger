@@ -185,6 +185,16 @@ export async function readCommand(statusUrl: string): Promise<V2Command> {
   return command;
 }
 
+export async function readCommandByKey(key: string): Promise<V2Command | undefined> {
+  if (!/^IDEM_[A-Z0-9_-]{1,59}$/.test(key)) throw new Error("V2_IDEMPOTENCY_KEY_INVALID");
+  const body = record(await requestJson<unknown>("/api/v2/commands?idempotencyKey=" + encodeURIComponent(key), {}, "Command lookup is unavailable."), "V2_COMMAND_LOOKUP_INVALID");
+  if (body.scope !== "ACTOR_INSTITUTION" || body.classification !== "SIMULATION_ONLY" || !Array.isArray(body.commands) || body.commands.length > 1 || body.nextCursor !== null) throw new Error("V2_COMMAND_LOOKUP_INVALID");
+  if (!body.commands.length) return undefined;
+  const command = parseV2Command(body.commands[0]);
+  if (command.statusUrl !== "/api/v2/commands/" + command.commandId) throw new Error("V2_COMMAND_IDENTITY_MISMATCH");
+  return command;
+}
+
 export function submitV2Transfer(payload: object & { componentType: V2ComponentType }, keys: MutationKeys): Promise<V2Command> {
   return commandMutation("/api/v2/transfers", keys, payload, contractVersionFor(payload.componentType));
 }

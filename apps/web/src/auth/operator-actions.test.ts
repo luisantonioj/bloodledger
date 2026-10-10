@@ -6,6 +6,10 @@ const operators: OperatorProfile[] = [
   {operatorId:"USR_ADMIN",roleId:"ROLE-06",capabilityProfile:"INSTITUTION_ADMIN",version:1,actionCapabilities:["operator:reset-pin","institution:profile"]},
 ];
 describe("PA-ACCOUNT-01 operator visibility",()=>{
+  it("uses provisioned inventory capabilities for holds and local-release completion", () => {
+    expect(actionCapability("POST /api/v2/reconciliation")).toBe("inventory:reconcile");
+    expect(actionCapability("POST /api/v2/reservations/RES_SYNTH/local-release-complete")).toBe("inventory:local-release");
+  });
   it("separates clinical actions from institution administration",()=>{
     expect(eligibleOperators(operators,"POST /api/v2/local-releases").map(o=>o.operatorId)).toEqual(["USR_TECH"]);
     expect(eligibleOperators(operators,"POST /api/v2/onboarding/operators/USR_TECH/reset-pin").map(o=>o.operatorId)).toEqual(["USR_ADMIN"]);

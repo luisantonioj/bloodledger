@@ -97,3 +97,13 @@ Bank requests are connected to existing scoped transfer reads and supported requ
 2026-10-10 GAP-25 presentation update: bank mobile scanner now has Inbound/Outbound and Scan/Manual tabs styled like the official requester receipt scanner. Inbound Scan is the existing verified OCR intake workflow in a compact presentation. Outbound photo/manual fields are local previews; no outbound scan match or dispatch command is synthesized, and confirmation remains disabled. Existing Requests & Transfers remains the supported dispatch route. Manual intake remains unsupported by the consumed verified intake contract. Destination/source choices use permitted request data only. Missing scan linkage and metadata dependencies remain open.
 
 2026-10-10 GAP-07/08/09/16 update: bank detail selection and linked reservation/request reads are wired. Mockup cancellation, partial offer and approval remain disabled: `/api/v2/transfers/:id/:action` explicitly rejects legacy aliases with 410, and no approved offer/decision command exists there. Existing canonical reservation actions are distinct from request approval/cancellation and need preparation evidence, expected-version and operator authorization integration before activation. Reservation receive currently allows ROLE-03, so a bank receipt control must not bypass that policy. Missing requester/clinical/pickup/document metadata remains unavailable. PRC supply button opens the mockup requirements (product, units, priority, required time, coordination note, authorization); fields/submission are disabled and no fake supply records are created. GAP-16 remains open.
+
+2026-10-10 issue36 integration: canonical reservation prepare/dispatch/transit/
+receive/cancel/compromise/local-release-complete, authenticated compromise and
+reconciliation policy selectors, hold placement, command recovery by ID or saved
+request key, and census discovery are connected in PR37. These close the former
+frontend wiring gaps only; fixture evidence is not live API/Fabric validation.
+Request approval/cancellation/partial offers and automatic requestor supplier
+routing remain separate unsupported decisions. Bank receipt uses the existing
+verified inbound-label path, never a ROLE-03 authorization bypass. See
+[LAT UAT frontend validation](LAT-UAT-FRONTEND-VALIDATION-2026-10-10.md).

@@ -64,7 +64,7 @@ test("TP-LAT-002 foreign inventory rows fail closed after a successful load", as
   await expect(page.getByText("COMP_LAT_INITIAL", { exact: true })).toBeVisible();
   foreign = true;
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
-  await expect(page.getByText("V2 component inventory unavailable", { exact: true })).toBeVisible();
+  await expect(page.getByText("Inventory unavailable", { exact: true })).toBeVisible();
   await expect(page.locator(".inventory-table tbody tr")).toHaveCount(0);
   await expect(page.getByText("COMP_LAT_FOREIGN", { exact: true })).toHaveCount(0);
 });
@@ -84,7 +84,7 @@ for (const status of [401, 403]) for (const feature of ["inventory", "alerts", "
     if (feature === "inventory") await page.getByRole("button", { name: "Refresh", exact: true }).click();
     await expect(page.getByText(marker, { exact: true })).toHaveCount(0);
     if (status === 401) await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
-    else await expect(page.getByText(feature === "inventory" ? "V2 component inventory unavailable" : "Unable to load data", { exact: true })).toBeVisible();
+    else await expect(page.getByText(feature === "inventory" ? "Inventory unavailable" : "Unable to load data", { exact: true })).toBeVisible();
   });
 }
 
@@ -167,8 +167,23 @@ test("TP-LAT-006 command poll rejects another resource identity", async ({ page 
 test("TP-LAT-007 reporting describes available discovery and keeps exports gated", async ({ page }) => {
   await mock(page, "ROLE-04");
   await page.goto("/reporting");
-  await expect(page.getByText("V2 census presentation is not connected", { exact: true })).toBeVisible();
-  await expect(page.getByText(/permission-scoped snapshot discovery exists/i)).toBeVisible();
+  await expect(page.getByRole("heading", {name:"DOH census snapshots",exact:true})).toBeVisible();
+  await expect(page.getByRole("button", {name:"Copy or export census",exact:true})).toBeDisabled();
   await expect(page.getByRole("button", { name: "Export fixed-layout PDF", exact: true })).toBeDisabled();
   await expect(page.getByRole("link", { name: "Download simulation CSV", exact: true })).toHaveAttribute("href", "/api/v1/reports/inventory.csv");
+});
+
+const censusIndex = {scope:"REGULATORY_AGGREGATE",displayPolicyVersion:"DOH_CENSUS_COLUMN_ORDER_V1",displayBloodTypeOrder:["O_POSITIVE","A_POSITIVE","B_POSITIVE","AB_POSITIVE","O_NEGATIVE","A_NEGATIVE","B_NEGATIVE","AB_NEGATIVE"],totalColumn:"CALCULATED",reportAvailability:"EXPORT_DISABLED_PENDING_FORMAT",exportAvailable:false,classification:"SIMULATION_ONLY"};
+const censusSnapshot = {snapshotId:"CENSUS_LAT_A",institutionId:"INST_MEDIATRIX",scheduledFor:instant,capturedAt:instant,reportPolicyVersion:"SYNTHETIC_CENSUS_V1",triggerType:"SCHEDULED",classification:"SIMULATION_ONLY"};
+test("issue36 census discovery pages API snapshots and clears them on denial",async({page})=>{
+ let denied=false,posts=0;
+ await mock(page,"ROLE-04",async(route,path)=>{
+  if(path!=="/api/v2/reports/doh-census")return false;
+  if(route.request().method()==="POST")posts++;
+  if(denied){await json(route,{error:{code:"AUTH_SCOPE_FORBIDDEN",message:"Denied"}},403);return true;}
+  const next=new URL(route.request().url()).searchParams.has("cursor");
+  await json(route,{...censusIndex,snapshots:[{...censusSnapshot,snapshotId:next?"CENSUS_LAT_B":"CENSUS_LAT_A"}],nextCursor:next?null:"CENSUS_LAT_A"});return true;
+ });
+ await page.goto("/reporting");const section=page.getByRole("region",{name:"DOH census discovery"});await expect(section.getByText("CENSUS_LAT_A",{exact:true})).toBeVisible();await section.getByRole("button",{name:"Load more census snapshots"}).click();await expect(section.getByText("CENSUS_LAT_B",{exact:true})).toBeVisible();await expect(section.locator("tbody tr")).toHaveCount(2);await expect(section.getByRole("button",{name:"Copy or export census"})).toBeDisabled();expect(posts).toBe(0);
+ denied=true;await section.getByRole("button",{name:"Refresh census snapshots"}).click();await expect(section.getByRole("alert")).toContainText("Denied");await expect(section.locator("tbody tr")).toHaveCount(0);
 });

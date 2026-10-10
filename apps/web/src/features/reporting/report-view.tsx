@@ -1,8 +1,10 @@
 import { AggregateTable, AlertAggregateTable, TransferSummaryTable } from "../../components/ui/aggregate-tables";
 import { formatManilaDateTime, humanizeCode } from "../../components/ui/display";
 import type { Report } from "../../services/api/types";
+import type { Principal } from "../../auth/permissions";
+import { CensusDiscovery } from "./census-discovery";
 
-export function ReportView({ data }: { data: Report }) {
+export function ReportView({ data, principal }: { data: Report; principal?: Principal }) {
   const units = data.inventory.reduce((sum, item) => sum + item.confirmedCount, 0);
   const alerts = data.alerts.reduce((sum, item) => sum + item.count, 0);
   const transfers = data.transferSummary.reduce((sum, item) => sum + item.transferCount, 0);
@@ -12,11 +14,7 @@ export function ReportView({ data }: { data: Report }) {
       <div><span>Prototype evidence package</span><h3>City inventory summary</h3><p>{data.disclaimer}</p><small>Generated {formatManilaDateTime(data.generatedAt)} · Asia/Manila display</small></div>
       <div className="report-export-actions"><a className="button primary" href="/api/v1/reports/inventory.csv" download>Download simulation CSV</a><button className="button" disabled title="Official PDF generator is not connected">Export fixed-layout PDF</button><small>PDF generator not connected</small></div>
     </div>
-    <section className="v2-blocked-workflow">
-      <span aria-hidden="true">!</span>
-      <div><strong>V2 census presentation is not connected</strong><p>Permission-scoped snapshot discovery exists, together with snapshot detail, component TSV, authorized manual catch-up, and a confirmed synthetic display order. This reporting view does not yet present those snapshots. Census capture, copy, and export remain unavailable pending full DOH format approval.</p></div>
-      <b>NOT CONNECTED</b>
-    </section>
+    {principal && ["ROLE-01", "ROLE-02", "ROLE-04"].includes(principal.roleId) && <CensusDiscovery principal={principal}/>}
     <div className="stats report-summary"><article><span>Confirmed units</span><strong>{units}</strong></article><article><span>Aggregate alerts</span><strong>{alerts}</strong></article><article><span>Transfers</span><strong>{transfers}</strong></article><article><span>Scope</span><strong className="scope">{humanizeCode(data.scope)}</strong></article></div>
     <section className="evidence-section"><header><div><h3>Inventory aggregate</h3><p>Approved committed inventory summary included in the export.</p></div><span>JSON + CSV</span></header><AggregateTable items={data.inventory}/></section>
     <section className="evidence-section"><header><div><h3>Alert aggregate</h3><p>Approved alert summary included as prototype evidence.</p></div><span>Read only</span></header><AlertAggregateTable items={data.alerts}/></section>

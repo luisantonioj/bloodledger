@@ -97,3 +97,10 @@ frontend PR was created.
 > or domain mutation occurred; live Fabric expiry and J8/J9 remain deferred until
 > after Buno's October 11 16:00 Manila T0 gate. See this validation report for
 > scope, evidence and the uncommitted working-tree limitation.
+
+2026-10-10 continuation: the prepared views and J4 work are published at
+`4715941` in PR37 against backend `bf70eff`. Reservation cancellation and
+reconciliation placement have since been connected; the above NOT_RUN and
+unconnected statements describe the October 9 state. See
+[LAT UAT frontend validation](LAT-UAT-FRONTEND-VALIDATION-2026-10-10.md) for current
+scope, automated evidence and unchanged retained-host/UAT gates.

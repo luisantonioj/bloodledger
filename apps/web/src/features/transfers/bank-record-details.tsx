@@ -18,7 +18,7 @@ export function BankRecordDetails({record, principal, open}: {record: SelectedRe
   const status = request?.status ?? transfer!.status;
   const unavailable = <span className="bank-review-muted">Not available</span>;
   const stages = ["Reserved", "Prepared", "Dispatched", "In transit", "Received"];
-  const stage = {ACTIVE:0, RESERVED:0, PREPARED:1, DISPATCHED:2, IN_TRANSIT:3, RECEIVED:4}[status as "RESERVED"];
+  const stage = status === "ACTIVE" && transfer?.preparedEvidencePresent ? 1 : {ACTIVE:0, RESERVED:0, PREPARED:1, DISPATCHED:2, IN_TRANSIT:3, RECEIVED:4}[status as "RESERVED"];
   return <div className="bank-review-content">
     <div className="bank-review-identity"><div><Reference value={id}/><small>{request ? "Blood request" : transfer!.purpose === "LOCAL_RELEASE" ? "Local release reservation" : "Transfer record"}</small></div><span className={statusClassName(status)}>{humanizeCode(status)}</span></div>
     {request && <>
@@ -40,6 +40,7 @@ export function BankRecordDetails({record, principal, open}: {record: SelectedRe
       ]}/>
       {transfer.purpose === "TRANSFER" && <section className="bank-review-section"><h3>Transfer Progress</h3><ol className="bank-review-progress" aria-label="Current transfer stage">{stages.map((label,index) => <li key={label} className={stage === index ? "current" : ""} aria-current={stage === index ? "step" : undefined}><span aria-hidden="true">{index+1}</span><small>{label}</small></li>)}</ol></section>}
       <section className="bank-review-section"><h3>Transfer Lifecycle Summary</h3><DetailRows rows={[
+        ["Local release reference", transfer.localReleaseId ? <Reference value={transfer.localReleaseId}/> : unavailable],
         ["Request Reference", transfer.transferId ? <button className="bank-review-link mono" onClick={() => open("request", transfer.transferId!)} title={transfer.transferId}>{transfer.transferId}</button> : unavailable],
         ["Prepared At", transfer.preparedAt ? formatManilaDateTime(transfer.preparedAt) : unavailable],
         ["Last Updated", formatManilaDateTime(transfer.updatedAt)],

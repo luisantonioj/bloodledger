@@ -5,6 +5,8 @@ export function actionCapability(action: string): string | undefined {
   if (action === "POST /api/v2/transfers") return "transfer:request";
   if (action === "POST /api/v2/local-releases") return "inventory:local-release";
   if (action === "POST /api/v2/inbound-captures") return "inventory:capture";
+  if (action === "POST /api/v2/reconciliation") return "inventory:reconcile";
+  if (/^POST \/api\/v2\/reservations\/[^/]+\/local-release-complete$/.test(action)) return "inventory:local-release";
   if (/^POST \/api\/v2\/components\/[^/]+\/expiry$/.test(action)) return "inventory:expiry";
   if (/\/alerts\/[^/]+\/acknowledge$/.test(action)) return "alert:acknowledge";
   if (/\/onboarding\/invitations$/.test(action)) return "onboarding:invite";

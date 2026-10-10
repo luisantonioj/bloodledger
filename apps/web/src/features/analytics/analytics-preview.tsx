@@ -56,7 +56,7 @@ export function AnalyticsPreview({ principal }: { principal: Principal }) {
   }
 
   return <div className="analytics-preview">
-    <div className="preview-disclosure analytics-disclosure"><span aria-hidden="true">i</span><div><strong>{dataset === ACTIVE_FORECAST_DATASET ? "Active ML V4 simulation" : "V5 simulation preview"}</strong><p>V5 predicts next-day requested demand, not releases, stock, or guaranteed supply. Operational recommendations remain disabled.</p></div></div>
+    <div className="preview-disclosure analytics-disclosure"><span aria-hidden="true">i</span><div><strong>{dataset === ACTIVE_FORECAST_DATASET ? "Active ML V4 simulation" : "V5 simulation preview"}</strong><p>V4 and V5 forecast next-day requested units. These forecasts do not describe units transfused, stock on hand, or guaranteed supply. Operational recommendations remain disabled.</p></div></div>
 
     <section className="analytics-preview-filter">
       <header><div><h3>Forecast scope</h3><p>One-day active-runtime forecasts for the authenticated institution.</p></div><span>{analyticsScopeLabel(principal)}</span></header>

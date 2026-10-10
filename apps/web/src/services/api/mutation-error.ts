@@ -24,6 +24,8 @@ export function mutationError(reason: unknown, previousTimeRejections = 0) {
       COMPONENT_VERSION_CONFLICT: "The component changed. Refresh it before evaluating expiry again.",
       V2_1_CONTRACT_REQUIRED: "Expiry evaluation requires the V2.1 contract. Refresh the app before continuing.",
       V2_IDEMPOTENCY_CONFLICT: "This request key conflicts with an earlier command. Refresh and review the current record.",
+      RESERVATION_VERSION_CONFLICT: "The reservation changed. Refresh and review its current version before continuing.",
+      RESERVATION_TRANSITION_INVALID: "The reservation state changed. Refresh before selecting another action.",
     };
     if (reason.status === 409 && reason.code && conflicts[reason.code]) {
       return { discardAttempt: true, requiresCorrection: true, timeRejected: false, message: conflicts[reason.code] };
