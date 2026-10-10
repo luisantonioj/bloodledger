@@ -106,11 +106,13 @@ test("FR-01 tracks one accepted V2 command to commitment without resubmission or
   await restoreCaptureSession(page);
   let submissions = 0;
   let polls = 0;
+  let correlationId = "";
   await page.route("**/api/v2/inbound-captures", async (route) => {
     submissions += 1;
     const request = route.request();
     expect(request.headers()["x-bloodledger-contract-version"]).toBe("V2.1");
     const body = request.postDataJSON() as Record<string, unknown>;
+    correlationId = String(body.correlationId);
     expect(body.captureMethod).toBe("OCR");
     expect(body.capturePolicyVersion).toBe("INBOUND_OCR_V1");
     expect(body).not.toHaveProperty("custodyInstitutionId");
@@ -139,7 +141,7 @@ test("FR-01 tracks one accepted V2 command to commitment without resubmission or
       status,
       statusUrl: "/api/v2/commands/CMD_SYNTH_BROWSER_001",
       acceptedAt: "2026-09-18T00:00:00.000Z",
-      correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF",
+      correlationId,
       safeErrorCode: null,
       classification: "SIMULATION_ONLY",
       replayed: false,
@@ -169,4 +171,43 @@ test("FR-01 tracks one accepted V2 command to commitment without resubmission or
   });
   expect(JSON.stringify(persisted)).not.toContain(cryoprecipitate.donationNumber);
   expect(JSON.stringify(persisted)).toContain("CMD_SYNTH_BROWSER_001");
+});
+
+// Issue36 / NFR05: recovery is owned, terminal retention is observation-based.
+test("recovery isolates owners, expires terminal details, and keeps a minimal tombstone", async ({page}) => {
+  await restoreCaptureSession(page);
+  let polls = 0;
+  const acceptedAt = "2026-10-01T00:00:00Z";
+  const base = {accountId:principal.userId,institutionId:principal.institutionId,operatorId:principal.userId,idempotencyKey:"IDEM_CAPTURE_SYNTH",commandId:"CMD_CAPTURE_OWN",resourceId:"INCAP_CAPTURE_OWN",statusUrl:"/api/v2/commands/CMD_CAPTURE_OWN",status:"QUEUED",correlationId:"CORR_CAPTURE_SYNTH",acceptedAt,safeErrorCode:null,bloodType:"O_NEGATIVE",componentType:"PLATELETS",issuerInstitutionId:principal.institutionId,classification:"SIMULATION_ONLY"};
+  await page.route("**/api/v2/commands/**", async route => {
+    expect(new URL(route.request().url()).pathname).toBe(base.statusUrl);polls++;
+    await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({...base,resourceType:"INBOUND_CAPTURE",status:"COMMITTED",replayed:false})});
+  });
+  await page.goto("/capture/");
+  await page.evaluate(async base => {
+    const request=indexedDB.open("bloodledger-inbound-command-status-v2",1);
+    const db=await new Promise<IDBDatabase>((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+    const tx=db.transaction("command-receipts","readwrite"), store=tx.objectStore("command-receipts");
+    store.put(base);store.put({...base,commandId:"CMD_CAPTURE_FOREIGN",accountId:"USR_OTHER",resourceId:"INCAP_FOREIGN"});
+    store.put({...base,commandId:"CMD_CAPTURE_EXPIRED",resourceId:"INCAP_EXPIRED",status:"COMMITTED",terminalObservedAt:new Date(Date.now()-25*60*60*1000).toISOString()});
+    await new Promise<void>((resolve,reject)=>{tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});db.close();
+  },base);
+  await page.reload();await expect(page.getByText("INCAP_CAPTURE_OWN",{exact:true})).toBeVisible();await expect(page.getByText("COMMITTED",{exact:true})).toBeVisible();await expect(page.getByText("INCAP_FOREIGN",{exact:true})).toHaveCount(0);await expect(page.getByText("INCAP_EXPIRED",{exact:true})).toHaveCount(0);expect(polls).toBe(1);
+  const entries=await page.evaluate(async()=>{const r=indexedDB.open("bloodledger-inbound-command-status-v2",1);const db=await new Promise<IDBDatabase>(resolve=>{r.onsuccess=()=>resolve(r.result);});const query=db.transaction("command-receipts").objectStore("command-receipts").getAll();const values=await new Promise<Record<string,unknown>[]>(resolve=>{query.onsuccess=()=>resolve(query.result);});db.close();return values;});
+  expect(entries.find(row=>row.commandId==="CMD_CAPTURE_EXPIRED")).toEqual({commandId:"CMD_CAPTURE_EXPIRED",accountId:principal.userId,institutionId:principal.institutionId,expired:true});
+  expect(Date.parse(String(entries.find(row=>row.commandId===base.commandId)?.terminalObservedAt))).toBeGreaterThan(Date.now()-30000);
+});
+
+test("logout clears capture and ignores a delayed recovery response", async ({page}) => {
+  await restoreCaptureSession(page);
+  let release: (()=>void)|undefined;
+  await page.route("**/api/v2/commands/CMD_CAPTURE_LATE",async route=>{
+    await new Promise<void>(resolve=>{release=resolve;});
+    await route.fulfill({status:401,contentType:"application/json",body:JSON.stringify({error:{code:"AUTH_REQUIRED",message:"Expired"}})});
+  });
+  await page.goto("/capture/");
+  await page.evaluate(async principal=>{
+    const r=indexedDB.open("bloodledger-inbound-command-status-v2",1);const db=await new Promise<IDBDatabase>(resolve=>{r.onsuccess=()=>resolve(r.result);});const tx=db.transaction("command-receipts","readwrite");tx.objectStore("command-receipts").put({accountId:principal.userId,institutionId:principal.institutionId,commandId:"CMD_CAPTURE_LATE",resourceId:"INCAP_LATE",statusUrl:"/api/v2/commands/CMD_CAPTURE_LATE",status:"QUEUED",acceptedAt:"2026-10-10T00:00:00Z",correlationId:"CORR_LATE",classification:"SIMULATION_ONLY"});await new Promise<void>(resolve=>{tx.oncomplete=()=>resolve();});db.close();
+  },principal);
+  await page.reload();await expect.poll(()=>!!release).toBe(true);await page.getByRole("button",{name:/Sign out Synthetic Capture Operator/}).click();release?.();await expect(page.getByText("Signed out. Volatile OCR and verification values were cleared.",{exact:true})).toBeVisible();await expect(page.getByText("INCAP_LATE",{exact:true})).toHaveCount(0);await expect(page.getByRole("heading",{name:"2. Confirm extracted fields"})).toHaveCount(0);
 });
