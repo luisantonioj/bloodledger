@@ -16,6 +16,15 @@ import { fileDigest, resolveScenarioReview, validateReviewedScenarioBytes, valid
 
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const fieldEqual = (a,b) => requireStock(canonical(a) === canonical(b), 'STOCK_EVIDENCE_MISMATCH');
+// TP-JOP-D16: since J4 the API adds a read-time expiryState that projections never store.
+// Require it to agree with the ledger status, then compare only the stored fields.
+export function storedComponent({ expiryState, ...component }) {
+  const allowed = component.inventoryStatus === 'EXPIRED' ? ['EXPIRED']
+    : ['AVAILABLE','RESERVED'].includes(component.inventoryStatus) ? ['CURRENT','LABEL_EXPIRED_PENDING_EVALUATION']
+    : ['CURRENT','LABEL_EXPIRED_NOT_IN_INVENTORY'];
+  requireStock(allowed.includes(expiryState), 'STOCK_EVIDENCE_MISMATCH');
+  return component;
+}
 // The runtime role is not granted access to migrator-owned metadata.
 export async function inspectMigrationEvidence(pool) {
   const {rows:[access]} = await pool.query("SELECT CASE WHEN has_schema_privilege(current_user, 'public', 'USAGE') THEN has_table_privilege(current_user, 'public.pgmigrations', 'SELECT') ELSE false END AS permitted");
@@ -75,7 +84,7 @@ async function bindRuntime(runtime, config, execution, review) {
 async function baselineComponents(runtime) {
   const reader = new PostgresV2ProjectionReader(runtime.pool);
   const rows = await reader.listComponents('INST_MEDIATRIX','ROLE-02');
-  fieldEqual((await runtime.client.read('coordinator','/api/v2/components')).components, rows);
+  fieldEqual((await runtime.client.read('coordinator','/api/v2/components')).components.map(storedComponent), rows);
   requireStock(rows.length === 9, 'STOCK_REVIEWED_NINE_COMPONENT_BASELINE_REQUIRED');
   const counts = countStates(rows);
   fieldEqual(counts, { AVAILABLE:6, RESERVED:1, IN_TRANSIT:1, EXPIRED:1, total:9 });
@@ -206,7 +215,7 @@ async function processOperation(runtime, execution, operation, action, options, 
 
 async function reconcile(runtime,execution,receipts) {
   await verifyOriginalReceipts(runtime);
-  const rows = (await runtime.client.read('coordinator','/api/v2/components')).components;
+  const rows = (await runtime.client.read('coordinator','/api/v2/components')).components.map(storedComponent);
   const reader = new PostgresV2ProjectionReader(runtime.pool);
   fieldEqual(rows,await reader.listComponents('INST_MEDIATRIX','ROLE-02'));
   const added = rows.filter(row=>execution.labels.some(label=>label.componentId === row.componentId));
@@ -217,7 +226,7 @@ async function reconcile(runtime,execution,receipts) {
     await compareCurrent(runtime,row);
     const label = execution.labels.find(label=>label.componentId === row.componentId);
     if(label) for(const key of ['donationId','issuerInstitutionId','componentType','bloodType','collectedAt','expiresAt']) fieldEqual(row[key],label[key]);
-    fieldEqual(await runtime.client.read('coordinator',`/api/v2/components/${row.componentId}`),row);
+    fieldEqual(storedComponent(await runtime.client.read('coordinator',`/api/v2/components/${row.componentId}`)),row);
   }
   const transfers = await runtime.client.read('recipient','/api/v2/transfers');
   const reservations = [];
