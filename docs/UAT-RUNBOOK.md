@@ -69,7 +69,7 @@ capture PWA (**Validated** on Jopia's host: identical environment hash, ledger
 height and component counts before and after):
 
 ```bash
-git fetch origin && git switch --detach uat-baseline-2026-10-12.2
+git fetch origin && git switch --detach uat-baseline-2026-10-12.3
 docker stop bloodledger-persistent-web bloodledger-persistent-api
 docker rm bloodledger-persistent-web bloodledger-persistent-api
 docker run --rm -v "$PWD:/workspace" -w /workspace node:24.17.0 npm ci --ignore-scripts
@@ -77,10 +77,11 @@ bash scripts/development-data/start-local.sh --apply
 curl -s http://127.0.0.1:3000/healthz
 ```
 
-`uat-baseline-2026-10-12.2` is the current baseline. Its revisions `.1` and `.2`
-change only the population runner (TP-JOP-D16, TP-JOP-D17); the API, web,
-chaincode and migrations are identical to `uat-baseline-2026-10-12`. Moving a
-deployed checkout between these three tags therefore needs no redeploy.
+`uat-baseline-2026-10-12.3` is the current baseline. Its revisions `.1` and `.2`
+change only the population runner (TP-JOP-D16, TP-JOP-D17), and `.3` only the
+live navigation test helper (#43). The API, web, chaincode and migrations are
+identical to `uat-baseline-2026-10-12`, so moving a deployed checkout between
+these tags needs no redeploy.
 
 `npm ci` is required: it installs `fast-jwt` 6.3.4 (TP-JOP-D11).
 `start-local.sh` builds the API and the capture PWA and prints the URLs. Check
@@ -150,7 +151,7 @@ All must pass; otherwise postpone the affected tasks or the session.
 | API ready | `curl -s http://127.0.0.1:3000/healthz` shows `READY` |
 | Web and capture load | 200 on `/` and `/capture/` at port 5174 |
 | Local account switcher off | `curl -s http://127.0.0.1:5174/ \| grep -c local-account-bar` prints `0`. If not, recreate only the web container as `start-local.sh` does, without `BLOODLEDGER_LOCAL_ACCOUNT_SWITCHER` |
-| UAT checkout at the baseline | `git describe --tags --exact-match` shows `uat-baseline-2026-10-12.2` and `git status --short` is empty |
+| UAT checkout at the baseline | `git describe --tags --exact-match` shows `uat-baseline-2026-10-12.3` and `git status --short` is empty |
 | Worker running, queue clear | `uat-worker.sh status`: RUNNING, no stuck commands; `bloodledger-persistent-sync-worker` not running |
 | Clocks agree (J3 five-minute bound) | Compare `docker exec bloodledger-persistent-api date -u` with Windows (`powershell.exe -NoProfile -Command "[DateTime]::UtcNow.ToString('o')"`, **Validated**: 113 ms skew). Escalate to Jopia if over 60 seconds; the fix is not validated here |
 | Six logins work | Sign in and out once per account |
