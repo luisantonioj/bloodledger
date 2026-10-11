@@ -538,12 +538,14 @@ timeline.
   for Lat's target `3ddfcfd9…` and policy `ad7012c6…`, disclosing that V3 was
   prepared, and replayed, on Jopia's host.
 - **Baseline:** `uat-baseline-2026-10-12` (main with #38, #37 and #39; J8 PASS on the
-  identical tree), then `.1` (#40, TP-JOP-D16), `.2` (#41, TP-JOP-D17) and `.3`
-  (#43, the live navigation helper opens the Transfers tab that PR37 introduced).
-  The revisions change only the population runner and that test helper.
-- **Defects:** [TP-JOP-D16 and TP-JOP-D17](TESTING-DEFECTS.md) were latent
-  runner regressions from J4 and PR31, in paths not exercised since V1. Each
-  stopped Lat's run before any write.
+  identical tree), then `.1` (#40, TP-JOP-D16), `.2` (#41, TP-JOP-D17), `.3`
+  (#43, the live navigation helper opens the Transfers tab that PR37 introduced)
+  and `.4` (#44, TP-JOP-D18). The revisions change only the population runner and
+  that test helper.
+- **Defects:** [TP-JOP-D16, D17 and D18](TESTING-DEFECTS.md) were latent runner
+  defects from J4, PR31 and the first verification window to cross Manila
+  midnight, in paths V1 never exercised. D16 and D17 stopped Lat's run before
+  any write; D18 stopped only the post-restart verification.
 - **Jopia decisions:** deploy the baseline before population, and keep Lat's
   older general sync-worker stopped through UAT.
 
