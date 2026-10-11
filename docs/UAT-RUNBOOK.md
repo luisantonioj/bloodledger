@@ -149,6 +149,7 @@ All must pass; otherwise postpone the affected tasks or the session.
 | Fabric and PostgreSQL healthy | `bash scripts/bloodledger-dev.sh status` (**NOT_RUN** this week; `query-channel.sh` is **Validated**) |
 | API ready | `curl -s http://127.0.0.1:3000/healthz` shows `READY` |
 | Web and capture load | 200 on `/` and `/capture/` at port 5174 |
+| Local account switcher off | `curl -s http://127.0.0.1:5174/ \| grep -c local-account-bar` prints `0`. If not, recreate only the web container as `start-local.sh` does, without `BLOODLEDGER_LOCAL_ACCOUNT_SWITCHER` |
 | UAT checkout at the baseline | `git describe --tags --exact-match` shows `uat-baseline-2026-10-12.2` and `git status --short` is empty |
 | Worker running, queue clear | `uat-worker.sh status`: RUNNING, no stuck commands; `bloodledger-persistent-sync-worker` not running |
 | Clocks agree (J3 five-minute bound) | Compare `docker exec bloodledger-persistent-api date -u` with Windows (`powershell.exe -NoProfile -Command "[DateTime]::UtcNow.ToString('o')"`, **Validated**: 113 ms skew). Escalate to Jopia if over 60 seconds; the fix is not validated here |
