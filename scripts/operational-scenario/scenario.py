@@ -1,4 +1,4 @@
-"""PR30/31 successor fixture; external-only and never submits inventory commands."""
+"""V3 successor after the missed V2 window; external-only and never submits commands."""
 
 import argparse
 import hashlib
@@ -11,10 +11,11 @@ from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 
-VERSION = "SYNTHETIC_OPERATIONAL_STOCK_522_V2"
+VERSION = "SYNTHETIC_OPERATIONAL_STOCK_522_V3"
 SCHEMA = "OPERATIONAL_SCENARIO_V1"
 SOURCE_SHA = "5c5997bd4df26f6f0d52d7ea13dde0172706faaa15308ebc87f241f44c241ddb"
-BASELINE = "a66528934432ebbb35eb1f45617909ca59374824"
+BASELINE = "bf70eff50ec7235626150d0f1678aaf40508b476"
+DATE_POLICY = "SYNTHETIC_522_DATES_V3"
 BLOOD = dict(
     zip(
         ["A+", "B+", "O+", "AB+"],
@@ -37,7 +38,10 @@ COMPONENT = dict(
 )
 # Deliberately technical intervals, not clinical shelf lives. Relative to T0.
 HOURS = dict(zip(COMPONENT.values(), [120, 144, 168, 96, 192], strict=True))
-T0 = "2026-10-11T00:00:00Z"
+# Frozen V3 window (Asia/Manila Sun 14:00, Sun 23:30, Mon 07:00); never renewed or backdated.
+POPULATION_NOT_BEFORE = "2026-10-11T06:00:00Z"
+T0 = "2026-10-11T15:30:00Z"
+VERIFICATION_END = "2026-10-11T23:00:00Z"
 NS = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 
 
@@ -242,8 +246,8 @@ def build(counts, revision, generated_at):
         "generatedAt": generated_at,
         "t0": T0,
         "displayTimezone": "Asia/Manila",
-        "populationNotBefore": iso(t0 - timedelta(hours=16)),
-        "verificationWindowEndExclusive": iso(t0 + timedelta(hours=8)),
+        "populationNotBefore": POPULATION_NOT_BEFORE,
+        "verificationWindowEndExclusive": VERIFICATION_END,
         "binding": {
             "status": "PROPOSED_JOPIA_REVIEW_REQUIRED",
             "alias": "SIM_INSTITUTION_01",
@@ -255,7 +259,7 @@ def build(counts, revision, generated_at):
             ),
         },
         "datePolicy": {
-            "version": "SYNTHETIC_522_DATES_V2",
+            "version": DATE_POLICY,
             "clinicalPolicy": False,
             "collectionHoursBeforeT0": 24,
             "availableExpiryHoursAfterT0": HOURS,
@@ -301,16 +305,20 @@ def validate(data):
     require(data["negativeRhCoverage"] == "NOT_PROVIDED_UNKNOWN_NOT_ZERO", "negative coverage")
     require(data["t0"] == T0 and data["baselineCommit"] == BASELINE, "frozen execution identity")
     t0 = instant(data["t0"])
-    instant(data["generatedAt"])
     require(
-        instant(data["populationNotBefore"]) == t0 - timedelta(hours=16)
-        and instant(data["verificationWindowEndExclusive"]) == t0 + timedelta(hours=8),
+        data["populationNotBefore"] == POPULATION_NOT_BEFORE
+        and data["verificationWindowEndExclusive"] == VERIFICATION_END
+        and instant(data["populationNotBefore"]) < t0 < instant(VERIFICATION_END),
         "execution window",
+    )
+    require(
+        instant(data["generatedAt"]) <= instant(data["populationNotBefore"]),
+        "generation must precede the population window",
     )
     require(
         data["datePolicy"]
         == {
-            "version": "SYNTHETIC_522_DATES_V2",
+            "version": DATE_POLICY,
             "clinicalPolicy": False,
             "collectionHoursBeforeT0": 24,
             "availableExpiryHoursAfterT0": HOURS,

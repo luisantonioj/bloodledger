@@ -19,6 +19,12 @@ def verify(workbook, manifest, expected_sha):
     s.require(s.canonical(data) == s.canonical(expected), "exact scenario replay mismatch")
     return {
         **s.validate(data),
+        "scenarioVersion": data["scenarioVersion"],
+        "datePolicy": data["datePolicy"]["version"],
+        "generatedAt": data["generatedAt"],
+        "populationNotBefore": data["populationNotBefore"],
+        "t0": data["t0"],
+        "verificationWindowEndExclusive": data["verificationWindowEndExclusive"],
         "canonicalSha256": s.digest(data),
         "fileSha256": s.file_sha(manifest),
     }
