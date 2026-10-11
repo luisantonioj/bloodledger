@@ -362,7 +362,13 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
       if (previous.operation !== "PLACE_RECONCILIATION_HOLD" || previous.resourceId !== caseId || previous.payloadSha256 !== requestDigest) throw new ApiFailure(409, "V2_IDEMPOTENCY_CONFLICT", "Idempotency key was used for a different command.");
       return enqueue(request, reply, "RECONCILIATION", caseId, "PLACE_RECONCILIATION_HOLD", previous.payload, principal, requestDigest);
     }
-    const payload = { componentId, caseId, reasonCode, reconciliationPolicyVersion: RECONCILIATION_POLICY_VERSION, actorUserId: principal.userId, eventTime: dependencies.clock().toISOString(), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: selectCorePolicy(principal, version) };
+    // TP-JOP-D13: PlaceReconciliationHold requires expectedVersion. The frozen body has none, so the
+    // server records the projected version it accepted against; the chaincode rejects a stale one.
+    if (!dependencies.projection) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Reconciliation requires the current inventory projection.");
+    const component = await dependencies.projection.getComponent(componentId, principal.institutionId, principal.roleId);
+    if (!component || component.institutionId !== principal.institutionId) throw new ApiFailure(404, "V2_COMPONENT_NOT_FOUND", "The component was not found in the authorized scope.");
+    if (version === "V2" && component.componentType === "CRYOPRECIPITATE") throw new ApiFailure(409, "V2_1_CONTRACT_REQUIRED", "CRYO requires V2.1.");
+    const payload = { componentId, caseId, reasonCode, expectedVersion: component.inventoryVersion, reconciliationPolicyVersion: RECONCILIATION_POLICY_VERSION, actorUserId: principal.userId, eventTime: dependencies.clock().toISOString(), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: selectCorePolicy(principal, version) };
     return enqueue(request, reply, "RECONCILIATION", caseId, "PLACE_RECONCILIATION_HOLD", payload, principal, requestDigest);
   });
 

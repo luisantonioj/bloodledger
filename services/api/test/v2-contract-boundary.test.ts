@@ -137,7 +137,8 @@ test("S6 reconciliation exposes and enforces the versioned reason policy", async
   const store = new InMemoryV2CommandStore();
   const app = await buildApp(new MemoryRepository(), {
     host:"127.0.0.1",port:3000,jwtSecret:"reconciliation-test-".repeat(2),operatorId:"USR_SYNTH_CAPTURE",operatorCredential:"synthetic-test-credential",workerConfigured:false,webOrigin:"http://127.0.0.1:5174",
-  },()=>new Date("2026-09-17T12:00:00.000Z"),sessions,undefined,undefined,{store});
+  },()=>new Date("2026-09-17T12:00:00.000Z"),sessions,undefined,undefined,{store,projection:{async listComponents(){return [];},async findComponentByIdentity(){return null;},
+    async getComponent(componentId:string,institutionId:string){return componentId==="COMP_SYNTH_V2_001"&&institutionId==="INST_MEDIATRIX"?{componentId,institutionId,componentType:"PACKED_RED_BLOOD_CELLS",inventoryStatus:"AVAILABLE",inventoryVersion:1}:null;}} as never});
   const token=app.jwt.sign({userId:record.userId,institutionId:record.institutionId,roleId:record.roleId,sessionId:"SESS_SYNTH_RECONCILIATION",binding:"c".repeat(64),policyVersion:"SYNTHETIC_WEB_ACCESS_V1"});
   const headers={cookie:`bloodledger_session=${token}`,origin:"http://127.0.0.1:5174","idempotency-key":"IDEM_RECON_1"};
   try {

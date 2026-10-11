@@ -128,6 +128,27 @@ test("FR-12 expiry evaluation rejects unsafe, stale, foreign and unauthorized re
   } finally { await destination.app.close(); }
 });
 
+// Exact input keys of InterviewCoreContract.PlaceReconciliationHold (parseComponentAction).
+const PLACE_RECONCILIATION_HOLD_KEYS = ["actorUserId", "caseId", "componentId", "correlationId", "eventTime", "expectedVersion", "idempotencyKey", "policyVersion", "reasonCode"];
+
+test("TP-JOP-D13 a reconciliation hold sends exactly the PlaceReconciliationHold fields with the projected version", async () => {
+  const { app, store, cookie, commands } = await fixture();
+  const hold = (componentId: string, key: string) => app.inject({ method: "POST", url: "/api/v2/reconciliation", headers: { cookie, origin, "idempotency-key": key }, payload: { caseId: `RECON_${key.slice(5)}`, componentId, correlationId: "CORR_0123456789ABCDEF0123456789ABCDE2", reasonCode: "LABEL_RECORD_MISMATCH" } });
+  try {
+    const accepted = await hold("COMP_EXP_EDGE", "IDEM_RECON_D13");
+    assert.equal(accepted.statusCode, 202, accepted.body);
+    const command = await store.get(accepted.json().commandId, source.institutionId, source.userId);
+    assert.equal(command?.payload.expectedVersion, 3);
+    assert.deepEqual(Object.keys(interviewCorePayload(command!)).sort(), PLACE_RECONCILIATION_HOLD_KEYS);
+    for (const componentId of ["COMP_EXP_FOREIGN", "COMP_EXP_MISSING"]) {
+      const denied = await hold(componentId, `IDEM_RECON_D13_${componentId.slice(9)}`);
+      assert.equal(denied.statusCode, 404);
+      assert.equal(denied.json().error.code, "V2_COMPONENT_NOT_FOUND");
+    }
+    assert.equal((await commands()).length, 1);
+  } finally { await app.close(); }
+});
+
 test("NFR-05 a reconciliation retry replays the original server-timed command", async () => {
   const { app, store, cookie, advance } = await fixture();
   const hold = { caseId: "RECON_SYNTH_RETRY", componentId: "COMP_EXP_CURRENT", correlationId: "CORR_0123456789ABCDEF0123456789ABCDE1", reasonCode: "LABEL_RECORD_MISMATCH" };

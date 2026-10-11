@@ -574,6 +574,9 @@
         "responses": {
           "202": {
             "$ref": "#/components/responses/Command"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
           }
         },
         "requestBody": {

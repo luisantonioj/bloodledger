@@ -24,9 +24,16 @@ let stopping = false;
 process.on("SIGINT", () => { stopping = true; });
 process.on("SIGTERM", () => { stopping = true; });
 
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 while (!stopping) {
-  const result = await worker.runOnce();
-  const v2Result = v2Worker ? await v2Worker.runOnce() : { status: "IDLE" as const };
-  if (result === "IDLE" && v2Result.status === "IDLE") await new Promise((resolve) => setTimeout(resolve, 500));
+  try {
+    const result = await worker.runOnce();
+    const v2Result = v2Worker ? await v2Worker.runOnce() : { status: "IDLE" as const };
+    if (result === "IDLE" && v2Result.status === "IDLE") await pause(500);
+  } catch (error) {
+    // TP-JOP-D14: keep polling through a database outage; a leased command is reclaimed after its lease expires.
+    console.error(JSON.stringify({ level: "warn", msg: "worker iteration failed", safeErrorCode: (error as { code?: string }).code ?? "WORKER_ITERATION_FAILED" }));
+    await pause(5_000);
+  }
 }
 await pool.end();

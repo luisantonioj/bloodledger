@@ -79,3 +79,16 @@ observation; synthetic reproductions only. Contract and reruns:
 TP-JOP-D02's bound is 300 seconds. A fresh persistent development seed applied
 more than five minutes after its preview is rejected without queuing; both
 retained hosts are already seeded.
+
+## Jopia findings from PR37 live verification — 2026-10-10
+
+**Owner:** Jopia (self-validation disclosed). Found by driving Lat's
+[PR37](https://github.com/luisantonioj/bloodledger/pull/37) UI against Jopia's
+retained API, worker and Fabric; synthetic data only. Evidence:
+[PR37 live verification](handoffs/JOPIA-PR37-LIVE-VERIFICATION-2026-10-10.md).
+
+| ID | Discovered | Severity/owner | Requirements | Source observation / expected behavior | Status/evidence |
+|---|---|---|---|---|---|
+| TP-JOP-D13 | 2026-10-10 | High / Jopia | FR-12, BR-INV | Every reconciliation hold failed on Fabric with `CORE_FIELD_NOT_ALLOWED`: `PlaceReconciliationHold` requires `expectedVersion`, which the route never sent. J5 did not exercise this path | Fixed in `338e684` without changing the request body: the route records the projected version of a component in the caller's scope (404 otherwise). Hold committed live through Lat's UI |
+| TP-JOP-D14 | 2026-10-10 | High / Jopia | NFR-12 | A PostgreSQL restart ended the V2 worker through an unhandled pg `error` event, so later UI commands stayed `QUEUED` with no visible failure | Fixed in `338e684`: pool and client errors are handled and the worker loop backs off. Live: the same worker process survived `docker restart` of PostgreSQL and committed the next UI command |
+| TP-JOP-D15 | 2026-10-10 | Medium / Jopia; Lat host | NFR-03, NFR-12 | Jopia's host (3.7 GB WSL memory, swap full) had two PostgreSQL crash-recoveries while browser suites and the live stack ran together. No data loss; recovery completed in seconds | Observation. D14 keeps the worker alive; the runbook now says not to run builds or test suites on the UAT host during UAT |
