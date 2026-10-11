@@ -1,16 +1,19 @@
-# Synthetic operational scenario 522 V2 — Buno preparation
+# Synthetic operational scenario 522 V3 — Buno preparation
 
-Status: **Proposed, SIMULATION_ONLY**. This successor responds to Lat's PR30
-and Jopia's PR31 at exact head `a66528934432ebbb35eb1f45617909ca59374824`.
-It supersedes V1 only for unsubmitted work because V1's population deadline
-passed. V1 evidence remains historical and immutable. Neither this generator
-nor its validator submits a command, accepts Jopia's review, approves Lat's
-target, or grants permission to populate.
+Status: **Proposed, SIMULATION_ONLY**. V3 supersedes V2 only for unsubmitted
+work: V2's population window (2026-10-10T08:00Z to 2026-10-11T00:00Z) was
+missed on Lat's retained host, so V2 is `MISSED_WINDOW`, not populated and not
+renewed. V1 and V2 evidence remain historical and immutable; replay each with
+its own recorded revision. V3 is prepared against merged main
+`bf70eff50ec7235626150d0f1678aaf40508b476` (PR #35), which contains Jopia's
+PR31 population runner. Neither this generator nor its validator submits a
+command, accepts Jopia's review, approves Lat's target, or grants permission to
+populate. See the [V3 evidence](../../docs/handoffs/BUNO-OPERATIONAL-STOCK-522-V3-EVIDENCE.md).
 
 ## Contract
 
 `scenario.py` is schema/generator version `OPERATIONAL_SCENARIO_V1` /
-`SYNTHETIC_OPERATIONAL_STOCK_522_V2`. It requires the exact original V5 workbook
+`SYNTHETIC_OPERATIONAL_STOCK_522_V3`. It requires the exact original V5 workbook
 bytes and opens only `Synthetic_Daily_Stocks`. The 2026-10-07 counts for
 `SIM_INSTITUTION_01` supply **only** the twenty-series count distribution.
 Historical dates, Donation No., collection/expiry and reservation purpose are
@@ -44,19 +47,21 @@ is a fact about that isolated operational state, not workbook source coverage.
 
 ## Frozen proposed execution window and nonclinical date policy
 
-T0 is **2026-10-11 08:00 Asia/Manila** (`2026-10-11T00:00:00Z`).
-Population may start no earlier than **2026-10-10 16:00 Manila**
-(`2026-10-10T08:00:00Z`) and must finish before T0 to establish the target at T0.
-Verify during `[T0, 2026-10-11T08:00:00Z)` (08:00–16:00 Manila).
-This is Buno's **proposal**, not an approved execution window. If it is missed,
-stop; issue a new scenario version, new dates and new reviewed hashes. Never
-silently renew dates, reuse a version for changed bytes, or backdate to Oct 7.
+T0 is **2026-10-11 23:30 Asia/Manila** (`2026-10-11T15:30:00Z`).
+Population may start no earlier than **2026-10-11 14:00 Manila**
+(`2026-10-11T06:00:00Z`) and must finish before T0 to establish the target at T0.
+Verify during `[T0, 2026-10-11T23:00:00Z)` (Sunday 23:30 to Monday 07:00 Manila).
+The window is frozen as absolute instants rather than V2's T0−16h/T0+8h shape,
+and `generatedAt` must not be later than the population start. This is Buno's
+**proposal**, not an approved execution window. If it is missed, stop; issue a
+new scenario version, new dates and new reviewed hashes. Never silently renew
+dates, reuse a version for changed bytes, or backdate to Oct 7.
 
 All collection timestamps are T0 minus 24 hours. Reserved transfer units
 expire T0 plus 48 hours; local-release units plus 49 hours. Available units
 expire after T0 by WB 120h, PRBC 144h, FFP 168h, PC 96h, CRYO 192h.
-These intentionally arbitrary technical offsets are
-`SYNTHETIC_522_DATES_V2`, **not clinical shelf lives**. They keep all target
+These intentionally arbitrary technical offsets, unchanged from V2, are
+`SYNTHETIC_522_DATES_V3`, **not clinical shelf lives**. They keep all target
 units unexpired throughout verification and create ties for FEFO tests.
 Near-expiry alerts remain disabled; recommendations remain nonautonomous.
 
