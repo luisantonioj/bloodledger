@@ -275,11 +275,15 @@ export async function reconcileStockCensus(runtime,execution,existing,observedAt
   if(census) {
     verifyCapturedCensus(execution.scenario,census);
     verifyOperationalCensus(census,(await runtime.client.read('coordinator','/api/v2/components')).components);
-    const businessDate = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date(execution.scenario.t0));
+    const manilaDate = value => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date(value));
+    const businessDate = manilaDate(execution.scenario.t0);
     const evidence = await runtime.client.read('coordinator',`/api/v2/analytics/inventory-evidence?businessDate=${businessDate}`);
     requireStock(evidence.snapshot?.snapshotId === census.snapshotId && evidence.snapshot.persistedSeries === 40 && ['CURRENT','STALE'].includes(evidence.status),'STOCK_CENSUS_API_MISMATCH');
     for(const key of ['capturedAt','scheduledFor','sourceProjectionDigest','groups']) fieldEqual(evidence.snapshot[key],census[key]);
-    requireStock(!inWindow || evidence.status === 'CURRENT','STOCK_CENSUS_API_MISMATCH');
+    // TP-JOP-D18: the API reports CURRENT only while the capture and evaluation dates equal the
+    // business date, so a verification window that crosses Manila midnight expects STALE afterwards.
+    const evaluationDate = evidence.evaluationDate ?? manilaDate(observedAt);
+    requireStock(evidence.status === (evaluationDate === businessDate && manilaDate(census.capturedAt) === businessDate ? 'CURRENT' : 'STALE'),'STOCK_CENSUS_API_MISMATCH');
     censusApiStatus = evidence.status;
   }
   return {census,censusApiStatus,inWindow};
