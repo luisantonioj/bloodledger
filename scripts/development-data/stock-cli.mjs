@@ -146,10 +146,11 @@ async function requireQuiescent(pool, own = []) {
   const result = await pool.query("SELECT command_id FROM app.v2_commands WHERE status<>'COMMITTED' AND NOT(command_id=ANY($1::text[]))",[own]);
   requireStock(result.rows.length === 0,'STOCK_UNRELATED_PENDING_COMMANDS');
 }
-async function validateBackup(options, execution) {
+// TP-JOP-D17: confirm, apply and resume validate the backup; PR31 moved hashing to fileDigest.
+export async function validateBackup(options, execution) {
   requireStock(options.backup && /^[a-f0-9]{64}$/.test(process.env.DEVELOPMENT_VALIDATED_BACKUP_SHA256 ?? ''), 'STOCK_VALIDATED_BACKUP_REQUIRED');
   const bytes = await readFile(options.backup);
-  const hash = createHash('sha256').update(bytes).digest('hex');
+  const hash = fileDigest(bytes);
   requireStock(bytes.subarray(0,5).toString() === 'PGDMP' && hash === process.env.DEVELOPMENT_VALIDATED_BACKUP_SHA256 && hash === options['approve-backup'], 'STOCK_BACKUP_APPROVAL_MISMATCH');
   if(execution) requireStock(hash === execution.backupSha256,'STOCK_BACKUP_EXECUTION_MISMATCH');
   requireStock(execution?.target?.instanceId === process.env.DEVELOPMENT_VALIDATED_BACKUP_INSTANCE_ID,'STOCK_BACKUP_TARGET_MISMATCH');
