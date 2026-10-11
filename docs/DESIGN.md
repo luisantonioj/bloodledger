@@ -15,6 +15,7 @@ colors:
   chrome-raised: "#1A2230"
   chrome-hover: "#232C3D"
   ink: "#0E1218"
+  ink-plain-text: "#111111"
   ink-secondary: "#3A4250"
   ink-muted: "#697181"
   ink-faint: "#9098A6"
