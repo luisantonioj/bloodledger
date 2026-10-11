@@ -183,3 +183,5 @@ account-to-policy mapping and exact original workbook. Then rerun the runbook's
 inspect and explicit approvals; do not reset volumes, reprovision accounts,
 refresh a saved manifest, use direct projection fixtures or backdate forecasts.
 The existing pinned runtime requires no retraining or input history.
+
+2026-10-11 detailed supplier workflow help: TypeScript completed successfully; Vite build passed with --configLoader runner and isolated /tmp output because concurrent Docker npm ci made the normal config cache unwritable. Browser-only read fixtures verified eight guide sections, bounded tooltip size and viewport fit at 1440px/390px, and Escape dismissal. No mutation submitted. Concurrent external work changed the checkout from codex/lat-wip-2026-10-11 to detached uat-baseline-2026-10-12 during validation; tooltip edits preserved and no branch/reset performed by this task. Shared 5174 returned but serves the separate deployed baseline; visual verification used a temporary isolated preview of the edited source.

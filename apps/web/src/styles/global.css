@@ -380,3 +380,5 @@
 @media(max-width:760px){.bank-review-kv>div{grid-template-columns:125px minmax(0,1fr);gap:10px}}
 
 .bank-detail-card .requester-record-detail>header h2{padding:0;border:0}.bank-detail-card .bank-review-section h3{padding:0;border:0;margin:0 0 14px}.bank-detail-card .requester-record-detail>header>div:first-child{min-width:0}
+
+.bank-supplier-workflow .request-form-help-tooltip{width:min(440px,calc(100vw - 64px));max-height:min(70vh,560px);overflow-y:auto;overscroll-behavior:contain}

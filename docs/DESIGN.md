@@ -624,3 +624,5 @@ displayed in Asia/Manila with enough context to avoid ambiguity.
   or consumer-health illustrations.
 - **Don't** treat a visually complete screen as evidence of clinical safety,
   regulatory compliance, or production readiness.
+
+2026-10-11 supplier workflow help: Current facility workflow tooltip now presents numbered guidance for request review, stock checks, allocation review, preparation evidence, dispatch/transit, operator verification/confirmed outcomes, receipt tracking and requesting own supply. It accurately distinguishes unavailable request decisions/PRC submission from supported reservation actions and scanner previews. Tooltip has bounded height and scroll for readable desktop/mobile help.
