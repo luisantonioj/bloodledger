@@ -34,7 +34,6 @@ for (const [action,label,state,prepared,local,recipient] of [
   ["transit","Start transit","DISPATCHED",true,false,false],
   ["receive","Receive reservation","IN_TRANSIT",true,false,true],
   ["cancel","Cancel reservation","ACTIVE",false,false,false],
-  ["local-release-complete","Complete local release","ACTIVE",true,true,false],
   ["compromise","Report compromise","DISPATCHED",true,false,false],
 ] as const) {
   test(`${action}: current read version, exact body, explicit confirmation, operator binding`,async ({page}) => {
@@ -67,12 +66,15 @@ test("malformed compromise policy fails closed; retry fetches without a command"
   const section=await open(page);await section.getByRole("button",{name:"Report compromise"}).click();await expect(section.getByRole("alert")).toContainText("inconsistent");await expect(section.getByLabel("Compromise reason")).toBeDisabled();await section.getByRole("checkbox").check();await expect(section.getByRole("button",{name:"Confirm reservation action"})).toBeDisabled();await section.getByRole("button",{name:"Reload reason policy"}).click();await expect.poll(()=>reads).toBe(2);expect(posts).toBe(0);
 });
 
-test("command recovery polls to commitment without resubmission",async({page})=>{
-  let polls=0,posts=0;await setup(page,{},async(route,path)=>{if(route.request().method()==="POST")posts++;if(path!=="/api/v2/commands/CMD_UAT_SYNTH")return false;polls++;await json(route,command({},polls===1?"QUEUED":"COMMITTED"));return true;});
-  await open(page);const section=page.locator(".requester-record-detail section").filter({has:page.getByRole("heading",{name:"Recover accepted command",exact:true})});await section.getByLabel("Accepted command ID").fill("CMD_UAT_SYNTH");await section.getByRole("button",{name:"Recover command status"}).click();await expect(section.getByRole("heading",{name:"Accepted and queued"})).toBeVisible();await expect(section.getByRole("heading",{name:"Committed",exact:true})).toBeVisible();expect(polls).toBe(2);expect(posts).toBe(0);
-});
-for(const status of [403,404,503])test(`recovery ${status} remains read-only and denies unavailable evidence`,async({page})=>{
-  let posts=0;await setup(page,{},async(route,path)=>{if(route.request().method()==="POST")posts++;if(path!=="/api/v2/commands/CMD_UAT_SYNTH")return false;await json(route,{error:{code:"TEST_DENIED",message:"Command unavailable"}},status);return true;});await open(page);const section=page.locator(".requester-record-detail section").filter({has:page.getByRole("heading",{name:"Recover accepted command",exact:true})});await section.getByLabel("Accepted command ID").fill("CMD_UAT_SYNTH");await section.getByRole("button",{name:"Recover command status"}).click();await expect(section.getByRole("alert")).toContainText("unavailable");await expect(section.getByRole("heading",{name:"Committed",exact:true})).toHaveCount(0);expect(posts).toBe(0);
+test("bank transfers hides manual recovery and operation history, including selected details",async({page})=>{
+ let posts=0;await setup(page,{},async(route,path)=>{if(route.request().method()==="POST")posts++;return false;});
+ await open(page);
+ await expect(page.getByRole("heading",{name:"Recover accepted command",exact:true})).toHaveCount(0);
+ await expect(page.getByLabel("Recovery lookup",{exact:true})).toHaveCount(0);
+ await expect(page.getByLabel("Accepted command ID",{exact:true})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:"Recover command status",exact:true})).toHaveCount(0);
+ await expect(page.getByText(/Enter the saved command ID|Recorded operations/)).toHaveCount(0);
+ await expect(page.getByRole("region",{name:"Reservation actions",exact:true})).toBeVisible();expect(posts).toBe(0);
 });
 
 test("reservation time rejection creates fresh keys; ambiguous transport retains the exact attempt",async({page})=>{
@@ -94,4 +96,14 @@ test("lost acceptance is recovered by saved request key with no second POST",asy
   if(path==="/api/v2/commands"){lookups++;expect(route.request().method()).toBe("GET");expect(new URL(route.request().url()).searchParams.get("idempotencyKey")).toBe(key);await json(route,{scope:"ACTOR_INSTITUTION",commands:[command(body,"COMMITTED")],nextCursor:null,classification:"SIMULATION_ONLY"});return true;}return false;
  });
  const section=await open(page);await section.getByRole("button",{name:"Cancel reservation",exact:true}).click();await section.getByRole("checkbox").check();await section.getByRole("button",{name:"Confirm reservation action"}).click();await verify(page);await expect(section.getByRole("alert")).toContainText("Acceptance response unavailable");await section.getByRole("button",{name:"Recover this attempt without resubmitting"}).click();await expect(section.getByRole("heading",{name:"Committed",exact:true})).toBeVisible();expect(posts).toBe(1);expect(lookups).toBe(1);
+});
+
+
+test("existing local-release records are readable without actionable frontend controls", async ({page}) => {
+ let posts=0;page.on("request",request=>{if(request.method()==="POST")posts++;});
+ await setup(page,{purpose:"LOCAL_RELEASE",transferId:null,localReleaseId:"REL_UAT_SYNTH",destinationInstitutionId:null,status:"ACTIVE",preparedEvidencePresent:true});
+ await page.goto("/transfers?record=reservation&recordId=RES_UAT_SYNTH");
+ await expect(page.getByText("Local release reservation",{exact:true})).toBeVisible();
+ await expect(page.getByRole("button",{name:/Queue local release|Complete local release|Prepare reservation|Cancel reservation/})).toHaveCount(0);
+ expect(posts).toBe(0);
 });

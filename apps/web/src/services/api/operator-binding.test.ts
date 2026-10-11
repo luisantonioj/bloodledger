@@ -23,6 +23,6 @@ describe("PA-ACCOUNT-01 bound commands and session changes",()=>{
     const pending=requestJson("/api/v2/dashboard");
     setCommandVerifier(async()=>"VFY_NEW_SESSION");
     finish(new Response(JSON.stringify({error:{message:"Expired"}}),{status:401}));
-    await expect(pending).rejects.toThrow("Expired");expect(dispatchEvent).not.toHaveBeenCalled();
+    await expect(pending).rejects.toMatchObject({code:"AUTH_CONTEXT_CHANGED"});expect(dispatchEvent).not.toHaveBeenCalled();
   });
 });

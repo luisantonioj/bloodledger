@@ -9,7 +9,7 @@ import { ReconciliationHold } from "./reconciliation-hold";
 import { ReservationActions } from "../transfers/reservation-actions";
 import { CommandRecovery } from "../commands/command-recovery";
 
-export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline = false, headerHelp, renderExtra, renderBody}: {initial: RecordSelection; principal: Principal; onClose: () => void; onRefresh?: () => void; inline?: boolean; headerHelp?: React.ReactNode; renderBody?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode; renderExtra?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode}) {
+export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline = false, showRecovery = true, headerHelp, renderExtra, renderBody}: {initial: RecordSelection; principal: Principal; onClose: () => void; onRefresh?: () => void; inline?: boolean; showRecovery?: boolean; headerHelp?: React.ReactNode; renderBody?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode; renderExtra?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode}) {
   const [history, setHistory] = useState<RecordSelection[]>([initial]);
   const [record, setRecord] = useState<SelectedRecord>();
   const [busy, setBusy] = useState(true), [error, setError] = useState("");
@@ -66,7 +66,7 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
       {record && renderExtra?.(record, open)}
       {selected.kind === "reservation" && <ReservationActions key={"actions:" + selected.id} reservation={reservation} principal={principal} onRefresh={refresh}/>}
       {selected.kind === "component" && <ReconciliationHold key={"hold:" + selected.id} component={component} principal={principal} onRefresh={refresh}/>}
-      {selected.kind !== "request" && <CommandRecovery key={"recovery:" + selected.id} resourceId={selected.id} onRefresh={refresh}/>}
+      {showRecovery && selected.kind !== "request" && <CommandRecovery key={"recovery:" + selected.id} resourceId={selected.id} onRefresh={refresh}/>}
     </div>
   </section></div>;
 }

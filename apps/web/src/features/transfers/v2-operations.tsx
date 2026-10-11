@@ -12,13 +12,12 @@ import { mutationError } from "../../services/api/mutation-error";
 import {
   V2_BLOOD_TYPES,
   V2_COMPONENT_TYPES,
-  submitV2LocalRelease,
   submitV2Transfer,
   type V2BloodType,
   type V2ComponentType,
 } from "../../services/api/v2";
 
-function resourceId(prefix: "TRF_WEB_" | "REL_WEB_", keys: MutationKeys): string {
+function resourceId(prefix: "TRF_WEB_", keys: MutationKeys): string {
   return prefix + keys.correlationId.slice("CORR_".length);
 }
 
@@ -90,7 +89,7 @@ export function V2TransferRequest({ principal, onRefresh, requesterPresentation 
     }
   }
 
-  const submitButton = <button className="button primary compact" disabled={locked || requiresCorrection || automaticRoutingPending} title={automaticRoutingPending ? "Automatic supplier routing is not available yet." : undefined}>{busy ? "Submitting…" : status.command ? "Command accepted" : requiresCorrection ? "Correct request before submitting" : error && attempt.current ? "Retry same request" : requesterPresentation ? "Submit request" : "Submit V2 request"}</button>;
+  const submitButton = <button className="button primary compact" disabled={locked || requiresCorrection || automaticRoutingPending} title={automaticRoutingPending ? "Automatic supplier routing is not available yet." : undefined}>{busy ? "Submitting…" : status.command ? "Command accepted" : requiresCorrection ? "Correct request before submitting" : error && attempt.current ? "Retry same request" : requesterPresentation ? "Submit request" : "Submit"}</button>;
 
   return <section className={requesterPresentation ? "requester-request-form" : "v2-operation-card"}>
     <header><div><h3>{requesterPresentation ? "Create Blood Request" : principal.accountId ? "Request blood" : "Request blood from Mediatrix"}</h3></div>{requesterPresentation ? <RequestFormHelp label="Create Blood Request">Enter the basic details of the requested blood supply.</RequestFormHelp> : <InformationHelp label="Request blood">Request a blood product for the authenticated institution using the supported command. The supplying bank and requested product remain subject to the recorded workflow; command acceptance is not approval or ledger commitment.</InformationHelp>}</header>
@@ -114,82 +113,10 @@ export function V2TransferRequest({ principal, onRefresh, requesterPresentation 
   </section>;
 }
 
-function V2LocalRelease({ onRefresh }: { onRefresh: () => void }) {
-  const [bloodType, setBloodType] = useState<V2BloodType>("A_POSITIVE");
-  const [componentType, setComponentType] = useState<V2ComponentType>("PACKED_RED_BLOOD_CELLS");
-  const [quantity, setQuantity] = useState(1);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [requiresCorrection, setRequiresCorrection] = useState(false);
-  const timeRejections = useRef(0);
-  const attempt = useRef<{ keys: MutationKeys; payload: Record<string, unknown> & { componentType: V2ComponentType } } | undefined>(undefined);
-  const status = useCommandStatus(onRefresh);
-  const locked = busy || status.command !== undefined;
-
-  function changed(action: () => void) {
-    action();
-    attempt.current = undefined;
-    status.clear();
-    setError("");
-    setRequiresCorrection(false);
-  }
-
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    if (locked || requiresCorrection) return;
-    setBusy(true);
-    setError("");
-    const current = attempt.current ?? (() => {
-      const keys = newMutationKeys();
-      const eventTime = new Date().toISOString();
-      return {
-        keys,
-        payload: {
-          releaseId: resourceId("REL_WEB_", keys),
-          bloodType,
-          componentType,
-          quantity,
-          eventTime,
-          correlationId: keys.correlationId,
-        },
-      };
-    })();
-    attempt.current = current;
-    try {
-      status.accept(await submitV2LocalRelease(current.payload, current.keys));
-      attempt.current = undefined;
-      timeRejections.current = 0;
-    } catch (reason) {
-      const failure = mutationError(reason, timeRejections.current);
-      if (failure.timeRejected) timeRejections.current++;
-      if (failure.discardAttempt) attempt.current = undefined;
-      setRequiresCorrection(failure.requiresCorrection);
-      setError(failure.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return <section className="v2-operation-card">
-    <header><h3>Start local release</h3><InformationHelp label="Start local release">Start a local-release reservation for stock held by your institution. This records the supported reservation command without collecting patient or donor details. A queued command is not a completed release; review its recorded outcome before proceeding.</InformationHelp></header>
-    <form className="v2-operation-form" onSubmit={(event) => void submit(event)}>
-      <label>Blood type<span className="requester-select"><select disabled={locked} value={bloodType} onChange={(event) => changed(() => setBloodType(event.target.value as V2BloodType))}>{V2_BLOOD_TYPES.map((value) => <option key={value} value={value}>{formatBloodType(value)}</option>)}</select></span></label>
-      <label>Component<span className="requester-select"><select disabled={locked} value={componentType} onChange={(event) => changed(() => setComponentType(event.target.value as V2ComponentType))}>{V2_COMPONENT_TYPES.map((value) => <option key={value} value={value}>{componentLabel(value)}</option>)}</select></span></label>
-      <label>Quantity<input disabled={locked} type="number" min="1" value={quantity} onChange={(event) => changed(() => setQuantity(Number(event.target.value)))}/></label>
-      <div className="v2-submit"><button className="button primary compact" disabled={locked || requiresCorrection}>{busy ? "Submitting…" : status.command ? "Command accepted" : requiresCorrection ? "Correct release before submitting" : error && attempt.current ? "Retry same release" : "Queue local release"}</button>{error && <span role="alert">{error}</span>}</div>
-    </form>
-    {status.command && <CommandStatusCard command={status.command} pollError={status.pollError} onClear={status.clear}/>}
-  </section>;
-}
-
 export function V2Operations({ principal, onRefresh, showRequest=true, onCancelRequest, initialBloodType, initialComponentType }: { principal: Principal; onRefresh: () => void;showRequest?:boolean;onCancelRequest?:()=>void;initialBloodType?:V2BloodType;initialComponentType?:V2ComponentType }) {
   const recipient = principal.accountId ? canAct(principal, "transfer:request") : principal.roleId === "ROLE-03";
-  const sourceOperator = principal.accountId ? canAct(principal, "inventory:local-release") : ["ROLE-01", "ROLE-02"].includes(principal.roleId);
-  if (!recipient && !sourceOperator) return null;
+  if (!recipient || !showRequest) return null;
   return <div className="v2-operations">
-    <header className="bank-section-heading"><h2>Facility operations</h2><InformationHelp label="Facility operations">Use the supported request or local-release form available to your operator role. Verification and command status remain part of submission. Accepted commands are tracked until committed, failed or conflicted; they are not immediately confirmed inventory changes.</InformationHelp></header>
-    {recipient && showRequest && <V2TransferRequest principal={principal} onRefresh={onRefresh} onCancel={onCancelRequest} initialBloodType={initialBloodType} initialComponentType={initialComponentType}/>}
-    {sourceOperator && <V2LocalRelease onRefresh={onRefresh}/>}
-    <p>Open a current reservation to use its authorized actions. Place reconciliation holds from component details.</p>
+    <V2TransferRequest principal={principal} onRefresh={onRefresh} onCancel={onCancelRequest} initialBloodType={initialBloodType} initialComponentType={initialComponentType}/>
   </div>;
 }

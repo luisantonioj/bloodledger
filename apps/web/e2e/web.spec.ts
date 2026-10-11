@@ -630,8 +630,9 @@ test("legacy V1 transfer mutations stay unavailable while canonical V2 entry poi
     await page.goto("/");
     await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
     if (roleId === "ROLE-03") await page.getByRole("button", {name: "+ New Blood Request", exact:true}).click();
-    await expect(page.getByRole("button", { name: canonicalButton, exact: true })).toBeVisible();
-    if (roleId === "ROLE-02") await expect(page.getByText("Open a current reservation to use its authorized actions. Place reconciliation holds from component details.", {exact:true})).toBeVisible();
+    if(roleId === "ROLE-03") await expect(page.getByRole("button", { name: canonicalButton, exact: true })).toBeVisible();
+    else await expect(page.getByRole("button", { name: canonicalButton, exact: true })).toHaveCount(0);
+
     await expect(page.getByRole("button", { name: /Approve FEFO selection|Reject request|Cancel transfer|Record dispatch|Start transit|Record receipt/ })).toHaveCount(0);
     if (roleId === "ROLE-02") await expect(page.getByText("Reconciliation reason policy unavailable", { exact: true })).toHaveCount(0);
     await context.close();
@@ -731,12 +732,12 @@ test("latest visual baseline stays role-scoped while Sprint 6 integrations remai
   await expect(page.getByText("SYNTHETIC_FORECAST_V4_RUNTIME_V1", { exact: true }).first()).toBeVisible();
 
   await page.getByRole("link", { name: "Blood Inventory", exact: true }).click();
-  await expect(page.getByText("Committed component registry", { exact: true })).toBeVisible();
+  await expect(page.locator(".inventory-table th")).toHaveCount(6);
   await expect(page.getByText("CMP_SYNTH_BROWSER_01", { exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Facility operations", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Start local release", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Facility operations", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Start local release", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Export filtered PDF" })).toHaveCount(0);
 
   await page.getByRole("link", { name: "Profile", exact: true }).click();
@@ -747,64 +748,11 @@ test("latest visual baseline stays role-scoped while Sprint 6 integrations remai
   await expect(page.getByText("Duty scheduling is also outside the latest mockup baseline.", { exact: false })).toBeVisible();
 });
 
-test("ROLE-02 submits one canonical V2 local release and polls the accepted command to commitment", async ({ page }) => {
-  let submissions = 0;
-  let polls = 0;
-  let submittedBody: Record<string, unknown> = {};
-  await authenticatedApi(page, "ROLE-02", async (route, path) => {
-    if (path === "/api/v2/local-releases" && route.request().method() === "POST") {
-      submissions += 1;
-      expect(route.request().headers()["idempotency-key"]).toMatch(/^IDEM_WEB_[0-9A-F]{32}$/);
-      expect(route.request().headers()["x-bloodledger-contract-version"]).toBe("V2");
-      submittedBody = route.request().postDataJSON() as Record<string, unknown>;
-      await fulfillJson(route, {
-        commandId: "CMD_SYNTH_WEB_V2_01",
-        resourceType: "LOCAL_RELEASE",
-        resourceId: submittedBody.releaseId,
-        status: "QUEUED",
-        statusUrl: "/api/v2/commands/CMD_SYNTH_WEB_V2_01",
-        acceptedAt: timestamp,
-        correlationId: submittedBody.correlationId,
-        safeErrorCode: null,
-        classification: "SIMULATION_ONLY",
-        replayed: false,
-      }, 202);
-      return true;
-    }
-    if (path === "/api/v2/commands/CMD_SYNTH_WEB_V2_01") {
-      polls += 1;
-      await fulfillJson(route, {
-        commandId: "CMD_SYNTH_WEB_V2_01",
-        resourceType: "LOCAL_RELEASE",
-        resourceId: submittedBody.releaseId,
-        status: polls === 1 ? "LEDGER_COMMITTED_PROJECTION_PENDING" : "COMMITTED",
-        statusUrl: "/api/v2/commands/CMD_SYNTH_WEB_V2_01",
-        acceptedAt: timestamp,
-        correlationId: submittedBody.correlationId,
-        safeErrorCode: null,
-        classification: "SIMULATION_ONLY",
-        replayed: false,
-      });
-      return true;
-    }
-    return false;
-  });
-
-  await page.goto("/");
-  await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
-  await page.getByRole("button", { name: "Queue local release", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Committed", exact: true })).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByRole("button", { name: "Command accepted", exact: true })).toBeDisabled();
-  expect(submissions).toBe(1);
-  expect(polls).toBe(2);
-  expect(submittedBody).toMatchObject({
-    bloodType: "A_POSITIVE",
-    componentType: "PACKED_RED_BLOOD_CELLS",
-    quantity: 1,
-  });
-  expect(submittedBody).not.toHaveProperty("patientId");
-  expect(submittedBody).not.toHaveProperty("donorId");
-  expect(submittedBody).not.toHaveProperty("donationNumber");
+test("ROLE-02 cannot initiate local release from the frontend", async ({page}) => {
+ let posts=0;await authenticatedApi(page,"ROLE-02",async(route,path)=>{if(path==="/api/v2/local-releases"&&route.request().method()==="POST"){posts++;await fulfillJson(route,{},500);return true;}return false;});
+ await page.goto("/transfers");await expect(page.getByRole("heading",{name:"Requests & Transfers",exact:true})).toBeVisible();
+ await expect(page.getByRole("heading",{name:/Facility operations|Start local release/})).toHaveCount(0);
+ await expect(page.getByRole("button",{name:/Queue local release|Complete local release/})).toHaveCount(0);expect(posts).toBe(0);
 });
 
 test("committed projection becomes visible within the frontend NFR-06 budget", async ({ page }, testInfo) => {

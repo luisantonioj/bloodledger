@@ -10,8 +10,9 @@ describe("FR-05/12 PR35 reservation lifecycle visibility", () => {
     expect(reservationActions(reservation, source)).toEqual(["prepare", "cancel"]);
     expect(reservationActions({...reservation, preparedEvidencePresent:true}, source)).toEqual(["dispatch", "cancel"]);
   });
-  it("local release completes only from prepared ACTIVE and never dispatches", () => {
-    expect(reservationActions({...reservation, purpose:"LOCAL_RELEASE", preparedEvidencePresent:true}, source)).toEqual(["local-release-complete", "cancel"]);
+  it("local-release records expose no frontend mutations even with capability", () => {
+    expect(reservationActions({...reservation, purpose:"LOCAL_RELEASE", preparedEvidencePresent:true}, source)).toEqual([]);
+    expect(reservationActions({...reservation, purpose:"LOCAL_RELEASE"}, source)).toEqual([]);
     expect(reservationActions({...reservation, purpose:"LOCAL_RELEASE"}, recipient)).toEqual([]);
   });
   it("transit and receipt follow source and ROLE-03 destination authorization", () => {

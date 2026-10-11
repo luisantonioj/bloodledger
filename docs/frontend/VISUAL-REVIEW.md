@@ -108,3 +108,114 @@ with `SAMPLE_ONLY` validation and `SYNTHETIC_VISUAL_REFERENCE` identifiers. Thes
 are not the requested 522-unit workbook import or valid local Fabric receipts.
 Transfer samples separate PENDING requests from ACTIVE/IN_TRANSIT reservations.
 Expiry samples do not imply an enabled near-expiry alert policy.
+# Dashboard stock chart restoration — 2026-10-08
+
+The inventory overview restores the original mockup's quantity axis, stock-color
+legend, surplus segment and View inventory link. Fixed sample stock indicators
+are injected only by this isolated review host. The normal frontend uses actual
+dashboard aggregates and displays surplus as unavailable: its API does not
+supply approved stock indicators or predicted surplus. AVAILABLE stock is never
+relabeled as redistributable stock.
+
+## Temporary local account switcher — 2026-10-09
+
+On port 5174, the Vite development server adds a top account bar when the existing
+ignored `build/accounts/private.json` is present. Select any of the six retained
+institution accounts to sign in and return to its Dashboard. Accounts are grouped
+as blood bank, requestor, PRC and DOH, matching the external dashboard reference.
+The bar uses real local API sessions and data; it does not supply sample stock or
+change permissions. The previous session is revoked on switching. Credentials are
+read server-side only, and Vite denies HTTP access to `build` artifacts. This
+temporary tool is excluded from production builds and the isolated 5175 host.
+
+Verification: `npm run check:web`, `npm run test:web`, and
+`node tests/frontend/local-account-switcher.mjs` (requires the retained API and
+frontend on 3000/5174). The browser check uses its own sessions and verifies all
+six accounts, prior-session revocation, keyboard access, narrow layout and
+rejected cross-origin/unknown-account requests. This is frontend technical
+preparation under BL-TST-01, not participant UAT or Testing-phase completion.
+
+## Dashboard refresh — 2026-10-09
+
+Lat frontend implementation: the shared dashboard header now supplies the
+Refresh control described in [DESIGN.md](../DESIGN.md#page-head) for all account
+types. It reuses the scoped polling reader and preserves confirmed data after
+transient failure. The icon follows the external HTML reference.
+
+Technical self-validation on this host: `npm run check:web` passed;
+`npm run test:web` passed 80 tests; `npm run test:web:e2e` passed 68 tests with
+7 existing retired V1 fixtures skipped; `node tests/frontend/local-account-switcher.mjs`
+passed all six retained accounts; `npm run scan:secrets` passed. Browser coverage
+includes explicit refresh for Blood bank, Requestor, PRC and DOH, busy/keyboard
+behavior, data update without browser reload, and transient-failure recovery.
+This evidence does not complete BL-TST-01 or participant UAT.
+
+## Account-specific summary cards — 2026-10-09
+
+At Lat's request, the external six-account HTML reference supersedes the shared
+three-card technical summary. The four card sets and data boundary are defined
+in [DESIGN.md](../DESIGN.md#page-head). `DashboardView` selects them from the
+authenticated account category; synchronization evidence remains a compact
+secondary row. Only confirmed inventory totals are supplied by the current
+dashboard response. Expiry/stock/request, PRC supply/facility and DOH compliance
+summaries have no dashboard contract and remain Unavailable, including on the
+isolated review host. Fixed reference numbers are not copied into the live UI.
+
+Lat technical self-validation: `npm run check:web` passed;
+`npm run test:web` passed 86 tests; `npm run test:web:e2e` passed 68 tests with
+7 retired V1 fixtures skipped; `node tests/frontend/local-account-switcher.mjs`
+verified the four exact label sets across all six retained accounts;
+`npm run scan:secrets` passed. Missing metrics are distinct from confirmed zero,
+and available stock is not inferred as redistributable supply. No UAT or phase
+completion is claimed.
+
+Follow-up simplification on 2026-10-09: removed the summary cards' colored edge
+accents and third helper row at Lat's request. Cards retain title and count only;
+unavailable counts keep a dash with an accessible label, and confirmed zero
+remains `0`. `npm run check:web` passed; the retained-account browser check covers
+the two-row structure and absence of edge decoration across all six accounts.
+
+Further dashboard simplification: the synchronization row is removed, and the
+last successful projection is displayed as a muted `Last updated` label beside
+Refresh. Source/timezone remain in its tooltip; a missing timestamp displays
+Unavailable. The label wraps with the action group on narrow screens.
+`npm run check:web` and all 68 active frontend browser tests passed (7 retired
+fixtures skipped). The retained-account check passed all six accounts and
+verified narrow-screen action-group fit. The header was also visually inspected
+using a temporary screenshot under `/tmp`; no screenshot is committed.
+
+
+## Requester dashboard layout — 2026-10-09
+
+Scoped frontend continuation on `codex/lat-uat-frontend`, using the existing WSL
+checkout and retained live preview on port 5174. The Metro Lipa HTML dashboard
+is a layout reference only. Requester accounts now show My Requests and Network
+Blood Availability instead of the blood-bank inventory chart. The existing
+summary cards and missing-metric semantics are preserved.
+
+My Requests reads `/api/v2/transfers`, filters the authenticated destination,
+shows recent request state with pending ledger confirmation when applicable,
+and links to the existing request/detail workflow. Network availability uses
+only AVAILABLE blood-type/component rows from the authorized city-wide
+projection. No sample supply, predicted surplus, guaranteed eligibility, or
+automatic source routing is introduced. Refresh updates both reads; transient
+request errors preserve earlier results, while authorization errors clear them.
+
+Validation (simulation-only technical checks; no UAT or integration gate closed):
+
+- `npm run check:web`: PASS; TypeScript and production build.
+- `npm run test:web`: PASS, 89 unit tests.
+- `npm run test:web:e2e`: 70 PASS, 7 existing retired V1 tests skipped,
+  one new filter-label lookup failed. Explicit accessible filter names fixed
+  that failure. The focused rerun below covers all affected requester cases.
+- `npm run test:e2e --workspace @bloodledger/web -- --grep "requester|two synthetic secondary"`:
+  PASS, 5 browser cases, including the additional authorization-loss regression.
+- `node tests/frontend/local-account-switcher.mjs`: PASS for all six live local
+  accounts, keyboard/narrow viewport, scope checks and credential isolation.
+- `npm run scan:secrets`: PASS, no leaks found.
+- Live Metro Lipa at 1440px and 390px: both panels visible, no inventory chart,
+  no page overflow or JavaScript page errors. Request Blood opens the existing
+  request form without submitting a request. The current default O+/PRBC filter
+  returned zero and the request list was empty; no fixture records were added.
+- Desktop/mobile screenshots were reviewed in the Codex artifacts directory as
+  `requester-1440.png` and `requester-390.png`.

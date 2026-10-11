@@ -1,3 +1,4 @@
+import { RefreshIcon } from "../../components/ui/refresh-button";
 import { useEffect, useRef, useState } from "react";
 import { canAct, type Principal } from "../../auth/permissions";
 import { mutationError } from "../../services/api/mutation-error";
@@ -39,7 +40,7 @@ export function ExpiryEvaluation({ component, principal, onRefresh }: { componen
   return <section>
     {eligible && <button className="button danger" type="button" disabled={busy || status.command !== undefined || requiresRefresh} onClick={() => void submit()}>{busy ? "Submitting expiry evaluation…" : "Evaluate expiry"}</button>}
     {error && <p role="alert">{error}</p>}
-    {requiresRefresh && <button className="button" onClick={onRefresh}>Refresh component</button>}
+    {requiresRefresh && <button className="button refresh-icon-button" onClick={onRefresh}><RefreshIcon/>Refresh component</button>}
     {component?.expiryState === "LABEL_EXPIRED_PENDING_EVALUATION" && component.inventoryStatus === "RESERVED" && <p>Cancel the active reservation through its authorized workflow before evaluating expiry. Open the linked reservation to review its purpose and members.</p>}
     {status.command && <CommandStatusCard command={status.command} pollError={status.pollError} onClear={status.clear}/>}
     {status.command?.status === "COMMITTED" && <p>The expiry evaluation committed. Check Alerts for the expired component and acknowledgement.</p>}

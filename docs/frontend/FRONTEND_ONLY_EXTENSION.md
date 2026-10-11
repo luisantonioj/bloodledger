@@ -130,3 +130,7 @@ implemented, and the relevant tests pass.
 
 Frontend presentation checks for this extension do not satisfy those activation
 conditions. The open Testing-phase gate `TP-G06` therefore remains open.
+
+
+### Desktop continuation gap tracking — 2026-10-09
+The dashboard and requester Requests & Transfers backend/API dependency checklist is maintained in [Backend/API gaps](BACKEND_API_GAPS.md). Missing request-detail, pickup, document and notes fields are displayed as disabled placeholders. Existing operator verification remains functional through its submission dialog. Add and update entries as this frontend continuation proceeds; distinguish absent contracts from available APIs awaiting frontend wiring.

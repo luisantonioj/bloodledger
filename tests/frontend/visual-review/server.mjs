@@ -38,7 +38,15 @@ const toolbar = `<style>body{padding-top:var(--visual-review-height,64px)!import
 const toolbarScript = `const pageSelect=document.getElementById('review-page');pageSelect.value=location.pathname;pageSelect.onchange=()=>location.assign(pageSelect.value);const bar=document.getElementById('visual-review');new ResizeObserver(()=>document.documentElement.style.setProperty('--visual-review-height',bar.getBoundingClientRect().height+'px')).observe(bar);const cookie=(key,fallback)=>document.cookie.split('; ').find(x=>x.startsWith(key+'='))?.split('=')[1]??fallback;for(const [id,key,fallback] of [['review-mode','bloodledger_review_mode','all'],['review-role','bloodledger_review_role','ROLE-01'],['review-state','bloodledger_review_state','populated']]){const select=document.getElementById(id);select.value=cookie(key,fallback);select.onchange=()=>{document.cookie=key+'='+select.value+'; Path=/; SameSite=Strict';location.assign('/');};}`;
 const server = await createServer({root,configFile:resolve(root,'vite.config.ts'),server:{host:'127.0.0.1',port:5175,strictPort:true,proxy:{}},plugins:[{
   name:'bloodledger-explicit-visual-review',
-  async load(id){if(id.split('?')[0]===resolve(root,'src/app/application.tsx'))return (await readFile(resolve(import.meta.dirname,'application.tsx'),'utf8')).replaceAll('../../../apps/web/src/','/src/');},
+  async load(id){
+    const path=id.split('?')[0];
+    if(path===resolve(root,'src/app/application.tsx'))return (await readFile(resolve(import.meta.dirname,'application.tsx'),'utf8')).replaceAll('../../../apps/web/src/','/src/');
+    if(path===resolve(root,'src/features/dashboard/dashboard-view.tsx')){
+      // Fixed presentation examples; no browser stock thresholds or live surplus calculation.
+      const examples=[['A_POSITIVE','adequate',0],['A_NEGATIVE','critical',0],['B_POSITIVE','surplus',8],['B_NEGATIVE','low',0],['AB_POSITIVE','adequate',0],['AB_NEGATIVE','critical',0],['O_POSITIVE','surplus',12],['O_NEGATIVE','low',0]].map(([bloodType,status,surplus])=>({bloodType,status,surplus}));
+      return (await readFile(path,'utf8')).replace('<InventoryOverviewChart items={data.inventory} />',`<InventoryOverviewChart items={data.inventory} sampleIndicators={${JSON.stringify(examples)}} />`);
+    }
+  },
   transformIndexHtml(html){return html.replace('<body>','<body>'+toolbar);},
   configureServer(vite){vite.middlewares.use((req,res,next)=>{
     const url=new URL(req.url,'http://127.0.0.1:5175');

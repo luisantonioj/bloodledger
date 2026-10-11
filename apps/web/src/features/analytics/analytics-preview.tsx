@@ -1,3 +1,4 @@
+import { RefreshIcon } from "../../components/ui/refresh-button";
 import { InventoryEvidencePanel } from "./inventory-evidence-panel";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Principal } from "../../auth/permissions";
@@ -63,7 +64,7 @@ export function AnalyticsPreview({ principal }: { principal: Principal }) {
       <div className="forecast-filter-grid">
         <label>Business date<input type="date" value={businessDate} onChange={(event) => { requestId.current += 1; setData(undefined); setBusinessDate(event.target.value); }} /></label>
         <label>Forecast version<select value={dataset} onChange={(event) => { requestId.current += 1; setData(undefined); setDataset(event.target.value as ForecastDataset); }}><option value={ACTIVE_FORECAST_DATASET}>Active V4</option><option value={V5_FORECAST_DATASET}>V5 simulation preview</option></select></label>
-        <button className="button primary" type="button" disabled={busy} onClick={() => void refresh()}>{busy ? "Loading…" : "Refresh forecast"}</button>
+        <button className="button primary refresh-icon-button" type="button" disabled={busy} onClick={() => void refresh()}><RefreshIcon/>{busy ? "Loading…" : "Refresh forecast"}</button>
       </div>
     </section>
 

@@ -1,3 +1,4 @@
+import { RefreshIcon } from "../../components/ui/refresh-button";
 import { V2_BLOOD_TYPES, V2_COMPONENT_TYPES } from "../../services/api/v2";
 import { RequestFormHelp } from "./request-form-help";
 import { useEffect, useRef, useState } from "react";
@@ -45,7 +46,7 @@ export function RequesterTransfersPage({ principal }: { principal: Principal }) 
   const open = (kind: "request" | "reservation", id: string) => setSelected({kind, id});
   return <div className="page requester-transfers-page">
     <header className="page-head"><div><h1 className="page-title">Requests &amp; Transfers</h1></div>
-      <div className="requester-page-actions"><button className="button compact dashboard-refresh" type="button" onClick={state.manual} disabled={state.busy} aria-busy={state.busy}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 4v6h6M20 20v-6h-6M5 14a8 8 0 0 0 14 4M19 10a8 8 0 0 0-14-4"/></svg>{state.busy ? "Refreshing…" : "Refresh"}</button>{mayRequest && <button className="button primary compact" type="button" aria-expanded={formOpen} aria-controls="requester-new-request-form" onClick={() => {if (formOpen) scrollToRequestForm(); else setFormOpen(true);}}>+ New Blood Request</button>}</div>
+      <div className="requester-page-actions"><button className="button compact dashboard-refresh" type="button" onClick={state.manual} disabled={state.busy} aria-busy={state.busy}><RefreshIcon/>{state.busy ? "Refreshing…" : "Refresh"}</button>{mayRequest && <button className="button primary compact" type="button" aria-expanded={formOpen} aria-controls="requester-new-request-form" onClick={() => {if (formOpen) scrollToRequestForm(); else setFormOpen(true);}}>+ New Blood Request</button>}</div>
     </header>
     <div className="requester-transfer-tabs" role="tablist" aria-label="Requests and transfers">
       <button type="button" id="requester-requests-tab" role="tab" aria-selected={tab === "requests"} aria-controls="requester-records-panel" tabIndex={tab === "requests" ? 0 : -1} onKeyDown={event => {if (["ArrowRight", "ArrowLeft", "End"].includes(event.key)) {event.preventDefault(); changeTab("transfers"); document.getElementById("requester-transfers-tab")?.focus();}}} onClick={() => changeTab("requests")}>Blood Requests <span>{count(records?.requests.length)}</span></button>
@@ -65,7 +66,7 @@ export function RequesterTransfersPage({ principal }: { principal: Principal }) 
     {error && <div className="requester-transfer-notice" role="status">
       <svg className="requester-notice-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 4v.1"/></svg>
       <div className="requester-notice-copy"><strong>{records ? "Update unavailable" : "Unable to load records"}</strong><p>{records ? "Showing the last confirmed records. " : ""}{error}</p></div>
-      <button className="button compact dashboard-refresh" type="button" onClick={state.manual} disabled={state.busy} aria-busy={state.busy}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 4v6h6M20 20v-6h-6M5 14a8 8 0 0 0 14 4M19 10a8 8 0 0 0-14-4"/></svg>Retry records</button>
+      <button className="button compact dashboard-refresh" type="button" onClick={state.manual} disabled={state.busy} aria-busy={state.busy}><RefreshIcon/>Retry records</button>
     </div>}
     <div id="requester-records-panel" role="tabpanel" aria-labelledby={tab === "requests" ? "requester-requests-tab" : "requester-transfers-tab"} className="requester-records-grid">
       <section className="requester-records-card"><header className="requester-records-heading"><h2>{tab === "requests" ? "Blood Requests" : "Transfers"}</h2><RequestFormHelp label={tab === "requests" ? "Blood Requests" : "Transfers"}>{listDescription}</RequestFormHelp></header>

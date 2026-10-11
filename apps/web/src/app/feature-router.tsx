@@ -26,6 +26,10 @@ export function FeatureRouter({path,canAcknowledge=false,canSubmitTransfer=false
   if(path==="/analytics"&&principal)return <AnalyticsPreview principal={principal}/>;
   if(path==="/profile"&&principal)return principal.accountId ? <InstitutionProfile principal={principal}/> : <ProfileParityPreview principal={principal}/>;
   if(path==="/inventory"&&principal)return <V2InventoryView key={[principal.userId,principal.institutionId,principal.roleId].join(":")} principal={principal}/>;
+  if(path==="/alerts")return <>
+    {state.error&&<div className="v2-inline-state warning" role="status"><strong>Alerts could not refresh</strong><span>{state.error}</span><button className="button compact" onClick={state.manual}>Retry</button></div>}
+    <AlertsView ready={Boolean(state.data)} data={state.data?normalizeAlerts(state.data as Alerts):{scope:principal?.accountCategory==="PRC"||principal?.accountCategory==="DOH"?"CITY_AGGREGATE":"INSTITUTION",alerts:[],aggregates:[],classification:"SIMULATION_ONLY"}} canAcknowledge={Boolean(state.data)&&(principal?.accountId?canAct(principal,"alert:acknowledge"):canAcknowledge)} onRefresh={state.manual}/>
+  </>;
   if(!endpoint[path])return <div className="empty"><strong>Data unavailable</strong>The official feature API is not implemented yet. Runtime mock fallback is disabled.</div>;
   if(!state.data&&state.busy)return <div className="empty" aria-live="polite"><strong>Loading authorized data</strong>Waiting for the official API.</div>;
   if(!state.data)return <div className="empty" role="alert"><strong>Unable to load data</strong>{state.error}<br/><button className="button" onClick={state.manual}>Retry</button></div>;
@@ -33,7 +37,6 @@ export function FeatureRouter({path,canAcknowledge=false,canSubmitTransfer=false
   if(path==="/consortium")return withRefreshState(<ConsortiumView data={state.data as Consortium}/>);
   if(path==="/audit")return withRefreshState(<AuditView data={state.data as Audit}/>);
   if(path==="/reporting")return withRefreshState(<ReportView data={state.data as Report} principal={principal}/>);
-  if(path==="/alerts")return withRefreshState(<AlertsView data={normalizeAlerts(state.data as Alerts)} canAcknowledge={principal?.accountId ? canAct(principal,"alert:acknowledge") : canAcknowledge} onRefresh={state.manual}/>);
   if(path==="/transfers"&&principal)return withRefreshState(<TransferExplorer data={state.data as Transfers} canSubmit={false} canReject={false} canCancel={false} canCancelApproved={false} canDispatch={false} canStartTransit={false} canDelay={false} canResume={false} canReceive={false} canPreviewExport={canPreviewTransferExport} receiptInstitutionId={principal.institutionId} onRefresh={state.manual} principal={principal}/>);
   return <div className="empty"><strong>Data unavailable</strong>The selected official feature API is not implemented.</div>;
 }

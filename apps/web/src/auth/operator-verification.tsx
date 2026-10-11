@@ -35,5 +35,16 @@ export function OperatorVerification({principal, children}: {principal: Principa
     } catch (reason) { if (current === generation.current) setError(reason instanceof Error ? reason.message : "Verification failed."); }
     finally { if (current === generation.current) setBusy(false); }
   }
-  return <>{children}{pending && <div className="preview-modal-backdrop"><section className="preview-modal" role="dialog" aria-modal="true" aria-labelledby="operator-verification-title"><header><div><h2 id="operator-verification-title">Verify operator</h2><p>{principal.institutionDisplayName} · Authorize this action</p></div><button aria-label="Cancel verification" onClick={cancel}>×</button></header><form className="preview-modal-body auth-form" onSubmit={event => void verify(event)}><label>Operator<select aria-label="Operator" value={operatorId} disabled={busy} onChange={event => setOperatorId(event.target.value)}>{eligibleOperators(principal.operators ?? [], pending.action).map(operator => <option key={operator.operatorId} value={operator.operatorId}>{operator.roleId} · {operator.operatorId}</option>)}</select></label><label>Operator PIN<input type="password" inputMode="numeric" pattern="[0-9]{8}" minLength={8} maxLength={8} autoComplete="off" value={pin} disabled={busy} onChange={event => setPin(event.target.value)} required/></label><p>Your PIN authorizes this command only and is never saved in the browser.</p>{error && <p role="alert">{error}</p>}<button className="button primary" disabled={busy}>{busy ? "Verifying…" : "Verify and submit"}</button><button className="button" type="button" onClick={cancel}>Cancel</button></form></section></div>}</>;
+  const facilityName = principal.institutionDisplayName.replace(/^synthetic\s+/i, "");
+  return <>{children}{pending && <div className="preview-modal-backdrop"><section className="preview-modal operator-verification-modal" role="dialog" aria-modal="true" aria-labelledby="operator-verification-title">
+    <header><div><h2 id="operator-verification-title">Verify operator</h2><p>{facilityName} · Authorize this action</p></div><button aria-label="Cancel verification" onClick={cancel}>×</button></header>
+    <form className="preview-modal-body auth-form" onSubmit={event => void verify(event)}>
+      <div className="operator-verification-fields">
+        <label>Operator<span className="requester-select"><select aria-label="Operator" value={operatorId} disabled={busy} onChange={event => setOperatorId(event.target.value)}>{eligibleOperators(principal.operators ?? [], pending.action).map(operator => <option key={operator.operatorId} value={operator.operatorId}>{operator.roleId} · {operator.operatorId}</option>)}</select></span></label>
+        <label>Operator PIN<input type="password" inputMode="numeric" pattern="[0-9]{8}" minLength={8} maxLength={8} autoComplete="off" value={pin} disabled={busy} onChange={event => setPin(event.target.value)} required/></label>
+      </div>
+      {error && <p role="alert">{error}</p>}
+      <div className="operator-verification-actions"><button className="button compact" type="button" onClick={cancel}>Cancel</button><button className="button primary compact" disabled={busy}>{busy ? "Verifying…" : "Verify and submit"}</button></div>
+    </form>
+  </section></div>}</>;
 }

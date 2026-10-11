@@ -1,3 +1,4 @@
+import { RefreshIcon } from "../../components/ui/refresh-button";
 import { useState } from "react";
 import { canAct, type Principal } from "../../auth/permissions";
 import { submitV2Reconciliation, type V2Component } from "../../services/api/v2";
@@ -26,7 +27,7 @@ export function ReconciliationHold({ component, principal, onRefresh }: { compon
     </form>}
     {command.error && <p role="alert">{command.error}</p>}
     {command.ambiguous && <div><p>Saved request key: <code>{command.pendingKey}</code></p><button className="button" disabled={command.busy} onClick={() => void command.recover()}>Recover this attempt without resubmitting</button></div>}
-    {command.requiresCorrection && <button className="button" onClick={() => {command.correct(); onRefresh();}}>Refresh component before continuing</button>}
+    {command.requiresCorrection && <button className="button refresh-icon-button" onClick={() => {command.correct(); onRefresh();}}><RefreshIcon/>Refresh component before continuing</button>}
     {command.command && <CommandStatusCard command={command.command} pollError={command.pollError} onClear={() => {command.clear(); setOpened(false); onRefresh();}}/>}
   </section>;
 }

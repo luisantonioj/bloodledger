@@ -26,7 +26,7 @@ export function RequesterDashboard({ data, principal, requests, bankMode=false }
   const mayRequest = mayRead && (principal.accountId ? canAct(principal, "transfer:request") : can(principal, "transfers:write"));
   return <div className="requester-dashboard-grid">
     <section className="requester-dashboard-card" aria-labelledby="requester-requests-heading">
-      <header><div><h2 id="requester-requests-heading">{bankMode?"Requests":"My Requests"}</h2>{!bankMode&&<p>Requests associated with {principal.institutionDisplayName}.</p>}</div>{mayRead && <a className="requester-dashboard-link" href="/transfers">View all →</a>}</header>
+      <header><div><h2 id="requester-requests-heading">{bankMode?"Requests":"My Requests"}</h2></div>{mayRead && <a className="requester-dashboard-link" href="/transfers">View all →</a>}</header>
       {!mayRead ? <div className="empty"><strong>Requests unavailable</strong>This account cannot view requests.</div>
         : !requests.data ? <div className="empty" aria-live="polite"><strong>{requests.error ? "Requests unavailable" : "Loading requests…"}</strong></div>
         : rows.length === 0 ? <div className="empty"><strong>No requests yet</strong>Your submitted blood requests will appear here.</div>
@@ -38,7 +38,7 @@ export function RequesterDashboard({ data, principal, requests, bankMode=false }
         </tr>)}</tbody></table></div>}
     </section>
     <section className="requester-dashboard-card" aria-labelledby="requester-network-heading">
-      <header><div><h2 id="requester-network-heading">Network Blood Availability</h2>{!bankMode&&<p>Current available supply across participating blood banks.</p>}</div>{mayRequest && <a className="button primary compact" href={"/transfers?" + new URLSearchParams({newRequest:"1", bloodType, componentType:component}).toString()}>+ Request Blood</a>}</header>
+      <header><div><h2 id="requester-network-heading">Network Blood Availability</h2></div>{mayRequest && <a className="button primary compact" href={"/transfers?" + new URLSearchParams({newRequest:"1", bloodType, componentType:component}).toString()}>+ Request Blood</a>}</header>
       <div className="requester-network-body">
         <div className="requester-network-filters">
           <label><span>Blood Type</span><span className="requester-select"><select aria-label="Blood Type" value={bloodType} onChange={event => setBloodType(event.target.value)}>{V2_BLOOD_TYPES.map(type => <option key={type} value={type}>{type.replace("_POSITIVE", "+").replace("_NEGATIVE", "-")}</option>)}</select></span></label>
