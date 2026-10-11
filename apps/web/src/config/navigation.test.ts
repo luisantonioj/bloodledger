@@ -22,4 +22,15 @@ describe("permission-filtered navigation", () => {
     expect(visibleNavigation(principal([], "ROLE-03")).map((item) => item.href)).toEqual(["/", "/analytics"]);
     expect(visibleNavigation(principal([], "ROLE-04", "INST_SYNTH_DOH", "Synthetic DOH Office")).map((item) => item.href)).toEqual(["/"]);
   });
+  it("limits blood unit receipt navigation to authorized requester facilities",()=>{
+    expect(visibleNavigation(principal(["transfers:read"],"ROLE-03")).some(item=>item.href==="/receipts")).toBe(true);
+    for(const role of ["ROLE-01","ROLE-02","ROLE-04","ROLE-05"] as const)expect(visibleNavigation(principal(["transfers:read"],role)).some(item=>item.href==="/receipts")).toBe(false);
+    expect(visibleNavigation(principal([],"ROLE-03")).some(item=>item.href==="/receipts")).toBe(false);
+  });
+
+  it("keeps unit transactions separate and blood-bank-only",()=>{
+    expect(visibleNavigation(principal(["inventory:read"],"ROLE-02")).some(item=>item.href==="/transactions")).toBe(true);
+    expect(visibleNavigation({...principal(["inventory:read"],"ROLE-03"),accountCategory:"REQUESTOR"}).some(item=>item.href==="/transactions")).toBe(false);
+    expect(visibleNavigation(principal([],"ROLE-02")).some(item=>item.href==="/transactions")).toBe(false);
+  });
 });

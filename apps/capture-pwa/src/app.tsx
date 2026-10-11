@@ -45,32 +45,44 @@ function commandReceipt(command: V2Command, recognition: RecognitionResult, idem
 }
 
 export function App() {
+  const receiptLayout = new URLSearchParams(location.search).get("layout") === "receipt";
+  useEffect(() => {
+    if (!receiptLayout || window.parent === window) return;
+    const root=document.querySelector(".capture-app");if(!root)return;
+    const resize=new ResizeObserver(()=>window.parent.postMessage({type:"bloodledger:capture-height",height:Math.ceil(root.getBoundingClientRect().height)},location.origin));resize.observe(root);
+    return()=>resize.disconnect();
+  },[receiptLayout]);
   const [principal, setPrincipal] = useState<CapturePrincipal>();
   const [sessionLoading, setSessionLoading] = useState(true);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [image, setImage] = useState<File>();
+  const imageChooser=useRef<HTMLInputElement>(null);
   const [recognition, setRecognition] = useState<RecognitionResult>();
   const [attempt, setAttempt] = useState<{ idempotencyKey: string; correlationId: string; confirmedAt: string }>();
   const [events, setEvents] = useState<StoredCommandReceipt[]>([]);
-  const [message, setMessage] = useState("Simulation only — use approved synthetic Mediatrix labels.");
+  const [message, setMessage] = useState("Use approved synthetic Mediatrix labels.");
   const [busy, setBusy] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
 
   const epoch = useRef(0);
+  const captureEpoch = useRef(0);
   const [operatorId, setOperatorId] = useState("");
   const [pin, setPin] = useState("");
   const owner = principal ? {accountId:principal.accountId ?? principal.userId,institutionId:principal.institutionId} : undefined;
   const refreshEvents = async (current=epoch.current) => {const receipts=owner ? await listStoredCommands(owner) : [];if(current===epoch.current)setEvents(receipts);};
-  function clearSession() {epoch.current++;setPrincipal(undefined);setRecognition(undefined);setAttempt(undefined);setImage(undefined);setEvents([]);setPin("");setOperatorId("");setBusy(false);}
+  function clearCapture() {captureEpoch.current++;setRecognition(undefined);setAttempt(undefined);setImage(undefined);setPin("");setBusy(false);if(imageChooser.current)imageChooser.current.value="";}
+  function clearSession() {epoch.current++;clearCapture();setPrincipal(undefined);setEvents([]);setOperatorId("");}
 
 
   useEffect(() => {
     // Legacy receipts without explicit ownership remain quarantined in IndexedDB.
+    const current = epoch.current; let closed = false;
     restoreSession()
-      .then(setPrincipal)
+      .then(value => {if (!closed && current === epoch.current) setPrincipal(value);})
       .catch(() => undefined)
-      .finally(() => setSessionLoading(false));
+      .finally(() => {if (!closed && current === epoch.current) setSessionLoading(false);});
+    return () => {closed = true;};
   }, []);
 
   useEffect(() => {
@@ -103,15 +115,17 @@ export function App() {
           if (TERMINAL_COMMAND_STATES.has(receipt.status)) continue;
           const command = await fetchCommandStatus(receipt.statusUrl);
           if (closed || current!==epoch.current) return;
+          if(command.commandId!==receipt.commandId || command.resourceId!==receipt.resourceId || command.statusUrl!==receipt.statusUrl || command.correlationId!==receipt.correlationId || command.acceptedAt!==receipt.acceptedAt)throw new Error("CAPTURE_COMMAND_IDENTITY_MISMATCH");
           await saveStoredCommand({
             ...receipt,
             status: command.status,
             safeErrorCode: command.safeErrorCode,
-          });
+          }, () => !closed && current===epoch.current);
         }
         failures = 0;
         if (!closed && current===epoch.current) await refreshEvents(current);
       } catch (error) {
+        if (closed || current!==epoch.current) return;
         failures += 1;
         if (error instanceof ApiError && error.status === 401) {
           if (!closed && current===epoch.current) clearSession();
@@ -120,7 +134,7 @@ export function App() {
           setMessage("Command status is temporarily unavailable. No intake command was resubmitted.");
         }
       } finally {
-        if (!closed) timer = setTimeout(() => void poll(), Math.min(30_000, 2_000 * (2 ** failures)));
+        if (!closed && current===epoch.current) timer = setTimeout(() => void poll(), Math.min(30_000, 2_000 * (2 ** failures)));
       }
     };
 
@@ -133,44 +147,47 @@ export function App() {
 
   async function signIn(event: React.FormEvent) {
     event.preventDefault();
+    const current = ++epoch.current;
     setBusy(true);
     try {
       const restored = await createSession(username, password);
-      epoch.current++;
-      setEvents([]);setRecognition(undefined);setAttempt(undefined);setPin("");
+      if (current !== epoch.current) return;
+      clearCapture();
+      setEvents([]);setPin("");
       setOperatorId(restored.operators?.find(o=>o.actionCapabilities?.includes("inventory:capture"))?.operatorId ?? "");
       setPrincipal(restored);
       setPassword("");
       setMessage("Authenticated as " + restored.displayName + ".");
     } catch (error) {
-      setMessage(error instanceof ApiError ? error.code : "AUTH_FAILED");
+      if(current===epoch.current)setMessage(error instanceof ApiError ? error.code : "AUTH_FAILED");
     } finally {
-      setBusy(false);
+      if(current===epoch.current)setBusy(false);
     }
   }
 
   async function signOut() {
-    clearSession();setBusy(true);
+    clearSession();const current=epoch.current;setBusy(true);
     await endSession().catch(() => undefined);
+    if(current!==epoch.current)return;
     setBusy(false);setMessage("Signed out. Volatile OCR and verification values were cleared.");
   }
 
   async function runRecognition() {
     if (image === undefined) return;
-    const current=epoch.current;
+    const current=epoch.current, captureCurrent=captureEpoch.current;
     setBusy(true);
     setRecognition(undefined);
     setAttempt(undefined);
     try {
       const { recognizeInboundLabel } = await import("./recognition");
       const result=await recognizeInboundLabel(image);
-      if(current!==epoch.current)return;
+      if(current!==epoch.current || captureCurrent!==captureEpoch.current)return;
       setRecognition(result);
       setMessage("Review all five extracted fields. Exact Donation No. remains only in memory.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "CAPTURE_RECOGNITION_FAILED");
+      if(current===epoch.current && captureCurrent===captureEpoch.current)setMessage(error instanceof Error ? error.message : "CAPTURE_RECOGNITION_FAILED");
     } finally {
-      setBusy(false);
+      if(current===epoch.current && captureCurrent===captureEpoch.current)setBusy(false);
     }
   }
 
@@ -209,7 +226,8 @@ export function App() {
       },
     };
 
-    const current=epoch.current;
+    const current=epoch.current, captureCurrent=captureEpoch.current;
+    const isCurrent = () => current===epoch.current && captureCurrent===captureEpoch.current;
     const verifiedOperator = principal.verificationRequired ? {operatorId:operatorId || principal.operators?.find(o=>o.actionCapabilities?.includes("inventory:capture"))?.operatorId || "",pin} : undefined;
     if(verifiedOperator && (!verifiedOperator.operatorId || !/^[0-9]{8}$/.test(pin))){setMessage("Choose an authorized operator and enter the eight-digit PIN.");return;}
     setPin("");setBusy(true);
@@ -219,27 +237,27 @@ export function App() {
         capture,
         principal.accountId ? "V2.1" : contractVersionFor(capture.componentType),
         verifiedOperator,
-        () => current===epoch.current,
+        isCurrent,
       );
-      if(current!==epoch.current)return;
+      if(!isCurrent())return;
       if ("commandId" in result) {
-        await saveStoredCommand(commandReceipt(result, recognition, confirmation.idempotencyKey, principal, verifiedOperator?.operatorId));
-        if(current!==epoch.current)return;
+        await saveStoredCommand(commandReceipt(result, recognition, confirmation.idempotencyKey, principal, verifiedOperator?.operatorId), isCurrent);
+        if(!isCurrent())return;
         setMessage("Intake accepted as " + result.status + ". It is not committed inventory yet.");
       } else {
         setMessage("Already registered as component " + result.componentId + ". No duplicate was created.");
       }
-      setRecognition(undefined);
-      setAttempt(undefined);
-      setImage(undefined);
+      clearCapture();
       await refreshEvents(current);
     } catch (error) {
-      if(current!==epoch.current)return;
+      if(!isCurrent())return;
       if(error instanceof ApiError && error.status===401){clearSession();setMessage("Session expired. Sign in again.");return;}
       const code = error instanceof ApiError ? error.code : "API_UNAVAILABLE";
+      if(error instanceof ApiError && error.status===400 && code==="V2_COMMAND_TIME_OUT_OF_WINDOW"){setAttempt(undefined);setMessage("The command time was rejected. Confirm again with a fresh time and new request keys; check the device clock if it repeats.");return;}
+      if(error instanceof ApiError && [400,413,415].includes(error.status) && ["REQUEST_INVALID","REQUEST_BODY_TOO_LARGE","REQUEST_MEDIA_TYPE_UNSUPPORTED"].includes(code)){clearCapture();setMessage(code + ". Correct the capture or refresh the app before a new attempt. This request will not be retried.");return;}
       setMessage(code + ". The confirmed value remains volatile; retry uses the same idempotency key.");
     } finally {
-      setBusy(false);
+      if(isCurrent())setBusy(false);
     }
   }
 
@@ -247,7 +265,7 @@ export function App() {
   const captureRole = principal && (principal.accountId ? captureOperators.length > 0 : ["ROLE-01", "ROLE-02"].includes(principal.roleId));
 
   return (
-    <main className="capture-app">
+    <main className={"capture-app"+(receiptLayout?" receipt-capture":"")}>
       <header className="mobile-header">
         <div className="mobile-brand">
           <span className="brand-mark" aria-hidden="true">B</span>
@@ -260,7 +278,7 @@ export function App() {
 
       <section className="capture-hero">
         <div>
-          <span className="eyebrow">SIMULATION ONLY · INBOUND_OCR_V1</span>
+          <span className="eyebrow">SIMULATION_ONLY · INBOUND_OCR_V1</span>
           <h1>Blood Component Intake</h1>
           <p>Scan an approved synthetic label, verify every field, and submit the confirmed V2 intake command.</p>
         </div>
@@ -304,20 +322,22 @@ export function App() {
 
               <label className={"scanner-view " + (image === undefined ? "empty" : "selected")}>
                 <input
+                  ref={imageChooser}
                   aria-label="Synthetic inbound label image"
                   type="file"
                   accept="image/*"
                   capture="environment"
                   onChange={(event) => {
+                    captureEpoch.current++;setBusy(false);setPin("");
                     setImage(event.target.files?.[0]);
                     setRecognition(undefined);
                     setAttempt(undefined);
                   }}
                 />
                 <span className="scanner-empty-state" aria-hidden="true">
-                  <b>⌾</b>
-                  <strong>{image === undefined ? "Scan printed label" : "Synthetic label ready"}</strong>
-                  <small>{image === undefined ? "Tap to open the camera or choose an approved fixture." : image.name}</small>
+                  <b>{receiptLayout?<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3"><path d="M3 7h4l2-3h6l2 3h4v13H3Z"/><circle cx="12" cy="13" r="4"/></svg>:"⌾"}</b>
+                  <strong>{image === undefined ? receiptLayout?"Capture a blood-unit label":"Scan printed label" : "Synthetic label ready"}</strong>
+                  <small>{image === undefined ? receiptLayout?"Use your phone camera or choose an image.":"Tap to open the camera or choose an approved fixture." : image.name}</small>
                 </span>
                 <span className="focus-frame" aria-hidden="true">
                   <i className="corner top-left" /><i className="corner top-right" />
@@ -328,6 +348,7 @@ export function App() {
               </label>
 
               <div className="capture-actions">
+                {receiptLayout&&<button type="button" onClick={()=>imageChooser.current?.click()}>{image?"Replace image":"Take photo / Choose image"}</button>}
                 <button type="button" disabled={image === undefined || busy} onClick={() => void runRecognition()}>{busy ? "Processing…" : "Run OCR"}</button>
               </div>
               <p className="privacy-note"><span aria-hidden="true">i</span> Raw image and OCR text stay in volatile memory and are never sent to the API.</p>

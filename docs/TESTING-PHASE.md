@@ -508,3 +508,16 @@ marked Validated or NOT_RUN. It fixed TP-JOP-D12 (capture PWA not served on
 retained hosts). Requesting-hospital receipt and the end-to-end capture scan are
 still NOT_RUN live, and the expiry action cannot be demonstrated with V2 data
 before 2026-10-13. The dry run itself remains NOT_RUN.
+
+### Lat frontend follow-up evidence — 2026-10-10
+
+[PR37](https://github.com/luisantonioj/bloodledger/pull/37) publishes J4 expiry and
+issue #36 frontend integration against PR35's frozen backend `bf70eff`. The
+[Lat validation record](frontend/LAT-UAT-FRONTEND-VALIDATION-2026-10-10.md) owns
+reproducible frontend/capture checks, scope and remaining dependencies. Evidence
+is local unit/build and HTTP-fixture browser validation; retained-host ordinary
+API/Fabric verification, restart and J9 dry run remain NOT_RUN during the
+population/T0 hold. No population, account change or backend contract change is
+part of this frontend work. TP-G01–G03 remain open: sanitized decisions have
+been requested from Lat/Buno, not inferred or recorded as approved. Formal UAT,
+physical OCR, forecast promotion and phase exit remain separate gates.

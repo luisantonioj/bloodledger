@@ -13,12 +13,12 @@ const permissions = {
 } as const;
 
 const navigation: Record<RoleId, string[]> = {
-  "ROLE-01": ["Dashboard", "Blood Inventory", "Requests & Transfers", "Alerts", "Analytics", "Profile"],
-  "ROLE-02": ["Dashboard", "Blood Inventory", "Requests & Transfers", "Alerts", "Activity History", "Analytics", "Profile"],
-  "ROLE-03": ["Dashboard", "Requests & Transfers", "Alerts", "Analytics", "Profile"],
+  "ROLE-01": ["Dashboard", "Blood Inventory", "Blood Unit Transactions", "Requests & Transfers", "Alerts", "Analytics", "Profile"],
+  "ROLE-02": ["Dashboard", "Blood Inventory", "Blood Unit Transactions", "Requests & Transfers", "Alerts", "Activity History", "Analytics", "Profile"],
+  "ROLE-03": ["Dashboard", "Blood Unit Receipt", "Requests & Transfers", "Alerts", "Analytics", "Profile"],
   "ROLE-04": ["Dashboard", "Blood Inventory", "Requests & Transfers", "Alerts", "Activity History", "Network view", "Reports", "Profile"],
-  "ROLE-05": ["Dashboard", "Profile", "Accounts"],
-  "ROLE-06": ["Dashboard", "Profile", "Accounts"],
+  "ROLE-05": ["Dashboard", "Profile", "Staff Accounts"],
+  "ROLE-06": ["Dashboard", "Profile", "Staff Accounts"],
 };
 
 const timestamp = "2026-08-24T03:00:00.000Z";
@@ -43,6 +43,7 @@ const v2Component = {
   expiresAt: "2026-09-23T00:00:00.000Z",
   institutionId: "INST_MEDIATRIX",
   inventoryStatus: "AVAILABLE",
+  expiryState: "CURRENT",
   reservationId: null,
   reservationVersion: null,
   inventoryVersion: 1,
@@ -147,7 +148,7 @@ for (const roleId of Object.keys(navigation) as RoleId[]) {
     await expect(page.locator(".facility-context")).toBeVisible();
     await expect(page.locator(".page-head")).toBeVisible();
     await expect(page.getByText(activePrincipal.institutionDisplayName, { exact: true })).toBeVisible();
-    await expect(page.getByText("Simulation only", { exact: true })).toBeVisible();
+    await expect(page.locator(".top-status")).toHaveCount(0);
   });
 }
 
@@ -160,13 +161,15 @@ test("two synthetic secondary hospitals share structure while retaining distinct
     const page = await context.newPage();
     await authenticatedApi(page, "ROLE-03", async (route, path) => {
       if (path !== "/api/v1/dashboard") return false;
-      await fulfillJson(route, { ...dashboardFor("ROLE-03"), inventory: [{ ...aggregate, institutionId, institutionDisplayName, confirmedCount }] });
+      await fulfillJson(route, { ...dashboardFor("ROLE-03"), inventory: [{ ...aggregate, institutionId, institutionDisplayName, confirmedCount, bloodType: "O_POSITIVE", component: "PACKED_RED_BLOOD_CELLS" }] });
       return true;
     }, { institutionId, institutionDisplayName });
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
     await expect(page.locator(".facility-context")).toContainText(institutionDisplayName);
-    const confirmed = page.locator(".stats article").filter({ hasText: "Ledger-confirmed units" }).locator("strong");
+    await expect(page.getByRole("heading", { name: "My Requests", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Blood Inventory Overview", exact: true })).toHaveCount(0);
+    const confirmed = page.locator(".requester-availability-quantity strong");
     await expect(confirmed).toHaveText(String(confirmedCount));
     await expect(page.getByRole("link", { name: "Blood Inventory", exact: true })).toHaveCount(0);
     await context.close();
@@ -190,12 +193,12 @@ test("PRC, DOH, and administrators receive truthful non-operational compositions
     await expect(page.getByRole("main").locator(".page-head .eyebrow")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Open capture workspace" })).toHaveCount(0);
     if (roleId === "ROLE-04") {
-      await expect(page.getByText("Ledger-confirmed units", { exact: true })).toBeVisible();
+      await expect(page.locator(".dashboard-stats")).toBeVisible();
       await expect(page.getByText("Non-clinical workspace", { exact: true })).toHaveCount(0);
       await expect(page.getByRole("link", { name: "Analytics", exact: true })).toHaveCount(0);
     } else {
       await expect(page.getByText("Non-clinical workspace", { exact: true })).toBeVisible();
-      await expect(page.getByText("Ledger-confirmed units", { exact: true })).toHaveCount(0);
+      await expect(page.locator(".dashboard-stats")).toHaveCount(0);
     }
     await context.close();
   }
@@ -229,7 +232,8 @@ test("login fails safely, then accepts only the server-returned principal and ca
   await expect(page.getByRole("heading", { name: "One ledger. Clear custody. Every unit accounted for." })).toBeVisible();
   await expect(page.getByText("Server-assigned access", { exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Apply for access" }).click();
-  await expect(page.getByRole("heading", { name: "Apply for synthetic access" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "How will your facility participate?" })).toBeVisible();
+  await page.getByRole("button", { name: /Apply as a Blood Bank/ }).click();
   await expect(page.getByLabel("Private invitation secret")).toBeVisible();
   await expect(page.getByText("A PRC invitation is required.", { exact: false })).toBeVisible();
   await page.getByRole("tab", { name: "Sign in" }).click();
@@ -619,16 +623,17 @@ test.skip("retired V1 receipt mutation fixture", async ({ page }) => {
 });
 
 test("legacy V1 transfer mutations stay unavailable while canonical V2 entry points remain role-scoped", async ({ browser }) => {
-  for (const [roleId, canonicalButton] of [["ROLE-02", "Queue local release"], ["ROLE-03", "Submit V2 request"]] as const) {
+  for (const [roleId, canonicalButton] of [["ROLE-02", "Queue local release"], ["ROLE-03", "Submit request"]] as const) {
     const context = await browser.newContext();
     const page = await context.newPage();
     await authenticatedApi(page, roleId);
     await page.goto("/");
     await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
+    if (roleId === "ROLE-03") await page.getByRole("button", {name: "+ New Blood Request", exact:true}).click();
     await expect(page.getByRole("button", { name: canonicalButton, exact: true })).toBeVisible();
-    await expect(page.getByText("Canonical reservation actions unavailable", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Submit request|Approve FEFO selection|Reject request|Cancel transfer|Record dispatch|Start transit|Record receipt/ })).toHaveCount(0);
-    if (roleId === "ROLE-02") await expect(page.getByText("Reconciliation reason policy unavailable", { exact: true })).toBeVisible();
+    if (roleId === "ROLE-02") await expect(page.getByText("Open a current reservation to use its authorized actions. Place reconciliation holds from component details.", {exact:true})).toBeVisible();
+    await expect(page.getByRole("button", { name: /Approve FEFO selection|Reject request|Cancel transfer|Record dispatch|Start transit|Record receipt/ })).toHaveCount(0);
+    if (roleId === "ROLE-02") await expect(page.getByText("Reconciliation reason policy unavailable", { exact: true })).toHaveCount(0);
     await context.close();
   }
 });
@@ -713,9 +718,10 @@ test("latest visual baseline stays role-scoped while Sprint 6 integrations remai
   });
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Blood inventory overview" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Blood Inventory Overview" })).toBeVisible();
   await expect(page.locator(".inventory-overview-bar")).toHaveCount(8);
-  await expect(page.locator(".inventory-overview-note")).toContainText("No shortage, surplus, or redistributability threshold is inferred in the browser.");
+  await expect(page.locator(".inventory-overview-note,.dashboard-aggregate-table,.dashboard-table-head")).toHaveCount(0);
+  await expect(page.locator(".inventory-overview-fill>i")).toHaveCount(0);
 
   await page.getByRole("link", { name: "Analytics", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeVisible();
@@ -729,7 +735,7 @@ test("latest visual baseline stays role-scoped while Sprint 6 integrations remai
   await expect(page.getByText("CMP_SYNTH_BROWSER_01", { exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "V2 transfers and reservations", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Facility operations", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Start local release", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Export filtered PDF" })).toHaveCount(0);
 
@@ -822,16 +828,14 @@ test("committed projection becomes visible within the frontend NFR-06 budget", a
     return true;
   });
   await page.goto("/");
-  const confirmedCount = page.locator(".stats article").filter({ hasText: "Ledger-confirmed units" }).locator("strong");
-  const pendingCount = page.locator(".stats article").filter({ hasText: "Uncommitted scan states" }).locator("strong");
+  const confirmedCount = page.locator(".inventory-overview-track > strong").first();
   await expect.poll(() => page.evaluate(() => document.visibilityState)).toBe("visible");
   await expect(confirmedCount).toHaveText("1");
-  await expect(pendingCount).toHaveText("1");
   commitTime = new Date().toISOString();
   commitStartedAt = Date.now();
   committed = true;
   await expect(confirmedCount).toHaveText("2", { timeout: 5_000 });
-  await expect(pendingCount).toHaveText("0");
+  await expect(page.locator(".dashboard-updated time")).toHaveAttribute("datetime", commitTime);
   const visibleAt = Date.now();
   expect(firstCommittedProjectionResponseAt).toBeGreaterThanOrEqual(commitStartedAt);
   expect(visibleAt - commitStartedAt).toBeLessThanOrEqual(5_000);
@@ -853,8 +857,9 @@ test("failed dashboard load exposes a non-destructive retry and recovers", async
   });
   await page.goto("/");
   await expect(page.getByRole("alert")).toContainText("Projection is temporarily unavailable.");
+  await expect(page.locator(".dashboard-updated")).toHaveText("Last updated: Unavailable");
   await page.getByRole("button", { name: "Retry" }).click();
-  await expect(page.getByText("Ledger-confirmed units", { exact: true })).toBeVisible();
+  await expect(page.locator(".dashboard-stats")).toBeVisible();
   expect(dashboardCalls).toBe(2);
 });
 
@@ -868,12 +873,13 @@ test("inventory exposes loading and empty states without inventing committed dat
   });
   await page.goto("/");
   await page.getByRole("link", { name: "Blood Inventory", exact: true }).click();
-  await expect(page.getByText("Loading V2 component inventory", { exact: true })).toBeVisible();
+  await expect(page.getByText("Loading inventory…", { exact: true })).toBeVisible();
   expect(releaseInventory).toBeDefined();
   releaseInventory?.();
   await expect(page.getByText("No committed V2 components", { exact: true })).toBeVisible();
 });
 
+// FR-03 / NFR-11 / BL-TST-01: explicit refresh retains confirmed data on failure.
 test("refresh failure preserves confirmed data and backs off until manual retry", async ({ page }) => {
   let dashboardCalls = 0;
   await authenticatedApi(page, "ROLE-01", async (route, path) => {
@@ -884,15 +890,50 @@ test("refresh failure preserves confirmed data and backs off until manual retry"
     return true;
   });
   await page.goto("/");
-  await expect(page.getByText("Ledger-confirmed units", { exact: true })).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("Showing the last confirmed view. Refresh failed: Projection is temporarily unavailable.");
+  await expect(page.locator(".dashboard-stats")).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText("Your last confirmed view remains available below.");
+  await page.getByText("View details", {exact:true}).click();
+  await expect(page.getByRole("alert")).toContainText("Projection is temporarily unavailable.");
+  await expect(page.locator(".dashboard-updated time")).toHaveAttribute("datetime", timestamp);
   expect(dashboardCalls).toBe(2);
   await page.waitForTimeout(2_200);
   expect(dashboardCalls).toBe(2);
-  await page.getByRole("button", { name: "Retry" }).click();
-  await expect(page.getByRole("status")).toHaveCount(0);
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveCount(0);
   expect(dashboardCalls).toBe(3);
 });
+
+for (const [accountType, roleId] of [["Blood bank", "ROLE-02"], ["Requestor", "ROLE-03"], ["PRC", "ROLE-04"], ["DOH", "ROLE-04"]] as const) {
+  // FR-03 / NFR-11 / BL-TST-01: scoped read-only refresh and accessible busy state.
+  test(`${accountType} dashboard Refresh reloads data without reloading the page`, async ({ page }) => {
+    let calls = 0;
+    let release: (() => void) | undefined;
+    await authenticatedApi(page, roleId, async (route, path) => {
+      if (path !== "/api/v1/dashboard") return false;
+      expect(route.request().method()).toBe("GET");
+      calls++;
+      if (calls === 2) await new Promise<void>(resolve => { release = resolve; });
+      await fulfillJson(route, { ...dashboardFor(roleId), inventory: [{ ...aggregate, confirmedCount: calls === 1 ? 2 : 7 }], lastSuccessfulProjectionAt: calls === 1 ? timestamp : "2026-10-09T01:00:00.000Z" });
+      return true;
+    }, { institutionDisplayName: `Synthetic ${accountType}` });
+    await page.goto("/");
+    await expect(page.locator(".dashboard-updated time")).toHaveAttribute("datetime", timestamp);
+    await page.evaluate(() => { (window as unknown as { refreshMarker: string }).refreshMarker = "same-page"; });
+    const refresh = page.getByRole("button", { name: "Refresh", exact: true });
+    await refresh.focus();
+    await page.keyboard.press("Enter");
+    const busy = page.getByRole("button", { name: "Refreshing…", exact: true });
+    await expect(busy).toBeDisabled();
+    await expect(busy).toHaveAttribute("aria-busy", "true");
+    await expect(page.locator(".dashboard-updated time")).toHaveAttribute("datetime", timestamp);
+    await expect.poll(() => Boolean(release)).toBe(true);
+    release?.();
+    await expect(refresh).toBeEnabled();
+    await expect(page.locator(".dashboard-updated time")).toHaveAttribute("datetime", "2026-10-09T01:00:00.000Z");
+    expect(await page.evaluate(() => (window as unknown as { refreshMarker: string }).refreshMarker)).toBe("same-page");
+    await expect(page.locator(".facility-context")).toContainText(`Synthetic ${accountType}`);
+  });
+}
 
 test("route changes clean up the previous poller and refresh only the active page", async ({ page }) => {
   let dashboardCalls = 0;
@@ -933,8 +974,8 @@ test("keyboard navigation reaches an authorized page without changing institutio
 test("administrators can review the visual-only account workspace without mutation APIs", async ({ page }) => {
   await authenticatedApi(page, "ROLE-05");
   await page.goto("/");
-  await page.getByRole("link", { name: "Accounts", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "System administration", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Staff Accounts", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Staff Accounts", exact: true })).toBeVisible();
   await expect(page.getByText("Visual administration workspace", { exact: true })).toBeVisible();
   await expect(page.getByText("APP-SYNTH-0001", { exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "User accounts" }).click();
@@ -960,8 +1001,8 @@ test("restored shell omits disconnected preview controls and keeps simulation sc
   await expect(page.getByLabel("Search records")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Open notifications preview" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Open design preview controls" })).toHaveCount(0);
-  await expect(page.locator(".top-status")).toHaveText("Simulation only");
-  await expect(page.locator(".dashboard-stats article")).toHaveCount(3);
+  await expect(page.locator(".top-status")).toHaveCount(0);
+  await expect(page.locator(".dashboard-stats article")).toHaveCount(4);
 });
 
 // FR-14 / BR-ALG-07: mocked HTTP UI evidence; no institution activation.
@@ -1152,4 +1193,101 @@ test("inventory clears during date changes and refresh failure; late response ca
   await page.getByRole("button", { name: "Refresh forecast" }).click();
   await expect(page.getByText("Validated inventory evidence could not be loaded.")).toBeVisible();
   await expect(page.locator(".inventory-evidence tbody tr")).toHaveCount(0);
+});
+
+// FR-03/05/12 / NFR-11 / BL-TST-01: requester-specific layout, scope and honest availability.
+test("requester dashboard filters network supply and links only its own requests", async ({ page }) => {
+  const request = { transfer_id: "TRF_SYNTH_DASHBOARD", destination_institution_id: "INST_SYNTH_SECONDARY", blood_type: "O_POSITIVE", component_type: "PACKED_RED_BLOOD_CELLS", quantity: 2, urgency: "URGENT", status: "REQUESTED", ledger_transaction_id: null };
+  await authenticatedApi(page, "ROLE-03", async (route, path) => {
+    if (path === "/api/v2/transfers") {
+      await fulfillJson(route, { requests: [request, {...request, transfer_id: "TRF_OTHER_INSTITUTION", destination_institution_id: "INST_OTHER"}], classification: "SIMULATION_ONLY" });
+      return true;
+    }
+    if (path !== "/api/v1/dashboard") return false;
+    await fulfillJson(route, {...dashboardFor("ROLE-03"), inventory: [
+      {...aggregate, bloodType:"O_POSITIVE", component:"PACKED_RED_BLOOD_CELLS", inventoryStatus:"AVAILABLE", confirmedCount:3},
+      {...aggregate, institutionId:"INST_OTHER_BANK", bloodType:"O_POSITIVE", component:"PACKED_RED_BLOOD_CELLS", inventoryStatus:"AVAILABLE", confirmedCount:4},
+      {...aggregate, bloodType:"O_POSITIVE", component:"PACKED_RED_BLOOD_CELLS", inventoryStatus:"RESERVED", confirmedCount:99},
+      {...aggregate, bloodType:"O_POSITIVE", component:"PLATELETS", inventoryStatus:"AVAILABLE", confirmedCount:2},
+    ]});
+    return true;
+  }, {accountId:"ACC_SYNTH_REQUESTER", accountCategory:"REQUESTOR", operators:[{operatorId:"OP_SYNTH", roleId:"ROLE-03", capabilityProfile:"ROLE", version:1, actionCapabilities:["transfer:request"]}]} as Parameters<typeof authenticatedApi>[3]);
+  await page.goto("/");
+  await expect(page.getByRole("heading", {name:"My Requests", exact:true})).toBeVisible();
+  await expect(page.getByRole("heading", {name:"Blood Inventory Overview", exact:true})).toHaveCount(0);
+  await expect(page.locator(".requester-requests-table tbody tr")).toHaveCount(1);
+  await expect(page.locator(".requester-requests-table")).toContainText("Awaiting ledger confirmation");
+  await expect(page.getByRole("link", {name:"TRF_SYNTH_DASHBOARD",exact:true})).toHaveAttribute("href","/transfers?record=request&recordId=TRF_SYNTH_DASHBOARD");
+  await expect(page.getByRole("link", {name:"View all →",exact:true})).toHaveAttribute("href","/transfers");
+  await expect(page.getByRole("link", {name:"+ Request Blood",exact:true})).toHaveAttribute("href","/transfers?newRequest=1&bloodType=O_POSITIVE&componentType=PACKED_RED_BLOOD_CELLS");
+  await expect(page.locator(".requester-availability-quantity strong")).toHaveText("7");
+  await expect(page.locator(".requester-availability-result")).toHaveCSS("border-color","rgb(40, 111, 82)");
+  await expect(page.locator(".requester-availability-result")).toHaveCSS("background-color","rgb(225, 240, 231)");
+  await page.getByLabel("Component",{exact:true}).selectOption("PLATELETS");
+  await expect(page.locator(".requester-availability-quantity strong")).toHaveText("2");
+  await page.getByLabel("Blood Type",{exact:true}).selectOption("AB_NEGATIVE");
+  await expect(page.locator(".requester-availability-quantity strong")).toHaveText("0");
+  await expect(page.getByText("No current supply",{exact:true})).toBeVisible();
+  await expect(page.locator(".requester-availability-result")).toHaveCSS("border-color","rgb(193, 47, 47)");
+  await expect(page.locator(".requester-availability-result")).toHaveCSS("background-color","rgb(251, 231, 231)");
+  await page.setViewportSize({width:390,height:844});
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth > innerWidth)).toBe(false);
+  await expect(page.getByRole("heading", {name:"Network Blood Availability",exact:true})).toBeVisible();
+});
+
+test("requester refresh preserves confirmed requests on failure and retry recovers", async ({ page }) => {
+  let calls=0;
+  const request={transfer_id:"TRF_SYNTH_RETAIN",destination_institution_id:"INST_SYNTH_SECONDARY",blood_type:"O_POSITIVE",component_type:"PACKED_RED_BLOOD_CELLS",quantity:1,urgency:"ROUTINE",status:"REQUESTED",ledger_transaction_id:null};
+  await authenticatedApi(page,"ROLE-03",async(route,path)=>{
+    if(path!=="/api/v2/transfers")return false;
+    calls++;
+    if(calls===2)await fulfillJson(route,{error:{message:"Requests temporarily unavailable."}},503);
+    else await fulfillJson(route,{requests:[{...request,quantity:calls===1?1:2}],classification:"SIMULATION_ONLY"});
+    return true;
+  });
+  await page.goto("/");
+  await expect(page.locator(".requester-requests-table tbody td.numeric")).toHaveText("1");
+  const refresh=page.getByRole("button",{name:"Refresh",exact:true});
+  await expect(refresh).toBeEnabled();
+  await refresh.click();
+  await expect(page.locator(".requester-dashboard-notice")).toHaveCount(0);
+  await expect(refresh).toBeEnabled();
+  await expect(page.locator(".requester-requests-table tbody td.numeric")).toHaveText("1");
+  await refresh.click();
+  await expect(page.locator(".requester-requests-table tbody td.numeric")).toHaveText("2");
+  await expect(page.locator(".requester-dashboard-notice")).toHaveCount(0);
+});
+
+test("requester missing projections and initial request failure stay unavailable", async ({page})=>{
+  await authenticatedApi(page,"ROLE-03",async(route,path)=>{
+    if(path==="/api/v1/dashboard") {await fulfillJson(route,{...dashboardFor("ROLE-03"),inventory:[],lastSuccessfulProjectionAt:null});return true;}
+    if(path==="/api/v2/transfers") {await fulfillJson(route,{error:{message:"Requests unavailable."}},503);return true;}
+    return false;
+  });
+  await page.goto("/");
+  await expect(page.locator(".requester-availability-quantity strong")).toHaveAttribute("aria-label","Unavailable");
+  await expect(page.locator(".requester-availability-result")).not.toHaveClass(/has-supply|no-supply/);
+  await expect(page.locator(".requester-availability-quantity strong")).toHaveText("—");
+  await expect(page.getByText("No requests yet",{exact:true})).toHaveCount(0);
+  await expect(page.getByText("Requests unavailable",{exact:true})).toBeVisible();
+  await expect(page.locator(".requester-dashboard-notice")).toHaveCount(0);
+});
+
+// FR-12: authorization failures clear previously loaded requester records.
+test("requester request authorization loss clears preserved records", async ({page})=>{
+  let calls=0;
+  await authenticatedApi(page,"ROLE-03",async(route,path)=>{
+    if(path!=="/api/v2/transfers")return false;
+    calls++;
+    if(calls===1)await fulfillJson(route,{requests:[{transfer_id:"TRF_SYNTH_SCOPED",destination_institution_id:"INST_SYNTH_SECONDARY",blood_type:"O_POSITIVE",component_type:"PACKED_RED_BLOOD_CELLS",quantity:1,urgency:"ROUTINE",status:"REQUESTED",ledger_transaction_id:null}],classification:"SIMULATION_ONLY"});
+    else await fulfillJson(route,{error:{message:"Request scope forbidden."}},403);
+    return true;
+  });
+  await page.goto("/");
+  await expect(page.getByRole("link",{name:"TRF_SYNTH_SCOPED",exact:true})).toBeVisible();
+  const refresh=page.getByRole("button",{name:"Refresh",exact:true});
+  await expect(refresh).toBeEnabled();
+  await refresh.click();
+  await expect(page.getByText("Requests unavailable",{exact:true})).toBeVisible();
+  await expect(page.getByRole("link",{name:"TRF_SYNTH_SCOPED",exact:true})).toHaveCount(0);
 });
