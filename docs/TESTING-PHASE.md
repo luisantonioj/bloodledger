@@ -546,8 +546,10 @@ timeline.
   defects from J4, PR31 and the first verification window to cross Manila
   midnight, in paths V1 never exercised. D16 and D17 stopped Lat's run before
   any write; D18 stopped only the post-restart verification.
-- **Jopia decisions:** deploy the baseline before population, and keep Lat's
-  older general sync-worker stopped through UAT.
+- **Jopia decisions:** deploy the baseline before population, keep Lat's older
+  general sync-worker stopped through UAT, and (2026-10-12) use
+  `SYNTHETIC_PREPARATION_EVIDENCE_V1` for UAT prepare actions, as defined in the
+  [runbook](UAT-RUNBOOK.md#5-j9-dry-run-sunday-evening).
 
 Lat records the actual population, T0, restart and dry-run results as
 `LAT_LOCAL_VALIDATION`. This section records no population result and no UAT

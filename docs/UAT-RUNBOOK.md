@@ -138,8 +138,24 @@ reserved TRANSFER members, at 2026-10-13T15:30Z (Tue Oct 13 23:30 Manila).
 Lat's retained AVAILABLE whole-blood AB+ unit, however, passed its label
 expiry on 2026-10-08T23:00Z, so it shows `LABEL_EXPIRED_PENDING_EVALUATION` and
 can demonstrate the expiry evaluation action. It is the only such unit: if the
-dry run evaluates it, the session cannot repeat the action. Lat and Buno decide
-which of the two uses it. Step 10 can use an existing `EXPIRED` alert either way.
+dry run evaluates it, the session cannot repeat the action. The 2026-10-12 dry
+run left it for the session. Evaluating it there also creates a new `EXPIRED`
+alert, because alerts are derived from components in `EXPIRED` status, so step 10
+can acknowledge that alert; the existing one is already acknowledged.
+
+**Preparation evidence (`SYNTHETIC_PREPARATION_EVIDENCE_V1`, Jopia, 2026-10-12):**
+the prepare action requires an evidence ID, a SHA-256 digest and a preparation
+time, and the chaincode checks only their format. For each preparation, the
+operator writes a short private note stating "SIMULATION_ONLY synthetic
+preparation stand-in; no physical evidence reviewed", the reservation ID, the
+operator role and the preparation time. The digest is the note's SHA-256, and the
+evidence ID is `EVD_SYNTH_` followed by the first 24 hex characters of that
+digest in upper case. Keep the notes outside Git. A note records that a synthetic
+preparation step happened, not that any unit was physically checked.
+
+**Capture labels:** step 2 and step 5a use only synthetic labels approved by Buno
+for UAT. Check that each Donation No is unused on the host, read-only, before
+scanning.
 
 ## 6. Go/no-go — Monday 07:00
 
@@ -187,4 +203,6 @@ database, or delete volumes during UAT. Record defects with stable IDs; no parti
   never autonomous. Forecasts use the synthetic V4 default.
 - Near-expiry alerts and DOH census copy/export stay disabled.
 - Capture uses desktop synthetic OCR; physical Android OCR is not validated.
+- Preparation evidence is a synthetic stand-in (`SYNTHETIC_PREPARATION_EVIDENCE_V1`);
+  no physical preparation is checked or recorded.
 - Full NFR-06 browser timing and onboarding (RQ-14) remain outside executed scope.
