@@ -1,5 +1,39 @@
 # Lat UAT frontend integration — 2026-10-10
 
+## PR37 local account switcher follow-up — 2026-10-11
+
+The Vite account switcher now requires the server-side environment variable
+`BLOODLEDGER_LOCAL_ACCOUNT_SWITCHER=true`, port 5174 and the existing private
+credential file. The file's presence alone cannot enable it. Leave the variable
+unset on the UAT host; normal session login remains the entry point. For an
+explicitly selected local developer review only, launch Vite with
+`BLOODLEDGER_LOCAL_ACCOUNT_SWITCHER=true npm run dev --workspace @bloodledger/web`.
+This is a Vite process setting, not a browser-exposed `VITE_*` value. Changing it
+requires restarting that development process; no retained service was restarted
+for this fix.
+
+Regression tests simulate credentials present with unset, empty, false and `1`
+values. The toolbar is absent and the account list, toolbar script and switching
+POST all return 404 without reading credentials or calling the authentication
+API. Explicit opt-in still requires the review port, credentials and the
+loopback Host header. Private artifact serving remains denied.
+
+The follow-up was prepared in an isolated worktree from PR37's published head,
+preserving the retained checkout's unrelated edits. `origin/main` at `bf70eff`
+is already an ancestor. No backend implementation or contract changes are part
+of this follow-up. `npm run check:web` and `npm run test:web` passed, with 152
+unit tests. Validation uses the Playwright 1.61.1 Noble container to keep generated
+files and memory-heavy browser processes away from the retained runtime.
+The complete browser suite passed: 138 passed and seven existing retired V1
+fixtures skipped. Reproduce with `npm run test:e2e --workspace @bloodledger/web
+-- --workers=1` inside `mcr.microsoft.com/playwright:v1.61.1-noble`, with only the
+isolated checkout writable and the retained dependency directory read-only.
+The final container check/unit run and browser run finished before 11:00 Manila
+on October 11, ahead of both the 12:30 review and 14:00 heavy-work cutoffs.
+These are automated HTTP-fixture results; Jopia's real API/ledger review remains
+independent. No retained API/web deployment, peer restart or worker start was
+performed.
+
 Classification: **SIMULATION_ONLY**. Owner/evidence: Lat, local automated
 validation. These are HTTP-fixture browser results, not real API/Fabric, retained
 population, physical OCR, human UAT or operational acceptance.

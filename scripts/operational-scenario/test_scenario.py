@@ -33,8 +33,8 @@ class ScenarioTests(unittest.TestCase):
 
     def test_success_and_zero_series(self):
         result = s.validate(self.data)
-        self.assertEqual(self.data["scenarioVersion"], "SYNTHETIC_OPERATIONAL_STOCK_522_V2")
-        self.assertEqual(self.data["datePolicy"]["version"], "SYNTHETIC_522_DATES_V2")
+        self.assertEqual(self.data["scenarioVersion"], "SYNTHETIC_OPERATIONAL_STOCK_522_V3")
+        self.assertEqual(self.data["datePolicy"]["version"], "SYNTHETIC_522_DATES_V3")
         self.assertEqual((result["units"], result["donations"], result["series"]), (522, 522, 20))
         self.assertEqual(result["reservedByPurpose"], {"TRANSFER": 18, "LOCAL_RELEASE": 18})
         self.assertEqual(sum(r["closing"] == 0 for r in self.data["counts"]), 18)
@@ -85,6 +85,10 @@ class ScenarioTests(unittest.TestCase):
         self.reject(
             lambda d: d.update(scenarioVersion="SYNTHETIC_OPERATIONAL_STOCK_522_V1")
         )
+
+    def test_missed_v2_identity_and_policy_are_rejected(self):
+        self.reject(lambda d: d.update(scenarioVersion="SYNTHETIC_OPERATIONAL_STOCK_522_V2"))
+        self.reject(lambda d: d["datePolicy"].update(version="SYNTHETIC_522_DATES_V2"))
 
     def test_wrong_date_policy(self):
         self.reject(lambda d: d["datePolicy"].update(nearExpiryEnabled=True))
@@ -141,6 +145,30 @@ class ScenarioTests(unittest.TestCase):
 
     def test_frozen_t0(self):
         self.reject(lambda d: d.update(t0="2026-10-10T00:00:00Z"))
+        self.reject(lambda d: d.update(t0="2026-10-11T00:00:00Z"))
+
+    def test_frozen_v3_window(self):
+        # Asia/Manila: population Sun 14:00, T0 Sun 23:30, verification ends Mon 07:00.
+        self.assertEqual(
+            (
+                self.data["populationNotBefore"],
+                self.data["t0"],
+                self.data["verificationWindowEndExclusive"],
+            ),
+            ("2026-10-11T06:00:00Z", "2026-10-11T15:30:00Z", "2026-10-11T23:00:00Z"),
+        )
+        self.reject(lambda d: d.update(populationNotBefore="2026-10-10T08:00:00Z"))
+        self.reject(lambda d: d.update(verificationWindowEndExclusive="2026-10-12T07:00:00Z"))
+
+    def test_generation_after_population_start_is_rejected(self):
+        self.reject(lambda d: d.update(generatedAt="2026-10-11T06:00:01Z"))
+        with self.assertRaisesRegex(ValueError, "precede"):
+            s.build(fixture_counts(), "a" * 40, "2026-10-11T15:00:00Z")
+
+    def test_earliest_expiry_outlasts_uat_day(self):
+        # Reserved TRANSFER T0+48h is Tue 2026-10-13 23:30 Manila, after Mon UAT and a Tue fallback.
+        earliest = min(s.instant(u["expiresAt"]) for u in self.data["units"])
+        self.assertEqual(s.iso(earliest), "2026-10-13T15:30:00Z")
 
     def test_ties_and_reserved_before_available(self):
         group = [

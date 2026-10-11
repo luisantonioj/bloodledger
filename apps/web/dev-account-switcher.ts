@@ -55,14 +55,15 @@ select.addEventListener('change',async()=>{
   }catch{select.value=previous;status.textContent='Account switch failed. Refresh and try again.';select.disabled=false;}
 });`;
 
-// BL-TST-01 / NFR-11: explicit local convenience; all identities still use API authentication.
+// BL-TST-01 / NFR-11: opt-in local convenience; all identities still use API authentication.
 export function localAccountSwitcher(): Plugin {
   let enabled = false;
   return {
     name: "bloodledger-local-account-switcher",
     apply: "serve",
     configResolved(config) {
-      enabled = config.server.port === 5174 && existsSync(credentialsPath);
+      enabled = process.env.BLOODLEDGER_LOCAL_ACCOUNT_SWITCHER === "true"
+        && config.server.port === 5174 && existsSync(credentialsPath);
       config.server.fs.deny.push("**/build/**");
     },
     transformIndexHtml(html) { return enabled ? html.replace("<body>", "<body>" + toolbar) : html; },

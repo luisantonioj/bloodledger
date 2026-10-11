@@ -401,3 +401,5 @@
 .census-report-table tbody tr:has(.census-report-empty):hover{background:transparent}
 
 .refresh-icon-button{display:inline-flex;align-items:center;gap:7px}.refresh-icon-button svg,.dashboard-refresh svg{flex-shrink:0}
+
+.bank-supplier-workflow .request-form-help-tooltip{width:min(440px,calc(100vw - 64px));max-height:min(70vh,560px);overflow-y:auto;overscroll-behavior:contain}

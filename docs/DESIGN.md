@@ -854,3 +854,5 @@ Outbound Scan supports a volatile photo preview; Outbound Manual supports inline
 2026-10-11 PRC dashboard chart placeholder: centered Awaiting inventory data message now has shared 1px border and medium rounded corners. Chart top inset increases from 24px to 32px for slightly more room above grid lines.
 
 2026-10-11 global refresh icon consistency: shared circular-arrow SVG uses the standard 1.6 stroke. Dashboard across all roles, requester receipt/requests, and shared Refresh buttons use the same icon; forecast/census/component/reservation refresh controls also include it. Existing labels, busy states, actions and button colors retained.
+
+2026-10-11 supplier workflow help: Current facility workflow tooltip now presents numbered guidance for request review, stock checks, allocation review, preparation evidence, dispatch/transit, operator verification/confirmed outcomes, receipt tracking and requesting own supply. It accurately distinguishes unavailable request decisions/PRC submission from supported reservation actions and scanner previews. Tooltip has bounded height and scroll for readable desktop/mobile help.
