@@ -90,6 +90,109 @@ automated evidence does not populate them.
 
 An open gate produces an explicit `BLOCKED` or `NOT_RUN` result, never a pass.
 
+### Oct 12 step 18 decision record — pending owner decisions
+
+**Status:** Proposed session; participant UAT remains `BLOCKED`.
+**Record date:** 2026-10-12, Asia/Manila.
+
+The relayed morning technical report states that service health, six logins,
+backup, clock skew and the worker checks passed, with no pending commands.
+It also reports that capture stopped before intake and the 23 pre-made
+reservations remained untouched at that check. These are host-owner reports,
+not independent validation here, participant authorization or UAT acceptance.
+The subsequent instruction to rerun non-capture workflows is not their result.
+
+| Gate | Sanitized facts received | Decision still required | Status |
+|---|---|---|---|
+| TP-G01 | A 17:00 Oct 12 Asia/Manila session is proposed | Lat-approved start/end, approval date and final selected J9 scope after section C results | OPEN |
+| TP-G02 | The unresolved alternatives remain mean at least 3.50 or 3.51 | Joint Lat/Buno decision, instrument name, version, scale and approval date | OPEN |
+| TP-G03 | No actual confirmation of the required research arrangements has been supplied in this handoff | Authorization type, non-identifying reference and date; consent procedure; eligibility by role; facilitator role; external raw-data custodian role/organization | OPEN |
+
+Do not fill these fields from a template, technical pass, scheduled time, or
+request to proceed. No approved decision date is backdated to the planned
+07:00 checkpoint. Buno notified the frontend and backend owners of the missing
+decisions in the [Oct 12 blocker notice](https://github.com/luisantonioj/bloodledger/pull/42#issuecomment-6116112892).
+Until TP-G03 is actually confirmed, the proposed session must move or be an
+internal technical demonstration without research participants, recruitment,
+consent collection or UAT response collection. Gate closure requires actual
+sanitized owner decisions recorded here and merged; opening this PR does not
+close step 18.
+
+#### Session scope reconciliation
+
+Final scope and reservation mapping remain pending Lat's section C results.
+The following is a preparation worksheet, not an approved task list:
+
+| J9 task | Candidate data source and constraint |
+|---|---|
+| 2 — capture intake | Newly verified private replacement label; repeat read-only uniqueness immediately before scan; queued is not committed |
+| 4 — transfer through transit | New requests for morning reruns; final session reservation chosen from verified eligible preserved reservations or a new request |
+| 5a — scanned receipt | Only a dispatched unit whose matching verified label is actually held; never override FEFO to force this path |
+| 5b — Receive action | Separate eligible destination reservation; preserve correct institution and current version |
+| 6 — local release | Separate eligible local-release reservation or new request |
+| 8 — compromise | A different dispatched/in-transit reservation from receipt candidates, with a listed reason |
+| 10 — expiry and acknowledgement | Hold the selected synthetic expiry scenario for live session evaluation and acknowledgement of its newly generated alert |
+
+Lat must supply current results and the private mapping before scope is
+finalized; do not infer reservation IDs or continued availability from the
+earlier count of 23. Keep identifying operational values out of this record.
+Prepare uses `SYNTHETIC_PREPARATION_EVIDENCE_V1`; disclose that it is a synthetic
+stand-in and no physical preparation evidence was reviewed. Read out the
+reviewed runbook limitations, including simulation-only data, remaining OCR
+device evidence, and the distinction between queued and committed actions.
+
+#### Analytics decision — option (b)
+
+**Accepted by the Buno task under the user's delegated choice, 2026-10-12:**
+retain the existing analytics evidence. No target-specific V4 job and binding
+approvals were supplied, so this record does not authorize a forecast refresh
+or census mutation. The session limitation is:
+
+> Analytics shows the Oct 11 census as STALE.
+
+Display forecast availability independently as actually returned by the API;
+do not relabel an unavailable forecast as stale or treat stock validity as
+forecast validity. V4 remains the default. V5 activation, binding, research,
+UAT and deployment approvals remain separate. This choice does not close
+TP-G01, TP-G02, TP-G03 or TP-G05.
+
+#### Capture replacement fixture verification
+
+Original fixture 01 reproduced six non-empty lines with
+`CAPTURE_REQUIRED_FIELD_MISSING`. Required prefix confidences in order
+DONATION NO / BLOOD TYPE / COMPONENT / COLLECTED AT / EXPIRES AT were
+92 / 92 / 90 / 86 / 88; the unmatched sixth line had confidence 93.
+Earlier uniqueness checks did not establish OCR success. Withdraw that set.
+
+The separately versioned **capture-label set V5** (unrelated to model V5)
+contains three replacements. Failed intermediate candidates are not released.
+The unchanged `labelImage` CSS layout was rendered with Chrome pixel density
+0.9; this is a disclosed fixture-rendering setting, not an OCR-policy change.
+Verification used baseline `ef799cb3990020e5e8356b77ccf86fb72cfa7ced`,
+tesseract.js 7.0.0, OEM LSTM_ONLY, default page segmentation, the pinned local
+language asset, block/paragraph/line extraction and the actual
+`parseInboundOcrLines` and `validateCapturedLabel` implementations. No confidence
+threshold was relaxed. Every replacement produced exactly five required-prefix
+lines, confidence at least 90 for every field, no parser error, and values
+identical to its private intended record.
+
+| Fixture | Field confidences in the prefix order above | PNG SHA-256 |
+|---|---|---|
+| 01 | 93 / 93 / 91 / 91 / 93 | `9082e70cf62379494c95fac37eba90326d79c98de6e617c5b1807bc0eff8eb04` |
+| 02 | 93 / 93 / 92 / 90 / 92 | `f2fb46f833fe53454be214ae483fc16ac8e23c475b73c20476014dc2fbfa3d3c` |
+| 03 | 93 / 94 / 91 / 91 / 92 | `9006039674d60379e7d06d890f72c30d980e9fb89ac128002566cf1d6c8f1a95` |
+
+Private archive SHA-256:
+`d9cc5eba5de380c6a68946eb67b0bf742d92b423c1c341b0ca8f63cda690a75b`.
+Included checksum-manifest SHA-256:
+`b1e87d17456602ead3ef2abec715fc8ec78d4ac7e475ef9d3badca37b8f46f6d`.
+
+PNG bytes, values, harness and detailed evidence stay in the private transfer
+package, outside Git. These are Buno-side software fixture results, not a pass
+on Lat's device or an intake. Lat must verify checksums, repeat the read-only
+uniqueness check immediately before scanning and record the actual application
+result. No ISBT, physical-label, clinical or research-approval claim follows.
+
 ## 4. Selected work mapped to Gantt
 
 ### 81 — System Testing
