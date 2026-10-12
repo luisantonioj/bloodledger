@@ -90,9 +90,68 @@ automated evidence does not populate them.
 
 An open gate produces an explicit `BLOCKED` or `NOT_RUN` result, never a pass.
 
-### Oct 12 step 18 decision record — pending owner decisions
+### UAT postponement and adviser progress demo — Oct 12 decision
 
-**Status:** Proposed session; participant UAT remains `BLOCKED`.
+**Accepted scheduling instruction, 2026-10-12:** participant UAT will not take
+place on Oct 12. Its replacement date is unset. Keep PR #45 in draft and do
+not merge it as approval for the cancelled window. The Oct 12 record below is
+preserved as preparation and technical evidence, not an executed UAT session.
+
+The next event is an adviser progress demonstration on **Wednesday Oct 14**
+on Lat's populated host, not participant UAT or response collection.
+**Buno's demo analytics choice: option (b).** Show the Oct 11 census as STALE
+and explain that it is a manually captured historical snapshot, not current
+stock. Live inventory and forecast validity remain separate. No fresh census,
+forecast job or binding is approved here. V4 remains default; V5 stays separate.
+
+For rescheduled UAT, retain these open work items:
+
+- reconcile five scored core areas and three supplementary safeguard items;
+  verify manuscript response anchors against the exact source, preserve item
+  IDs/wording, and secure final instrument approval, private version and hash;
+- preserve the user's Oct 12 confirmation of Buno's mean >=3.51 approval and
+  relayed Lat approval; final instrument reconciliation and formal PROJECT.md
+  supersession are still outstanding;
+- preserve the user's confirmation that survey permission exists, while
+  permission type/reference/date, consent/withdrawal, role eligibility,
+  facilitators and external custodian remain unrecorded; this is not evidence
+  that permission was denied, nor does it close TP-G03;
+- obtain the new Lat-approved date/window and scope, including an explicit
+  disposition of any deliberately untested live task.
+
+#### Successor operational scenario plan
+
+The scheduling handoff states that V3 reserved units expire **Tuesday Oct 13,
+23:30 Asia/Manila** (15:30 UTC). Do not extend their dates or treat them as
+usable for Wednesday's demo or a later UAT. Preserve their historical states
+and show actual statuses; this plan authorizes no expiry mutation or population.
+
+Once the new UAT date is approved, prepare a separately versioned successor
+using the [reviewed scenario/population process](OPERATIONAL-STOCK-POPULATION.md):
+
+1. Reconfirm the retained host state and eligible workflow scope with Lat and
+   Jopia; select collection/expiry dates and generation, population, T0 and end
+   windows around the new session, not the cancelled date.
+2. Preserve the original workbook/count lineage, separate historical snapshot
+   and unchanged forecasting artifacts. Specify 522 new synthetic units
+   (486 AVAILABLE, 36 RESERVED), institution/donation relationships and linked
+   reservations with new collision-checked identities; do not overwrite V3.
+3. Version the generator/verifier and private scenario package together;
+   publish sanitized manifest/archive and code hashes with validation results.
+   Keep values, images and private artifacts outside Git.
+4. Obtain Jopia's exact scenario and retained-target review before population.
+   Lat follows the reviewed backup, preview, confirmation and population flow,
+   then independent API/Fabric/workflow/census/restart verification. Preserve
+   existing accounts, credentials, identities, volumes and frontend work.
+
+No dates or approval manifests are generated before the new window is known.
+The Oct 14 demo does not itself authorize a replacement population. All work
+remains SIMULATION_ONLY, with research, UAT, activation and deployment gates
+separate.
+
+### Oct 12 step 18 decision record — historical preparation, UAT postponed
+
+**Status:** Oct 12 session cancelled; retained preparation evidence only.
 **Record date:** 2026-10-12, Asia/Manila.
 
 The relayed morning technical report states that service health, six logins,
