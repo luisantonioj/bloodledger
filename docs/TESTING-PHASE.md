@@ -100,12 +100,14 @@ backup, clock skew and the worker checks passed, with no pending commands.
 It also reports that capture stopped before intake and the 23 pre-made
 reservations remained untouched at that check. These are host-owner reports,
 not independent validation here, participant authorization or UAT acceptance.
-The subsequent instruction to rerun non-capture workflows is not their result.
+The subsequent completed reruns and their narrower scope are recorded below;
+they supersede the earlier capture blocker and preservation count only where
+explicitly stated.
 
 | Gate | Sanitized facts received | Decision still required | Status |
 |---|---|---|---|
-| TP-G01 | A 17:00 Oct 12 Asia/Manila session is proposed | Lat-approved start/end, approval date and final selected J9 scope after section C results | OPEN |
-| TP-G02 | The unresolved alternatives remain mean at least 3.50 or 3.51 | Joint Lat/Buno decision, instrument name, version, scale and approval date | OPEN |
+| TP-G01 | Proposed Oct 12, 17:00–19:00 Asia/Manila; section C results received | Actual Lat approval/date and corrected final scope distinguishing prior PASS from the untested live expiry task | OPEN |
+| TP-G02 | Proposed mean at least 3.51, unchanged manuscript five-area questionnaire, five-point scale | Joint Lat/Buno approval/date, exact title and frozen private form SHA-256; formal supersession of PROJECT.md's 3.50 after approval | OPEN |
 | TP-G03 | No actual confirmation of the required research arrangements has been supplied in this handoff | Authorization type, non-identifying reference and date; consent procedure; eligibility by role; facilitator role; external raw-data custodian role/organization | OPEN |
 
 Do not fill these fields from a template, technical pass, scheduled time, or
@@ -120,22 +122,42 @@ close step 18.
 
 #### Session scope reconciliation
 
-Final scope and reservation mapping remain pending Lat's section C results.
-The following is a preparation worksheet, not an approved task list:
+Section C results have been received as `LAT_LOCAL_VALIDATION`, completed
+approximately 12:27 Asia/Manila on Oct 12. Buno reviewed the two private
+handoffs; this is report review, not a second host execution. The following
+supersedes the earlier preparation worksheet, but is not owner-approved
+participant scope:
 
 | J9 task | Candidate data source and constraint |
 |---|---|
-| 2 — capture intake | Newly verified private replacement label; repeat read-only uniqueness immediately before scan; queued is not committed |
-| 4 — transfer through transit | New requests for morning reruns; final session reservation chosen from verified eligible preserved reservations or a new request |
-| 5a — scanned receipt | Only a dispatched unit whose matching verified label is actually held; never override FEFO to force this path |
-| 5b — Receive action | Separate eligible destination reservation; preserve correct institution and current version |
-| 6 — local release | Separate eligible local-release reservation or new request |
-| 8 — compromise | A different dispatched/in-transit reservation from receipt candidates, with a listed reason |
-| 10 — expiry and acknowledgement | Hold the selected synthetic expiry scenario for live session evaluation and acknowledgement of its newly generated alert |
+| 2 — capture intake | PASS: replacement 01 matched all five fields; explicit confirmation; QUEUED → SUBMITTING → COMMITTED. That label is now used; do not rerun it as a fresh intake. Labels 02/03 remain unscanned and need immediate pre-scan uniqueness checks |
+| 4 — transfer through transit | PASS with limitation: authorized existing pre-made TRANSFER reservation prepared, dispatched and put IN_TRANSIT; new-request approval and reservation-from-request remain unavailable |
+| 5a — scanned receipt | BLOCKED: no verified matching label for the selected in-transit unit; do not substitute the newly captured label or override FEFO |
+| 5b — requesting-hospital request/receipt | BLOCKED: requesting-hospital new-request path unavailable; no successful receipt inferred |
+| 6 — local release | Prior PASS in the first supplied report: new local reservation, prepare, complete, all COMMITTED |
+| 8 — compromise | PASS: a separate pre-made transfer prepared, dispatched and compromised with a listed reason and explicit confirmation; all commands COMMITTED |
+| 10 — expiry and acknowledgement | NOT_RUN: preserve for live evaluation and acknowledgement of its newly generated alert; not a pre-session PASS |
 
-Lat must supply current results and the private mapping before scope is
-finalized; do not infer reservation IDs or continued availability from the
-earlier count of 23. Keep identifying operational values out of this record.
+Lat reports 21 ACTIVE pre-made reservations, one IN_TRANSIT, one COMPROMISED
+and one previously CANCELLED (24 total), superseding the earlier 23 ACTIVE
+count after two explicitly authorized uses. Detailed mappings remain private;
+Lat must select distinct eligible current reservations for the session and
+must not replay a consumed scenario. The original historical snapshot remains
+separate and unchanged according to the report. Worker RUNNING, no pending
+commands, clean retained UAT checkout and a validated fresh backup are reported.
+
+The proposed window includes steps 1, 3, 4, 6, 7, 8, 9, 10, 11, 12 and now
+technically passed step 2. Earlier evidence for 1, 3, 7, 9, 11 and 12 is not
+reproduced by these two reports. Request a scope correction: a rule admitting
+only steps that PASS before 13:30 cannot simultaneously admit step 10, which
+is deliberately NOT_RUN. Lat must explicitly approve it as a planned live
+task with a stop/report-on-failure condition, or exclude it; never mark it PASS
+in advance. Scope approval and actual research permission remain separate.
+
+Read out these exclusions: approving new transfers/reserving from a request,
+requesting-hospital request/receipt (5b), and scanned receipt (5a) without the
+actual matching verified label. Keep identifying operational values out of
+this record.
 Prepare uses `SYNTHETIC_PREPARATION_EVIDENCE_V1`; disclose that it is a synthetic
 stand-in and no physical preparation evidence was reviewed. Read out the
 reviewed runbook limitations, including simulation-only data, remaining OCR
@@ -189,9 +211,12 @@ Included checksum-manifest SHA-256:
 
 PNG bytes, values, harness and detailed evidence stay in the private transfer
 package, outside Git. These are Buno-side software fixture results, not a pass
-on Lat's device or an intake. Lat must verify checksums, repeat the read-only
-uniqueness check immediately before scanning and record the actual application
-result. No ISBT, physical-label, clinical or research-approval claim follows.
+on Lat's device or an intake. The subsequently supplied Lat report records the
+ZIP hash and all 13 checksums passing, immediate pre-scan uniqueness passing for
+all three labels, and actual fixture 01 OCR and committed intake passing as
+described above. These are attributed host-owner results. Repeat uniqueness for
+any still-unused label immediately before use. No ISBT, physical-label,
+clinical or research-approval claim follows.
 
 ## 4. Selected work mapped to Gantt
 
