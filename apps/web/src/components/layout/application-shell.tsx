@@ -13,6 +13,7 @@ const iconPaths: Record<string, string> = {
   "/alerts": "m12 3 9 16H3l9-16Zm0 6v4m0 3v.5",
   "/consortium": "M9 15l6-6m-3-3 1-1a4 4 0 1 1 5.6 5.6L17 12M7 12l-1.6 1.6A4 4 0 0 0 11 19.2L12 18",
   "/audit": "M5 4h11l3 3v13H5V4Zm3 4h5m-5 4h8m-8 4h6",
+  "/redistribution": "M4 7h12l-3-3m3 3-3 3M20 17H8l3-3m-3 3 3 3",
   "/analytics": "M4 4v16h16M7 15l4-5 4 3 5-7",
   "/reporting": "M4 20V10m6 10V4m6 16v-7m5 7V8",
   "/accounts": "M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 8a8 8 0 0 1 16 0M18 6h4m-2-2v4",
@@ -21,7 +22,7 @@ const iconPaths: Record<string, string> = {
 
 const sectionFor = (href: string) => href === "/" ? "Overview"
   : ["/inventory", "/transactions", "/receipts", "/transfers", "/alerts", "/audit"].includes(href) ? "Operations"
-    : ["/analytics", "/consortium", "/reporting"].includes(href) ? "Insights"
+    : ["/redistribution", "/analytics", "/consortium", "/reporting"].includes(href) ? "Insights"
       : "Account Management";
 
 function NavigationIcon({ href }: { href: string }) {
