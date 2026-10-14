@@ -1,3 +1,4 @@
+import { PaginatedTable, RecordPagination } from "../../components/ui/record-pagination";
 import { useState } from "react";
 import { can, canAct, type Principal } from "../../auth/permissions";
 import { BloodTypeBadge } from "../../components/ui/aggregate-tables";
@@ -30,12 +31,13 @@ export function RequesterDashboard({ data, principal, requests, bankMode=false }
       {!mayRead ? <div className="empty"><strong>Requests unavailable</strong>This account cannot view requests.</div>
         : !requests.data ? <div className="empty" aria-live="polite"><strong>{requests.error ? "Requests unavailable" : "Loading requests…"}</strong></div>
         : rows.length === 0 ? <div className="empty"><strong>No requests yet</strong>Your submitted blood requests will appear here.</div>
-        : <div className="table-wrap"><table className="data-table requester-requests-table"><thead><tr><th>Reference</th><th>{bankMode?"Blood Type":"Blood"}</th>{bankMode&&<th>Component</th>}<th className="numeric">Units</th><th>Priority</th><th>Status</th></tr></thead><tbody>{rows.slice(0, 5).map(row => <tr key={row.transfer_id}>
+        : <PaginatedTable total={rows.length} label="Dashboard requests"><table className="data-table requester-requests-table"><thead><tr><th>Reference</th><th>{bankMode?"Blood Type":"Blood"}</th>{bankMode&&<th>Component</th>}<th className="numeric">Units</th><th>Priority</th><th>Status</th></tr></thead><tbody>{rows.map(row => <tr key={row.transfer_id}>
           <td><a className="requester-request-reference mono" href={"/transfers?record=request&recordId=" + encodeURIComponent(row.transfer_id)}>{row.transfer_id}</a></td>
           <td>{bankMode?formatBloodType(row.blood_type):<><BloodTypeBadge value={row.blood_type}/><small>{componentLabels[row.component_type] ?? humanizeCode(row.component_type)}</small></>}</td>{bankMode&&<td>{componentLabels[row.component_type] ?? humanizeCode(row.component_type)}</td>}
           <td className="numeric">{row.quantity}</td><td>{humanizeCode(row.urgency)}</td>
           <td><span className={statusClassName(row.status)}>{humanizeCode(row.status)}</span>{!row.ledger_transaction_id && <small>Awaiting ledger confirmation</small>}</td>
-        </tr>)}</tbody></table></div>}
+        </tr>)}</tbody></table></PaginatedTable>}
+      {mayRead&&rows.length===0&&<RecordPagination total={0} ready={Boolean(requests.data)} label="Dashboard requests"/>}
     </section>
     <section className="requester-dashboard-card" aria-labelledby="requester-network-heading">
       <header><div><h2 id="requester-network-heading">Network Blood Availability</h2></div>{mayRequest && <a className="button primary compact" href={"/transfers?" + new URLSearchParams({newRequest:"1", bloodType, componentType:component}).toString()}>+ Request Blood</a>}</header>
@@ -49,7 +51,6 @@ export function RequesterDashboard({ data, principal, requests, bankMode=false }
           <div className="requester-availability-quantity"><strong aria-label={available === null ? "Unavailable" : undefined}>{available ?? "—"}</strong><span>network units available</span></div>
           <div className="requester-availability-status"><span className={available !== null && available > 0 ? "status success" : "status warning"}>{available === null ? "Availability unavailable" : available > 0 ? "Current supply available" : "No current supply"}</span><small>{available === null ? "Waiting for a confirmed network projection." : "Availability does not guarantee request approval."}</small></div>
         </div>
-        <p className="requester-network-note">Source selection and approval are reviewed in the blood request workflow.</p>
       </div>
     </section>
   </div>;

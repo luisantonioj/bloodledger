@@ -1,0 +1,14 @@
+// Lightweight fixture consistency check; no browser, network, stores or operational artifacts.
+import assert from 'node:assert/strict';
+import {scenarioCounts,scenarioComponents as units,scenarioReservations as reservations,scenarioRequests as requests,provenance} from './scenario-v3.mjs';
+import {fixture,reviewAccounts} from './fixtures.mjs';
+assert.equal(units.length,522);assert.equal(units.filter(u=>u.inventoryStatus==='AVAILABLE').length,486);assert.equal(units.filter(u=>u.inventoryStatus==='RESERVED').length,36);
+assert.equal(new Set(units.map(u=>u.componentId)).size,522);assert.equal(new Set(units.map(u=>u.donationId)).size,522);assert.equal(new Set(units.map(u=>u.componentType)).size,5);assert.equal(reservations.length,24);
+const membership=new Set();const purposes={TRANSFER:0,LOCAL_RELEASE:0};
+for(const r of reservations){assert.equal(r.status,'ACTIVE');assert.equal(r.version,1);for(const m of r.components){assert(!membership.has(m.componentId));membership.add(m.componentId);const u=units.find(u=>u.componentId===m.componentId);assert.equal(u.reservationId,r.reservationId);assert.equal(u.reservationVersion,r.version);assert.equal(u.inventoryVersion,m.inventoryVersion);assert.equal(u.inventoryStatus,'RESERVED');assert(Date.parse(u.expiresAt)>Date.parse(u.collectedAt));purposes[r.purpose]++;}
+ if(r.purpose==='TRANSFER'){const q=requests.find(q=>q.transfer_id===r.transferId);assert(q);assert.equal(q.quantity,r.components.length);assert.equal(q.ledger_transaction_id,null);assert.equal(q.destination_institution_id,r.destinationInstitutionId);}else{assert.equal(r.transferId,null);assert(r.localReleaseId);assert.equal(r.destinationInstitutionId,null);}}
+assert.deepEqual(purposes,{TRANSFER:18,LOCAL_RELEASE:18});assert.equal(membership.size,36);
+for(const row of scenarioCounts){assert.equal(units.filter(u=>u.bloodType===row.bloodType&&u.componentType===row.componentType).length,row.closing);}
+assert.equal(units.filter(u=>u.bloodType.endsWith('NEGATIVE')).length,0);assert.match(provenance.negativeRhCoverage,/SOURCE_UNKNOWN/);
+for(const a of reviewAccounts){const url=p=>new URL(p,'http://127.0.0.1:5175');const inv=fixture(url('/api/v2/components'),a.roleId,'populated',a.accountId);assert(inv.components.every(u=>u.institutionId===a.institutionId));const list=fixture(url('/api/v2/transfers'),a.roleId,'populated',a.accountId);for(const r of list.reservations){const detail=fixture(url('/api/v2/reservations/'+r.reservation_id),a.roleId,'populated',a.accountId);assert(detail);if(a.institutionId==='INST_MEDIATRIX')for(const m of detail.components)assert(fixture(url('/api/v2/components/'+m.componentId),a.roleId,'populated',a.accountId));}assert.equal(fixture(url('/api/v2/components'),a.roleId,'empty',a.accountId).components.length,0);}
+console.log('PASS: 522 additions, 486 available, 36 reserved, 24 active reservations, 18 units per purpose, 5 types, scoped linked routes, fixture zeros; no ledger references.');

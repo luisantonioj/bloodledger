@@ -1,3 +1,4 @@
+import { PaginatedTable } from "../../components/ui/record-pagination";
 import { useEffect, useRef, useState } from "react";
 import type { Principal } from "../../auth/permissions";
 import { formatBloodType, formatManilaDateTime, humanizeCode, statusClassName } from "../../components/ui/display";
@@ -41,8 +42,8 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
   const reservation = record?.kind === "reservation" ? record.value : undefined;
   const request = record?.kind === "request" ? record.value : undefined;
   const refresh = () => {setRetry(value => value + 1); onRefresh?.();};
-  return <div className={inline ? "requester-inline-detail" : "preview-modal-backdrop"}><section ref={panel} className={inline ? "requester-record-detail" : "preview-modal"} role={inline ? "region" : "dialog"} aria-modal={inline ? undefined : true} aria-labelledby="record-explorer-title" onKeyDown={keyDown}>
-    <header><div><h2 id="record-explorer-title">{selected.kind === "component" ? "Component details" : selected.kind === "reservation" ? (renderExtra ? "Transfer details" : "Reservation details") : (renderExtra ? "Request details" : "Transfer request details")}</h2>{(!renderBody || selected.kind === "component") && <p className="mono">{selected.id}</p>}</div><button ref={closeButton} aria-label="Close record details" onClick={onClose}>×</button>{headerHelp}</header>
+  return <div className={inline ? "requester-inline-detail" : "preview-modal-backdrop"}><section ref={panel} className={inline ? "requester-record-detail" : "preview-modal record-explorer-modal"} role={inline ? "region" : "dialog"} aria-modal={inline ? undefined : true} aria-labelledby="record-explorer-title" onKeyDown={keyDown}>
+    <header><div><h2 id="record-explorer-title">{selected.kind === "component" ? "Component details" : selected.kind === "reservation" ? (renderExtra ? "Transfer details" : "Reservation details") : (renderExtra ? "Request details" : "Transfer request details")}</h2>{(!renderBody || selected.kind === "component") && <p className="mono">{selected.id}</p>}</div>{reservation && !renderBody && <span className={statusClassName(reservation.status)}>{humanizeCode(reservation.status)}</span>}<button ref={closeButton} aria-label="Close record details" onClick={onClose}>×</button>{headerHelp}</header>
     <div className="preview-modal-body">
       {history.length > 1 && <button className="button compact" onClick={() => {setRecord(undefined); setBusy(true); setHistory(rows => rows.slice(0, -1));}}>Back to previous record</button>}
       {busy && <p role="status">Loading current authorized record…</p>}
@@ -56,10 +57,23 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
         <dt>Inventory version</dt><dd>{component.inventoryVersion}</dd><dt>Reservation version</dt><dd>{component.reservationVersion ?? "Not reserved"}</dd>
       </dl>{component.reservationId ? <button className="button" onClick={() => open("reservation", component.reservationId!)}>Open linked reservation</button> : <p>No linked reservation.</p>}<p>Dates describe this unit. Near-expiry alerts remain disabled.</p></>}
       {selected.kind === "component" && <ExpiryEvaluation key={"expiry:" + selected.id} component={component} principal={principal} onRefresh={() => {setRetry(value => value + 1); onRefresh?.();}}/>}
-      {reservation && !renderBody && <><dl><dt>Purpose</dt><dd>{humanizeCode(reservation.purpose)}</dd><dt>Reservation state</dt><dd>{humanizeCode(reservation.status)}</dd><dt>Version</dt><dd>{reservation.version}</dd><dt>Source institution</dt><dd>{facilityLabel(reservation.sourceInstitutionId, principal)}</dd><dt>Destination</dt><dd>{reservation.destinationInstitutionId ? facilityLabel(reservation.destinationInstitutionId, principal) : "Local release — no destination"}</dd><dt>Preparation evidence</dt><dd>{reservation.preparedEvidencePresent ? "Recorded" : "Not recorded"}</dd></dl>
-        {reservation.purpose === "TRANSFER" && reservation.transferId && <button className="button" onClick={() => open("request", reservation.transferId!)}>Open linked transfer request</button>}
-        {reservation.purpose === "LOCAL_RELEASE" && <section><h3>Local-release workflow</h3><p className="mono">{reservation.localReleaseId}</p><p>This reservation supplies the local-release purpose and members. A separate local-release detail API is unavailable.</p></section>}
-        <h3>Reserved component members</h3>{reservation.components.length === 0 ? <p>No current component members are returned.</p> : <ul>{reservation.components.map(member => <li key={member.componentId}><button className="button compact" onClick={() => open("component", member.componentId)} aria-label={"Open member " + member.componentId}>{member.componentId}</button> · {humanizeCode(member.componentType)} · {humanizeCode(member.inventoryStatus)} · Version {member.inventoryVersion}</li>)}</ul>}
+      {reservation && !renderBody && <>
+        <dl className="reservation-facts">
+          <div><dt>Purpose</dt><dd>{reservation.purpose === "TRANSFER" ? "Transfer" : "Local release"}</dd></div>
+          <div><dt>Version</dt><dd>{reservation.version}</dd></div>
+          <div><dt>Supplying facility</dt><dd>{facilityLabel(reservation.sourceInstitutionId, principal)}</dd></div>
+          <div><dt>Receiving facility</dt><dd>{reservation.destinationInstitutionId ? facilityLabel(reservation.destinationInstitutionId, principal) : "Local release"}</dd></div>
+          <div><dt>Preparation evidence</dt><dd>{reservation.preparedEvidencePresent ? "Recorded" : "Not recorded"}</dd></div>
+          <div><dt>Last updated</dt><dd>{formatManilaDateTime(reservation.updatedAt)}</dd></div>
+        </dl>
+        {reservation.purpose === "TRANSFER" && reservation.transferId && <section className="reservation-linked-workflow"><div><h3>Linked transfer request</h3><p className="mono">{reservation.transferId}</p></div><button className="button compact" aria-label="Open linked transfer request" onClick={() => open("request", reservation.transferId!)}>View request</button></section>}
+        {reservation.purpose === "LOCAL_RELEASE" && <section className="reservation-linked-workflow"><div><h3>Local-release workflow</h3><p className="mono">{reservation.localReleaseId}</p></div></section>}
+        <section className="reservation-members"><header><h3>Reserved component members</h3><span>{reservation.components.length} unit{reservation.components.length === 1 ? "" : "s"}</span></header>
+          <PaginatedTable total={reservation.components.length} label="Reserved components" resetKey={reservation.reservationId} className="table-wrap reservation-members-table"><table><thead><tr><th>Component ID</th><th>Component</th><th>Status</th><th>Version</th></tr></thead><tbody>
+          {reservation.components.map(member => <tr key={member.componentId}><td><button className="bank-review-link mono" onClick={() => open("component", member.componentId)} aria-label={"Open member " + member.componentId}>{member.componentId}</button></td><td>{componentLabel(member.componentType)}</td><td><span className={statusClassName(member.inventoryStatus)+(member.inventoryStatus === "RESERVED" ? " inventory-status-reserved" : "")}>{humanizeCode(member.inventoryStatus)}</span></td><td>{member.inventoryVersion}</td></tr>)}
+          {reservation.components.length === 0 && <tr><td colSpan={4}>No current component members are returned.</td></tr>}
+          </tbody></table></PaginatedTable>
+        </section>
       </>}
       {request && !renderBody && <dl><dt>Source</dt><dd>{facilityLabel(request.source_institution_id, principal)}</dd><dt>Destination</dt><dd>{facilityLabel(request.destination_institution_id, principal)}</dd>{renderExtra ? <><dt>Blood type</dt><dd>{formatBloodType(request.blood_type)}</dd><dt>Component</dt><dd>{componentLabel(request.component_type)}</dd></> : <><dt>Blood / component</dt><dd>{humanizeCode(request.blood_type)} / {humanizeCode(request.component_type)}</dd></>}<dt>Requested units</dt><dd>{request.quantity}</dd><dt>Request state</dt><dd>{humanizeCode(request.status)}</dd><dt>Ledger reference</dt><dd className="mono">{request.ledger_transaction_id ?? "Pending — no commitment"}</dd></dl>}
       {record && renderBody?.(record, open)}

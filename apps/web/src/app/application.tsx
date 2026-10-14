@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Principal } from "../auth/permissions";
 import { OperatorVerification } from "../auth/operator-verification";
 import { ApplicationShell } from "../components/layout/application-shell";
-import { visibleNavigation } from "../config/navigation";
+import { visibleNavigation,canonicalPagePath } from "../config/navigation";
 import { AccessPage } from "../features/auth/access-page";
 import { requestJson } from "../services/api/client";
 import { PageContent } from "./page-content";
@@ -48,5 +48,6 @@ export function App() {
   if (!principal) return <AccessPage onAuthenticated={setPrincipal}/>;
 
   const navigation = visibleNavigation(principal);
-  return <OperatorVerification key={principal.accountId ?? principal.userId} principal={principal}><ApplicationShell principal={principal} path={path} navigation={navigation} onNavigate={navigate} onSignOut={() => void signOut()}>{navigation.some(item => item.href === path) ? <PageContent key={principal.userId + path} path={path} principal={principal}/> : <div className="empty" role="alert">This account cannot access this page.</div>}</ApplicationShell></OperatorVerification>;
+  const activePath = canonicalPagePath(principal,path);
+  return <OperatorVerification key={principal.accountId ?? principal.userId} principal={principal}><ApplicationShell principal={principal} path={activePath} navigation={navigation} onNavigate={navigate} onSignOut={() => void signOut()}>{navigation.some(item => item.href === activePath) ? <PageContent key={principal.userId + activePath} path={activePath} principal={principal}/> : <div className="empty" role="alert">This account cannot access this page.</div>}</ApplicationShell></OperatorVerification>;
 }

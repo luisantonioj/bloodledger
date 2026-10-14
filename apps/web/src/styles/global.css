@@ -336,7 +336,7 @@
 .institution-staff-frame{margin-top:0}.institution-staff-header{display:flex;align-items:center;justify-content:space-between;gap:12px}.institution-staff-header .page-title{margin:0}.institution-staff-header>.button{flex-shrink:0}
 
 /* Blood-bank operational pages: scoped records, mockup-inspired controls. */
-.bank-page-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px;flex-wrap:wrap}.bank-toolbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.bank-page-toolbar .requester-transfer-tabs{margin:0}.bank-view-options{position:relative;font-size:11px;color:var(--ink-muted)}.bank-view-options summary,.bank-operation-history summary,.bank-workflow-availability summary{cursor:pointer;font-size:12px;font-weight:500;padding:10px 0}.bank-view-options>div{display:grid;gap:12px;padding:14px 0}.bank-view-options label{display:grid;gap:7px}.bank-view-options select,.bank-list-filters select{padding:9px 32px 9px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px var(--font-sans);width:100%;appearance:none}.bank-filter-panel{padding:18px;display:grid;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);margin-bottom:18px}.bank-filter-row{display:flex;align-items:flex-start;gap:14px}.bank-filter-row>strong{width:80px;flex-shrink:0;padding-top:9px;color:var(--ink-muted);font-size:10px;font-weight:600}.bank-filter-chips{display:flex;flex-wrap:wrap;gap:7px;min-width:0}.bank-search{display:grid;gap:7px;margin:0;color:var(--ink-muted);font-size:11px;font-weight:500;min-width:0}.bank-search input{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px var(--font-sans);min-width:0}.bank-section-heading{display:flex;align-items:center;gap:12px;padding:17px 18px;border-bottom:1px solid var(--line);background:var(--surface);border-radius:var(--radius-md) var(--radius-md) 0 0}.bank-section-heading h2,.bank-section-heading h3{font:500 18px var(--font-serif);margin:0;padding:0;border:0;flex:1;min-width:0}.bank-section-heading>span:not(.request-form-help){font-size:10px;color:var(--ink-muted)}.bank-section-heading .request-form-help{flex-shrink:0}.blood-bank-inventory .v2-intake-status{margin:18px 0;border:1px solid var(--line);border-radius:var(--radius-md);overflow:visible}.blood-bank-inventory .v2-intake-status>header{align-items:center;gap:12px}.blood-bank-inventory .v2-intake-status h3{flex:1;margin:0;font:500 17px var(--font-serif)}.blood-bank-inventory .transfer-table-head{border:0}.blood-bank-inventory .inventory-table{min-width:800px}.blood-bank-inventory .inventory-table td:first-child{max-width:220px}.blood-bank-inventory .unit-reference{max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left}.blood-bank-inventory .v2-secondary-id{overflow-wrap:anywhere}.blood-bank-transfers,.blood-bank-audit{min-width:0}.bank-record-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:18px;align-items:start}.bank-record-card,.bank-detail-card,.bank-operation-history,.bank-workflow-availability{border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);min-width:0}.bank-list-filters{padding:14px 18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,.5fr);gap:12px;border-bottom:1px solid var(--line)}.bank-list-filters>label{display:grid;gap:7px;margin:0;color:var(--ink-muted);font-size:11px}.bank-record-layout .data-table{min-width:640px}.bank-record-layout .data-table td:first-child{max-width:190px}.bank-record-layout .requester-record-link{overflow-wrap:anywhere;white-space:normal;text-align:left}.bank-record-layout .mono{overflow-wrap:anywhere}.bank-record-layout tr.selected{background:var(--surface-subtle)}.bank-detail-card .requester-record-detail{border:0}.bank-detail-card .requester-inline-detail{height:auto}.bank-detail-card .preview-modal-body{min-width:0;overflow-wrap:anywhere}.bank-operation-history{margin-top:18px}.bank-operation-history>summary,.bank-workflow-availability>summary{padding:15px 18px}.bank-operation-history summary span{margin-left:8px;color:var(--ink-muted);font-size:10px}.bank-reference{max-width:230px;overflow-wrap:anywhere}.blood-bank-transfers .v2-operations{margin-top:20px;border:1px solid var(--line);border-radius:var(--radius-md);overflow:visible}.blood-bank-transfers .v2-operation-card{border-top:0;border-radius:var(--radius-md)}.blood-bank-transfers .v2-operation-card>header{align-items:center;background:var(--surface);gap:12px;border-radius:var(--radius-md) var(--radius-md) 0 0}.blood-bank-transfers .v2-operation-card>header h3{flex:1;margin:0}.blood-bank-transfers .v2-operation-form{grid-template-columns:repeat(5,minmax(0,1fr))}.blood-bank-transfers .v2-operation-form .v2-submit{grid-column:1/-1;justify-items:end}.blood-bank-transfers .v2-operation-form select{appearance:none;padding-right:32px}.blood-bank-transfers .v2-operation-form .requester-select{display:block}.blood-bank-transfers .v2-operation-form .requester-select select{font-size:12px}.blood-bank-transfers .bank-workflow-availability{margin:14px 18px;border-color:var(--line-subtle)}.blood-bank-transfers .v2-blocked-workflow{border:0;background:var(--surface-subtle);margin:0;padding:14px 18px}.blood-bank-audit .audit-summary{margin:0 0 18px}.blood-bank-audit .bank-filter-panel{border:0;border-radius:0;border-bottom:1px solid var(--line);margin:0}.blood-bank-audit .audit-table{min-width:850px}.bank-loaded-count{color:var(--ink-muted);font-size:11px}.blood-bank-audit .evidence-reference{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bank-record-card .table-wrap{border-radius:0 0 var(--radius-md) var(--radius-md)}
+.bank-page-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px;flex-wrap:wrap}.bank-toolbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.bank-page-toolbar .requester-transfer-tabs{margin:0}.bank-view-options{position:relative;font-size:11px;color:var(--ink-muted)}.bank-view-options summary,.bank-operation-history summary,.bank-workflow-availability summary{cursor:pointer;font-size:12px;font-weight:500;padding:10px 0}.bank-view-options>div{display:grid;gap:12px;padding:14px 0}.bank-view-options label{display:grid;gap:7px}.bank-view-options select,.bank-list-filters select{padding:9px 32px 9px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px var(--font-sans);width:100%;appearance:none}.bank-filter-panel{padding:18px;display:grid;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);margin-bottom:18px}.bank-filter-row{display:flex;align-items:flex-start;gap:14px}.bank-filter-row>strong{width:80px;flex-shrink:0;padding-top:9px;color:var(--ink-muted);font-size:10px;font-weight:600}.bank-filter-chips{display:flex;flex-wrap:wrap;gap:7px;min-width:0}.bank-search{display:grid;gap:7px;margin:0;color:var(--ink-muted);font-size:11px;font-weight:500;min-width:0}.bank-search input{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px var(--font-sans);min-width:0}.bank-section-heading{display:flex;align-items:center;gap:12px;padding:17px 18px;border-bottom:1px solid var(--line);background:var(--surface);border-radius:var(--radius-md) var(--radius-md) 0 0}.bank-section-heading h2,.bank-section-heading h3{font:500 18px var(--font-serif);margin:0;padding:0;border:0;flex:1;min-width:0}.bank-section-heading>span:not(.request-form-help){font-size:10px;color:var(--ink-muted)}.bank-section-heading .request-form-help{flex-shrink:0}.blood-bank-inventory .v2-intake-status{margin:18px 0;border:1px solid var(--line);border-radius:var(--radius-md);overflow:visible}.blood-bank-inventory .v2-intake-status>header{align-items:center;gap:12px}.blood-bank-inventory .v2-intake-status h3{flex:1;margin:0;font:500 17px var(--font-serif)}.blood-bank-inventory .transfer-table-head{border:0}.blood-bank-inventory .inventory-table{min-width:800px}.blood-bank-inventory .inventory-table td:first-child{max-width:220px}.blood-bank-inventory .unit-reference{max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left}.blood-bank-inventory .v2-secondary-id{overflow-wrap:anywhere}.blood-bank-transfers,.blood-bank-audit{min-width:0}.bank-record-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:18px;align-items:start}.bank-record-card,.bank-detail-card,.bank-operation-history,.bank-workflow-availability{border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);min-width:0}.bank-list-filters{padding:14px 18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,.5fr);gap:12px;border-bottom:1px solid var(--line)}.bank-list-filters>label{display:grid;gap:7px;margin:0;color:var(--ink-muted);font-size:11px}.bank-record-layout .data-table{min-width:640px}.bank-record-layout .data-table td:first-child{max-width:190px}.bank-record-layout .requester-record-link{overflow-wrap:anywhere;white-space:normal;text-align:left}.bank-record-layout .mono{overflow-wrap:anywhere}.bank-record-layout tr.selected{background:var(--surface-subtle)}.bank-detail-card .requester-record-detail{border:0}.bank-detail-card .requester-inline-detail{height:auto}.bank-detail-card .preview-modal-body{min-width:0;overflow-wrap:anywhere}.bank-operation-history{margin-top:18px}.bank-operation-history>summary,.bank-workflow-availability>summary{padding:15px 18px}.bank-operation-history summary span{margin-left:8px;color:var(--ink-muted);font-size:10px}.bank-reference{max-width:230px;overflow-wrap:anywhere}.blood-bank-transfers .v2-operations{margin-top:20px;border:1px solid var(--line);border-radius:var(--radius-md);overflow:visible}.blood-bank-transfers .v2-operation-card{border-top:0;border-radius:var(--radius-md);background:var(--surface)}.blood-bank-transfers .v2-operation-card>header{align-items:center;background:var(--surface);gap:12px;border-radius:var(--radius-md) var(--radius-md) 0 0}.blood-bank-transfers .v2-operation-card>header h3{flex:1;margin:0}.blood-bank-transfers .v2-operation-form{grid-template-columns:repeat(5,minmax(0,1fr))}.blood-bank-transfers .v2-operation-form .v2-submit{grid-column:1/-1;justify-items:end}.blood-bank-transfers .v2-operation-form select{appearance:none;padding-right:32px}.blood-bank-transfers .v2-operation-form .requester-select{display:block}.blood-bank-transfers .v2-operation-form .requester-select select{font-size:12px}.blood-bank-transfers .bank-workflow-availability{margin:14px 18px;border-color:var(--line-subtle)}.blood-bank-transfers .v2-blocked-workflow{border:0;background:var(--surface-subtle);margin:0;padding:14px 18px}.blood-bank-audit .audit-summary{margin:0 0 18px}.blood-bank-audit .bank-filter-panel{border:0;border-radius:0;border-bottom:1px solid var(--line);margin:0}.blood-bank-audit .audit-table{min-width:850px}.bank-loaded-count{color:var(--ink-muted);font-size:11px}.blood-bank-audit .evidence-reference{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bank-record-card .table-wrap{border-radius:0 0 var(--radius-md) var(--radius-md)}
 @media(max-width:1050px){.bank-record-layout{grid-template-columns:1fr}.blood-bank-transfers .v2-operation-form{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.bank-filter-row{flex-direction:column;gap:7px}.bank-filter-row>strong{width:auto;padding:0}.bank-list-filters{grid-template-columns:1fr}.bank-section-heading{padding:14px;flex-wrap:wrap}.bank-section-heading>span:not(.request-form-help){display:none}.blood-bank-transfers .v2-operation-form{grid-template-columns:1fr}.bank-page-toolbar .requester-transfer-tabs{gap:6px}.bank-page-toolbar .requester-transfer-tabs button{padding:7px 9px;font-size:11px}.bank-toolbar-actions{justify-content:flex-end;margin-left:auto}}
 
@@ -403,3 +403,232 @@
 .refresh-icon-button{display:inline-flex;align-items:center;gap:7px}.refresh-icon-button svg,.dashboard-refresh svg{flex-shrink:0}
 
 .bank-supplier-workflow .request-form-help-tooltip{width:min(440px,calc(100vw - 64px));max-height:min(70vh,560px);overflow-y:auto;overscroll-behavior:contain}
+
+/* Inventory rows and compact, filtered 20-record pages. */
+.blood-bank-inventory .inventory-table tbody tr:has(.unit-reference):hover,.blood-bank-inventory .inventory-table tbody tr:has(.unit-reference):focus-within{background:var(--surface-subtle);box-shadow:none}
+.blood-bank-inventory .inventory-table .inventory-actions-cell{text-align:right;white-space:nowrap}
+.inventory-pagination{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:12px 18px;color:var(--ink-muted);font-size:12px}.inventory-page-controls{grid-column:2;display:flex;align-items:center;justify-content:center;gap:12px;white-space:nowrap}.inventory-page-records{grid-column:3;justify-self:end;text-align:right;white-space:nowrap}.inventory-page-arrow{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0}.inventory-page-arrow svg{flex-shrink:0}
+@media(max-width:600px){.inventory-pagination{grid-template-columns:1fr;gap:10px}.inventory-page-controls{grid-column:1}.inventory-page-records{grid-column:1}}
+
+.inventory-page-count{margin-inline:8px}
+
+.blood-bank-inventory .inventory-time-expired{color:var(--primary)}
+.blood-bank-inventory .inventory-status-available{color:var(--success);background:var(--success-container)}
+.blood-bank-inventory .inventory-status-reserved{color:var(--primary);background:var(--primary-container)}
+
+/* Shared neutral-button feedback follows the Refresh treatment. */
+.button:not(.primary){transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease}
+.button:not(.primary):not(:disabled):not([aria-disabled="true"]):hover,.button:not(.primary):not(:disabled):not([aria-disabled="true"]):focus-visible{background:var(--surface-subtle);border-color:var(--line-strong);color:var(--ink)}
+.button.danger:not(:disabled):hover,.button.danger:not(:disabled):focus-visible{color:var(--primary)}
+@media(prefers-reduced-motion:reduce){.button:not(.primary){transition:none}}
+.record-explorer-modal{width:min(720px,100%);grid-template-rows:auto minmax(0,1fr)}.record-explorer-modal>header{align-items:center;padding:18px 22px}.record-explorer-modal>header h2{font-size:22px}.record-explorer-modal>header p{overflow-wrap:anywhere;line-height:1.6}.record-explorer-modal>header>button{flex-shrink:0;cursor:pointer}.record-explorer-modal .preview-modal-body{padding:22px;font-size:12px;line-height:1.6;overflow-wrap:anywhere}.record-explorer-modal .preview-modal-body>dl{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px 18px;margin:0;padding:0;border:0}.record-explorer-modal dt{color:var(--ink-muted)}.record-explorer-modal dd{margin:0;min-width:0;color:var(--ink)}.record-explorer-modal .preview-modal-body>button:first-child{margin-bottom:18px}.record-explorer-modal h3{margin:0;font-size:13px;font-weight:600}.reservation-linked-workflow{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:20px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-subtle)}.reservation-linked-workflow p{margin:0;flex-basis:100%;color:var(--ink-muted)}.reservation-members{margin-top:22px}.reservation-members>header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.reservation-members>header>span{color:var(--ink-muted);font-size:11px}.reservation-member-list{list-style:none;padding:0;margin:0;display:grid;gap:10px}.reservation-member-list li{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius-md)}.reservation-member-list li>div{display:grid;gap:5px;min-width:0}.reservation-member-list li>div:last-child{text-align:right;color:var(--ink-secondary)}.reservation-member-list .button{max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left;justify-self:start}.reservation-member-list small,.reservation-member-list li>div:first-child>span{color:var(--ink-muted);font-size:11px}.record-explorer-modal .v2-operation-card:not(dl){margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}.record-explorer-modal .bank-detail-action-buttons{margin-top:12px}.record-explorer-modal .preview-modal-body>p{color:var(--ink-muted)}
+@media(max-width:600px){.record-explorer-modal>header{padding:16px}.record-explorer-modal .preview-modal-body{padding:16px}.record-explorer-modal .preview-modal-body>dl{grid-template-columns:112px minmax(0,1fr);gap:10px 12px}.reservation-linked-workflow{padding:12px}.reservation-member-list li{align-items:start;flex-wrap:wrap}.reservation-member-list li>div:last-child{text-align:left;display:flex;gap:10px}}
+
+/* Compact record overlays: aligned references and no section dividers. */
+.record-explorer-modal>header{padding:12px 18px;border-bottom:0}.record-explorer-modal>header h2{padding:0;border:0;margin:0 0 4px}.record-explorer-modal>header p{padding:0;margin:0;line-height:1.4}.record-explorer-modal>header>button{background:transparent;border:0;border-radius:0}
+.record-explorer-modal .preview-modal-body{padding:14px 18px 16px;scrollbar-width:none;-ms-overflow-style:none}.record-explorer-modal .preview-modal-body::-webkit-scrollbar{display:none}.record-explorer-modal .preview-modal-body>dl{gap:8px 16px}.record-explorer-modal .preview-modal-body>button:first-child{margin-bottom:12px}
+.record-explorer-modal .reservation-linked-workflow{margin-top:14px;padding:10px 12px;border:0;gap:10px}.record-explorer-modal .reservation-members{margin-top:14px}.record-explorer-modal .reservation-members>header{padding:0;border:0;margin-bottom:8px}.record-explorer-modal .reservation-member-list{gap:6px}.record-explorer-modal .reservation-member-list li{padding:8px 10px;border:0;background:var(--surface-subtle)}.record-explorer-modal .v2-operation-card:not(dl){margin-top:14px;padding-top:0;border:0}.record-explorer-modal .v2-operation-card h3{padding:0;border:0}.record-explorer-modal .bank-detail-action-buttons{margin-top:8px}
+@media(max-width:600px){.record-explorer-modal>header{padding:12px 14px}.record-explorer-modal .preview-modal-body{padding:12px 14px 14px}}
+
+/* Record details follow the Profile fields and Requests & Transfers tables. */
+.record-explorer-modal{width:min(680px,100%)}.record-explorer-modal>header{background:var(--surface);gap:12px;padding:16px 20px 12px}.record-explorer-modal>header h2{font:500 22px/1.2 var(--font-serif)}.record-explorer-modal>header p{font-size:10px;color:var(--ink-muted)}.record-explorer-modal>header>.status{flex-shrink:0}.record-explorer-modal>header>button{color:var(--ink);font-size:22px}.record-explorer-modal .preview-modal-body{padding:8px 20px 20px}.record-explorer-modal .preview-modal-body h3{padding:0;border:0;font:600 12px/1.5 var(--font-sans);margin:0}
+.record-explorer-modal .preview-modal-body>.reservation-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 24px;margin:0}.reservation-facts>div{display:grid;align-content:start;gap:4px;min-width:0}.record-explorer-modal .reservation-facts dt{font-size:11px;color:var(--ink-muted)}.record-explorer-modal .reservation-facts dd{font-size:12px;color:var(--ink);line-height:1.5}
+.record-explorer-modal .reservation-linked-workflow{padding:0;margin-top:20px;background:transparent;border:0;border-radius:0;gap:12px}.reservation-linked-workflow>div{min-width:0;display:grid;gap:4px}.record-explorer-modal .reservation-linked-workflow p{font-size:10px;line-height:1.5;color:var(--ink-muted)}.record-explorer-modal .reservation-members{margin-top:20px}.record-explorer-modal .reservation-members>header{margin-bottom:10px}.reservation-members-table{border:1px solid var(--line);border-radius:var(--radius-md);scrollbar-width:none}.reservation-members-table::-webkit-scrollbar{display:none}.reservation-members-table table{min-width:440px;font-size:11px}.record-explorer-modal .reservation-members-table th,.record-explorer-modal .reservation-members-table td{border:0;padding:10px 12px}.reservation-members-table .bank-review-link{font-size:10px;max-width:220px}.record-explorer-modal .reservation-members-table th:last-child,.record-explorer-modal .reservation-members-table td:last-child{text-align:right}.record-explorer-modal .v2-operation-card:not(dl){margin-top:20px;padding:0;border:0;font:400 12px/1.5 var(--font-sans)}.record-explorer-modal .v2-operation-card h3{font:600 12px/1.5 var(--font-sans)}.record-explorer-modal .bank-detail-action-buttons{margin-top:10px}
+@media(max-width:600px){.record-explorer-modal>header{padding:14px 16px 10px}.record-explorer-modal .preview-modal-body{padding:8px 16px 16px}.record-explorer-modal .preview-modal-body>.reservation-facts{gap:12px 16px}}
+
+@media(max-width:600px){.record-explorer-modal .reservation-members-table table{min-width:0;width:100%;font-size:10px}.record-explorer-modal .reservation-members-table th,.record-explorer-modal .reservation-members-table td{padding:8px}.record-explorer-modal .reservation-members-table th{font-size:8px;letter-spacing:.05em}}
+
+/* Analytics: compact demand-first workspace using the shared tab surfaces. */
+.analytics-workspace{padding:0;min-width:0}.analytics-workspace .analytics-preview-filter,.analytics-workspace .analytics-preview-panel{margin:0 0 18px;overflow:visible;background:var(--surface)}
+.analytics-workspace .analytics-preview-filter>header,.analytics-workspace .analytics-preview-panel>header{padding:16px 18px;align-items:center;flex-direction:row;background:var(--surface);border-radius:var(--radius-md) var(--radius-md) 0 0}
+.analytics-workspace h3{flex:1;padding:0;border:0;margin:0;font:500 18px var(--font-serif)}.analytics-workspace header .request-form-help{flex-shrink:0}
+.analytics-workspace .forecast-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end;padding:14px 18px;gap:14px}
+.analytics-workspace label{display:grid;gap:6px;margin:0;color:var(--ink-secondary);font:500 11px var(--font-sans);text-transform:none;min-width:0}
+.analytics-workspace input,.analytics-workspace select{width:100%;min-width:0;box-sizing:border-box;height:38px;padding:8px 10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);color:var(--ink);font:400 12px var(--font-sans)}
+.analytics-select{position:relative;display:block}.analytics-select select{appearance:none;padding-right:34px}.analytics-select:after{content:"";position:absolute;right:14px;top:15px;width:6px;height:6px;border-right:1.5px solid var(--ink-muted);border-bottom:1.5px solid var(--ink-muted);transform:rotate(45deg);pointer-events:none}
+.analytics-workspace .analytics-preview-metrics{margin:0 0 18px;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.analytics-workspace .analytics-preview-metrics article{min-height:105px;box-sizing:border-box;padding:16px 18px;background:var(--surface);gap:12px}.analytics-workspace .analytics-preview-metrics span{font:500 11px var(--font-sans);letter-spacing:0;text-transform:none}.analytics-workspace .analytics-preview-metrics strong{font:500 18px/1.4 var(--font-sans);overflow-wrap:anywhere}.analytics-workspace .analytics-preview-metrics small{font-size:10px;line-height:1.5}
+.analytics-table-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:14px;align-items:end;padding:14px 18px;border-bottom:1px solid var(--line);background:var(--surface-subtle)}.analytics-table-filters>span{padding-bottom:10px;font-size:11px;color:var(--ink-muted)}
+.analytics-workspace .table-wrap{border-radius:0 0 var(--radius-md) var(--radius-md)}.analytics-workspace .forecast-table{min-width:600px}.analytics-workspace table td{font-size:12px;vertical-align:middle}.analytics-workspace tbody tr:hover{background:var(--surface-subtle)}.analytics-workspace tbody tr{box-shadow:none}.analytics-workspace .numeric{font-variant-numeric:tabular-nums;font-weight:600}
+.analytics-empty{padding:36px 18px;text-align:center;color:var(--ink-secondary)}.analytics-empty strong{font:500 13px var(--font-sans)}.analytics-empty p{margin:8px auto 0;max-width:440px;color:var(--ink-muted);font-size:11px;line-height:1.6}.analytics-freshness-note{padding:12px 18px;margin:0;color:var(--warning);font-size:11px}
+.analytics-stock-details>summary{cursor:pointer;display:flex;justify-content:space-between;gap:14px;padding:16px 18px;font-size:12px;list-style:revert}.analytics-stock-details>summary>span{font-size:10px;color:var(--ink-muted)}.analytics-stock-details[open]>summary{border-bottom:1px solid var(--line)}
+@media(max-width:700px){.analytics-workspace .forecast-filter-grid{grid-template-columns:1fr 1fr}.analytics-workspace .forecast-filter-grid>.button{grid-column:1/-1;justify-self:end}.analytics-workspace .analytics-preview-metrics{grid-template-columns:1fr}.analytics-workspace .analytics-preview-metrics article{min-height:0}.analytics-table-filters{grid-template-columns:1fr 1fr}.analytics-table-filters>span{grid-column:1/-1;padding:0}.analytics-stock-details>summary{flex-wrap:wrap}.analytics-workspace .analytics-preview-panel>header{gap:10px}}
+.analytics-workspace .requester-analytics-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px}.requester-analytics-toolbar>span{font-size:12px;color:var(--ink-secondary)}.analytics-workspace .requester-analytics-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.requester-analytics-table{min-width:580px}
+@media(max-width:1050px){.analytics-workspace .requester-analytics-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:700px){.analytics-workspace .requester-analytics-metrics{grid-template-columns:1fr}.analytics-workspace .requester-analytics-toolbar{align-items:start;flex-wrap:wrap}}
+/* Match inventory pagination across record tables and alert lists, including narrow cards. */
+.record-pagination-shell{container-type:inline-size;min-width:0;background:var(--surface);border-radius:0 0 var(--radius-md) var(--radius-md)}.record-pagination .inventory-page-count{font-size:12px}.record-pagination button{flex-shrink:0}
+@container(max-width:600px){.record-pagination{grid-template-columns:1fr;gap:10px}.record-pagination .inventory-page-controls{grid-column:1}.record-pagination .inventory-page-records{grid-column:1}}
+.hospital-network-view{min-width:0}.hospital-network-view .bank-section-heading{flex-wrap:wrap}.hospital-network-view .bank-section-heading>.request-form-help{flex-shrink:0}.hospital-network-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:14px 18px;border-bottom:1px solid var(--line);background:var(--surface-subtle)}.hospital-network-filters label{display:grid;gap:6px;margin:0;min-width:0;font:500 11px var(--font-sans);color:var(--ink-secondary)}.hospital-network-filters select{width:100%;min-width:0;box-sizing:border-box;border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 32px 9px 10px;background:var(--surface);color:var(--ink);font:400 12px var(--font-sans);appearance:none}.hospital-network-table{min-width:800px}.hospital-network-table td{font-size:12px}.network-refresh-note{font-size:11px;color:var(--ink-muted);margin:12px 0}
+@media(max-width:700px){.hospital-network-filters{grid-template-columns:1fr}.hospital-network-view .bank-toolbar-actions{margin-left:auto}}
+
+/* Mockup-derived consortium composition; colors identify series, not stock thresholds. */
+.consortium-workspace { display: grid; gap: 20px; }
+.consortium-summary-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; }
+.consortium-summary { background: var(--surface,#fff); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; }
+.consortium-summary-title { display:flex; align-items:center; gap:10px; font-size:13px; color:#536172; }
+.consortium-summary-title > span:first-child { min-width:0; }
+.consortium-summary-title .request-form-help { flex-shrink:0; }
+.consortium-summary > strong { font-size: 30px; line-height: 1.2; color: #182231; }
+.consortium-summary > small { font-size: 12px; color: #657184; }
+.consortium-page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0; }
+.consortium-controls { padding: 16px 20px; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; gap: 32px; }
+.consortium-controls > div { min-width: 0; }
+.consortium-controls > div:last-child { text-align: left; }
+.consortium-controls > div:last-child .consortium-filter-row { justify-content: flex-start; }
+.consortium-control-label { display: block; font-size: 12px; font-weight: 600; color: #536172; margin-bottom: 9px; }
+.consortium-filter-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.consortium-chart-scroll { overflow-x: auto; }
+.consortium-chart { display: grid; grid-template-columns: repeat(8,minmax(70px,1fr)); gap: 14px; padding: 24px 24px 0; min-width: 680px; }
+.consortium-chart-column { padding: 8px 4px; border: 1px solid transparent; background: transparent; border-radius: 8px; cursor: pointer; color: #182231; display: flex; flex-direction: column; align-items: center; gap: 10px; transition: background 160ms; }
+.consortium-chart-column:hover,.consortium-chart-column:focus-visible { background: #f3f5f7; }
+.consortium-chart-column.selected { border-color: #a51f35; background: #fff6f7; }
+.consortium-chart-value { font-size: 17px; font-weight: 600; }
+.consortium-bar-area { height: 180px; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 5px; border-bottom: 1px solid #e1e5eb; background: repeating-linear-gradient(to top,transparent 0,transparent 44px,#edf0f4 44px,#edf0f4 45px); }
+.consortium-bar { display: block; width: 34px; max-width: 65%; background: #a51f35; border-radius: 5px 5px 0 0; }
+.consortium-chart-column > small { font-size: 11px; color: #687589; min-height: 26px; }
+.consortium-chart-note { margin: 0; padding: 14px 24px 18px; color: #687589; font-size: 12px; }
+.consortium-legend { padding: 16px 24px 0; display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; }
+.consortium-legend span { display: flex; align-items: center; gap: 7px; }
+.consortium-legend i { width: 9px; height: 9px; border-radius: 2px; }
+.consortium-matrix { min-width: 1000px; }
+.consortium-matrix th:not(:first-child),.consortium-matrix td:not(:first-child) { text-align: center; }
+.consortium-matrix td:first-child { min-width: 200px; }
+.consortium-matrix td small { display: block; font-size: 11px; font-weight: 400; color: #687589; margin-top: 5px; white-space: nowrap; }
+.consortium-matrix tbody tr:hover { background: #f6f7f9; }
+@media(max-width:1000px) { .consortium-summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:600px) { .consortium-summary { padding:14px; } .consortium-summary > strong { font-size:25px; } .consortium-controls { padding:16px; gap:16px; } .consortium-controls { grid-template-columns:1fr; } .consortium-controls > div:last-child { text-align:left; } .consortium-controls > div:last-child .consortium-filter-row { justify-content:flex-start; } .consortium-matrix-card .bank-section-heading { flex-wrap:wrap; } }
+@media(prefers-reduced-motion:reduce) { .consortium-chart-column { transition:none; } }
+
+@media(max-width:600px) { .consortium-summary-title .request-form-help-tooltip { width:calc((100vw - 80px)/2); max-height:360px; overflow-y:auto; } }
+
+.compliance-workspace {display:grid;gap:20px;min-width:0}
+.compliance-checkpoints {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:18px}
+.compliance-checkpoint {display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);color:var(--ink);text-align:left;cursor:pointer;transition:background 160ms}
+.compliance-checkpoint:hover {background:var(--surface-subtle)}
+.compliance-checkpoint.selected {border-color:var(--primary);background:var(--primary-container)}
+.compliance-checkpoint > span {font-size:18px;font-weight:600}
+.compliance-checkpoint > strong {font-size:13px;font-weight:500}
+.compliance-checkpoint > small {font-size:11px;color:var(--ink-muted)}
+.compliance-checkpoint-actions {display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 18px 18px;color:var(--ink-muted);font-size:12px}
+.compliance-record-columns {display:grid;grid-template-columns:minmax(0,1.8fr) minmax(260px,1fr);gap:20px;align-items:start}
+.compliance-record-columns > section {min-width:0}
+.compliance-filters {display:grid;grid-template-columns:minmax(0,1fr) minmax(140px,.6fr);gap:14px;padding:14px 18px;background:var(--surface-subtle);border-bottom:1px solid var(--line)}
+.compliance-filters label {display:grid;gap:6px;margin:0;color:var(--ink-secondary);font-size:11px;min-width:0}
+.compliance-filters input {width:100%;min-width:0;box-sizing:border-box;padding:9px 11px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);font:400 12px var(--font-sans);color:var(--ink)}
+.compliance-record-table {min-width:660px}
+.compliance-record-table td {font-size:12px}
+.compliance-record-table tbody tr:has(button):hover {background:var(--surface-subtle)}
+.compliance-selected-row {background:var(--surface-subtle)}
+.compliance-detail dl {display:grid;grid-template-columns:100px minmax(0,1fr);gap:14px 12px;margin:0;padding:18px;font-size:12px}
+.compliance-detail dt {color:var(--ink-muted)}
+.compliance-detail dd {margin:0;overflow-wrap:anywhere;color:var(--ink)}
+.compliance-detail-actions {display:flex;justify-content:flex-end;gap:8px;padding:0 18px 18px}
+.compliance-stock-table {min-width:650px}
+.compliance-stock-table td:not(:first-child),.compliance-stock-table th:not(:first-child) {text-align:center}
+.compliance-stock-note {padding:14px 18px;margin:0;color:var(--ink-muted);font-size:12px}
+.compliance-load-more {display:flex;align-items:center;gap:12px;padding:14px 18px}.compliance-load-more small{font-size:11px;color:var(--ink-muted)}
+@media(max-width:1000px){.compliance-record-columns{grid-template-columns:1fr}}
+@media(max-width:600px){.compliance-checkpoints{grid-template-columns:1fr}.compliance-filters{grid-template-columns:1fr}.compliance-checkpoint-actions{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){.compliance-checkpoint{transition:none}}
+
+.compliance-workspace .requester-records-empty { min-height:160px; padding:24px 18px; }
+
+.regulator-analytics {display:grid;gap:20px;min-width:0}
+.regulator-analytics-intro {display:flex;align-items:center;justify-content:space-between;gap:16px}
+.regulator-analytics-intro h2 {padding:0!important;border:0!important;margin:0!important;font:500 19px var(--font-serif)}
+.regulator-insight-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.regulator-insight-grid > section {min-width:0}
+.regulator-stock-legend {display:flex;gap:18px;padding:18px 20px 0;color:var(--ink-muted);font-size:12px}
+.regulator-stock-legend > span {display:flex;align-items:center;gap:7px}
+.regulator-stock-legend i {display:block;width:9px;height:9px;border-radius:2px}
+.regulator-stock-legend .available,.regulator-stock-track .available {background:var(--primary)}
+.regulator-stock-legend .reserved,.regulator-stock-track .reserved {background:#718399}
+.regulator-stock-chart {display:grid;gap:20px;padding:22px 20px}
+.regulator-stock-row {display:grid;grid-template-columns:100px minmax(0,1fr) 64px 64px;gap:16px;align-items:center}
+.regulator-stock-row > strong {font-size:12px;font-weight:500}
+.regulator-stock-track {display:flex;height:16px;border-radius:4px;overflow:hidden;background:var(--surface-subtle)}
+.regulator-stock-counts {font-size:15px;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.regulator-stock-counts small {display:block;margin-top:3px;font-size:10px;font-weight:400;color:var(--ink-muted)}
+.regulator-analytics-note {padding:0 20px 16px;margin:0;font-size:11px;color:var(--ink-muted);line-height:1.6}
+.regulator-report-activity {min-width:420px}
+@media(max-width:900px){.regulator-insight-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.regulator-stock-row{grid-template-columns:80px minmax(0,1fr) 42px 42px;gap:8px}.regulator-stock-chart{padding:18px 14px}.regulator-analytics-intro{align-items:flex-start;flex-wrap:wrap}}
+.regulator-analytics a.button {color:var(--ink);text-decoration:none}
+
+.analytics-workspace .forecast-filter-grid.analytics-date-filter-grid { grid-template-columns:minmax(0,1fr) auto!important; }
+.analytics-workspace .analytics-date-filter-grid > .button { grid-column:auto; }
+
+.observed-demand-workspace {display:grid;gap:20px;min-width:0}
+.observed-scope {color:var(--ink-muted);font-size:12px}
+.observed-reporting-filters {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;padding:16px 18px;background:var(--surface)}
+.observed-reporting-filters.reporting-only-filters {grid-template-columns:repeat(3,minmax(0,1fr))}
+.observed-reporting-filters label {display:grid;gap:6px;margin:0;min-width:0;font:500 11px var(--font-sans);color:var(--ink-secondary)}
+.observed-reporting-filters input,.observed-reporting-filters select {width:100%;min-width:0;padding:9px 11px;font:400 12px var(--font-sans);border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink)}
+.observed-reporting-filters select {appearance:none;padding-right:32px}
+.observed-reporting-filters select:disabled {color:var(--ink-muted);background:var(--surface-subtle)}
+.observed-filter-error {padding:0 18px 14px;margin:0;color:var(--critical);font-size:12px}
+.consortium-summary > .observed-summary-value {font-size:25px;overflow-wrap:anywhere}
+.observed-metric-controls {display:flex;gap:8px;padding:16px 18px 0;flex-wrap:wrap}
+.observed-month-chart {padding:20px 18px;display:grid;gap:14px}
+.observed-month-row {display:grid;grid-template-columns:70px minmax(0,1fr) 48px;gap:12px;align-items:center;font-size:12px}
+.observed-month-row > strong {text-align:right}
+.observed-month-track {height:14px;border-radius:3px;background:var(--surface-subtle);overflow:hidden}
+.observed-month-track > span {display:block;height:100%;background:var(--primary);border-radius:3px}
+.observed-month-chart > p {margin:4px 0 0;color:var(--ink-muted);font-size:11px;line-height:1.6}
+.observed-assessment-table {min-width:1000px}
+.observed-assessment-table tbody tr:hover {background:transparent}
+@media(max-width:1050px){.observed-reporting-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.observed-reporting-filters,.observed-reporting-filters.reporting-only-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.observed-reporting-filters label:last-child{grid-column:1/-1}}
+.observed-reporting-filters {border-radius:0 0 var(--radius-md) var(--radius-md)}
+.activity-history-page .bank-toolbar-actions {gap:8px}
+.activity-history-page .bank-toolbar-actions .button {display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.activity-export-error {margin:0 0 16px;padding:12px 16px;border:1px solid var(--critical);border-radius:var(--radius-md);color:var(--critical);font-size:12px}
+
+/* Request references stay on one line; selected records remain distinct from hover. */
+.bank-record-layout .requester-record-link,.requester-transfer-table .requester-record-link{display:inline-block;max-width:100%;white-space:nowrap;overflow-wrap:normal;vertical-align:middle}
+.bank-record-layout .data-table tbody tr:has(.requester-record-link),.requester-transfer-table tbody tr{cursor:pointer}
+.bank-record-layout .data-table tbody tr:hover>td,.requester-transfer-table tbody tr:hover>td{background:#f6f7f9}
+.bank-record-layout .data-table tbody tr.selected>td,.requester-transfer-table tbody tr.selected>td{background:#eaf0f6}
+.bank-record-layout .data-table tbody tr.selected .requester-record-link,.requester-transfer-table tbody tr.selected .requester-record-link{font-weight:600}
+
+.prc-network-controls{display:flex;align-items:end;gap:18px;flex-wrap:wrap;padding:16px 18px 0}
+.prc-network-controls>label{display:grid;gap:7px;margin:0;min-width:180px;font-size:11px;color:var(--ink-muted)}
+.prc-network-controls select{width:100%;padding:9px 34px 9px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px var(--font-sans);appearance:none}
+.prc-network-controls .consortium-legend{padding:0 0 8px}
+.prc-network-overview .prc-network-column{cursor:default}
+.prc-network-overview .prc-network-column:hover{background:transparent}
+.prc-network-empty{display:grid;justify-items:center;gap:7px;margin:0 18px 18px;padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius-md);color:var(--ink-muted);font-size:11px;text-align:center}
+.prc-network-empty strong{font-size:13px;font-weight:500;color:var(--ink-secondary)}
+
+.prc-network-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+.prc-network-controls>label{min-width:0;max-width:260px}
+.prc-chart-view-control>span{display:block;margin-bottom:7px;font-size:11px;color:var(--ink-muted)}
+.prc-network-overview .consortium-legend{padding:16px 18px 0}
+@media(max-width:600px){.prc-network-controls{grid-template-columns:1fr}.prc-network-controls>label{max-width:none}}
+
+.unavailable-action{position:relative;display:inline-grid;max-width:100%;vertical-align:middle}
+.unavailable-action>button{grid-area:1/1}
+.unavailable-action>button:disabled{pointer-events:none}
+.unavailable-action>.unavailable-action-trigger{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;border-radius:var(--radius-sm);background:transparent!important;box-shadow:none;color:transparent;cursor:help;opacity:1}
+.unavailable-action-trigger:focus-visible{outline:2px solid var(--focus-ring);outline-offset:3px}
+.unavailable-action-tooltip{position:fixed;z-index:20000;display:grid;gap:5px;width:min(300px,calc(100vw - 24px));padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink-secondary);box-shadow:0 4px 14px rgb(0 0 0 / .12);font:400 11px/1.6 var(--font-sans);text-align:left}
+.unavailable-action-tooltip strong{font-weight:600;color:var(--ink)}
+
+.network-select-control{display:grid;gap:7px;margin:0;max-width:260px;min-width:0;color:var(--ink-muted);font-size:11px}
+.network-select-control select{width:100%;padding:9px 34px 9px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px var(--font-sans);appearance:none}
+@media(max-width:600px){.network-select-control{max-width:none}.consortium-controls{grid-template-columns:1fr;gap:16px}}
+
+.analytics-page-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0}
+.analytics-page-head .page-title{margin:0}
+
+.observed-demand-workspace,.regulator-analytics{row-gap:18px}
+/* Keep the PRC form heading below the fixed design-preview account bar. */
+#bank-prc-request-form{scroll-margin-top:calc(var(--local-account-bar-height,0px) + 18px)}
+
+.bloodledger-logo{display:block;object-fit:contain;flex-shrink:0;border-radius:var(--radius-sm)}
+.sidebar-logo{width:32px;height:32px}
+.auth-logo{width:44px;height:44px}
+.empty-logo{width:38px;height:38px;margin:0 auto 12px}
+
+.session-profile>span:last-child{flex:1}
+
+.inventory-overview-legend{padding-right:12px}

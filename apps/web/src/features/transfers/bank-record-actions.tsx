@@ -1,3 +1,4 @@
+import { ActionButton } from "../../components/ui/action-button";
 import { canAct, type Principal } from "../../auth/permissions";
 import type { RecordSelection, SelectedRecord } from "../../services/api/v2-navigation";
 import { InformationHelp } from "../../components/ui/information-help";
@@ -19,9 +20,9 @@ export function BankRecordActions({record, principal, reservations, open}: {reco
     {pending && <>
       <header><h3>Actions</h3><InformationHelp label="Record actions">Request cancellation, partial offers and approval need verified decision commands. Transfer receipt and outbound scan must match the reservation, custody state and authorized operator. These controls remain unavailable here until that integration is complete.</InformationHelp></header>
       <div className="bank-detail-action-buttons">
-        {pending && <button className="button compact" disabled title={blocked}>Cancel Request</button>}
-        {pending && supplying && request.quantity > 1 && <button className="button compact" disabled title={blocked}>Offer Available Units</button>}
-        {pending && supplying && <button className="button primary compact" disabled title={blocked}>Approve Transfer</button>}
+        {pending && <ActionButton className="button compact" disabled  unavailableReason={blocked}>Cancel Request</ActionButton>}
+        {pending && supplying && request.quantity > 1 && <ActionButton className="button compact" disabled  unavailableReason={blocked}>Offer Available Units</ActionButton>}
+        {pending && supplying && <ActionButton className="button primary compact" disabled  unavailableReason={blocked}>Approve Transfer</ActionButton>}
       </div><p className="bank-action-note">Request decision actions are awaiting an approved backend contract.</p>
     </>}
   </section>;

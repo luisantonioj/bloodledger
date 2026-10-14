@@ -1,3 +1,5 @@
+import { ActionButton } from "../../components/ui/action-button";
+import { PaginatedTable } from "../../components/ui/record-pagination";
 import { useState } from "react";
 import type { Principal } from "../../auth/permissions";
 
@@ -10,7 +12,7 @@ const previewApplications = [
 ];
 
 function DisabledAction({ children }: { children: string }) {
-  return <button className="button compact" type="button" disabled title="Frontend preview only">{children}</button>;
+  return <ActionButton className="button compact" type="button" disabled  unavailableReason="This screen previews the account action; it does not save changes yet.">{children}</ActionButton>;
 }
 
 function Overview() {
@@ -20,11 +22,11 @@ function Overview() {
     <article><span>User accounts</span><strong>—</strong><small>API unavailable</small></article>
     <article><span>Review activity</span><strong>—</strong><small>Audit API unavailable</small></article>
   </div>
-  <section className="account-panel"><header><div><h3>Application review queue</h3><p>Mockup-derived table structure with non-persistent synthetic examples.</p></div><span>PREVIEW DATA</span></header><div className="table-wrap"><table className="data-table"><thead><tr><th>Reference</th><th>Institution</th><th>Type</th><th>Status</th><th>Review</th></tr></thead><tbody>{previewApplications.map(application => <tr key={application.reference}><td className="mono">{application.reference}</td><td><strong>{application.institution}</strong></td><td>{application.type}</td><td><span className="status warning">{application.status}</span></td><td><DisabledAction>Open preview</DisabledAction></td></tr>)}</tbody></table></div></section></>;
+  <section className="account-panel"><header><div><h3>Application review queue</h3><p>Mockup-derived table structure with non-persistent synthetic examples.</p></div><span>PREVIEW DATA</span></header><PaginatedTable total={previewApplications.length} label="Application queue"><table className="data-table"><thead><tr><th>Reference</th><th>Institution</th><th>Type</th><th>Status</th><th>Review</th></tr></thead><tbody>{previewApplications.map(application => <tr key={application.reference}><td className="mono">{application.reference}</td><td><strong>{application.institution}</strong></td><td>{application.type}</td><td><span className="status warning">{application.status}</span></td><td><DisabledAction>Open preview</DisabledAction></td></tr>)}</tbody></table></PaginatedTable></section></>;
 }
 
 function Applications() {
-  return <section className="account-panel"><header><div><h3>Institution applications</h3><p>Approval, rejection, document verification, and notifications are not connected.</p></div><DisabledAction>Export queue</DisabledAction></header><div className="table-wrap"><table className="data-table"><thead><tr><th>Application</th><th>Institution</th><th>Applicant type</th><th>Submitted</th><th>Decision</th></tr></thead><tbody>{previewApplications.map(application => <tr key={application.reference}><td className="mono">{application.reference}</td><td>{application.institution}</td><td>{application.type}</td><td>Not persisted</td><td className="account-actions"><DisabledAction>Approve</DisabledAction><DisabledAction>Reject</DisabledAction></td></tr>)}</tbody></table></div></section>;
+  return <section className="account-panel"><header><div><h3>Institution applications</h3><p>Approval, rejection, document verification, and notifications are not connected.</p></div><DisabledAction>Export queue</DisabledAction></header><PaginatedTable total={previewApplications.length} label="Institution applications"><table className="data-table"><thead><tr><th>Application</th><th>Institution</th><th>Applicant type</th><th>Submitted</th><th>Decision</th></tr></thead><tbody>{previewApplications.map(application => <tr key={application.reference}><td className="mono">{application.reference}</td><td>{application.institution}</td><td>{application.type}</td><td>Not persisted</td><td className="account-actions"><DisabledAction>Approve</DisabledAction><DisabledAction>Reject</DisabledAction></td></tr>)}</tbody></table></PaginatedTable></section>;
 }
 
 function Institutions() {

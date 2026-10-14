@@ -1,3 +1,4 @@
+import { ActionButton } from "../../components/ui/action-button";
 import { InformationHelp } from "../../components/ui/information-help";
 import { RequestFormHelp } from "./request-form-help";
 import { RequesterRequestPlaceholders } from "./requester-request-placeholders";
@@ -89,7 +90,7 @@ export function V2TransferRequest({ principal, onRefresh, requesterPresentation 
     }
   }
 
-  const submitButton = <button className="button primary compact" disabled={locked || requiresCorrection || automaticRoutingPending} title={automaticRoutingPending ? "Automatic supplier routing is not available yet." : undefined}>{busy ? "Submitting…" : status.command ? "Command accepted" : requiresCorrection ? "Correct request before submitting" : error && attempt.current ? "Retry same request" : requesterPresentation ? "Submit request" : "Submit"}</button>;
+  const submitButton = <ActionButton className="button primary compact" disabled={locked || requiresCorrection || automaticRoutingPending} unavailableReason={automaticRoutingPending?"Automatic supplier assignment is not connected yet, so this request cannot be submitted.":requiresCorrection?"Correct the request details before submitting again.":busy?"The request is being submitted. Please wait.":"This request already has an accepted command. Review its status before starting another request."} title={automaticRoutingPending ? "Automatic supplier routing is not available yet." : undefined}>{busy ? "Submitting…" : status.command ? "Command accepted" : requiresCorrection ? "Correct request before submitting" : error && attempt.current ? "Retry same request" : requesterPresentation ? "Submit request" : "Submit"}</ActionButton>;
 
   return <section className={requesterPresentation ? "requester-request-form" : "v2-operation-card"}>
     <header><div><h3>{requesterPresentation ? "Create Blood Request" : principal.accountId ? "Request blood" : "Request blood from Mediatrix"}</h3></div>{requesterPresentation ? <RequestFormHelp label="Create Blood Request">Enter the basic details of the requested blood supply.</RequestFormHelp> : <InformationHelp label="Request blood">Request a blood product for the authenticated institution using the supported command. The supplying bank and requested product remain subject to the recorded workflow; command acceptance is not approval or ledger commitment.</InformationHelp>}</header>

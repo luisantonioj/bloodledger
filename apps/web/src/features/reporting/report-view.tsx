@@ -1,3 +1,4 @@
+import { ActionButton } from "../../components/ui/action-button";
 import { AggregateTable, AlertAggregateTable, TransferSummaryTable } from "../../components/ui/aggregate-tables";
 import { formatManilaDateTime, humanizeCode } from "../../components/ui/display";
 import type { Report } from "../../services/api/types";
@@ -12,7 +13,7 @@ export function ReportView({ data, principal }: { data: Report; principal?: Prin
   return <>
     <div className="report-hero">
       <div><span>Prototype evidence package</span><h3>City inventory summary</h3><p>{data.disclaimer}</p><small>Generated {formatManilaDateTime(data.generatedAt)} · Asia/Manila display</small></div>
-      <div className="report-export-actions"><a className="button primary" href="/api/v1/reports/inventory.csv" download>Download simulation CSV</a><button className="button" disabled title="Official PDF generator is not connected">Export fixed-layout PDF</button><small>PDF generator not connected</small></div>
+      <div className="report-export-actions"><a className="button primary" href="/api/v1/reports/inventory.csv" download>Download simulation CSV</a><ActionButton className="button" disabled  unavailableReason="Official PDF generator is not connected">Export fixed-layout PDF</ActionButton><small>PDF generator not connected</small></div>
     </div>
     {principal && ["ROLE-01", "ROLE-02", "ROLE-04"].includes(principal.roleId) && <CensusDiscovery principal={principal}/>}
     <div className="stats report-summary"><article><span>Confirmed units</span><strong>{units}</strong></article><article><span>Aggregate alerts</span><strong>{alerts}</strong></article><article><span>Transfers</span><strong>{transfers}</strong></article><article><span>Scope</span><strong className="scope">{humanizeCode(data.scope)}</strong></article></div>

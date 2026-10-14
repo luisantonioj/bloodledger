@@ -1,3 +1,4 @@
+import { ActionButton } from "../../components/ui/action-button";
 import { InformationHelp } from "../../components/ui/information-help";
 import { formatBloodType } from "../../components/ui/display";
 import { V2_BLOOD_TYPES, V2_COMPONENT_TYPES } from "../../services/api/v2";
@@ -15,7 +16,7 @@ export function PrcSupplyRequestForm({onClose}: {onClose: () => void}) {
         <label className="bank-prc-required-time">Required Date &amp; Time<input type="datetime-local"/></label>
         <label className="bank-prc-note">Coordination Note<textarea placeholder="Handling, pickup or urgency details"/></label>
       </div><div className="bank-prc-authorization"><strong>Operator authorization</strong><p>Authorized operator verification will be required before submission.</p></div></fieldset>
-      <footer><button type="button" className="button compact" onClick={onClose}>Cancel</button><button type="submit" className="button primary compact" disabled>Send to PRC Lipa</button></footer>
+      <footer><button type="button" className="button compact" onClick={onClose}>Cancel</button><ActionButton type="submit" className="button primary compact" disabled unavailableReason="PRC supply submission is not connected yet. These fields currently show the planned request layout.">Send to PRC Lipa</ActionButton></footer>
     </form>
   </section>;
 }

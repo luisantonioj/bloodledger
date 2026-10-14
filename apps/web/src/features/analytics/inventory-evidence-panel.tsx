@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { InformationHelp } from "../../components/ui/information-help";
 import { humanizeCode } from "../../components/ui/display";
 import { readInventoryEvidence, type InventoryEvidence } from "../../services/api/inventory-evidence";
 
@@ -14,15 +15,14 @@ export function InventoryEvidencePanel({ businessDate, institutionId, refreshKey
   const current = result?.key === key ? result : undefined;
   const data = current?.data;
   const snapshot = data?.snapshot;
-  return <section className="analytics-preview-panel forecast-evidence inventory-evidence" aria-label="Independent inventory evidence">
-    <header><div><h3>Independent inventory evidence</h3><p>Committed projection snapshot evidence; operational recommendations remain disabled.</p></div></header>
-    {!current && <p role="status">Loading inventory evidence…</p>}
-    {current && !snapshot && <div className="analytics-preview-state" role={current.error ? "alert" : "status"}><div><strong>Inventory validity unavailable</strong><p>{current.error ?? "Unknown inventory remains unavailable, never zero."}</p>{data?.unavailableReason && <small>{humanizeCode(data.unavailableReason)}</small>}</div></div>}
-    {snapshot && <>
-      <p role="status">{data.status === "CURRENT" ? "Current synthetic inventory evidence" : "Stale inventory evidence — historical counts only"}</p>
-      <dl><dt>Snapshot</dt><dd>{snapshot.snapshotId}</dd><dt>Captured (UTC)</dt><dd>{snapshot.capturedAt}</dd><dt>Captured (Asia/Manila)</dt><dd>{new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" }).format(new Date(snapshot.capturedAt))}</dd><dt>Evaluated (UTC / Manila date)</dt><dd>{data.evaluatedAt} / {data.evaluationDate}</dd><dt>Coverage</dt><dd>Complete: 40 persisted series; explicit zero rows verified</dd><dt>Projection evidence</dt><dd>{snapshot.sourceProjectionDigest} · watermark {snapshot.projectionWatermark}</dd><dt>Snapshot schema / policy</dt><dd>{snapshot.schemaVersion} / {snapshot.reportPolicyVersion}</dd></dl>
-      <div className="table-wrap"><table className="data-table"><thead><tr><th>Component</th><th>Blood type</th><th>Available</th><th>Reserved</th><th>Reportable</th><th>Forecast-eligible available</th></tr></thead><tbody>{snapshot.groups.flatMap(group => group.bloodTypes.map(row => <tr key={group.componentType + row.bloodType}><td>{humanizeCode(group.componentType)}</td><td>{humanizeCode(row.bloodType)}</td><td>{row.availableCount === 0 ? "0 (verified)" : row.availableCount}</td><td>{row.reservedCount}</td><td>{row.reportableCount}</td><td>{row.forecastEligibleAvailableCount}</td></tr>))}</tbody></table></div>
-    </>}
-    <footer>SIMULATION_ONLY · DISABLED_UNAPPROVED_POLICY. No stock-dependent recommendation is enabled.</footer>
+  const capturedAt = snapshot ? new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" }).format(new Date(snapshot.capturedAt)) : undefined;
+  const bloodTypes: Record<string, string> = { A_POSITIVE: "A+", A_NEGATIVE: "A−", B_POSITIVE: "B+", B_NEGATIVE: "B−", O_POSITIVE: "O+", O_NEGATIVE: "O−", AB_POSITIVE: "AB+", AB_NEGATIVE: "AB−" };
+  return <section className="analytics-preview-panel inventory-evidence" aria-label="Recorded inventory">
+    <header><h3>Recorded inventory</h3><InformationHelp label="Recorded inventory">This is a separate inventory snapshot for comparison with demand estimates. It is not a forecast or a live inventory count. Check the capture date; older snapshots describe historical stock. Missing inventory means unavailable, not zero.</InformationHelp></header>
+    <details className="analytics-stock-details"><summary>View inventory snapshot<span>{capturedAt ? `${data?.status === "CURRENT" ? "Current" : "Stale"} · ${capturedAt}` : "Unavailable"}</span></summary>
+      {!current && <div className="analytics-empty" role="status"><strong>Loading inventory…</strong></div>}
+      {current && !snapshot && <div className="analytics-empty" role={current.error ? "alert" : "status"}><strong>No inventory snapshot available</strong><p>{current.error ?? "Refresh or choose another date to check for a recorded snapshot."}</p></div>}
+      {snapshot && <div className="table-wrap"><table className="data-table"><thead><tr><th>Component</th><th>Blood type</th><th>Available</th><th>Reserved</th><th>Total recorded</th></tr></thead><tbody>{snapshot.groups.flatMap(group => group.bloodTypes.map(row => <tr key={group.componentType + row.bloodType}><td>{humanizeCode(group.componentType)}</td><td>{bloodTypes[row.bloodType] ?? humanizeCode(row.bloodType)}</td><td>{row.availableCount}</td><td>{row.reservedCount}</td><td>{row.reportableCount}</td></tr>))}</tbody></table></div>}
+    </details>
   </section>;
 }

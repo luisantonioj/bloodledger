@@ -1,3 +1,7 @@
+import { RegulatorAnalytics } from "../features/analytics/regulator-analytics";
+import { canViewRegulatoryAnalytics } from "../features/analytics/analytics-access";
+import { ComplianceReports } from "../features/reporting/compliance-reports";
+import { HospitalNetworkView } from "../features/consortium/hospital-network-view";
 import { InstitutionRegulatoryView } from "../features/reporting/institution-regulatory-view";
 import { InstitutionAccountsView } from "../features/accounts/institution-accounts-view";
 import { InstitutionProfile } from "../features/profile/institution-profile";
@@ -5,7 +9,8 @@ import { V2TransferEvidenceView } from "../features/transfers/v2-transfer-eviden
 import { canAct, type Principal } from "../auth/permissions";
 import type { ReactNode } from "react";
 import { AccountsParityPreview } from "../features/accounts/accounts-parity-preview";
-import { AnalyticsPreview } from "../features/analytics/analytics-preview";
+import { ObservedDemandAnalytics } from "../features/analytics/observed-demand-analytics";
+
 import { AuditView } from "../features/audit/audit-view";
 import { AlertsView } from "../features/alerts/alerts-view";
 import { ConsortiumView } from "../features/consortium/consortium-view";
@@ -20,10 +25,13 @@ export function FeatureRouter({path,canAcknowledge=false,canSubmitTransfer=false
   const endpoint:Record<string,string>={"/":principal && ["ROLE-01","ROLE-02","ROLE-03"].includes(principal.roleId)?"/api/v2/dashboard":"/api/v1/dashboard","/alerts":principal && ["ROLE-01","ROLE-02","ROLE-03"].includes(principal.roleId)?"/api/v2/alerts":"/api/v1/alerts","/transfers":"/api/v1/transfers","/consortium":"/api/v1/consortium","/audit":principal && ["ROLE-01","ROLE-02","ROLE-03"].includes(principal.roleId)?"/api/v2/audit":"/api/v1/audit","/reporting":"/api/v1/reports/inventory"};
   if (principal?.accountId) { endpoint["/"]="/api/v2/dashboard"; endpoint["/alerts"]="/api/v2/alerts"; endpoint["/audit"]="/api/v2/audit"; endpoint["/transfers"]="/api/v2/transfers"; }
   const state=useLiveData<FeatureResponse>(principal?.accountId && ["/consortium","/reporting"].includes(path) ? null : endpoint[path]??null);
+  if(path==="/consortium"&&principal)return <HospitalNetworkView key={principal.institutionId} principal={principal}/>;
+  if(path==="/reporting"&&principal&&["BLOOD_BANK","DOH"].includes(principal.accountCategory??""))return <ComplianceReports key={principal.institutionId} principal={principal}/>;
   if(principal?.accountId && ["/consortium","/reporting"].includes(path))return <InstitutionRegulatoryView report={path==="/reporting"}/>;
   if(path==="/transfers"&&principal&&(principal.accountId||["ROLE-01","ROLE-02","ROLE-03"].includes(principal.roleId)))return <V2TransferEvidenceView principal={principal}/>;
   if(path==="/accounts"&&principal)return principal.accountId ? <InstitutionAccountsView principal={principal}/> : <AccountsParityPreview principal={principal}/>;
-  if(path==="/analytics"&&principal)return <AnalyticsPreview principal={principal}/>;
+  if(path==="/analytics"&&principal&&canViewRegulatoryAnalytics(principal))return <RegulatorAnalytics key={principal.institutionId} principal={principal}/>;
+  if(path==="/analytics"&&principal)return <ObservedDemandAnalytics key={principal.institutionId} principal={principal}/>;
   if(path==="/profile"&&principal)return principal.accountId ? <InstitutionProfile principal={principal}/> : <ProfileParityPreview principal={principal}/>;
   if(path==="/inventory"&&principal)return <V2InventoryView key={[principal.userId,principal.institutionId,principal.roleId].join(":")} principal={principal}/>;
   if(path==="/alerts")return <>

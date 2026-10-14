@@ -9,7 +9,7 @@ import { RequesterDashboard, type RequesterRequestsState } from "./requester-das
 import { dashboardSummary } from "./dashboard-summary";
 
 export function DashboardView({data,principal,refreshError,onRetry,requests,loading=false}:{data:Dashboard;principal:Principal;refreshError:string;onRetry:()=>void;requests:RequesterRequestsState;loading?:boolean}) {
-  if(data.composition==="ADMINISTRATIVE")return <div className="empty dashboard-empty"><span className="empty-mark" aria-hidden="true">BL</span><strong>Non-clinical workspace</strong>This account has no inventory, custody, transfer, or regulatory dashboard authority.</div>;
+  if(data.composition==="ADMINISTRATIVE")return <div className="empty dashboard-empty"><img className="bloodledger-logo empty-logo" src="/bloodledger-logo-updated.png" alt=""/><strong>Non-clinical workspace</strong>This account has no inventory, custody, transfer, or regulatory dashboard authority.</div>;
   const hasProjection = data.lastSuccessfulProjectionAt !== null;
   return <>
     <div className="stats dashboard-stats">
@@ -19,7 +19,7 @@ export function DashboardView({data,principal,refreshError,onRetry,requests,load
     </div>
     {refreshError&&<DashboardReadState error={refreshError} retained={hasProjection} onRetry={onRetry}/>}
     {principal.accountCategory === "DOH" && <DohDashboardPlaceholder principal={principal}/>}
-    {principal.accountCategory === "PRC" && <PrcDashboardPlaceholder principal={principal}/>}
+    {principal.accountCategory === "PRC" && <PrcDashboardPlaceholder data={data} loading={loading}/>}
     {isRequester(principal) && <RequesterDashboard data={data} principal={principal} requests={requests}/>}
     {!isRequester(principal) && data.composition === "OPERATIONAL" && hasProjection && data.inventory.length > 0 && (
       <InventoryOverviewChart items={data.inventory} />

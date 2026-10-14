@@ -1,3 +1,4 @@
+import { ActionButton } from "../../components/ui/action-button";
 import { RequestFormHelp } from "./request-form-help";
 
 // Visual reference only: disabled fields have no state, names, uploads, or request payload mapping.
@@ -23,8 +24,8 @@ export function RequesterRequestPlaceholders() {
     <section className="requester-form-section" aria-labelledby="requester-documents-heading">
       <header><h4 id="requester-documents-heading">Supporting documents</h4><RequestFormHelp label="Supporting documents">Request form and pickup authorization attachments. Document uploads are not available yet. No files can be attached or stored.</RequestFormHelp></header>
       <div className="requester-document-placeholders">
-        <div><span><strong>Standard Blood Request Form</strong><small>Signed request form · PDF, JPG or PNG</small></span><button className="button compact" type="button" disabled>Attach request form</button></div>
-        <div><span><strong>Pickup Authorization / Valid ID</strong><small>Authorization or ID copy · PDF, JPG or PNG</small></span><button className="button compact" type="button" disabled>Attach pickup document</button></div>
+        <div><span><strong>Standard Blood Request Form</strong><small>Signed request form · PDF, JPG or PNG</small></span><ActionButton className="button compact" type="button" disabled unavailableReason="Request document uploads are not connected yet. No file will be attached or saved.">Attach request form</ActionButton></div>
+        <div><span><strong>Pickup Authorization / Valid ID</strong><small>Authorization or ID copy · PDF, JPG or PNG</small></span><ActionButton className="button compact" type="button" disabled unavailableReason="Pickup document uploads are not connected yet. No file will be attached or saved.">Attach pickup document</ActionButton></div>
       </div>
     </section>
     <section className="requester-form-section" aria-labelledby="requester-notes-heading">
