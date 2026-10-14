@@ -99,10 +99,67 @@ preserved as preparation and technical evidence, not an executed UAT session.
 
 The next event is an adviser progress demonstration on **Wednesday Oct 14**
 on Lat's populated host, not participant UAT or response collection.
-**Buno's demo analytics choice: option (b).** Show the Oct 11 census as STALE
-and explain that it is a manually captured historical snapshot, not current
-stock. Live inventory and forecast validity remain separate. No fresh census,
-forecast job or binding is approved here. V4 remains default; V5 stays separate.
+The Oct 12 choice of stale analytics is superseded by the Oct 14 decision below.
+
+#### Oct 14 morning demo analytics decision — fresh census and V5 preview
+
+**Accepted scope change from the relayed Jopia instruction, 2026-10-14:**
+choose option (a) as specifically revised here: fresh operational census plus
+an explicitly selected **V5 preview**, not a V4 forecast job or V5 activation.
+The instruction arrived on Oct 14 morning; do not backdate the artifact check,
+generation or review to the previous evening.
+
+Follow [Persist census and explicit V5 preview](PERSISTENT-DEVELOPMENT-RUNBOOK.md#persist-census-and-explicit-v5-preview)
+on Lat's retained host after the approved startup and pending-command checks.
+Use the actual Oct 14 generation time, origin **2026-10-13**, one-day target
+**2026-10-14**, Asia/Manila. Capture census independently at the actual current
+UTC instant; never retimestamp the Oct 11 snapshot or change expired units to
+make availability appear current. If the calendar has advanced, stop and
+reconcile the requested day rather than backdating a run.
+
+Before execution Lat must reconfirm the existing external model file SHA-256
+`1e0f0c240109e49e8f1a89a713021afae07c2f5fae5b0e2bc8e3904610fb9764`
+and pinned Docker image ID
+`sha256:dcb2ccd36834bcec33e3d5cb8158f2b7a75b0881f695821cc705764667fba4c1`.
+Buno's local model bytes match that file hash; earlier transfer evidence does
+not prove current presence on Lat's host. If missing, privately transfer the
+original artifact; no rebuilding, retraining or substitution. Canonical model
+parameter hash remains the one pinned in the linked runtime contracts.
+
+Preview must produce the actual target/institution binding and job hashes.
+**Jopia reviews those exact hashes before apply/persistence.** This scope choice
+is not that per-job approval and records no completed run. Verify 20 mapped
+one-day series through the real API/browser, exact origin/target, immutable
+lineage, nullable uncertainty and disabled recommendations. Census freshness
+does not establish forecast validity. Both use Manila-day freshness rules.
+
+V4 remains the default weighted-seven model. Its seven-day request-history
+requirement is not satisfied by manufacturing zeros or copying stock counts;
+show the actual unavailable reason when the valid V4 run/history is absent.
+Explicit V5 preview uses the frozen saved series means without runtime refit
+or a new history requirement. If prerequisites, hash review or execution fail,
+report the actual STALE/UNAVAILABLE state rather than claim a successful demo
+refresh. No activation, recommendations, participant UAT or deployment approval.
+
+#### Adviser forecasting talking points
+
+1. **Default V4:** a weighted seven-day demand baseline. This retained demo
+   does not have the required valid recent request history/run, so UNAVAILABLE
+   is expected; the actual API reason must be shown. Current stock is a
+   separate inventory measurement, not a substitute demand history.
+2. **V5 preview:** an explicitly selected synthetic-data model, chosen as the
+   training-series mean baseline. Its twenty frozen means are reused without
+   retraining. A reviewed fresh run demonstrates integration, not activation
+   or autonomous recommendations; V4 remains the default.
+3. **Research results:** the [V5 handoff](ML-V5-HANDOFF.md#results) reports
+   held-out 2025 test MAE 0.664509 units per series-day, RMSE 1.265116 and
+   WAPE 68.671480%, versus V4-method MAE 0.683502 on the same V5 test data.
+   This is a modest aggregate improvement, not improvement for every component.
+   The 85.27% result is secondary any-demand classification accuracy, never
+   accuracy of predicted quantities. The 2026 rows were demonstration-only.
+4. **Limits:** synthetic training/testing cannot establish Mediatrix operational
+   accuracy, emergency prediction or clinical suitability. RQ-07 remains open;
+   neither 100-minus-WAPE nor software passes constitute operational accuracy.
 
 For rescheduled UAT, retain these open work items:
 
