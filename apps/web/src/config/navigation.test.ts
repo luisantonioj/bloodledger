@@ -13,11 +13,11 @@ describe("permission-filtered navigation", () => {
 
   it("shows the visual-only accounts route only to administrative compositions", () => {
     expect(visibleNavigation(principal(["profile:read"], "ROLE-05")).map((item) => item.href)).toEqual(["/", "/profile", "/accounts"]);
-    expect(visibleNavigation(principal(["profile:read"], "ROLE-01")).map((item) => item.href)).toEqual(["/", "/analytics", "/profile"]);
+    expect(visibleNavigation(principal(["profile:read"], "ROLE-01")).map((item) => item.href)).toEqual(["/", "/redistribution", "/analytics", "/profile"]);
   });
 
   it("matches official forecast role access", () => {
-    expect(visibleNavigation(principal([], "ROLE-02")).map((item) => item.href)).toEqual(["/", "/analytics"]);
+    expect(visibleNavigation(principal([], "ROLE-02")).map((item) => item.href)).toEqual(["/", "/redistribution", "/analytics"]);
     expect(visibleNavigation(principal([], "ROLE-04", "INST_SYNTH_PRC", "Synthetic PRC Chapter")).map((item) => item.href)).toEqual(["/"]);
     expect(visibleNavigation(principal([], "ROLE-03")).map((item) => item.href)).toEqual(["/", "/analytics"]);
     expect(visibleNavigation(principal([], "ROLE-04", "INST_SYNTH_DOH", "Synthetic DOH Office")).map((item) => item.href)).toEqual(["/"]);
@@ -34,3 +34,6 @@ describe("permission-filtered navigation", () => {
     expect(visibleNavigation(principal([],"ROLE-02")).some(item=>item.href==="/transactions")).toBe(false);
   });
 });
+
+// FR-07: redistribution explanation follows the supplier-only API roles.
+it("keeps redistribution out of requester and regulatory navigation",()=>{for(const role of ["ROLE-03","ROLE-04","ROLE-05","ROLE-06"] as const)expect(visibleNavigation(principal([],role)).some(item=>item.href==="/redistribution")).toBe(false);});
