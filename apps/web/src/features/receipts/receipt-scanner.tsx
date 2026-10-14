@@ -1,3 +1,4 @@
+import { ActionButton } from "../../components/ui/action-button";
 import { useEffect, useRef, useState } from "react";
 import type { Principal } from "../../auth/permissions";
 import { InformationHelp } from "../../components/ui/information-help";
@@ -44,7 +45,7 @@ export function ReceiptScanner({ principal, incoming, onClose }: {principal:Prin
       </section>
       <section className="receipt-review-card"><header><h3>{draft?"Inbound Preview":"Awaiting Input"}</h3><InformationHelp label="Receipt verification">Scanned or manually entered details must be matched to an incoming transfer before an authorized operator can confirm receipt. A local preview does not create a receipt record.</InformationHelp></header>
         {draft?<><p className="receipt-preview-note">Manual entry preview · Not verified</p><dl>{Object.entries({"Unit ID":draft.unitId,"Blood type":formatBloodType(draft.bloodType),"Component":componentLabel(draft.component),"Collection date":draft.collected||"Not entered","Expiration date":draft.expires,"Source facility":draft.facility?facilityLabel(draft.facility,principal):"Not entered","Purpose":draft.purpose||"Not entered"}).map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl></>:<div className="requester-records-empty"><strong>Scan a label or enter unit details</strong><span>Your entry preview will appear here.</span></div>}
-        <div className="receipt-confirm-footer"><button className="button primary compact" type="button" disabled title="Verified scan-to-transfer matching is not connected yet.">Confirm inbound receipt</button><span>Available once scan matching is connected.</span></div>
+        <div className="receipt-confirm-footer"><ActionButton className="button primary compact" type="button" disabled  unavailableReason="Receipt confirmation is unavailable until the scanned unit can be matched to its incoming transfer.">Confirm inbound receipt</ActionButton><span>Available once scan matching is connected.</span></div>
       </section>
     </div>
   </section></div>;

@@ -1,3 +1,4 @@
+import { RefreshIcon } from "../../components/ui/refresh-button";
 import { useEffect, useState } from "react";
 import type { Principal } from "../../auth/permissions";
 import { submitReservationAction } from "../../services/api/v2";
@@ -46,7 +47,7 @@ export function ReservationActions({ reservation, principal, onRefresh }: { rese
     </fieldset><button className="button primary" type="submit" disabled={command.busy || !!command.command || command.requiresCorrection || (!ready && !command.ambiguous)}>{command.busy ? "Submitting command…" : command.ambiguous ? "Retry same reservation command" : "Confirm reservation action"}</button></form>}
     {command.error && <p role="alert">{command.error}</p>}
     {command.ambiguous && <div><p>Saved request key: <code>{command.pendingKey}</code></p><button className="button" disabled={command.busy} onClick={() => void command.recover()}>Recover this attempt without resubmitting</button></div>}
-    {command.requiresCorrection && <button className="button" onClick={onRefresh}>Refresh reservation before continuing</button>}
+    {command.requiresCorrection && <button className="button refresh-icon-button" onClick={onRefresh}><RefreshIcon/>Refresh reservation before continuing</button>}
     {command.command && <CommandStatusCard command={command.command} pollError={command.pollError} onClear={() => {command.clear(); setAction(undefined); onRefresh();}}/>}
   </section>;
 }

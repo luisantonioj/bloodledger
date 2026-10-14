@@ -33,10 +33,10 @@ export async function requestJson<T>(path: string, init: RequestInit = {}, fallb
     headers: controlledHeaders,
   });
   const body = await response.json().catch(() => null) as ApiErrorEnvelope | null;
+  if (epoch !== sessionEpoch && path !== "/api/v1/auth/session") throw new ApiRequestError(401, "The account session changed.", "AUTH_CONTEXT_CHANGED");
   if (!response.ok) {
     if (epoch === sessionEpoch && response.status === 401 && path !== "/api/v1/auth/session") window.dispatchEvent(new Event("bloodledger:session-ended"));
     throw new ApiRequestError(response.status, body?.error?.message ?? fallback, body?.error?.code);
   }
-  if (epoch !== sessionEpoch && path !== "/api/v1/auth/session") throw new ApiRequestError(401, "The account session changed.");
   return body as T;
 }

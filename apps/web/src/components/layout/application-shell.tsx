@@ -28,10 +28,6 @@ function NavigationIcon({ href }: { href: string }) {
   return <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d={iconPaths[href]} /></svg>;
 }
 
-function initials(name: string) {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "BL";
-}
-
 export function ApplicationShell({ principal, path, navigation, onNavigate, onSignOut, children }: {
   principal: Principal;
   path: string;
@@ -47,11 +43,7 @@ export function ApplicationShell({ principal, path, navigation, onNavigate, onSi
   let previousSection = "";
   return <div className="shell">
     <aside className="side">
-      <div className="side-brand"><span className="mark">B</span><span><strong>Blood<em>ledger</em></strong><small>Inventory management</small></span></div>
-      <div className="facility-context">
-        <span>Current institution</span>
-        <strong>{facilityName}</strong>
-      </div>
+      <div className="side-brand"><img className="bloodledger-logo sidebar-logo" src="/bloodledger-logo-updated.png" alt="BloodLedger logo"/><span><strong>Blood<em>ledger</em></strong><small>Inventory management</small></span></div>
       <nav className="nav" aria-label="Primary navigation">
         {navigation.map((item) => {
           const section = sectionFor(item.href);
@@ -67,7 +59,6 @@ export function ApplicationShell({ principal, path, navigation, onNavigate, onSi
       </nav>
       <div className="session-footer">
         <div className="session-profile" title={accountName}>
-          <span className="session-avatar">{initials(accountName)}</span>
           <span><strong>{accountName}</strong><small>{principal.roleDisplayName}</small></span>
         </div>
         <button className="sign-out" onClick={onSignOut} title="Sign out" aria-label="Sign out">↪</button>

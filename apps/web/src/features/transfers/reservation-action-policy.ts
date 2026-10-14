@@ -3,6 +3,8 @@ import type { ReservationDetail } from "../../services/api/v2-navigation";
 export const RESERVATION_ACTION_LABELS = { prepare: "Prepare reservation", dispatch: "Dispatch reservation", transit: "Start transit", receive: "Receive reservation", cancel: "Cancel reservation", "local-release-complete": "Complete local release", compromise: "Report compromise" } as const;
 export type ReservationAction = keyof typeof RESERVATION_ACTION_LABELS;
 export function reservationActions(row: ReservationDetail, principal: Principal): ReservationAction[] {
+  // Local release is retired from the frontend; existing records remain readable.
+  if (row.purpose === "LOCAL_RELEASE") return [];
   const source = row.sourceInstitutionId === principal.institutionId;
   const recipient = row.purpose === "TRANSFER" && row.destinationInstitutionId === principal.institutionId;
   const capable = (action: ReservationAction) => principal.operators?.some(operator =>
@@ -11,7 +13,7 @@ export function reservationActions(row: ReservationDetail, principal: Principal)
   const candidates: ReservationAction[] = [];
   if (row.status === "ACTIVE") {
     if (!row.preparedEvidencePresent) candidates.push("prepare");
-    if (row.preparedEvidencePresent) candidates.push(row.purpose === "LOCAL_RELEASE" ? "local-release-complete" : "dispatch");
+    if (row.preparedEvidencePresent) candidates.push("dispatch");
     candidates.push("cancel");
   }
   if (row.purpose === "TRANSFER" && row.status === "DISPATCHED") candidates.push("transit");

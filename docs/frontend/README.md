@@ -30,3 +30,6 @@ fixture data, topology claims, or browser-only writes.
 
 An entry is complete only when the official implementation, applicable tests,
 and review evidence are recorded. A visually similar mockup is not completion.
+
+
+For the current desktop frontend continuation, maintain [Backend/API gaps](BACKEND_API_GAPS.md) whenever a requested feature cannot yet be fully connected. It records dashboard and requester-form placeholders and distinguishes absent contracts from frontend wiring gaps.

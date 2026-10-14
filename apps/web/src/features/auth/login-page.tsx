@@ -28,7 +28,7 @@ export function LoginPage({ onAuthenticated }: { onAuthenticated: (principal: Pr
   return <main className="auth-page">
     <aside className="auth-hero" aria-label="BloodLedger prototype context">
       <div className="auth-hero-brand">
-        <span className="mark auth-mark">BL</span>
+        <img className="bloodledger-logo auth-logo" src="/bloodledger-logo-updated.png" alt="BloodLedger logo"/>
         <span><strong>Blood<em>ledger</em></strong><small>Controlled research prototype</small></span>
       </div>
       <div className="auth-hero-message">

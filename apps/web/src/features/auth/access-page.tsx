@@ -1,3 +1,4 @@
+import { ActionButton } from "../../components/ui/action-button";
 import { SyntheticApplication } from "./synthetic-application";
 import { useState, type FormEvent } from "react";
 import type { Principal } from "../../auth/permissions";
@@ -29,7 +30,7 @@ export function AccessPage({ onAuthenticated }: { onAuthenticated: (principal: P
 
   return <main className={`auth-page ${mode === "apply" ? "application-mode" : ""}`}>
     <aside className="auth-hero" aria-label="BloodLedger prototype context">
-      <div className="auth-hero-brand"><span className="mark auth-mark">BL</span><span><strong>Blood<em>ledger</em></strong><small>Controlled research prototype</small></span></div>
+      <div className="auth-hero-brand"><img className="bloodledger-logo auth-logo" src="/bloodledger-logo-updated.png" alt="BloodLedger logo"/><span><strong>Blood<em>ledger</em></strong><small>Controlled research prototype</small></span></div>
       <div className="auth-hero-message"><p className="eyebrow">Accountable inventory evidence</p><h1>One ledger.<br/>Clear custody.<br/><em>Every unit accounted for.</em></h1><p>Authenticated inventory and custody workflows with explicit institution scope, freshness, and simulation-only evidence.</p></div>
       <div className="auth-hero-signature"><span aria-hidden="true">◆</span><span>Fabric-backed evidence</span><span aria-hidden="true">·</span><span>Synthetic data only</span></div>
     </aside>
@@ -44,7 +45,7 @@ export function AccessPage({ onAuthenticated }: { onAuthenticated: (principal: P
           <form className="auth-form" onSubmit={event => void submit(event)}>
             <label htmlFor="login-username">Institution email or username<input id="login-username" autoComplete="username" value={username} onChange={event => setUsername(event.target.value)} placeholder="bloodbank@mmc.bloodledger" required/></label>
             <label htmlFor="login-password">Password<input id="login-password" type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} placeholder="Enter your password" required/></label>
-            <div className="auth-form-options"><label><input type="checkbox" />Keep me signed in on this trusted device</label><button type="button" disabled title="Password recovery is not implemented">Forgot password?</button></div>
+            <div className="auth-form-options"><label><input type="checkbox" />Keep me signed in on this trusted device</label><ActionButton type="button" disabled  unavailableReason="Password recovery is not available yet.">Forgot password?</ActionButton></div>
             {error && <p className="auth-error" role="alert">{error}</p>}
             <button className="button primary auth-submit" disabled={submitting}>{submitting ? "Signing in..." : "Sign in"}</button>
           </form>

@@ -1,4 +1,17 @@
 :root {
+  --network-label: #536172;
+  --network-ink: #182231;
+  --network-secondary: #657184;
+  --network-hover: #f3f5f7;
+  --network-primary: #a51f35;
+  --network-selected: #fff6f7;
+  --network-line: #e1e5eb;
+  --network-grid: #edf0f4;
+  --network-muted: #687589;
+  --record-hover: #f6f7f9;
+  --reserved-bar: #718399;
+  --record-selected: #eaf0f6;
+
   --primary: #9A1B1B;
   --focus-ring: var(--primary);
   --primary-hover: #6F0F0F;
@@ -13,6 +26,7 @@
   --chrome-hover: #232C3D;
   --ink: #0E1218;
   --ink-black: #000000;
+  --ink-plain-text: #111111;
   --ink-secondary: #3A4250;
   --ink-muted: #697181;
   --ink-faint: #9098A6;

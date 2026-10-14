@@ -157,30 +157,30 @@ for (const [code,message] of [
   });
 }
 
-for (const workflow of ["release","transfer"] as const) {
+for (const workflow of ["transfer"]) {
   test(`${workflow}: stale-time rejection uses fresh intent, ambiguous failure reuses it`,async ({page}) => {
     const calls: {body:Record<string,unknown>;key:string}[] = [];
-    const pathToSubmit = workflow === "release" ? "/api/v2/local-releases" : "/api/v2/transfers";
+    const pathToSubmit = "/api/v2/transfers";
     await setup(page,async (route,path) => {
       if (path !== pathToSubmit || route.request().method() !== "POST") return false;
       calls.push({body:route.request().postDataJSON(),key:route.request().headers()["idempotency-key"]});
       const code = calls.length <= 2 ? "V2_COMMAND_TIME_OUT_OF_WINDOW" : "SERVICE_UNAVAILABLE";
       await json(route,{error:{code,message:"Service unavailable; retry same request"}},calls.length <= 2 ? 400 : 503); return true;
-    },{capabilities:[workflow === "release" ? "inventory:local-release" : "transfer:request"]});
+    },{capabilities:["transfer:request"]});
     await page.goto("/transfers");
-    if(workflow==="transfer")await page.getByRole("button",{name:"+ New Blood Request",exact:true}).click();
-    const submit = page.getByRole("button",{name:workflow === "release" ? "Queue local release" : "Submit V2 request",exact:true});
+    await page.getByRole("button",{name:"+ New Blood Request",exact:true}).click();
+    const submit = page.getByRole("button",{name:"Submit",exact:true});
     await submit.click();await verify(page);
     await expect(page.getByRole("alert")).toContainText("fresh time");
     await submit.click();await verify(page);
     await expect(page.getByRole("alert")).toContainText("device clock");
     await submit.click();await verify(page);
     await expect(page.getByRole("alert")).toContainText("Service unavailable");
-    await page.getByRole("button",{name:workflow === "release" ? "Retry same release" : "Retry same request",exact:true}).click();await verify(page);
+    await page.getByRole("button",{name:"Retry same request",exact:true}).click();await verify(page);
     await expect.poll(()=>calls.length).toBe(4);
     expect(calls[1].key).not.toBe(calls[0].key); expect(calls[1].body.eventTime).not.toBe(calls[0].body.eventTime);
     expect(calls[2].key).not.toBe(calls[1].key); expect(calls[3]).toEqual(calls[2]);
-    if (workflow === "transfer") expect(calls[1].body.requestTime).toBe(calls[1].body.eventTime);
+    expect(calls[1].body.requestTime).toBe(calls[1].body.eventTime);
   });
 }
 
@@ -188,15 +188,15 @@ for (const [status,code,message] of [[400,"REQUEST_INVALID","request body is inv
   test(`${code} is a client correction, not a retry`,async ({page}) => {
     let calls = 0;
     await setup(page,async(route,path)=>{
-      if(path!=="/api/v2/local-releases")return false;
+      if(path!=="/api/v2/transfers" || route.request().method()!=="POST")return false;
       calls++;await json(route,{error:{code,message:"Rejected"}},status);return true;
-    });
-    await page.goto("/transfers");await page.getByRole("button",{name:"Queue local release",exact:true}).click();await verify(page);
+    },{capabilities:["transfer:request"]});
+    await page.goto("/transfers");await page.getByRole("button",{name:"+ New Blood Request",exact:true}).click();await page.getByRole("button",{name:"Submit",exact:true}).click();await verify(page);
     await expect(page.getByRole("alert")).toContainText(message);
-    await expect(page.getByRole("button",{name:"Correct release before submitting",exact:true})).toBeDisabled();
+    await expect(page.getByRole("button",{name:"Correct request before submitting",exact:true})).toBeDisabled();
     await page.waitForTimeout(100);expect(calls).toBe(1);
     await page.getByLabel("Quantity",{exact:true}).fill("2");
-    await expect(page.getByRole("button",{name:"Queue local release",exact:true})).toBeEnabled();
+    await expect(page.getByRole("button",{name:"Submit",exact:true})).toBeEnabled();
   });
 }
 

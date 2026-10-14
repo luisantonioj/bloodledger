@@ -83,7 +83,10 @@ try {
   await expect(page.locator('table').nth(1)).toContainText('HIST_SYNTH_VISUAL_50');
   await page.getByLabel('Review page',{exact:true}).selectOption('/');
   await expect(page.getByRole('heading',{name:'Dashboard',exact:true})).toBeVisible();
-  await expect(page.locator('.dashboard-stats article')).toHaveCount(3);
+  await expect(page.locator('.dashboard-stats article')).toHaveCount(4);
+  await expect(page.locator('.inventory-overview-legend')).toContainText('Surplus / available to redistribute');
+  await expect(page.locator('.stock-surplus .inventory-overview-fill>i')).toHaveCount(2);
+  await expect(page.locator('.inventory-overview-note')).toHaveText('Sample status and surplus values are for visual review only.');
   const chartLabelsFit=await page.locator('.inventory-overview-scroll').evaluate(scroll=>[...scroll.querySelectorAll('.inventory-overview-track>strong')].every(label=>label.getBoundingClientRect().top>=scroll.getBoundingClientRect().top));
   assert(chartLabelsFit,'Tallest chart values must remain visible inside the scroll viewport');
   await expect(page.getByRole('button',{name:'Open design preview controls',exact:true})).toHaveCount(0);

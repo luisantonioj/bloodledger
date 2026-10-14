@@ -1,17 +1,17 @@
+import { RefreshIcon } from "../../components/ui/refresh-button";
+import { InformationHelp } from "../../components/ui/information-help";
 import { InventoryEvidencePanel } from "./inventory-evidence-panel";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Principal } from "../../auth/permissions";
 import { humanizeCode, statusClassName } from "../../components/ui/display";
 import {
   ACTIVE_FORECAST_DATASET,
-  V5_FORECAST_DATASET,
-  type ForecastDataset,
   manilaBusinessDate,
   readActiveForecast,
   type ForecastResponse,
 } from "../../services/api/forecast";
 import { ApiRequestError } from "../../services/api/client";
-import { analyticsScopeLabel, canViewAnalyticsPreview } from "./analytics-access";
+import { canViewAnalyticsPreview } from "./analytics-access";
 
 function uncertainty(lower: number | null, upper: number | null): string {
   return lower === null || upper === null ? "Uncertainty unavailable" : `${lower.toFixed(2)}–${upper.toFixed(2)} units`;
@@ -19,7 +19,9 @@ function uncertainty(lower: number | null, upper: number | null): string {
 
 export function AnalyticsPreview({ principal }: { principal: Principal }) {
   const [businessDate, setBusinessDate] = useState(() => manilaBusinessDate());
-  const [dataset, setDataset] = useState<ForecastDataset>(ACTIVE_FORECAST_DATASET);
+  const dataset = ACTIVE_FORECAST_DATASET;
+  const [bloodType, setBloodType] = useState("");
+  const [component, setComponent] = useState("");
   const requestId = useRef(0);
   const [inventoryRefresh, setInventoryRefresh] = useState(0);
   const [data, setData] = useState<ForecastResponse>();
@@ -55,53 +57,45 @@ export function AnalyticsPreview({ principal }: { principal: Principal }) {
     return <div className="analytics-preview-state unauthorized" role="alert"><span aria-hidden="true">!</span><div><strong>Analytics unavailable</strong><p>This composition is limited to the three authorized hospital roles. Backend authorization remains authoritative.</p></div></div>;
   }
 
-  return <div className="analytics-preview">
-    <div className="preview-disclosure analytics-disclosure"><span aria-hidden="true">i</span><div><strong>{dataset === ACTIVE_FORECAST_DATASET ? "Active ML V4 simulation" : "V5 simulation preview"}</strong><p>V4 and V5 forecast next-day requested units. These forecasts do not describe units transfused, stock on hand, or guaranteed supply. Operational recommendations remain disabled.</p></div></div>
+  const visibleForecasts = data?.forecasts.filter(item => (!bloodType || item.bloodType === bloodType) && (!component || item.component === component)) ?? [];
+  const bloodTypes = { A_POSITIVE: "A+", B_POSITIVE: "B+", O_POSITIVE: "O+", AB_POSITIVE: "AB+" };
+  const components = { WHOLE_BLOOD: "Whole blood", PACKED_RED_BLOOD_CELLS: "PRBC", FRESH_FROZEN_PLASMA: "FFP", PLATELETS: "Platelets", CRYOPRECIPITATE: "Cryoprecipitate" };
+  const lastUpdated = data?.generatedAt ? new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" }).format(new Date(data.generatedAt)) : "Unavailable";
 
+  return <div className="analytics-preview analytics-workspace">
     <section className="analytics-preview-filter">
-      <header><div><h3>Forecast scope</h3><p>One-day active-runtime forecasts for the authenticated institution.</p></div><span>{analyticsScopeLabel(principal)}</span></header>
-      <div className="forecast-filter-grid">
+      <header><h3>Demand overview</h3><InformationHelp label="Demand overview">Review estimates of blood units that may be requested for the selected day. Choose a date, then narrow the results by blood type or component. Estimates describe requested units, not transfusions, stock on hand or guaranteed supply. Missing results mean unavailable, not zero.</InformationHelp></header>
+      <div className="forecast-filter-grid analytics-date-filter-grid">
         <label>Business date<input type="date" value={businessDate} onChange={(event) => { requestId.current += 1; setData(undefined); setBusinessDate(event.target.value); }} /></label>
-        <label>Forecast version<select value={dataset} onChange={(event) => { requestId.current += 1; setData(undefined); setDataset(event.target.value as ForecastDataset); }}><option value={ACTIVE_FORECAST_DATASET}>Active V4</option><option value={V5_FORECAST_DATASET}>V5 simulation preview</option></select></label>
-        <button className="button primary" type="button" disabled={busy} onClick={() => void refresh()}>{busy ? "Loading…" : "Refresh forecast"}</button>
+        <button className="button compact refresh-icon-button" type="button" disabled={busy} onClick={() => void refresh()}><RefreshIcon/>{busy ? "Loading…" : "Refresh"}</button>
       </div>
     </section>
 
-    {error && <div className="analytics-api-state" role="alert"><span aria-hidden="true">!</span><div><strong>Forecast could not be loaded</strong><p>{error}</p></div></div>}
-    {!data && busy && <div className="analytics-preview-state" role="status"><span aria-hidden="true">…</span><div><strong>Loading forecast</strong><p>Waiting for the backend forecast envelope.</p></div></div>}
+    <div className="analytics-preview-metrics">
+      <article><span>Forecast date</span><strong>{data?.horizonDate ?? "—"}</strong><small>Day the estimate applies to</small></article>
+      <article><span>Blood product groups</span><strong>{data ? data.forecasts.length : "—"}</strong><small>Blood type and component combinations</small></article>
+      <article><span>Last updated</span><strong>{lastUpdated}</strong><small>{data?.status === "STALE" ? "Older result — refresh before reviewing" : data?.status === "CURRENT" ? "Current result · Asia/Manila" : "No completed result available"}</small></article>
+    </div>
+
+    <section className="analytics-preview-panel analytics-demand-panel">
+      <header><h3>Expected blood requests</h3><InformationHelp label="Expected blood requests">Estimated units are the predicted number of units requested. A decimal is an estimate, not a partial blood bag. The estimated range expresses uncertainty when available. An older result is marked stale. Review actual inventory and requests separately before taking action.</InformationHelp></header>
+      <div className="analytics-table-filters">
+        <label>Blood type<span className="analytics-select"><select aria-label="Blood type" value={bloodType} onChange={event => setBloodType(event.target.value)}><option value="">All blood types</option>{Object.entries(bloodTypes).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></span></label>
+        <label>Component<span className="analytics-select"><select aria-label="Component" value={component} onChange={event => setComponent(event.target.value)}><option value="">All components</option>{Object.entries(components).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></span></label>
+        <span>{visibleForecasts.length} results</span>
+      </div>
+      <div className="table-wrap"><table className="data-table forecast-table"><thead><tr><th>Blood type</th><th>Component</th><th>Estimated units</th><th>Estimated range</th><th>Result status</th></tr></thead><tbody>
+        {visibleForecasts.map(item => <tr key={item.runKey + ":" + item.bloodType + ":" + item.component}>
+          <td>{bloodTypes[item.bloodType]}</td><td>{components[item.component]}</td>
+          <td className="numeric">{item.forecastStatus === "UNAVAILABLE" ? "Unavailable" : item.pointForecast.toFixed(2)}</td>
+          <td>{uncertainty(item.lowerForecast, item.upperForecast)}</td>
+          <td><span className={statusClassName(item.forecastStatus)}>{item.stale ? "Stale" : humanizeCode(item.forecastStatus)}</span></td>
+        </tr>)}
+        {visibleForecasts.length === 0 && <tr><td colSpan={5}><div className="analytics-empty" role={error ? "alert" : "status"}><strong>{busy ? "Loading estimates…" : error ? "Forecast unavailable" : !data || data.status === "UNAVAILABLE" ? "No forecast available" : "No matching results"}</strong><p>{busy ? "Your results will appear here." : error || (data?.status === "UNAVAILABLE" || !data ? "Choose another date or refresh to check for a completed forecast." : "Try another blood type or component.")}</p></div></td></tr>}
+      </tbody></table></div>
+      {data?.status === "STALE" && <p className="analytics-freshness-note" role="status">These estimates are from an older result. Refresh to check for an updated forecast.</p>}
+    </section>
 
     <InventoryEvidencePanel businessDate={businessDate} institutionId={principal.institutionId} refreshKey={inventoryRefresh}/>
-
-    {data && <>
-      <div className="analytics-preview-metrics forecast-provenance">
-        <article><span>Envelope status</span><strong className="metric-code">{humanizeCode(data.status)}</strong><small>{data.forecastStatus}</small></article>
-        <article><span>Returned series</span><strong>{data.forecasts.length}</strong><small>Maximum 20; absent is not zero</small></article>
-        <article><span>As-of date</span><strong className="metric-date">{data.asOfDate ?? "—"}</strong><small>Unavailable remains explicit</small></article>
-        <article><span>Horizon date</span><strong className="metric-date">{data.horizonDate ?? "—"}</strong><small>One-day active runtime</small></article>
-        <article><span>Model</span><strong className="metric-model">{data.modelVersion ?? "—"}</strong><small>{data.datasetVersion}</small></article>
-      </div>
-
-      {data.status === "UNAVAILABLE" && <div className="analytics-api-state warning" role="status"><span aria-hidden="true">!</span><div><strong>Forecast unavailable</strong><p>{data.unavailableReason ? humanizeCode(data.unavailableReason) : "No completed forecast series is available for this date."}</p></div></div>}
-      {data.status === "STALE" && <div className="analytics-api-state warning" role="status"><span aria-hidden="true">!</span><div><strong>Forecast is stale</strong><p>Values remain visible as evidence, but forecast-only recommendations stay disabled.</p></div></div>}
-
-      <section className="analytics-preview-panel forecast-evidence">
-        <header><div><h3>Forecast provenance</h3><p>CURRENT means eligible in the target-day window at the backend evaluation instant. Refresh does not retrain the frozen model or renew freshness.</p></div></header>
-        <dl><dt>Target business date</dt><dd>{data.businessDate}</dd><dt>Generation time (Asia/Manila)</dt><dd>{data.generatedAt ? new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" }).format(new Date(data.generatedAt)) : "Unavailable"}</dd><dt>Generation evidence (UTC)</dt><dd>{data.generatedAt ?? "Unavailable"}</dd><dt>Frozen training cutoff</dt><dd>{data.trainingCutoffDate ?? "Unavailable"}</dd><dt>Run</dt><dd>{data.runId ?? "Unavailable"}</dd><dt>Classification</dt><dd>{data.classification}</dd><dt>Recommendation eligibility</dt><dd>{data.recommendationEligibility}</dd></dl>
-        {data.lineage && <details><summary>Model and data provenance</summary><dl>{Object.entries(data.lineage).filter(([key, value]) => /(?:Sha256|Version|Date)$/.test(key) && typeof value === "string" && value.length <= 128).map(([key, value]) => <div key={key}><dt>{humanizeCode(key)}</dt><dd style={{ overflowWrap: "anywhere" }}>{String(value)}</dd></div>)}</dl></details>}
-      </section>
-      <section className="analytics-preview-panel assessment">
-        <header><div><h3>Daily demand forecast</h3><p>Only supported series returned by the backend are shown. Missing series are unavailable, never zero.</p></div><span className={statusClassName(data.status)}>{humanizeCode(data.status)}</span></header>
-        {data.forecasts.length === 0 ? <div className="analytics-preview-state"><span aria-hidden="true">∅</span><div><strong>No returned forecast series</strong><p>The selected forecast result is unavailable for this business date.</p></div></div> : <div className="table-wrap"><table className="data-table forecast-table"><thead><tr><th>Blood type</th><th>Component</th><th>Point forecast</th><th>Uncertainty</th><th>Series status</th><th>Generated</th><th>Decision use</th></tr></thead><tbody>{data.forecasts.map((item) => <tr key={item.runKey + ":" + item.bloodType + ":" + item.component}>
-          <td>{{ A_POSITIVE: "A+", B_POSITIVE: "B+", O_POSITIVE: "O+", AB_POSITIVE: "AB+" }[item.bloodType]}</td>
-          <td>{humanizeCode(item.component)}{item.forecastId && <small className="analytics-cell-note">{item.forecastId}</small>}</td>
-          <td className="numeric">{item.forecastStatus === "UNAVAILABLE" ? "Unavailable" : item.pointForecast.toFixed(2) + " units"}</td>
-          <td><span>{uncertainty(item.lowerForecast, item.upperForecast)}</span>{item.uncertaintyNote && <small className="analytics-cell-note">{item.uncertaintyNote}</small>}</td>
-          <td><span className={statusClassName(item.forecastStatus)}>{humanizeCode(item.forecastStatus)}</span>{item.stale && <small className="analytics-cell-note">Stale evidence</small>}</td>
-          <td>{new Intl.DateTimeFormat("en-PH", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" }).format(new Date(item.generatedAt))}</td>
-          <td><span className="status warning">Disabled</span><small className="analytics-cell-note">DISABLED_UNAPPROVED_POLICY</small></td>
-        </tr>)}</tbody></table></div>}
-        <footer>Dataset {data.datasetVersion} · model {data.modelVersion ?? "unavailable"} · recommendation eligibility disabled by unapproved policy.</footer>
-      </section>
-    </>}
   </div>;
 }

@@ -268,7 +268,7 @@ export function App() {
     <main className={"capture-app"+(receiptLayout?" receipt-capture":"")}>
       <header className="mobile-header">
         <div className="mobile-brand">
-          <span className="brand-mark" aria-hidden="true">B</span>
+          <img className="capture-brand-logo" src={import.meta.env.BASE_URL+"bloodledger-logo-updated.png"} alt="BloodLedger logo"/>
           <span><strong>Blood<em>ledger</em></strong><small>Inbound OCR Capture</small></span>
         </div>
         <span className={"connection-chip " + (isOnline ? "online" : "offline")}>
@@ -364,7 +364,7 @@ export function App() {
                 <span className="review-chip">REVIEW REQUIRED</span>
               </div>
               <div className="unit-summary">
-                <span className="blood-drop" aria-hidden="true">B</span>
+                <img className="capture-unit-logo" src={import.meta.env.BASE_URL+"bloodledger-logo-updated.png"} alt=""/>
                 <div><strong>Donation No. {recognition.label.donationNumber}</strong><small>Volatile display · never stored on device</small></div>
               </div>
               <dl className="field-review">

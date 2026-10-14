@@ -15,3 +15,6 @@ export function statusClassName(value:string):string {
   if (["WARNING", "DELAYED", "PENDING"].includes(value)) return "status warning";
   return "status ";
 }
+
+// Keep distinguishing suffixes visible while preserving full references in labels/details.
+export const compactRecordReference = (value:string) => value.length > 16 ? value.slice(0,7) + "…" + value.slice(-6) : value;

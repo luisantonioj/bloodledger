@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["icon.svg", "ocr-assets/**/*"],
+      includeAssets: ["bloodledger-logo-updated.png", "ocr-assets/**/*"],
       manifest: {
         name: "BloodLedger Inbound OCR Capture",
         short_name: "BloodLedger",
@@ -17,7 +17,7 @@ export default defineConfig({
         background_color: "#fffaf8",
         display: "standalone",
         start_url: "/capture/",
-        icons: [{ src: "/capture/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" }],
+        icons: [{ src: "/capture/bloodledger-logo-updated.png", sizes: "1000x1000", type: "image/png", purpose: "any" }],
       },
       workbox: {
         navigateFallback: "/capture/index.html",

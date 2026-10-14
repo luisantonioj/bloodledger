@@ -16,8 +16,8 @@ export function InventoryOverviewChart({ items, sampleIndicators }: { items: Agg
       <a className="inventory-overview-link" href="/inventory">View inventory →</a>
     </header>
     <div className="inventory-overview-scroll">
-      <div className="inventory-overview-legend" aria-label="Inventory status legend">
-        <span><i className="critical" />Critical</span><span><i className="low" />Low</span><span><i className="adequate" />Adequate</span><span><i className="surplus" />Surplus / available to redistribute</span>
+      <div className="inventory-overview-legend" aria-label="Inventory status legend" title="Stock-state color legend. Blood-type classifications require agreed stock rules; available units alone do not establish surplus.">
+        <span><i className="critical" />Critical</span><span><i className="low" />Low</span><span><i className="adequate" />Adequate</span><span><i className="surplus" />Surplus</span>
       </div>
       <div className="inventory-overview-frame">
         <div className="inventory-overview-axis-title">Quantity (units)</div>
