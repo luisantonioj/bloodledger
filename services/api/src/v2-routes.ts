@@ -14,6 +14,7 @@ import { validateInboundOcrInput } from "./inbound-ocr-policy.js";
 import { isReconciliationReasonCode, RECONCILIATION_POLICY_VERSION, RECONCILIATION_REASONS } from "./reconciliation-policy.js";
 import { COMPROMISE_POLICY_VERSION, COMPROMISE_REASONS, isCompromiseReasonCode } from "./compromise-policy.js";
 import { DOH_CENSUS_DISPLAY_ORDER, DOH_CENSUS_DISPLAY_POLICY_VERSION } from "./report-policy.js";
+import { COORDINATION_BLOOD_TYPES, COORDINATION_COMPONENT_TYPES, priorityView, redistributionView, surplusView, type CoordinationReader } from "./coordination-views.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
 const CORRELATION_PATTERN = /^CORR_[0-9A-F]{32}$/;
@@ -39,6 +40,7 @@ export interface V2RouteDependencies {
   census?: CensusStore;
   mlInventory?: MlInventoryEvidenceReader;
   projection?: V2ProjectionReader;
+  coordination?: CoordinationReader;
   webOrigin: string;
   clock: () => Date;
   enabledIssuerInstitutionIds?: readonly string[];
@@ -384,6 +386,46 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!dependencies.mlInventory) throw new ApiFailure(503, "ML_INVENTORY_UNAVAILABLE", "Inventory evidence is unavailable.");
     try { return await readInventoryEvidence(dependencies.mlInventory, principal.institutionId, request.query.businessDate, dependencies.clock()); }
     catch { throw new ApiFailure(503, "ML_INVENTORY_UNAVAILABLE", "Inventory evidence is unavailable."); }
+  });
+
+  // TP-JOP-D07: read-only decision support. Results explain; they never approve, reserve or dispatch.
+  const coordinationReader = (): CoordinationReader => {
+    if (!dependencies.coordination) throw new ApiFailure(503, "COORDINATION_UNAVAILABLE", "Decision-support views are unavailable.");
+    return dependencies.coordination;
+  };
+  const coordinationSeries = (query: Record<string, unknown>, allowed: readonly string[]) => {
+    if (Object.keys(query).some((key) => !allowed.includes(key)) ||
+        !(COORDINATION_BLOOD_TYPES as readonly unknown[]).includes(query.bloodType) ||
+        !(COORDINATION_COMPONENT_TYPES as readonly unknown[]).includes(query.componentType)) throw new ApiFailure(400, "V2_INPUT_INVALID", "A supported bloodType and componentType are required.");
+    return { bloodType: query.bloodType as (typeof COORDINATION_BLOOD_TYPES)[number], componentType: query.componentType as (typeof COORDINATION_COMPONENT_TYPES)[number] };
+  };
+  const coordinationRead = async <T>(read: () => Promise<T>): Promise<T> => {
+    try { return await read(); }
+    catch (error) { if (error instanceof ApiFailure) throw error; throw new ApiFailure(503, "COORDINATION_UNAVAILABLE", "Decision-support views are unavailable."); }
+  };
+
+  app.get<{ Querystring: { businessDate?: string } }>("/api/v2/analytics/source-surplus", async (request) => {
+    const { principal } = await restore(request);
+    authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-03"]);
+    if (Object.keys(request.query).some(key => key !== "businessDate") || !validEvidenceDate(request.query.businessDate)) throw new ApiFailure(400, "INVALID_BUSINESS_DATE", "Only a valid businessDate is accepted.");
+    const reader = coordinationReader(), businessDate = request.query.businessDate;
+    return coordinationRead(() => surplusView(reader, principal.institutionId, businessDate, dependencies.clock()));
+  });
+
+  app.get<{ Querystring: Record<string, string | undefined> }>("/api/v2/coordination/priority", async (request) => {
+    const { principal } = await restore(request);
+    authorized(principal, ["ROLE-01", "ROLE-02"]);
+    const series = coordinationSeries(request.query, ["bloodType", "componentType"]), reader = coordinationReader();
+    return coordinationRead(() => priorityView(reader, principal.institutionId, series.bloodType, series.componentType, dependencies.clock()));
+  });
+
+  app.get<{ Querystring: Record<string, string | undefined> }>("/api/v2/coordination/redistribution", async (request) => {
+    const { principal } = await restore(request);
+    authorized(principal, ["ROLE-01", "ROLE-02"]);
+    const series = coordinationSeries(request.query, ["bloodType", "componentType", "requiredQuantity"]), reader = coordinationReader();
+    const requiredQuantity = Number(request.query.requiredQuantity);
+    if (!/^[1-9][0-9]{0,2}$/.test(request.query.requiredQuantity ?? "") || !Number.isSafeInteger(requiredQuantity)) throw new ApiFailure(400, "V2_INPUT_INVALID", "requiredQuantity must be a whole number from 1 to 999.");
+    return coordinationRead(() => redistributionView(reader, principal.institutionId, series.bloodType, series.componentType, requiredQuantity, dependencies.clock()));
   });
 
   app.post("/api/v2/reports/doh-census/catch-up", async (request, reply) => {

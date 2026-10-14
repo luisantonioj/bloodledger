@@ -2825,6 +2825,187 @@
           }
         }
       }
+    },
+    "/analytics/source-surplus": {
+      "get": {
+        "operationId": "readSourceSurplus",
+        "description": "Official cookie roles 01-03; authenticated institution only. Today's V5 source surplus per series from today's committed census and today's V5 preview forecast. UNAVAILABLE with a reason when either input is not current. SIMULATION_ONLY decision support.",
+        "parameters": [
+          {
+            "name": "businessDate",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Synthetic source surplus explanation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceSurplusView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query"
+          },
+          "401": {
+            "description": "Official cookie session required"
+          },
+          "403": {
+            "description": "Role forbidden"
+          },
+          "503": {
+            "description": "Decision-support views unavailable"
+          }
+        }
+      }
+    },
+    "/coordination/priority": {
+      "get": {
+        "operationId": "readRequestPriority",
+        "description": "Roles 01-02; ranks the authenticated supplier's PENDING requests for one series with RPS. SIMULATION_ONLY decision support; no approval follows.",
+        "parameters": [
+          {
+            "name": "bloodType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "A_POSITIVE",
+                "A_NEGATIVE",
+                "B_POSITIVE",
+                "B_NEGATIVE",
+                "AB_POSITIVE",
+                "AB_NEGATIVE",
+                "O_POSITIVE",
+                "O_NEGATIVE"
+              ]
+            }
+          },
+          {
+            "name": "componentType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WHOLE_BLOOD",
+                "PACKED_RED_BLOOD_CELLS",
+                "FRESH_FROZEN_PLASMA",
+                "PLATELETS",
+                "CRYOPRECIPITATE"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Synthetic RPS explanation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpsPriorityView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query"
+          },
+          "401": {
+            "description": "Official cookie session required"
+          },
+          "403": {
+            "description": "Role forbidden"
+          },
+          "503": {
+            "description": "Decision-support views unavailable"
+          }
+        }
+      }
+    },
+    "/coordination/redistribution": {
+      "get": {
+        "operationId": "readRedistribution",
+        "description": "Roles 01-02; BROA ranking of destinations for the authenticated institution's surplus in one series. SIMULATION_ONLY decision support; automaticApproval is always false.",
+        "parameters": [
+          {
+            "name": "bloodType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "A_POSITIVE",
+                "A_NEGATIVE",
+                "B_POSITIVE",
+                "B_NEGATIVE",
+                "AB_POSITIVE",
+                "AB_NEGATIVE",
+                "O_POSITIVE",
+                "O_NEGATIVE"
+              ]
+            }
+          },
+          {
+            "name": "componentType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "WHOLE_BLOOD",
+                "PACKED_RED_BLOOD_CELLS",
+                "FRESH_FROZEN_PLASMA",
+                "PLATELETS",
+                "CRYOPRECIPITATE"
+              ]
+            }
+          },
+          {
+            "name": "requiredQuantity",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 999
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Synthetic BROA explanation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BroaRedistributionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query"
+          },
+          "401": {
+            "description": "Official cookie session required"
+          },
+          "403": {
+            "description": "Role forbidden"
+          },
+          "503": {
+            "description": "Decision-support views unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4654,6 +4835,552 @@
           }
         },
         "additionalProperties": false
+      },
+      "SourceSurplusView": {
+        "type": "object",
+        "description": "TP-JOP-D07 read-only V5 source surplus per series: floor(forecast-eligible available stock - V5 point forecast - safety allowance - minimum reserve), never below zero. Explanation only.",
+        "required": [
+          "schemaVersion",
+          "institutionId",
+          "businessDate",
+          "status",
+          "unavailableReason",
+          "census",
+          "forecast",
+          "reserve",
+          "series",
+          "policyVersion",
+          "classification",
+          "recommendationEligibility"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "enum": [
+              "SOURCE_SURPLUS_VIEW_V1"
+            ]
+          },
+          "institutionId": {
+            "type": "string"
+          },
+          "businessDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "CURRENT",
+              "UNAVAILABLE"
+            ]
+          },
+          "unavailableReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "census": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "snapshotId": {
+                "type": "string"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "forecast": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "runId": {
+                "type": "string"
+              },
+              "datasetVersion": {
+                "type": "string",
+                "enum": [
+                  "SYNTHETIC_FORECAST_V5_RUNTIME_V1"
+                ]
+              },
+              "originDate": {
+                "type": "string"
+              },
+              "horizonDate": {
+                "type": "string"
+              },
+              "generatedAt": {
+                "type": "string"
+              }
+            }
+          },
+          "reserve": {
+            "type": "object",
+            "properties": {
+              "safetyAllowance": {
+                "type": "number"
+              },
+              "minimumReserve": {
+                "type": "number"
+              },
+              "rounding": {
+                "type": "string"
+              }
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "bloodType": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "componentType": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "availableCount": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "forecastDemand": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "surplusQuantity": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "forecastId": {
+                  "type": "string"
+                },
+                "evidenceId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "AVAILABLE",
+                    "UNAVAILABLE"
+                  ]
+                },
+                "unavailableReason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "policyVersion": {
+            "type": "string"
+          },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "SIMULATION_ONLY"
+            ]
+          },
+          "recommendationEligibility": {
+            "type": "string",
+            "enum": [
+              "DISABLED_UNAPPROVED_POLICY"
+            ]
+          }
+        }
+      },
+      "RpsPriorityView": {
+        "type": "object",
+        "description": "TP-JOP-D07 read-only RPS ranking of this supplier's PENDING requests for one series (INTERVIEW_DERIVED_OPTIMIZATION_V2). Explanation only; it never approves or reserves.",
+        "required": [
+          "schemaVersion",
+          "status",
+          "policyVersion",
+          "weights",
+          "evaluationTime",
+          "runId",
+          "ranked",
+          "classification",
+          "recommendationEligibility"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "enum": [
+              "RPS_PRIORITY_VIEW_V1"
+            ]
+          },
+          "institutionId": {
+            "type": "string"
+          },
+          "bloodType": {
+            "type": "string",
+            "enum": [
+              "A_POSITIVE",
+              "A_NEGATIVE",
+              "B_POSITIVE",
+              "B_NEGATIVE",
+              "AB_POSITIVE",
+              "AB_NEGATIVE",
+              "O_POSITIVE",
+              "O_NEGATIVE"
+            ]
+          },
+          "componentType": {
+            "type": "string",
+            "enum": [
+              "WHOLE_BLOOD",
+              "PACKED_RED_BLOOD_CELLS",
+              "FRESH_FROZEN_PLASMA",
+              "PLATELETS",
+              "CRYOPRECIPITATE"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "EMPTY",
+              "UNAVAILABLE"
+            ]
+          },
+          "unavailableReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "policyVersion": {
+            "type": "string"
+          },
+          "weights": {
+            "type": "object",
+            "properties": {
+              "urgency": {
+                "type": "number"
+              },
+              "wait": {
+                "type": "number"
+              },
+              "waitCapHours": {
+                "type": "number"
+              }
+            }
+          },
+          "evaluationTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "runId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "inputSha256": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ranked": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rank": {
+                  "type": "integer"
+                },
+                "transferId": {
+                  "type": "string"
+                },
+                "destinationInstitutionId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "quantity": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "urgency": {
+                  "type": "string",
+                  "enum": [
+                    "ROUTINE",
+                    "URGENT",
+                    "CRITICAL"
+                  ]
+                },
+                "requestTime": {
+                  "type": "string"
+                },
+                "waitHours": {
+                  "type": "number"
+                },
+                "urgencyContribution": {
+                  "type": "number"
+                },
+                "waitContribution": {
+                  "type": "number"
+                },
+                "score": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "SIMULATION_ONLY"
+            ]
+          },
+          "recommendationEligibility": {
+            "type": "string",
+            "enum": [
+              "DISABLED_UNAPPROVED_POLICY"
+            ]
+          }
+        }
+      },
+      "BroaRedistributionView": {
+        "type": "object",
+        "description": "TP-JOP-D07 read-only BROA ranking for one series, gated by today's V5 source surplus. Candidates follow SYNTHETIC_BROA_CANDIDATES_V1 (pending needs for the series; synthetic distances). automaticApproval is always false.",
+        "required": [
+          "schemaVersion",
+          "status",
+          "unavailableReason",
+          "gate",
+          "policyVersion",
+          "weights",
+          "candidateAssumption",
+          "evaluationTime",
+          "runId",
+          "ranked",
+          "excluded",
+          "automaticApproval",
+          "contextUsedForScoring",
+          "classification",
+          "recommendationEligibility"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "enum": [
+              "BROA_REDISTRIBUTION_VIEW_V1"
+            ]
+          },
+          "institutionId": {
+            "type": "string"
+          },
+          "bloodType": {
+            "type": "string",
+            "enum": [
+              "A_POSITIVE",
+              "A_NEGATIVE",
+              "B_POSITIVE",
+              "B_NEGATIVE",
+              "AB_POSITIVE",
+              "AB_NEGATIVE",
+              "O_POSITIVE",
+              "O_NEGATIVE"
+            ]
+          },
+          "componentType": {
+            "type": "string",
+            "enum": [
+              "WHOLE_BLOOD",
+              "PACKED_RED_BLOOD_CELLS",
+              "FRESH_FROZEN_PLASMA",
+              "PLATELETS",
+              "CRYOPRECIPITATE"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "UNAVAILABLE"
+            ]
+          },
+          "unavailableReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gate": {
+            "type": "object",
+            "properties": {
+              "eligible": {
+                "type": "boolean"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "surplusQuantity": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "requiredQuantity": {
+                "type": "integer"
+              }
+            }
+          },
+          "policyVersion": {
+            "type": "string"
+          },
+          "weights": {
+            "type": "object",
+            "properties": {
+              "urgency": {
+                "type": "number"
+              },
+              "stockShortage": {
+                "type": "number"
+              },
+              "distancePenalty": {
+                "type": "number"
+              }
+            }
+          },
+          "candidateAssumption": {
+            "type": "string",
+            "enum": [
+              "SYNTHETIC_BROA_CANDIDATES_V1"
+            ]
+          },
+          "evaluationTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "runId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ranked": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rank": {
+                  "type": "integer"
+                },
+                "destinationInstitutionId": {
+                  "type": "string"
+                },
+                "urgency": {
+                  "type": "number"
+                },
+                "stockShortage": {
+                  "type": "number"
+                },
+                "distanceKm": {
+                  "type": "number"
+                },
+                "normalized": {
+                  "type": "object",
+                  "properties": {
+                    "urgency": {
+                      "type": "number"
+                    },
+                    "stockShortage": {
+                      "type": "number"
+                    },
+                    "distancePenalty": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "contributions": {
+                  "type": "object",
+                  "properties": {
+                    "urgency": {
+                      "type": "number"
+                    },
+                    "stockShortage": {
+                      "type": "number"
+                    },
+                    "distancePenalty": {
+                      "type": "number"
+                    }
+                  }
+                },
+                "score": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "excluded": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "destinationInstitutionId": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "automaticApproval": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "contextUsedForScoring": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "SIMULATION_ONLY"
+            ]
+          },
+          "recommendationEligibility": {
+            "type": "string",
+            "enum": [
+              "DISABLED_UNAPPROVED_POLICY"
+            ]
+          }
+        }
       }
     },
     "responses": {

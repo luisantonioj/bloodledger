@@ -1,0 +1,36 @@
+{
+  "version": "SYNTHETIC_BROA_CANDIDATES_V1",
+  "classification": "SIMULATION_ONLY",
+  "recommendationEligibility": "DISABLED_UNAPPROVED_POLICY",
+  "candidateSource": "PENDING_V2_TRANSFER_REQUESTS_FOR_THE_SAME_SERIES",
+  "urgencyScale": {
+    "ROUTINE": 1,
+    "URGENT": 2,
+    "CRITICAL": 3
+  },
+  "urgencyAggregation": "MAXIMUM_PENDING_URGENCY_PER_DESTINATION",
+  "stockShortage": "SUM_OF_PENDING_REQUESTED_QUANTITY_PER_DESTINATION",
+  "distanceNote": "Invented synthetic road distances for the four operational accounts; not measured locations",
+  "distancesKm": {
+    "INST_MEDIATRIX": {
+      "INST_SYNTH_MEDIX": 4.0,
+      "INST_SYNTH_NLVILLA": 2.5,
+      "INST_SYNTH_METROLIPA": 3.2
+    },
+    "INST_SYNTH_MEDIX": {
+      "INST_MEDIATRIX": 4.0,
+      "INST_SYNTH_NLVILLA": 3.6,
+      "INST_SYNTH_METROLIPA": 5.1
+    },
+    "INST_SYNTH_NLVILLA": {
+      "INST_MEDIATRIX": 2.5,
+      "INST_SYNTH_MEDIX": 3.6,
+      "INST_SYNTH_METROLIPA": 4.4
+    },
+    "INST_SYNTH_METROLIPA": {
+      "INST_MEDIATRIX": 3.2,
+      "INST_SYNTH_MEDIX": 5.1,
+      "INST_SYNTH_NLVILLA": 4.4
+    }
+  }
+}
