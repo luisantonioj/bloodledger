@@ -18,6 +18,7 @@ export const navigation: NavigationItem[] = [
   { href: "/transfers", label: "Requests & Transfers", permission: "transfers:read" },
   { href: "/alerts", label: "Alerts", permission: "alerts:read" },
   { href: "/audit", label: "Activity History", when: p => can(p,"audit:read") || (p.accountCategory === "REQUESTOR" || !p.accountCategory && p.roleId === "ROLE-03") && can(p,"transfers:read") },
+  { href: "/redistribution", label: "Redistribution", when: p => ["ROLE-01","ROLE-02"].includes(p.roleId) },
   { href: "/analytics", label: "Analytics", when: canViewAnalyticsPage },
   { href: "/consortium", label: "Network view", permission: "consortium:read", when: p => p.accountCategory !== "PRC" },
   { href: "/reporting", label: "Reports", when: p => p.accountCategory === "BLOOD_BANK" || can(p, "reports:read") },

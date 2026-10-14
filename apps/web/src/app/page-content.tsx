@@ -15,6 +15,7 @@ const pages: Record<string, [string, string, string]> = {
   "/consortium": ["Approved aggregate", "Network view", "Read-only synthetic city-wide summaries without fabricated peer ownership."],
   "/audit": ["Safe provenance", "Activity History", "Permission-scoped events with redacted evidence identifiers."],
   "/reporting": ["Simulation evidence", "Reports", "Approved read-only synthetic summaries and exports."],
+  "/redistribution": ["Simulation decision support", "Redistribution", "Read-only source surplus and BROA explanation; recommendation disabled."],
   "/analytics": ["Simulation decision support", "Analytics", "Active V4 and explicit V5 simulation demand forecasts with explicit freshness, uncertainty, provenance, and disabled operational recommendations."],
   "/accounts": ["Account management", "Staff Accounts", "Manage authorized institution operators and access."],
   "/profile": ["Session context", "Profile", "Safe principal and institution metadata assigned by the server."],

@@ -632,3 +632,15 @@
 .session-profile>span:last-child{flex:1}
 
 .inventory-overview-legend{padding-right:12px}
+
+.coordination-workspace {display:grid;gap:20px}
+.coordination-forecast-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+.coordination-panel {min-width:0;padding:20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md)}
+.coordination-panel>header {display:flex;align-items:center;justify-content:space-between;gap:12px}
+.coordination-notice {color:var(--ink-secondary);font-size:12px}
+.coordination-controls {display:flex;gap:16px;flex-wrap:wrap;margin:16px 0}
+.coordination-controls label {display:grid;gap:6px}
+.coordination-destination {padding:16px 0;border-bottom:1px solid var(--line)}
+.coordination-factor {display:grid;gap:6px;margin:10px 0}
+.coordination-factor meter {width:100%;height:12px}
+@media(max-width:1000px){.coordination-forecast-grid{grid-template-columns:1fr}}
