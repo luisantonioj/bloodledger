@@ -16,6 +16,15 @@ import { fileDigest, resolveScenarioReview, validateReviewedScenarioBytes, valid
 
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const fieldEqual = (a,b) => requireStock(canonical(a) === canonical(b), 'STOCK_EVIDENCE_MISMATCH');
+// TP-JOP-D16: since J4 the API adds a read-time expiryState that projections never store.
+// Require it to agree with the ledger status, then compare only the stored fields.
+export function storedComponent({ expiryState, ...component }) {
+  const allowed = component.inventoryStatus === 'EXPIRED' ? ['EXPIRED']
+    : ['AVAILABLE','RESERVED'].includes(component.inventoryStatus) ? ['CURRENT','LABEL_EXPIRED_PENDING_EVALUATION']
+    : ['CURRENT','LABEL_EXPIRED_NOT_IN_INVENTORY'];
+  requireStock(allowed.includes(expiryState), 'STOCK_EVIDENCE_MISMATCH');
+  return component;
+}
 // The runtime role is not granted access to migrator-owned metadata.
 export async function inspectMigrationEvidence(pool) {
   const {rows:[access]} = await pool.query("SELECT CASE WHEN has_schema_privilege(current_user, 'public', 'USAGE') THEN has_table_privilege(current_user, 'public.pgmigrations', 'SELECT') ELSE false END AS permitted");
@@ -75,7 +84,7 @@ async function bindRuntime(runtime, config, execution, review) {
 async function baselineComponents(runtime) {
   const reader = new PostgresV2ProjectionReader(runtime.pool);
   const rows = await reader.listComponents('INST_MEDIATRIX','ROLE-02');
-  fieldEqual((await runtime.client.read('coordinator','/api/v2/components')).components, rows);
+  fieldEqual((await runtime.client.read('coordinator','/api/v2/components')).components.map(storedComponent), rows);
   requireStock(rows.length === 9, 'STOCK_REVIEWED_NINE_COMPONENT_BASELINE_REQUIRED');
   const counts = countStates(rows);
   fieldEqual(counts, { AVAILABLE:6, RESERVED:1, IN_TRANSIT:1, EXPIRED:1, total:9 });
@@ -137,10 +146,11 @@ async function requireQuiescent(pool, own = []) {
   const result = await pool.query("SELECT command_id FROM app.v2_commands WHERE status<>'COMMITTED' AND NOT(command_id=ANY($1::text[]))",[own]);
   requireStock(result.rows.length === 0,'STOCK_UNRELATED_PENDING_COMMANDS');
 }
-async function validateBackup(options, execution) {
+// TP-JOP-D17: confirm, apply and resume validate the backup; PR31 moved hashing to fileDigest.
+export async function validateBackup(options, execution) {
   requireStock(options.backup && /^[a-f0-9]{64}$/.test(process.env.DEVELOPMENT_VALIDATED_BACKUP_SHA256 ?? ''), 'STOCK_VALIDATED_BACKUP_REQUIRED');
   const bytes = await readFile(options.backup);
-  const hash = createHash('sha256').update(bytes).digest('hex');
+  const hash = fileDigest(bytes);
   requireStock(bytes.subarray(0,5).toString() === 'PGDMP' && hash === process.env.DEVELOPMENT_VALIDATED_BACKUP_SHA256 && hash === options['approve-backup'], 'STOCK_BACKUP_APPROVAL_MISMATCH');
   if(execution) requireStock(hash === execution.backupSha256,'STOCK_BACKUP_EXECUTION_MISMATCH');
   requireStock(execution?.target?.instanceId === process.env.DEVELOPMENT_VALIDATED_BACKUP_INSTANCE_ID,'STOCK_BACKUP_TARGET_MISMATCH');
@@ -206,7 +216,7 @@ async function processOperation(runtime, execution, operation, action, options, 
 
 async function reconcile(runtime,execution,receipts) {
   await verifyOriginalReceipts(runtime);
-  const rows = (await runtime.client.read('coordinator','/api/v2/components')).components;
+  const rows = (await runtime.client.read('coordinator','/api/v2/components')).components.map(storedComponent);
   const reader = new PostgresV2ProjectionReader(runtime.pool);
   fieldEqual(rows,await reader.listComponents('INST_MEDIATRIX','ROLE-02'));
   const added = rows.filter(row=>execution.labels.some(label=>label.componentId === row.componentId));
@@ -217,7 +227,7 @@ async function reconcile(runtime,execution,receipts) {
     await compareCurrent(runtime,row);
     const label = execution.labels.find(label=>label.componentId === row.componentId);
     if(label) for(const key of ['donationId','issuerInstitutionId','componentType','bloodType','collectedAt','expiresAt']) fieldEqual(row[key],label[key]);
-    fieldEqual(await runtime.client.read('coordinator',`/api/v2/components/${row.componentId}`),row);
+    fieldEqual(storedComponent(await runtime.client.read('coordinator',`/api/v2/components/${row.componentId}`)),row);
   }
   const transfers = await runtime.client.read('recipient','/api/v2/transfers');
   const reservations = [];
@@ -265,11 +275,15 @@ export async function reconcileStockCensus(runtime,execution,existing,observedAt
   if(census) {
     verifyCapturedCensus(execution.scenario,census);
     verifyOperationalCensus(census,(await runtime.client.read('coordinator','/api/v2/components')).components);
-    const businessDate = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date(execution.scenario.t0));
+    const manilaDate = value => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Manila'}).format(new Date(value));
+    const businessDate = manilaDate(execution.scenario.t0);
     const evidence = await runtime.client.read('coordinator',`/api/v2/analytics/inventory-evidence?businessDate=${businessDate}`);
     requireStock(evidence.snapshot?.snapshotId === census.snapshotId && evidence.snapshot.persistedSeries === 40 && ['CURRENT','STALE'].includes(evidence.status),'STOCK_CENSUS_API_MISMATCH');
     for(const key of ['capturedAt','scheduledFor','sourceProjectionDigest','groups']) fieldEqual(evidence.snapshot[key],census[key]);
-    requireStock(!inWindow || evidence.status === 'CURRENT','STOCK_CENSUS_API_MISMATCH');
+    // TP-JOP-D18: the API reports CURRENT only while the capture and evaluation dates equal the
+    // business date, so a verification window that crosses Manila midnight expects STALE afterwards.
+    const evaluationDate = evidence.evaluationDate ?? manilaDate(observedAt);
+    requireStock(evidence.status === (evaluationDate === businessDate && manilaDate(census.capturedAt) === businessDate ? 'CURRENT' : 'STALE'),'STOCK_CENSUS_API_MISMATCH');
     censusApiStatus = evidence.status;
   }
   return {census,censusApiStatus,inWindow};
