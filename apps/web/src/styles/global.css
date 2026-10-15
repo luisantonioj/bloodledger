@@ -758,3 +758,33 @@
 .redistribution-details-toggle { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-muted); font-size: 11px; font-weight: 400; }
 .redistribution-details-toggle svg { transition: transform .15s ease; }
 .redistribution-details[open] .redistribution-details-toggle svg { transform: rotate(180deg); }
+
+.redistribution-ranking-body { display: grid; gap: 22px; padding: 16px 14px; }
+.redistribution-ranking-section { display: grid; gap: 12px; min-width: 0; }
+.redistribution-ranking-section > h3 { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+.redistribution-ranking-candidate { padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); min-width: 0; }
+.redistribution-ranking-candidate > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.redistribution-ranking-name { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.redistribution-ranking-name h4 { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.redistribution-ranking-position { color: var(--ink-muted); font-size: 12px; }
+.redistribution-ranking-score { display: grid; gap: 3px; text-align: right; flex-shrink: 0; }
+.redistribution-ranking-score > span { font-size: 10px; color: var(--ink-muted); }
+.redistribution-ranking-score > strong { font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.redistribution-ranking-metrics { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin: 0; }
+.redistribution-ranking-metrics dt, .redistribution-ranking-provenance dt { font-size: 11px; font-weight: 400; color: var(--ink-muted); }
+.redistribution-ranking-metrics dd { margin: 5px 0 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+.redistribution-factor-breakdown { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line-subtle); }
+.redistribution-factor-breakdown h5, .redistribution-ranking-subheading { margin: 0; font-size: 11px; font-weight: 600; color: var(--ink-secondary); }
+.redistribution-factor-breakdown table { margin-top: 8px; width: 100%; table-layout: fixed; font-size: 11px; }
+.redistribution-factor-breakdown th, .redistribution-factor-breakdown td { padding: 7px 5px; overflow-wrap: anywhere; }
+.redistribution-factor-breakdown thead th { font-size: 10px; letter-spacing: 0; text-transform: none; font-weight: 500; }
+.redistribution-factor-breakdown tbody th { background: transparent; font-size: 11px; letter-spacing: 0; text-transform: none; font-weight: 400; color: var(--ink-secondary); }
+.redistribution-factor-breakdown th:not(:first-child), .redistribution-factor-breakdown td { text-align: right; font-variant-numeric: tabular-nums; }
+.redistribution-ranking-provenance { margin: 0; display: grid; gap: 12px; }
+.redistribution-ranking-provenance dd { margin: 4px 0 0; color: var(--ink-secondary); font-size: 12px; overflow-wrap: anywhere; }
+.redistribution-ranking-weights dd { font-size: 12px; font-weight: 500; }
+.redistribution-ranking-note { margin: 0; font-size: 11px; color: var(--ink-muted); }
+.redistribution-ranking-exclusions { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.redistribution-ranking-exclusions li { display: grid; gap: 4px; overflow-wrap: anywhere; }
+.redistribution-ranking-exclusions strong { font-size: 12px; color: var(--ink-secondary); font-weight: 500; }
+.redistribution-ranking-exclusions span { font-size: 11px; color: var(--ink-muted); }

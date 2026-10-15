@@ -47,8 +47,8 @@ test("Dashboard replaces supplier Requests and sidebar with compact BROA ranking
  await expect(page.getByRole("navigation").getByRole("link",{name:"Redistribution",exact:true})).toHaveCount(0);
  await expect(panel.locator(".redistribution-disclaimer,.redistribution-auto-status")).toHaveCount(0);
  await panel.getByText("Ranking details",{exact:true}).click();await expect(panel.locator(".redistribution-details")).toHaveAttribute("open","");
- await expect(panel.getByText(/Normalized: urgency/)).toBeVisible();
- await expect(panel.getByText("INST_SYNTH_NO_DISTANCE: DISTANCE UNAVAILABLE",{exact:true})).toBeVisible();
+ await expect(panel.getByRole("heading",{name:"Destination ranking",exact:true})).toBeVisible();await expect(panel.getByRole("columnheader",{name:"Normalized",exact:true})).toBeVisible();
+ await expect(panel.getByRole("heading",{name:"Excluded hospitals",exact:true})).toBeVisible();await expect(panel.getByText("DISTANCE UNAVAILABLE",{exact:true})).toBeVisible();
  expect(requests.some(value=>value==="GET /api/v2/transfers")).toBe(false);
  expect(requests.every(value=>value.startsWith("GET "))).toBe(true);
  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
