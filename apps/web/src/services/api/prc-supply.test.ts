@@ -34,3 +34,5 @@ describe("PRC unconfirmed attempt preservation",()=>{
  for(const [status,code] of [[400,"PRC_SUPPLY_REQUIRED_BY_OUT_OF_WINDOW"],[409,"PRC_SUPPLY_IDEMPOTENCY_CONFLICT"],[403,"PRC_SUPPLY_NOT_AUTHORIZED"]] as const)it(`preserves an earlier unconfirmed attempt after ${code}`,()=>{const error=new ApiRequestError(status,"Rejected",code);expect(prcDefiniteRejection(error,true)).toBe(false);expect(prcDefiniteRejection(error,false)).toBe(true);});
  it("never discards a context rejection or transport failure",()=>{expect(prcDefiniteRejection(new ApiRequestError(401,"Changed","AUTH_CONTEXT_CHANGED"),false)).toBe(false);expect(prcDefiniteRejection(new Error("Network failure"),false)).toBe(false);});
 });
+
+it("PR #61: preserves PRC/history milliseconds and opaque cursor without rounding",()=>{const stamp="2026-10-15T00:00:00.722Z";const row={...prcFixture,submittedAt:stamp};const page=parsePrcSupplyList(prcPage([row],"PRCS_MS_722"),bank);expect(page.rows[0].submittedAt).toBe(stamp);expect(page.nextCursor).toBe("PRCS_MS_722");const detail=parsePrcSupplyDetail({...row,history:[{...prcHistory,recordedAt:stamp}]},bank);expect(detail.history[0].recordedAt).toBe(stamp);});

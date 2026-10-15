@@ -3,7 +3,22 @@
 Date: 2026-10-15. Classification: **SIMULATION_ONLY**.
 Owner: Jopia (backend); reporter: Lat (frontend). Policy: PA-DEF-06 / ADR-044.
 
-## Finding
+## Resolution — merged PR #61
+
+**Fixed** in [PR #61](https://github.com/luisantonioj/bloodledger/pull/61),
+merge `4bdf8b0`. Lat reviewed merged source: `parseSubmission` validates body
+shape; `audited` checks the actor/key replay before `assertRequiredByWindow`
+is called inside the new-write callback. Changed-body conflict remains intact.
+Jopia reports 61 backend probe assertions and 4/4 runs; those results are
+Jopia-host evidence, not an additional Lat backend probe run.
+
+The UI keeps its conservative frozen-attempt behavior. Its synthetic browser
+retry now advances the clock 61 minutes, proves the original deadline is within
+one hour, and confirms the replay result using identical operator/key/body.
+No live PRC action is authorized or executed. The original finding below is
+retained as history; it no longer blocks PR #60 readiness.
+
+## Original finding (before PR #61)
 
 On merged backend baseline `797377e`, `PostgresPrcSupply.submit` in
 `services/api/src/prc-supply.ts:176` calls `validateSubmission(value, now)`

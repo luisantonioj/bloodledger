@@ -98,12 +98,35 @@ npm exec --workspace @bloodledger/web -- playwright test blood-bank-pages.spec.t
 
 - `git diff --check` and `npm run scan:secrets`: passed before publication.
 
-## Backend follow-up and remaining evidence
+## PR #61 follow-up and remaining evidence
 
-[Delayed submission replay handoff](../../handoffs/LAT-TO-JOPIA-PRC-DELAYED-REPLAY-2026-10-15.md):
-backend deadline validation precedes replay lookup. The UI preserves uncertain
-attempts but cannot restore server replay behavior after the deadline window.
-This is a source-reviewed finding with synthetic client coverage, not a live
-mutation reproduction. Backend is unchanged. Jopia should review before merge.
-Populated live reads and all live actions remain unvalidated; actions require
-Jopia's explicit go-ahead. No external PRC integration is claimed.
+Rebased PR #60 onto merged main `f26001d` (includes PRs #61, #58 and #59).
+[Delayed replay finding](../../handoffs/LAT-TO-JOPIA-PRC-DELAYED-REPLAY-2026-10-15.md)
+is **resolved by PR #61**, merge `4bdf8b0`. Source review confirms body parsing
+precedes replay lookup, while the moving deadline check only runs for a new
+write. Same-key changed-body conflict remains. No frontend retry policy changed.
+
+The synthetic lost-response browser case advances the clock 61 minutes and
+confirms that explicit retry inside the one-hour boundary returns the stored
+result with identical operator, body, correlation and idempotency key. Cancelled
+verification still preserves the earlier attempt. A hypothetical late rejection
+also remains covered defensively. Browser mutations stay intercepted fixtures.
+
+PR #61 also preserves real timestamp milliseconds and cursor precision. Added
+parser coverage accepts `.722Z` unchanged in PRC/history, unit history, transfer
+summaries and activity; frontend never decodes or regenerates server cursors.
+Jopia's reported backend probe (61 assertions, 4/4 runs) is attributed to Jopia;
+Lat did not repeat it against retained data.
+
+Follow-up checks on the rebased tree:
+
+- `npm run check:web`: passed (existing bundle-size advisory).
+- `npm run test:web`: **350 passed**, 42 files, including design-token checks.
+- The same eight-spec affected browser selection above: **82 passed**, one worker.
+- The two bank-tab/form cases above: **2 passed**. Total **84 browser cases**.
+- `git diff --check` and `npm run scan:secrets`: passed before publishing.
+
+Original live-read and migration evidence above predates the #61 rebase. No
+retained API deployment or live PRC mutation is part of this follow-up.
+Populated live reads and all live actions remain unvalidated; live actions
+require Jopia's explicit go-ahead. No external PRC integration is claimed.
