@@ -1,5 +1,16 @@
 # Table layout recovery — 2026-10-15
 
+## Current disposition
+
+Table layouts are merged in PR #58; PRC UI/replay fixes are merged in #60/#61.
+The remaining approved Analytics design is preserved on the normal review branch
+`codex/lat-analytics-product-comparison`, stacked on the handoff/test cleanup
+PR #62. The old `codex/lat-prc-with-table-layouts` preview is being retired only
+after the normal design PR is published. Source comparisons to `c00e789` confirm
+all Analytics/chart, coordination and style files are preserved exactly. The
+sections below record the earlier recovery and preview evidence.
+
+
 Classification: SIMULATION_ONLY. Owner/validator: Lat.
 
 The saved table refinements were preserved in `codex/lat-layout-followups-20261015`
@@ -25,9 +36,10 @@ Validation on the combined tree:
   Zero live domain POSTs.
 - `git diff --check`: passed.
 
-The preview remains at http://127.0.0.1:5174/ on the combined branch. Switching
-branches changes what the development server displays; use this branch while
-both review PRs are pending to keep both sets of frontend work visible.
+Historical preview URL: http://127.0.0.1:5174/. Switching branches changes what
+the development server displays. The current working preview uses the normal
+Analytics review branch above, which includes the merged table/PRC work and
+PR #62’s test/docs follow-up.
 
 ## PR #61 follow-up — preserved preview
 
