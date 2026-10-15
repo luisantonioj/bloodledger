@@ -3086,7 +3086,7 @@
     "/activity-history": {
       "get": {
         "operationId": "listActivityHistory",
-        "description": "ACTIVITY_HISTORY_READ_V1 institution audit trail. ROLE-02 only (the assigned audit-reader role), for events its own institution recorded; other roles receive 403. Regulators keep the existing aggregate /audit read, which carries no actor or label detail, and requesters keep their /transfers timeline. Events are all V2 commands acted by the institution plus its off-chain alert acknowledgements; each appears once. Newest first by recordedAt then eventId (descending). limit counts events. Complete only when nextCursor is null. No server-side search: clients may filter loaded rows by activity, actor, references or correlationId and export loaded rows to the browser PDF. No payloads, PINs, credentials, labels or OCR text are returned.",
+        "description": "ACTIVITY_HISTORY_READ_V1 institution audit trail. ROLE-02 only (the assigned audit-reader role), for events its own institution recorded; other roles receive 403. Regulators keep the existing aggregate /audit read, which carries no actor or label detail, and requesters keep their /transfers timeline. Events are all V2 commands acted by the institution plus its off-chain alert acknowledgements; each appears once. Newest first by recordedAt then eventId (descending). limit counts events. Complete only when nextCursor is null. No server-side search: clients may filter loaded rows by activity, actor, references or correlationId and export loaded rows to the browser PDF. No payloads, PINs, credentials, labels or OCR text are returned. ADR-045: the optional contract query parameter negotiates the response. Absent or ACTIVITY_HISTORY_READ_V1 returns the unchanged V1 response, which never contains PRC events. ACTIVITY_HISTORY_READ_V2 additionally returns the institution's own PRC supply coordination events (same ROLE-02 access; no new grants). Any other or repeated value returns 400 ACTIVITY_CONTRACT_UNSUPPORTED; clients must check policyVersion before parsing.",
         "parameters": [
           {
             "$ref": "#/components/parameters/PageLimit"
@@ -3097,17 +3097,37 @@
             "required": false,
             "schema": {
               "type": "string",
-              "pattern": "^ACT_[A-Za-z0-9_-]{1,140}$"
+              "pattern": "^ACT2?_[A-Za-z0-9_-]{1,140}$"
+            }
+          },
+          {
+            "name": "contract",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVITY_HISTORY_READ_V1",
+                "ACTIVITY_HISTORY_READ_V2"
+              ],
+              "default": "ACTIVITY_HISTORY_READ_V1"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Institution activity history page",
+            "description": "Institution activity history page in the negotiated contract",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ActivityHistoryResponse"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/ActivityHistoryResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ActivityHistoryResponseV2"
+                    }
+                  ]
                 }
               }
             }
@@ -6959,6 +6979,341 @@
               "DUPLICATE_REQUEST",
               "DEADLINE_NOT_FEASIBLE"
             ]
+          }
+        }
+      },
+      "ActivityHistoryRowV2": {
+        "type": "object",
+        "description": "ACTIVITY_HISTORY_READ_V2 row (ADR-045). Every V1 field with the same meaning, plus actor.institutionId, links.prcSupplyRequestId and coordination. PRC_SUPPLY_COORDINATION rows are the requesting institution's audited PRC supply actions (including PRC's responses on its requests): off-chain (eventStatus OFF_CHAIN_RECORDED, processingStatus null, ledger NOT_APPLICABLE) with every non-PRC link null and componentIds empty. The eight Activity History columns are unchanged; a PRC row shows its PRC request link in the Activity cell or detail.",
+        "required": [
+          "eventId",
+          "eventSource",
+          "activityCode",
+          "targetType",
+          "eventTime",
+          "eventTimeSource",
+          "recordedAt",
+          "actor",
+          "links",
+          "eventStatus",
+          "processingStatus",
+          "safeErrorCode",
+          "correlationId",
+          "ledger",
+          "coordination"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "CMD_ command ID, or IDEM_ idempotency key for an off-chain acknowledgement. Stable row key."
+          },
+          "eventSource": {
+            "type": "string",
+            "enum": [
+              "COMMAND",
+              "OFF_CHAIN_ACKNOWLEDGEMENT",
+              "PRC_SUPPLY_COORDINATION"
+            ]
+          },
+          "activityCode": {
+            "type": "string",
+            "description": "V2 command operation (SUBMIT_TRANSFER, RESERVE_COMPONENTS, RESERVE_LOCAL_RELEASE, PREPARE_RESERVATION, DISPATCH_RESERVATION, START_RESERVATION_TRANSIT, RECEIVE_RESERVATION, REGISTER_INBOUND_COMPONENT, RECEIVE_INBOUND_COMPONENT, COMPLETE_LOCAL_RELEASE, CANCEL_RESERVATION, COMPROMISE_RESERVATION, PLACE_RECONCILIATION_HOLD, RESOLVE_RECONCILIATION_HOLD, EVALUATE_COMPONENT_EXPIRY, REGISTER_COMPONENT), or ALERT_ACKNOWLEDGED_OFF_CHAIN. Display labels belong to the client. V2 adds PRC_SUPPLY_SUBMIT, PRC_SUPPLY_CANCEL, PRC_SUPPLY_ACKNOWLEDGE, PRC_SUPPLY_FULFIL and PRC_SUPPLY_DECLINE for PRC_SUPPLY_COORDINATION rows."
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "eventTime": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "UTC. Command events: the business event time recorded on the command and submitted to the ledger. Acknowledgements: the server acknowledgement time. Null when a legacy command recorded none; never replaced by another time."
+          },
+          "eventTimeSource": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "COMMAND_EVENT_TIME",
+              "OFF_CHAIN_ACKNOWLEDGED_AT",
+              "PRC_COORDINATION_RECORDED_AT",
+              null
+            ],
+            "description": "PRC_COORDINATION_RECORDED_AT: the server time the PRC action was audited (milliseconds preserved)."
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC server time the event was durably recorded (command acceptance or acknowledgement). Used for ordering."
+          },
+          "actor": {
+            "type": "object",
+            "required": [
+              "kind",
+              "reference",
+              "displayName",
+              "currentRoleId",
+              "institutionId"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "VERIFIED_OPERATOR",
+                  "INSTITUTION_ACCOUNT",
+                  "USER_ACCOUNT",
+                  "UNKNOWN"
+                ],
+                "description": "VERIFIED_OPERATOR: an institution operator that passed operator verification for the command. INSTITUTION_ACCOUNT: the shared institution account. USER_ACCOUNT: an individual synthetic application account. UNKNOWN: the recorded actor has no account row. No SYSTEM actor writes these events."
+              },
+              "reference": {
+                "type": "string",
+                "description": "Opaque recorded actor ID (USR_...). Not an employee ID."
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Recorded application_users.display_name, which the database constrains to synthetic 'Synthetic ...' values. Null for UNKNOWN."
+              },
+              "currentRoleId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The actor's role at read time, not proof of the role held at the event."
+              },
+              "institutionId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Institution of the recorded actor. A PRC response on this institution's request shows INST_SYNTH_PRC."
+              }
+            }
+          },
+          "links": {
+            "type": "object",
+            "required": [
+              "scanId",
+              "transferId",
+              "reservationId",
+              "reservationPurpose",
+              "localReleaseId",
+              "componentIds",
+              "prcSupplyRequestId"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "scanId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Confirmed inbound OCR capture ID (INCAP_) for REGISTER_INBOUND_COMPONENT and RECEIVE_INBOUND_COMPONENT; null otherwise."
+              },
+              "transferId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Transfer request ID (TRF_; Request ID column) recorded on the command or linked through its reservation. Same wire meaning as transferId in /transfer-summaries and /unit-history."
+              },
+              "reservationId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Reservation the command references. Shown as Transfer ID only when reservationPurpose is TRANSFER."
+              },
+              "reservationPurpose": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "TRANSFER",
+                  "LOCAL_RELEASE",
+                  null
+                ]
+              },
+              "localReleaseId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "componentIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Units the event references: its componentId, its selectedComponentIds, or the committed reservation snapshot for reservation actions. Empty when none."
+              },
+              "prcSupplyRequestId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^PRCSR_[A-Z0-9]{40}$",
+                "description": "Set only on PRC_SUPPLY_COORDINATION rows; never a request, transfer, scan or ledger ID."
+              }
+            }
+          },
+          "eventStatus": {
+            "type": "string",
+            "enum": [
+              "CONFIRMED",
+              "LEDGER_COMMITTED_PROJECTION_PENDING",
+              "PENDING",
+              "FAILED",
+              "CONFLICT",
+              "OFF_CHAIN_RECORDED"
+            ],
+            "description": "CONFIRMED only for COMMITTED commands. OFF_CHAIN_RECORDED for acknowledgements, which never go to the ledger and are not pending synchronization."
+          },
+          "processingStatus": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Raw command status; null for acknowledgements."
+          },
+          "safeErrorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "correlationId": {
+            "type": "string",
+            "description": "Technical provenance; not a business ID."
+          },
+          "ledger": {
+            "type": "object",
+            "required": [
+              "status",
+              "transactionId",
+              "committedAt"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "COMMITTED",
+                  "NOT_COMMITTED",
+                  "NOT_APPLICABLE"
+                ]
+              },
+              "transactionId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "committedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
+            }
+          },
+          "coordination": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "priorStatus",
+                  "resultingStatus",
+                  "reasonCode"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "priorStatus": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "SUBMITTED",
+                      "ACKNOWLEDGED",
+                      null
+                    ]
+                  },
+                  "resultingStatus": {
+                    "type": "string",
+                    "enum": [
+                      "SUBMITTED",
+                      "ACKNOWLEDGED",
+                      "FULFILLED",
+                      "DECLINED",
+                      "CANCELLED"
+                    ]
+                  },
+                  "reasonCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "NO_STOCK",
+                      "OUT_OF_SCOPE",
+                      "DUPLICATE_REQUEST",
+                      "DEADLINE_NOT_FEASIBLE",
+                      null
+                    ]
+                  }
+                }
+              }
+            ],
+            "description": "PRC coordination transition; null on non-PRC rows."
+          }
+        }
+      },
+      "ActivityHistoryResponseV2": {
+        "type": "object",
+        "required": [
+          "scope",
+          "rows",
+          "nextCursor",
+          "policyVersion",
+          "classification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "scope": {
+            "const": "INSTITUTION"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityHistoryRowV2"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^ACT2_[A-Za-z0-9_-]{1,140}$",
+            "description": "V2 cursors are bound to V2; a V1 cursor is refused and vice versa."
+          },
+          "policyVersion": {
+            "const": "ACTIVITY_HISTORY_READ_V2"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
           }
         }
       }

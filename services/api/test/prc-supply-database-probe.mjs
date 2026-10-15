@@ -96,6 +96,30 @@ export async function probePrcSupply({ admin, runtime, app, sessions, pins, orig
   check(page2.rows.length, 2);
   // Returned times keep milliseconds, so (time, id) cursors never skip rows within one second.
   assert.ok([...paged.rows, ...page2.rows].some((row) => !row.submittedAt.endsWith('.000Z'))); assertions++;
+  // ADR-045 Activity History V2: opt-in PRC coordination for the requesting bank only; V1 unchanged.
+  const activityV1 = (await read(mediatrix, '/api/v2/activity-history?limit=100')).json();
+  check(activityV1.policyVersion, 'ACTIVITY_HISTORY_READ_V1');
+  check(activityV1.rows.filter((row) => row.eventSource === 'PRC_SUPPLY_COORDINATION').length, 0);
+  const prcEvents = async (cookie) => {
+    const events = []; let cursor = null;
+    do {
+      const page = (await read(cookie, `/api/v2/activity-history?contract=ACTIVITY_HISTORY_READ_V2&limit=2${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`)).json();
+      check(page.policyVersion, 'ACTIVITY_HISTORY_READ_V2');
+      events.push(...page.rows.filter((row) => row.eventSource === 'PRC_SUPPLY_COORDINATION')); cursor = page.nextCursor;
+    } while (cursor);
+    return events;
+  };
+  const mediatrixEvents = await prcEvents(mediatrix), medixEvents = await prcEvents(medix);
+  // Mediatrix: first (submit, acknowledge, fulfil) + third (submit, cancel); Medix: second (submit, decline).
+  check(mediatrixEvents.length, 5); check(medixEvents.length, 2);
+  check(new Set(mediatrixEvents.map((row) => row.eventId)).size, 5);
+  assert.ok(mediatrixEvents.every((row) => [first.requestId, third.requestId].includes(row.links.prcSupplyRequestId))); assertions++;
+  assert.ok(medixEvents.every((row) => row.links.prcSupplyRequestId === second.requestId)); assertions++;
+  const ackEvent = mediatrixEvents.find((row) => row.activityCode === 'PRC_SUPPLY_ACKNOWLEDGE');
+  check(ackEvent.actor.institutionId, 'INST_SYNTH_PRC'); check(ackEvent.eventStatus, 'OFF_CHAIN_RECORDED'); check(ackEvent.ledger.status, 'NOT_APPLICABLE');
+  check(ackEvent.coordination.resultingStatus, 'ACKNOWLEDGED');
+  check(medixEvents.find((row) => row.activityCode === 'PRC_SUPPLY_DECLINE').coordination.reasonCode, 'NO_STOCK');
+  check((await read(mediatrix, '/api/v2/activity-history?contract=ACTIVITY_HISTORY_READ_V9')).statusCode, 400);
   // Delayed replay (Lat, 2026-10-15): an accepted submission replays after its required-by falls inside
   // the 1 h window; a changed body still conflicts and a genuinely new submission is still refused.
   // The service is called with a controlled clock; authorization is the same requester rule.
