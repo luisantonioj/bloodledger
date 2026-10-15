@@ -1,4 +1,5 @@
 import { PostgresOnboarding, registerOnboardingRoutes } from "./onboarding.js";
+import { PostgresPrcSupply, registerPrcSupplyRoutes } from "./prc-supply.js";
 import { primaryPrincipal } from "./institution-access.js";
 import { PostgresOperatorVerification, type VerificationInput } from "./operator-verification.js";
 import type { DevelopmentReader } from "./development-read.js";
@@ -219,6 +220,7 @@ export async function buildApp(
     restoreWebSession = restore;
     if (accountAccess) {
       registerOnboardingRoutes(app,new PostgresOnboarding(accountAccess.pool),restore,webOrigin,clock,secureCookie);
+      registerPrcSupplyRoutes(app,new PostgresPrcSupply(accountAccess.pool),restore,webOrigin,clock);
       app.addHook("preHandler", async request => {
         if(request.method==='GET' && /^\/api\/v1\/(dashboard|inventory|transfers|alerts|audit|reports)(\/|\?|$)/.test(request.url)){
           const active=await restore(request);
