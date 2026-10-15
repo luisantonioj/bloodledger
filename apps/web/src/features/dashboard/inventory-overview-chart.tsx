@@ -31,7 +31,7 @@ export function InventoryOverviewChart({ items, institutionId }: { items: Aggreg
         {components.map(product => <option key={product} value={product}>{componentLabel(product)}</option>)}
       </select></span></label>
       <div className="inventory-overview-legend" aria-label="Inventory status legend">
-        <span className="stock-band-critical"><i className="critical" />Critical</span><span className="stock-band-low"><i className="low" />Low</span><span className="stock-band-adequate"><i className="adequate" />Adequate</span><span className="stock-band-surplus"><i className="surplus" />Surplus</span>
+        <span><i className="critical" />Critical</span><span><i className="low" />Low</span><span><i className="adequate" />Adequate</span><span><i className="surplus" />Surplus</span>
         {!evidence.counts && <span><i className="unknown" />Classification unavailable</span>}
       </div>
     </div>

@@ -684,3 +684,9 @@
 .inventory-overview-bar{grid-template-rows:var(--overview-plot-height) var(--overview-component-height) var(--overview-status-height)}
 .inventory-overview-product-label{width:100%;padding:10px 2px 0;line-height:14px;align-self:stretch}
 .inventory-overview-bar>.stock-band-label{margin:0;padding:3px 0 0;align-self:start;font-size:10px;line-height:14px}
+
+/* Status captions below component names override the generic muted small text. */
+.inventory-overview-bar>.stock-band-label.stock-band-critical{color:var(--critical)}
+.inventory-overview-bar>.stock-band-label.stock-band-low{color:var(--warning)}
+.inventory-overview-bar>.stock-band-label.stock-band-adequate{color:var(--success)}
+.inventory-overview-bar>.stock-band-label.stock-band-surplus{color:var(--information)}
