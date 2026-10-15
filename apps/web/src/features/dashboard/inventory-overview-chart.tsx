@@ -55,7 +55,8 @@ export function InventoryOverviewChart({ items, institutionId }: { items: Aggreg
                       {segments.map(segment => <StockThresholdSegment key={segment.band} segment={segment} total={item.confirmed} product={`${formatBloodType(group.bloodType)} ${componentLabel(item.component)}`}/>)}
                     </span>
                   </div>
-                  <span className="inventory-overview-product-label">{componentLabel(item.component)}<small className={`stock-band-label stock-band-${band ?? "unknown"}`}>{band ? band[0].toUpperCase() + band.slice(1) : "Unavailable"}</small></span>
+                  <span className="inventory-overview-product-label">{componentLabel(item.component)}</span>
+                  <small className={`stock-band-label stock-band-${band ?? "unknown"}`}>{band ? band[0].toUpperCase() + band.slice(1) : "Unavailable"}</small>
                 </div>;
               })}
             </div>

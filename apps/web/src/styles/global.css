@@ -677,3 +677,10 @@
 .stock-threshold-segment:hover,.stock-threshold-segment:focus-visible{filter:brightness(1.12);outline:2px solid var(--ink);outline-offset:-2px;z-index:1}
 .stock-threshold-tooltip{position:fixed;z-index:10000;display:grid;gap:5px;width:272px;padding:10px 12px;border-radius:6px;background:var(--chrome);color:var(--on-chrome);box-shadow:0 4px 14px rgba(0,0,0,.2);font:12px/1.4 var(--font-sans);pointer-events:none}
 .stock-threshold-tooltip strong{font-size:12px}.stock-threshold-tooltip small{font-size:11px;color:var(--on-chrome-muted)}
+
+/* Plot, component names, status labels and blood-group names have separate rows. */
+.inventory-overview-chart{--overview-plot-height:292px;--overview-component-height:44px;--overview-status-height:24px;--overview-group-height:32px;height:calc(var(--overview-plot-height) + var(--overview-component-height) + var(--overview-status-height) + var(--overview-group-height))}
+.inventory-overview-group{grid-template-rows:calc(var(--overview-plot-height) + var(--overview-component-height) + var(--overview-status-height)) var(--overview-group-height)}
+.inventory-overview-bar{grid-template-rows:var(--overview-plot-height) var(--overview-component-height) var(--overview-status-height)}
+.inventory-overview-product-label{width:100%;padding:10px 2px 0;line-height:14px;align-self:stretch}
+.inventory-overview-bar>.stock-band-label{margin:0;padding:3px 0 0;align-self:start;font-size:10px;line-height:14px}

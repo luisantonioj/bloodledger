@@ -32,6 +32,10 @@ test("component selector separates products, restores All and clears protected c
   await expect(chart.locator(".stock-low")).not.toHaveCount(0);
   await expect(chart.locator(".stock-adequate")).not.toHaveCount(0);
   await expect(chart.locator(".stock-critical")).not.toHaveCount(0);
+  expect(await chart.locator(".inventory-overview-bar").evaluateAll(bars=>{
+    const positions=bars.map(bar=>({track:bar.querySelector(".inventory-overview-track")!.getBoundingClientRect(),name:bar.querySelector(".inventory-overview-product-label")!.getBoundingClientRect(),status:bar.querySelector(".stock-band-label")!.getBoundingClientRect()}));
+    return positions.every(p=>p.name.top>=p.track.bottom && p.status.top>=p.name.bottom) && new Set(positions.map(p=>Math.round(p.status.top))).size===1;
+  })).toBe(true);
   const filter = chart.getByRole("combobox", { name: "Inventory overview blood component" });
   await expect(filter).toHaveValue("ALL");
   await expect(chart.locator(".inventory-overview-group")).toHaveCount(8);
@@ -43,7 +47,7 @@ test("component selector separates products, restores All and clears protected c
   await chart.getByText("Stock-level thresholds",{exact:true}).click();
   await filter.selectOption("FRESH_FROZEN_PLASMA");
   await expect(chart.locator(".inventory-overview-bar")).toHaveCount(8);
-  await expect(chart.locator(".inventory-overview-product-label")).toHaveText(["FFPAdequate",...Array(7).fill("FFPCritical")]);
+  await expect(chart.locator(".inventory-overview-product-label")).toHaveText(Array(8).fill("FFP"));
   await filter.selectOption("PLATELETS");
   await expect(chart.locator(".inventory-overview-track strong")).toHaveText(Array(8).fill("0"));
   await filter.selectOption("ALL");
