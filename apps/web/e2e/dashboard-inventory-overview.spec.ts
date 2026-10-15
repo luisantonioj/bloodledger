@@ -32,10 +32,8 @@ test("component selector separates products, restores All and clears protected c
   await expect(chart.locator(".stock-low")).not.toHaveCount(0);
   await expect(chart.locator(".stock-adequate")).not.toHaveCount(0);
   await expect(chart.locator(".stock-critical")).not.toHaveCount(0);
-  expect(await chart.locator(".inventory-overview-bar").evaluateAll(bars=>{
-    const positions=bars.map(bar=>({track:bar.querySelector(".inventory-overview-track")!.getBoundingClientRect(),name:bar.querySelector(".inventory-overview-product-label")!.getBoundingClientRect(),status:bar.querySelector(".stock-band-label")!.getBoundingClientRect()}));
-    return positions.every(p=>p.name.top>=p.track.bottom && p.status.top>=p.name.bottom) && new Set(positions.map(p=>Math.round(p.status.top))).size===1;
-  })).toBe(true);
+  expect(await chart.locator(".inventory-overview-bar").evaluateAll(bars=>bars.every(bar=>bar.querySelector(".inventory-overview-product-label")!.getBoundingClientRect().top>=bar.querySelector(".inventory-overview-track")!.getBoundingClientRect().bottom))).toBe(true);
+  await expect(chart.locator(".stock-band-label")).toHaveCount(0);
   const filter = chart.getByRole("combobox", { name: "Inventory overview blood component" });
   await expect(filter).toHaveValue("ALL");
   await expect(chart.locator(".inventory-overview-group")).toHaveCount(8);

@@ -56,7 +56,6 @@ export function InventoryOverviewChart({ items, institutionId }: { items: Aggreg
                     </span>
                   </div>
                   <span className="inventory-overview-product-label">{componentLabel(item.component)}</span>
-                  <small className={`stock-band-label stock-band-${band ?? "unknown"}`}>{band ? band[0].toUpperCase() + band.slice(1) : "Unavailable"}</small>
                 </div>;
               })}
             </div>

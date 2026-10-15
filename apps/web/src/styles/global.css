@@ -679,7 +679,7 @@
 .stock-threshold-tooltip strong{font-size:12px}.stock-threshold-tooltip small{font-size:11px;color:var(--on-chrome-muted)}
 
 /* Plot, component names, status labels and blood-group names have separate rows. */
-.inventory-overview-chart{--overview-plot-height:292px;--overview-component-height:44px;--overview-status-height:24px;--overview-group-height:32px;height:calc(var(--overview-plot-height) + var(--overview-component-height) + var(--overview-status-height) + var(--overview-group-height))}
+.inventory-overview-chart{--overview-plot-height:292px;--overview-component-height:44px;--overview-status-height:0px;--overview-group-height:32px;height:calc(var(--overview-plot-height) + var(--overview-component-height) + var(--overview-status-height) + var(--overview-group-height))}
 .inventory-overview-group{grid-template-rows:calc(var(--overview-plot-height) + var(--overview-component-height) + var(--overview-status-height)) var(--overview-group-height)}
 .inventory-overview-bar{grid-template-rows:var(--overview-plot-height) var(--overview-component-height) var(--overview-status-height)}
 .inventory-overview-product-label{width:100%;padding:10px 2px 0;line-height:14px;align-self:stretch}
