@@ -649,7 +649,8 @@
 .inventory-overview-controls{display:flex;align-items:end;flex-wrap:wrap;gap:12px 20px;padding:16px 18px 0}
 .inventory-overview-controls label{display:grid;gap:6px;margin:0;min-width:200px;font-size:12px;font-weight:600}
 .inventory-overview-controls select{appearance:none;width:100%;padding:9px 34px 9px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px var(--font-sans)}
-.inventory-overview-controls p{margin:0 0 8px;color:var(--ink-muted);font-size:12px}
+.inventory-overview-controls>.inventory-overview-legend{margin:0 0 8px auto;padding:0;align-self:flex-end}
+.inventory-overview-controls+.inventory-overview-scroll{padding-top:16px}
 .inventory-overview-scroll:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
 .inventory-overview-frame{grid-template-columns:32px 24px minmax(var(--overview-width),1fr);min-width:calc(var(--overview-width) + 64px)}
 .inventory-overview-chart{grid-template-columns:repeat(var(--overview-groups),minmax(0,1fr));min-width:var(--overview-width);height:368px;background-size:100% 293px}
@@ -660,7 +661,7 @@
 .inventory-overview-product-label{padding:8px 2px 0;font-size:11px;line-height:1.2;overflow-wrap:anywhere;color:var(--ink-secondary)}
 .inventory-overview-track>strong{font-size:22px}
 .stock-unknown .inventory-overview-fill,.inventory-overview-legend i.unknown{background:var(--ink-muted)}
-@media(max-width:760px){.inventory-overview-controls{align-items:stretch}.inventory-overview-controls label{width:100%}.inventory-overview-legend{justify-content:flex-start}}
+@media(max-width:760px){.inventory-overview-controls{align-items:stretch}.inventory-overview-controls label{width:100%}.inventory-overview-controls>.inventory-overview-legend{margin:0;justify-content:flex-start}.inventory-overview-legend{justify-content:flex-start}}
 
 /* Accepted project demonstration policy: distinguish all four bands without relying on color alone. */
 .stock-surplus .inventory-overview-fill{background:var(--information)}

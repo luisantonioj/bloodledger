@@ -30,13 +30,12 @@ export function InventoryOverviewChart({ items, institutionId }: { items: Aggreg
         <option value="ALL">All</option>
         {components.map(product => <option key={product} value={product}>{componentLabel(product)}</option>)}
       </select></span></label>
-      <p>{component === "ALL" ? "Components shown side by side. Scroll to compare blood types." : `${componentLabel(component)} units by blood type.`}</p>
-    </div>
-    <div className="inventory-overview-scroll" tabIndex={0} role="region" aria-label="Scrollable inventory chart" style={chartStyle}>
       <div className="inventory-overview-legend" aria-label="Inventory status legend">
         <span><i className="critical" />Critical</span><span><i className="low" />Low</span><span><i className="adequate" />Adequate</span><span><i className="surplus" />Surplus</span>
         {!evidence.counts && <span><i className="unknown" />Classification unavailable</span>}
       </div>
+    </div>
+    <div className="inventory-overview-scroll" tabIndex={0} role="region" aria-label="Scrollable inventory chart" style={chartStyle}>
       <div className="inventory-overview-frame">
         <div className="inventory-overview-axis-title">Quantity (units)</div>
         <div className="inventory-overview-axis" aria-hidden="true">{ticks.map((tick, index) => <span key={tick} style={{ "--tick-index": index } as CSSProperties}>{tick}</span>)}</div>
