@@ -1125,3 +1125,5 @@ coverage for unrelated rows and for closing details without automatic reopening.
 2026-10-15 Analytics chart cleanup: hide the normal Current header labels on demand/excess panels, retain loading/stale/unavailable states, and place Refresh last at the far right after Information. Remove chart footnotes, product/date captions and the page-bottom simulation note; interpretation and scope remain available in information help and existing model/evidence details.
 
 2026-10-15 Analytics control order refinement: both demand and excess headers place Refresh first and Information last at the far right.
+
+Analytics header alignment: keep Refresh and Information in one non-growing action group anchored at the right edge on desktop and narrow screens; Information remains the last control.

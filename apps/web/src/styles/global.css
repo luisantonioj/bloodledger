@@ -1006,10 +1006,10 @@
 .analytics-simple-workspace .analytics-date-actions input { max-width: 155px; }
 .analytics-question-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
 .analytics-simple-workspace .analytics-question-grid > section { min-width: 0; padding: 0; background: var(--surface); }
-.analytics-simple-workspace .analytics-question-grid > section > header { background: var(--surface); border: 0; padding: 20px 20px 0; align-items: start; flex-wrap: wrap; gap: 14px; }
+.analytics-simple-workspace .analytics-question-grid > section > header { background: var(--surface); border: 0; padding: 20px 20px 0; align-items: center; flex-direction: row; flex-wrap: wrap; gap: 14px; }
 .analytics-simple-workspace .analytics-question-grid h2, .analytics-simple-workspace .analytics-question-grid h3 { padding: 0; border: 0; margin: 7px 0 0; background: transparent; font: 500 23px/1.25 var(--font-serif); }
 .analytics-simple-workspace .analytics-eyebrow { font-size: 9px; }
-.analytics-simple-workspace .analytics-question-grid .analytics-card-actions { margin-left: auto; gap: 8px; }
+.analytics-simple-workspace .analytics-question-grid .analytics-card-actions { flex: 0 0 auto; width: auto; margin-left: auto; justify-content: flex-end; gap: 8px; }
 .analytics-simple-workspace .analytics-card-actions .button { min-height: 28px; }
 .analytics-simple-workspace .analytics-question-grid .analytics-section-description { margin: 14px 20px 8px; font-size: 12px; min-height: 40px; }
 .analytics-product-chart { padding: 14px 20px 6px; }
@@ -1043,7 +1043,7 @@
 .analytics-default-details .analytics-forecast-card > header { padding-bottom: 12px; }
 .analytics-page-footnote { margin: 0; color: var(--ink-muted); font-size: 10px; line-height: 1.6; }
 @media (max-width: 1100px) { .analytics-question-grid { grid-template-columns: minmax(0, 1fr); } .analytics-simple-workspace .analytics-review-controls { flex-direction: column; align-items: start; } .analytics-simple-workspace .analytics-date-actions { width: 100%; flex-wrap: wrap; } }
-@media (max-width: 600px) { .analytics-simple-workspace .analytics-question-grid .analytics-card-actions { width: auto; justify-content: start; } .analytics-simple-workspace .analytics-date-actions label { min-width: 120px; } .analytics-simple-workspace .analytics-date-actions input { max-width: none; } .analytics-product-chart li { gap: 10px; } .analytics-product-amount strong { font-size: 18px; } }
+@media (max-width: 600px) { .analytics-simple-workspace .analytics-question-grid .analytics-card-actions { width: auto; justify-content: flex-end; } .analytics-simple-workspace .analytics-date-actions label { min-width: 120px; } .analytics-simple-workspace .analytics-date-actions input { max-width: none; } .analytics-product-chart li { gap: 10px; } .analytics-product-amount strong { font-size: 18px; } }
 .analytics-simple-workspace .analytics-question-grid > section { margin: 0; }
 .analytics-simple-workspace .analytics-date-actions label { margin: 0; }
 .analytics-simple-workspace .analytics-date-actions select, .analytics-simple-workspace .analytics-date-actions input { min-height: 38px; width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font: 400 12px var(--font-sans); }
