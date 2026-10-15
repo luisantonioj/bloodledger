@@ -792,7 +792,7 @@ frame; closing and reopening also starts at the chooser. Existing account and
 operator permissions and the outbound preview-only boundary remain unchanged.
 
 
-The Blood Unit Transactions scanner now reuses the official requester receipt scanner's phone frame, light title/eyebrow, borderless close button, hidden-scrollbar content, equal Scan/Manual tabs and inline manual form. Banks additionally have Inbound/Outbound direction tabs. Changing direction clears that direction's volatile preview, and closing clears the scanner workspace.
+The Blood Unit Transactions scanner now reuses the official requester receipt scanner's phone frame, light title/eyebrow, borderless close button, hidden-scrollbar content, equal Scan/Manual tabs and inline manual form. Banks select Inbound/Outbound on the initial choice screen; the scanner does not repeat those choices as tabs. Change direction returns to that screen. Changing direction clears that direction's volatile preview, and closing clears the scanner workspace.
 
 Inbound Scan embeds the existing verified capture PWA with `layout=receipt`: compact camera and capture actions replace its standalone hero, while OCR validation, operator/PIN authorization, idempotency, command status and privacy boundaries remain intact. The parent accepts height messages only from its own same-origin capture iframe so the phone uses one content scroll area. Standalone capture remains unchanged.
 
