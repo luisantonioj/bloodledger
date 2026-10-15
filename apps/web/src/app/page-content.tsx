@@ -1,3 +1,4 @@
+import { PrcSupplyWorkspace } from "../features/transfers/prc-supply-workspace";
 import { AuditPage } from "../features/audit/audit-page";
 import { BloodUnitTransactionsPage } from "../features/transactions/blood-unit-transactions-page";
 import { BloodUnitReceiptPage } from "../features/receipts/blood-unit-receipt-page";
@@ -22,6 +23,7 @@ const pages: Record<string, [string, string, string]> = {
 };
 
 export function PageContent({ path, principal }: { path: string; principal: Principal }) {
+  if (path === "/prc-supply") return <PrcSupplyWorkspace principal={principal}/>;
   if (path === "/audit") return <AuditPage principal={principal}/>;
   if (path === "/transactions") return <BloodUnitTransactionsPage principal={principal}/>;
   if (path === "/receipts" && isRequester(principal)) return <BloodUnitReceiptPage principal={principal}/>;

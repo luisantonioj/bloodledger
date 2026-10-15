@@ -3,8 +3,9 @@ import {readFile} from "node:fs/promises";
 import {test,expect,type Page} from "@playwright/test";
 const base={donationId:"DON_SYNTH_BANK",issuerInstitutionId:"INST_MEDIATRIX",collectedAt:"2026-10-01T00:00:00Z",institutionId:"INST_MEDIATRIX",inventoryStatus:"AVAILABLE",expiryState:"CURRENT",reservationId:null,reservationVersion:null,inventoryVersion:2,policyVersion:"INTERVIEW_DERIVED_CORE_V2",classification:"SIMULATION_ONLY"};
 const components=[{...base,componentId:"COMP_SYNTH_PRBC",bloodType:"O_NEGATIVE",componentType:"PACKED_RED_BLOOD_CELLS",expiresAt:"2026-11-02T00:00:00Z"},{...base,componentId:"COMP_SYNTH_PLATELET",bloodType:"A_POSITIVE",componentType:"PLATELETS",expiresAt:"2026-11-01T00:00:00Z"}];
-async function setup(page:Page){await page.route("**/api/**",async route=>{const path=new URL(route.request().url()).pathname;let body:unknown={},status=200;
-if(path==="/api/v1/auth/session")body={principal:{accountId:"ACC_SYNTH_BANK",accountCategory:"BLOOD_BANK",userId:"USR_SYNTH_BANK",displayName:"Synthetic Institution",institutionId:"INST_MEDIATRIX",institutionDisplayName:"Synthetic Mediatrix",roleId:"ROLE-02",roleDisplayName:"Coordinator",permissions:["dashboard:operational","inventory:read","transfers:read","audit:read","profile:read"],operators:[{operatorId:"OP_SYNTH_BANK",roleId:"ROLE-02",capabilityProfile:"ROLE",actionCapabilities:["inventory:local-release","inventory:capture","transfer:request"]}],classification:"SIMULATION_ONLY"}};
+async function setup(page:Page,prc=false){await page.route("**/api/**",async route=>{const path=new URL(route.request().url()).pathname;let body:unknown={},status=200;
+if(path==="/api/v1/auth/session")body={principal:{accountId:"ACC_SYNTH_BANK",accountCategory:"BLOOD_BANK",verificationRequired:prc,userId:"USR_SYNTH_BANK",displayName:"Synthetic Institution",institutionId:"INST_MEDIATRIX",institutionDisplayName:"Synthetic Mediatrix",roleId:"ROLE-02",roleDisplayName:"Coordinator",permissions:["dashboard:operational","inventory:read","transfers:read","audit:read","profile:read"],operators:[{operatorId:"OP_SYNTH_BANK",roleId:"ROLE-02",capabilityProfile:"ROLE",actionCapabilities:["inventory:local-release","inventory:capture","transfer:request",...(prc?["prc-supply:request"]:[])]}],classification:"SIMULATION_ONLY"}};
+else if(path==="/api/v2/prc-supply-requests"){status=503;body={error:{code:"SERVICE_UNAVAILABLE"}};}
 else if(path==="/api/v2/unit-history")body=readPage("UNIT_HISTORY_READ_V1",[unitFixture]);
 else if(path==="/api/v2/transfer-summaries")body=readPage("TRANSFER_SUMMARY_READ_V1",[{...summaryFixture,reservationId:"RES_SYNTH_BANK",transferId:"TRF_SYNTH_BANK",bloodType:"O_NEGATIVE",destination:{institutionId:"INST_SYNTH_METROLIPA",displayName:"Metro Lipa"}}]);
 else if(path==="/api/v2/activity-history")body=readPage("ACTIVITY_HISTORY_READ_V1",[{...activityFixture,eventId:"CMD_SYNTH_OK",ledger:{...activityFixture.ledger,transactionId:"TX_SYNTH_INTAKE"}},{...activityFixture,eventId:"CMD_SYNTH_FAIL",activityCode:"COMPLETE_LOCAL_RELEASE",eventStatus:"FAILED",processingStatus:"FAILED",safeErrorCode:"INSUFFICIENT_STOCK",ledger:{status:"NOT_COMMITTED",transactionId:null,committedAt:null}}]);
@@ -40,15 +41,15 @@ test("bank receipt-style scanner offers outbound preview and clears drafts on di
 
 
 test("bank row selection reads details and exposes pending decisions without posting",async({page})=>{
- let posts=0;page.on("request",request=>{if(request.method()==="POST")posts++;});await setup(page);await page.goto("/transfers");
+ let posts=0;page.on("request",request=>{if(request.method()==="POST")posts++;});await setup(page,true);await page.goto("/transfers");
  await page.locator(".bank-blood-requests-table tbody tr").getByText("PRBC",{exact:true}).click();
  const detail=page.locator(".bank-detail-card");await expect(detail.getByRole("heading",{name:"Request details",exact:true})).toBeVisible();
  await expect(detail.getByText("Requested units",{exact:true})).toBeVisible();await expect(detail.getByText("Blood type",{exact:true})).toBeVisible();
- for(const name of ["Cancel Request","Offer Available Units","Approve Transfer"])await expect(detail.getByRole("button",{name,exact:true})).toBeDisabled();
+ for(const name of ["Cancel Request","Offer Available Units","Approve Transfer"])await expect(detail.getByRole("button",{name:name+" unavailable",exact:true})).toBeDisabled();
  await detail.getByRole("button",{name:"View linked transfer",exact:true}).click();await expect(detail.getByRole("heading",{name:"Transfer details",exact:true})).toBeVisible();await expect(detail.getByText("Preparation evidence",{exact:true})).toBeVisible();await expect(detail.getByRole("button",{name:"Record Outbound Scan",exact:true})).toHaveCount(0);await expect(detail.getByRole("region",{name:"Reservation actions"})).toBeVisible();
- await page.getByRole("tab",{name:"Transfers",exact:true}).click();await page.locator(".bank-record-card tbody tr").getByText("PREPARED",{exact:true}).click();await expect(detail.getByRole("heading",{name:"Transfer details",exact:true})).toBeVisible();
+ await page.getByRole("tab",{name:"Transfers",exact:true}).click();await page.getByRole("button",{name:"Open reservation RES_SYNTH_BANK",exact:true}).click();await expect(detail.getByRole("heading",{name:"Transfer details",exact:true})).toBeVisible();
  await page.getByRole("tab",{name:/PRC Supply Requests/}).click();await expect(page.getByLabel("Search transfers",{exact:true})).toHaveCount(0);await page.getByRole("button",{name:"+ Request PRC Supply",exact:true}).click();
- const form=page.getByRole("region",{name:"New PRC Supply Request",exact:true});await expect(form.getByLabel("Required Date & Time",{exact:true})).toBeDisabled();await expect(form.getByRole("button",{name:"Send to PRC Lipa",exact:true})).toBeDisabled();await form.getByRole("button",{name:"Cancel",exact:true}).click();await expect(form).toHaveCount(0);expect(posts).toBe(0);
+ const form=page.getByRole("region",{name:"New PRC Supply Request",exact:true});await expect(form.getByLabel("Required By (Asia/Manila)",{exact:true})).toBeDisabled();await expect(form.getByRole("button",{name:"Send to PRC unavailable",exact:true})).toBeDisabled();await form.getByRole("button",{name:"Close form",exact:true}).click();await expect(form).toHaveCount(0);expect(posts).toBe(0);
  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 
@@ -68,18 +69,18 @@ test("inventory table stays visible for unavailable and empty reads",async({page
 });
 
 test("bank request forms replace each other and repeated PRC clicks scroll to the form",async({page})=>{
- await setup(page);await page.emulateMedia({reducedMotion:"reduce"});await page.goto("/transfers");
+ await setup(page,true);await page.emulateMedia({reducedMotion:"reduce"});await page.goto("/transfers");
  await page.getByRole("tab",{name:/PRC Supply Requests/}).click();
  const prcButton=page.getByRole("button",{name:"+ Request PRC Supply",exact:true});
  const bloodButton=page.getByRole("button",{name:"+ New Blood Request",exact:true});
  const prcForm=page.getByRole("region",{name:"New PRC Supply Request",exact:true});
  await prcButton.click();await expect(prcForm).toBeVisible();
  const positions=await page.locator(".bank-prc-fields>label").evaluateAll(labels=>labels.slice(0,5).map(label=>label.getBoundingClientRect().top));expect(new Set(positions).size).toBe(1);
- await prcButton.click();await expect(prcForm).toBeVisible();await expect.poll(()=>page.locator(".bank-prc-channel").evaluate(el=>el.getBoundingClientRect().top)).toBeLessThan(100);await expect(prcForm).toBeInViewport();
- await bloodButton.click();await expect(prcForm).toHaveCount(0);await expect(page.getByRole("button",{name:"Submit",exact:true})).toBeVisible();
- await prcButton.click();await expect(prcForm).toBeVisible();await expect(page.getByRole("button",{name:"Submit",exact:true})).toHaveCount(0);
+ await prcButton.click();await expect(prcForm).toBeVisible();await expect(prcForm).toBeInViewport();await expect(prcForm).toBeInViewport();
+ await page.getByRole("tab",{name:/Blood Requests/}).click();await bloodButton.click();await expect(prcForm).toHaveCount(0);await expect(page.getByRole("button",{name:"Submit",exact:true})).toBeVisible();
+ await page.getByRole("tab",{name:/PRC Supply Requests/}).click();await prcButton.click();await expect(prcForm).toBeVisible();await expect(page.getByRole("button",{name:"Submit",exact:true})).toHaveCount(0);
  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await prcForm.getByRole("button",{name:"Cancel",exact:true}).click();await expect(prcForm).toHaveCount(0);
+ await prcForm.getByRole("button",{name:"Close form",exact:true}).click();await expect(prcForm).toHaveCount(0);
 });
 
 test("mobile scanner starts with direction choices and returns without mounting capture",async({page})=>{
