@@ -11,11 +11,11 @@ export const accountPolicy = JSON.parse(readFileSync(new URL("../../policy/insti
 };
 export const BANK_INSTITUTION_IDS = accountPolicy.accounts.filter(a => a.category === "BLOOD_BANK").map(a => a.institutionId);
 export function operatorActions(operator: OperatorProfile): string[] {
-  if(operator.capabilityProfile==='PRC_REVIEWER')return ['onboarding:invite','onboarding:review','onboarding:approve','onboarding:activate','institution:suspend','institution:reactivate','institution:profile','institution:account','operator:create-administrator','operator:reset-pin','operator:revoke'];
+  if(operator.capabilityProfile==='PRC_REVIEWER')return ['prc-supply:respond','onboarding:invite','onboarding:review','onboarding:approve','onboarding:activate','institution:suspend','institution:reactivate','institution:profile','institution:account','operator:create-administrator','operator:reset-pin','operator:revoke'];
   if(operator.capabilityProfile==='INSTITUTION_ADMIN')return ['institution:profile','operator:create-administrator','operator:reset-pin','operator:revoke'];
   if(operator.roleId==='ROLE-03')return ['transfer:request','transfer:receive','transfer:cancel','transfer:compromise'];
   if(!['ROLE-01','ROLE-02'].includes(operator.roleId))return [];
-  return ['inventory:capture','inventory:local-release','inventory:reconcile','inventory:expiry','alert:acknowledge','transfer:prepare','transfer:dispatch','transfer:transit','transfer:cancel','transfer:compromise',...(operator.roleId==='ROLE-02'?['transfer:request','transfer:approve','transfer:reject']:[])];
+  return ['inventory:capture','inventory:local-release','inventory:reconcile','inventory:expiry','alert:acknowledge','transfer:prepare','transfer:dispatch','transfer:transit','transfer:cancel','transfer:compromise',...(operator.roleId==='ROLE-02'?['transfer:request','transfer:approve','transfer:reject','prc-supply:request','prc-supply:cancel']:[])];
 }
 export function primaryPrincipal(record: CredentialRecord): WebPrincipal {
   const category = record.accountCategory;
@@ -33,6 +33,6 @@ export function operatorPrincipal(account: WebPrincipal, operator: OperatorProfi
   const permissions: readonly Permission[] = permissionsFor(operator.roleId);
   return { ...account, userId: operator.operatorId, roleId: operator.roleId, roleDisplayName: "Verified operator",
     operatorId: operator.operatorId, permissions, administrativeCapabilities:
-      operator.capabilityProfile === "PRC_REVIEWER" ? ["onboarding:read", "onboarding:review", "onboarding:write", "operators:manage"] :
+      operator.capabilityProfile === "PRC_REVIEWER" ? ["onboarding:read", "onboarding:review", "onboarding:write", "operators:manage", "prc-supply:respond"] :
       operator.capabilityProfile === "INSTITUTION_ADMIN" ? ["institution:manage", "operators:manage"] : [] };
 }

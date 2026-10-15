@@ -668,11 +668,15 @@ evidence arrives.
 | PRC acknowledgement and reference | A synthetic PRC operator with the new `prc-supply:respond` capability (PRC reviewer profile, PIN-verified) acknowledges the request in BloodLedger and enters the PRC reference: `^[A-Z0-9][A-Z0-9-]{2,31}$`, unique across PRC supply requests. Provenance is `PRC_RECORDED_IN_SYSTEM`. Until then the reference is null and shown as "Awaiting PRC acknowledgement". No reference is generated, and no external PRC system is contacted. |
 | Lifecycle | `SUBMITTED` → `ACKNOWLEDGED` (PRC, with reference) → `FULFILLED` (PRC, with fulfilled quantity). PRC may move `SUBMITTED` or `ACKNOWLEDGED` to `DECLINED` with a reason code: `NO_STOCK`, `OUT_OF_SCOPE`, `DUPLICATE_REQUEST` or `DEADLINE_NOT_FEASIBLE`. The requester may move `SUBMITTED` to `CANCELLED`. `FULFILLED`, `DECLINED` and `CANCELLED` are terminal. This status is coordination status only, separate from command, reservation and stock status. |
 | Visibility | The requesting institution's ROLE-01/02 see their own requests. The PRC account sees all requests. Other hospitals, requesters and DOH see none in V1; DOH aggregates are deferred. |
-| Mutations | Every action is PIN-verified, idempotent (the same key and body replays the result), version-checked (`expectedVersion`), correlated and audited. It is recorded synchronously off-chain: there is no ledger queue, and the ledger status is not applicable. Activity History shows these events as off-chain records. |
+| Mutations | Every action is PIN-verified, idempotent (the same key and body replays the result), version-checked (`expectedVersion`), correlated and audited in `app.account_audit`. It is recorded synchronously off-chain: there is no ledger queue, and the ledger status is not applicable. The request detail carries its audited history. Activity History (`ACTIVITY_HISTORY_READ_V1`) is unchanged: adding PRC events needs a coordinated contract version, because current clients reject unknown event sources (amended 2026-10-15 at implementation). |
 | Reads | A cursor-paged list, newest submission first, plus a detail read, both in the scopes above. Search runs client-side over loaded rows. PDF export covers loaded rows with the SIMULATION_ONLY marking. |
 | Deferred | Free-text notes, multi-product requests, edits, DOH aggregates, escalation and SLA rules, a real PRC integration, and a PRC issuer label policy for OCR intake. |
 
-The exact routes, fields, error codes and capability names become
-authoritative in `services/api/openapi-v2.json` and the account policy when
-Jopia implements them. Until then, no PRC endpoint exists and the frontend keeps
-its unavailable state.
+Implemented on 2026-10-15: `GET`/`POST /api/v2/prc-supply-requests`,
+`GET /api/v2/prc-supply-requests/{requestId}` and
+`POST /api/v2/prc-supply-requests/{requestId}/{cancel|acknowledge|fulfil|decline}`.
+Operator capabilities are `prc-supply:request` and `prc-supply:cancel` (bank
+ROLE-02) and `prc-supply:respond` (PRC reviewer). The additive migration
+`20261015000000000_create-prc-supply-requests.js` and
+`services/api/openapi-v2.json` are authoritative for the exact shape and error
+codes.
