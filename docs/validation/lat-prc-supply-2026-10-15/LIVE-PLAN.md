@@ -1,6 +1,8 @@
 # Minimal synthetic live PRC validation plan — 2026-10-15
 
-**PREPARED ONLY — NOT EXECUTED. Awaiting Jopia’s explicit go-ahead.**
+**APPROVED by Jopia on 2026-10-15 and EXECUTED on Lat’s retained host.**
+
+All five writes and one explicit replay passed; see [validation results](README.md#lat-host-approved-live-results--2026-10-15). The preparation language below records the original plan and its gates.
 
 Lat proposes this plan against main `014d862` or an approved descendant containing
 #60 and #61. Policy: PA-DEF-06 `SYNTHETIC_PRC_SUPPLY_V1` / ADR-044.
@@ -32,7 +34,7 @@ ROLE-04 alone does not grant that capability.
    window. Preserve worker configuration; if background activity prevents a
    stable baseline, pause and reschedule rather than changing unrelated services.
 4. Check that synthetic reference `PRC-SIM-LIVE-0001` is unused. If it already
-   exists, ask Jopia to approve a different synthetic reference before writing.
+   exists, use `PRC-SIM-LIVE-0002`, as explicitly authorized in Jopia’s PR #65 handoff. If both are used, stop before writing.
    No real PRC reference, donor/patient information, free-text notes or files.
 
 Read-only count template for the executor (not executed during preparation):

@@ -15,7 +15,7 @@ async function setup(page:Page,mode="v2"){
   const cursor=url.searchParams.get("cursor");
   if(cursor&&secondFailure){secondFailure=false;return send({error:{code:"UNAVAILABLE"}},503);}
   if(cursor)expect(cursor).toBe("ACT2_NEXT");
-  const rows=cursor?[{...prcActivityFixture,eventId:"AUD_SYNTH2",eventTime:"2026-10-15T00:01:00.721Z",recordedAt:"2026-10-15T00:01:00.721Z"}]:[{...activityFixture,actor:{...activityFixture.actor,institutionId:"INST_MEDIATRIX"},links:{...activityFixture.links,prcSupplyRequestId:null},coordination:null},prcActivityFixture];
+  const rows=cursor?[{...prcActivityFixture,eventId:"AUD_SYNTH2",eventTime:"2026-10-15T00:01:00.721Z",recordedAt:"2026-10-15T00:01:00.721Z"}]:[{...activityFixture,recordedAt:"2026-10-15T00:01:00.723Z",actor:{...activityFixture.actor,institutionId:"INST_MEDIATRIX"},links:{...activityFixture.links,prcSupplyRequestId:null},coordination:null},prcActivityFixture];
   return send({...readPage("ACTIVITY_HISTORY_READ_V2",[]),rows,nextCursor:cursor?null:"ACT2_NEXT"});
  });return calls;
 }
