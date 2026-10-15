@@ -720,19 +720,21 @@ test("latest visual baseline stays role-scoped while Sprint 6 integrations remai
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Blood Inventory Overview" })).toBeVisible();
+  await page.getByRole("combobox", { name: "Inventory overview blood component" }).selectOption("RED_BLOOD_CELLS");
   await expect(page.locator(".inventory-overview-bar")).toHaveCount(8);
-  await expect(page.locator(".inventory-overview-note,.dashboard-aggregate-table,.dashboard-table-head")).toHaveCount(0);
+  await expect(page.locator(".dashboard-aggregate-table,.dashboard-table-head")).toHaveCount(0);
   await expect(page.locator(".inventory-overview-fill>i")).toHaveCount(0);
 
   await page.getByRole("link", { name: "Analytics", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeVisible();
-  await expect(page.getByText("Active ML V4 simulation", { exact: true })).toBeVisible();
-  await expect(page.getByText("Uncertainty unavailable", { exact: false })).toBeVisible();
-  await expect(page.getByText("Inventory validity unavailable", { exact: true })).toBeVisible();
-  await expect(page.getByText("SYNTHETIC_FORECAST_V4_RUNTIME_V1", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "V4 default", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "V5 simulation preview", exact: true })).toBeVisible();
+  await expect(page.getByText("Uncertainty unavailable", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText("View inventory snapshot", { exact: false })).toBeVisible();
+  await expect(page.getByText("SYNTHETIC_FORECAST_V4_RUNTIME_V1", { exact: false }).first()).toBeVisible();
 
   await page.getByRole("link", { name: "Blood Inventory", exact: true }).click();
-  await expect(page.locator(".inventory-table th")).toHaveCount(6);
+  await expect(page.locator(".inventory-table th")).toHaveCount(7);
   await expect(page.getByText("CMP_SYNTH_BROWSER_01", { exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();

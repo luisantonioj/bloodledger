@@ -1,3 +1,4 @@
+import { ObservedDemandAnalytics } from "../features/analytics/observed-demand-analytics";
 import { DefenseAnalytics } from "../features/analytics/defense-analytics";
 import { RedistributionView } from "../features/coordination/coordination-panels";
 import { RegulatorAnalytics } from "../features/analytics/regulator-analytics";
@@ -34,6 +35,7 @@ export function FeatureRouter({path,canAcknowledge=false,canSubmitTransfer=false
   if(path==="/accounts"&&principal)return principal.accountId ? <InstitutionAccountsView principal={principal}/> : <AccountsParityPreview principal={principal}/>;
   if(path==="/analytics"&&principal&&canViewRegulatoryAnalytics(principal))return <RegulatorAnalytics key={principal.institutionId} principal={principal}/>;
   if(path==="/redistribution"&&principal&&["ROLE-01","ROLE-02"].includes(principal.roleId))return <RedistributionView key={principal.institutionId} principal={principal}/>;
+  if(path==="/analytics"&&principal&&(principal.accountCategory==="REQUESTOR"||principal.roleId==="ROLE-03"))return <ObservedDemandAnalytics key={principal.institutionId} principal={principal}/>;
   if(path==="/analytics"&&principal)return <DefenseAnalytics key={principal.institutionId} principal={principal}/>;
   if(path==="/profile"&&principal)return principal.accountId ? <InstitutionProfile principal={principal}/> : <ProfileParityPreview principal={principal}/>;
   if(path==="/inventory"&&principal)return <V2InventoryView key={[principal.userId,principal.institutionId,principal.roleId].join(":")} principal={principal}/>;
