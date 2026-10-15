@@ -5,8 +5,9 @@
 Table layouts are merged in PR #58; PRC UI/replay fixes are merged in #60/#61.
 The remaining approved Analytics design is preserved on the normal review branch
 `codex/lat-analytics-product-comparison`, stacked on the handoff/test cleanup
-PR #62. The old `codex/lat-prc-with-table-layouts` preview is being retired only
-after the normal design PR is published. Source comparisons to `c00e789` confirm
+PR #62. The old `codex/lat-prc-with-table-layouts` preview was retired locally and
+remotely after [normal design PR #63](https://github.com/luisantonioj/bloodledger/pull/63)
+was published. Source comparisons to `c00e789` confirm
 all Analytics/chart, coordination and style files are preserved exactly. The
 sections below record the earlier recovery and preview evidence.
 
