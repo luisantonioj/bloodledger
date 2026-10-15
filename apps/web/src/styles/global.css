@@ -1074,3 +1074,5 @@
 .bank-request-approval .redistribution-confirm input { margin-top: 3px; }
 .bank-request-approval .dashboard-redistribution-body > .button.primary { justify-self: stretch; }
 .bank-request-approval .dashboard-redistribution-body > small { color: var(--ink-muted); font-size: 11px; line-height: 1.6; }
+
+.status.neutral { color: var(--ink-muted); background: var(--surface-subtle); }

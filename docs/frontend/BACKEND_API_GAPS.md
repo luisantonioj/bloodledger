@@ -165,3 +165,5 @@ GAP-16 now distinguishes implemented simulation coordination from the unexecuted
 [populated live plan](../validation/lat-prc-supply-2026-10-15/LIVE-PLAN.md).
 PRC remains excluded from `ACTIVITY_HISTORY_READ_V1`; its detail history is the
 current source. A [V2 coordination proposal](../handoffs/LAT-TO-JOPIA-PRC-ACTIVITY-V2-PROPOSAL-2026-10-15.md) is documentation only and grants no new visibility.
+
+2026-10-15 Activity History PRC follow-up: ADR-045 / merged PR #65 supplies ACTIVITY_HISTORY_READ_V2. The frontend explicitly negotiates V2 with a strict separate parser and contract-bound cursors, includes off-chain PRC events by default with a source filter, and keeps the eight headers. Only an explicit unsupported-contract 400 downgrades to V1, with a per-request-history notice. V1 and role grants are unchanged.
