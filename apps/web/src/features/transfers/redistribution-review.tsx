@@ -27,7 +27,7 @@ export function RedistributionReview({principal,requests,reservations,onRefresh}
   const quantity=request?.quantity??Number(query.get("quantity")??1);
   const ranking=useRedistributionMatches(principal.institutionId,false,blood??"A_POSITIVE",component??"PACKED_RED_BLOOD_CELLS",blood&&component&&destination&&Number.isSafeInteger(quantity)&&quantity>0&&quantity<=999?quantity:null);
   const evidence=ranking.data[0];
-  const matched=evidence&&eligibleRedistribution(evidence)&&evidence.ranked[0].destinationInstitutionId===destination;
+  const matched=evidence&&eligibleRedistribution(evidence)&&evidence.ranked.some(row=>row.destinationInstitutionId===destination);
   useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(timer);},[]);
   useEffect(()=>{
     let closed=false;setSnapshot(undefined);setError("");setConfirmed(false);
@@ -52,7 +52,7 @@ export function RedistributionReview({principal,requests,reservations,onRefresh}
   return <section className="bank-record-card redistribution-review" aria-label="Redistribution review"><header className="bank-section-heading"><h2>Review redistribution</h2></header>
     <div className="dashboard-redistribution-body"><strong>{facilityLabel(destination,principal)} · {formatBloodType(blood)} {componentLabel(component)}</strong>
       <p>Review a pending request assigned to this blood bank. Approval reserves its full quantity using FEFO; preparation and dispatch follow under Transfers.</p>
-      {!matched&&<p role="status">{ranking.busy?"Rechecking destination and source surplus…":"This destination is no longer the top eligible match. Return to Dashboard and refresh the matches."}</p>}
+      {!matched&&<p role="status">{ranking.busy?"Rechecking destination and source surplus…":"This destination is no longer an eligible match. Return to Dashboard and refresh the matches."}</p>}
       <label>Matching request<select aria-label="Redistribution request" value={selected} disabled={command.locked} onChange={event=>{setSelected(event.target.value);command.correct();}}><option value="">Choose a request</option>{candidates.map(row=><option key={row.transfer_id} value={row.transfer_id}>{row.transfer_id} · {row.quantity} {row.quantity===1?"unit":"units"}</option>)}</select></label>
       {!candidates.length&&<p>No pending unreserved request for this product and destination is assigned to your bank. A recommendation alone cannot create a request on another facility’s behalf.</p>}
       {error&&<p role="alert">{error}</p>}
