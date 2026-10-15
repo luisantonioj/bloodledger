@@ -68,3 +68,23 @@ Private captures and live script: build/lat-population-v3/official-stock-bands-l
 Earlier frozen paper screenshots remain historical; new UI is this later
 explicitly requested follow-up. No new merge/tag is claimed. Prior handoffs
 remain historical.
+
+## Cumulative segment presentation clarification
+
+Yuri clarified that each bar must fill cumulative threshold ranges rather than
+use one color for its final classification. A+ FFP with 60 eligible units shows
+red 0–10, Low 11–24, Adequate 25–48 and Surplus 49–60. Threshold 48 belongs
+to Adequate; Surplus begins at 49. No immutable policy value changed.
+Hover/focus/tap help shows the full policy range (Surplus 49+) and a short
+explanation. The example's numeric widths are 10/14/24/12; shared chart
+endpoints are geometric boundaries, not overlapping integer classifications.
+Actual current A+ FFP may include reserved/ineligible units; those remain gray
+at the top rather than misrepresenting them as eligible surplus. Existing
+counts, eligibility, freshness and transfer-authorization boundaries remain.
+
+Segment follow-up validation: check:web PASS; 240 unit tests / 37 files PASS;
+13 affected browser tests PASS, including exact A+ FFP 60-unit segmentation,
+hover text, keyboard focus/Escape and tap behavior. Live ordinary Mediatrix
+login verified cumulative FFP segments and the 25–48 Adequate tooltip. Captures:
+build/lat-population-v3/official-stock-bands-live/segmented-ffp-tooltip.png.
+Gitleaks and whitespace checks PASS. No inventory/domain mutation.

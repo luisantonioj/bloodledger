@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyStock, eligibleStockCounts, stockClassificationPolicy as policy } from "./stock-classification";
+import { classifyStock, eligibleStockCounts, stockSegments, stockClassificationPolicy as policy } from "./stock-classification";
 import type { V2Component } from "../../services/api/v2";
 const now = Date.parse("2026-10-15T00:00:00Z");
 const component = (patch: Partial<V2Component> = {}): V2Component => ({ componentId:"COMP_TEST",donationId:"DON_TEST",issuerInstitutionId:"INST_MEDIATRIX",institutionId:"INST_MEDIATRIX",componentType:"PACKED_RED_BLOOD_CELLS",bloodType:"A_POSITIVE",collectedAt:"2026-10-14T00:00:00Z",expiresAt:"2026-10-16T00:00:00Z",inventoryStatus:"AVAILABLE",expiryState:"CURRENT",reservationId:null,reservationVersion:null,inventoryVersion:1,policyVersion:"TEST",classification:"SIMULATION_ONLY",...patch });
@@ -42,4 +42,26 @@ describe("current complete own-institution stock evidence", () => {
     expect(eligibleStockCounts([component(),component()],"INST_MEDIATRIX",now,now)).toBeNull();
     expect(eligibleStockCounts([component({expiresAt:"bad"})],"INST_MEDIATRIX",now,now)).toBeNull();
   });
+});
+
+describe("cumulative threshold segments",()=>{
+ it("A+ FFP 60 eligible units produces 10 red, 14 low, 24 adequate and 12 surplus units",()=>{
+  expect(stockSegments("A_POSITIVE","FRESH_FROZEN_PLASMA",60,60).map(s=>[s.band,s.start,s.end,s.range])).toEqual([["critical",0,10,"0–10"],["low",10,24,"11–24"],["adequate",24,48,"25–48"],["surplus",48,60,"49+"]]);
+ });
+ it("clips segments to actual counts without coloring unfilled ranges",()=>{
+  expect(stockSegments("A_POSITIVE","FRESH_FROZEN_PLASMA",24,24).map(s=>s.band)).toEqual(["critical","low"]);
+  expect(stockSegments("A_POSITIVE","FRESH_FROZEN_PLASMA",48,48).map(s=>s.band)).toEqual(["critical","low","adequate"]);
+  expect(stockSegments("A_POSITIVE","FRESH_FROZEN_PLASMA",0,0)).toEqual([]);
+ });
+ it("shows noneligible confirmed stock in gray and preserves total height",()=>{
+  const segments=stockSegments("A_POSITIVE","FRESH_FROZEN_PLASMA",60,57);
+  expect(segments.at(-1)).toMatchObject({band:"unknown",start:57,end:60});
+  expect(segments.reduce((sum,s)=>sum+s.end-s.start,0)).toBe(60);
+  expect(stockSegments("A_POSITIVE","FRESH_FROZEN_PLASMA",60,null)).toEqual([expect.objectContaining({band:"unknown",start:0,end:60})]);
+ });
+ it("handles a zero-width critical band and rejects unsupported or invalid data",()=>{
+  expect(stockSegments("AB_NEGATIVE","PLATELETS",3,3).map(s=>s.band)).toEqual(["low","adequate"]);
+  expect(stockSegments("A_POSITIVE","UNKNOWN",12,12)).toEqual([expect.objectContaining({band:"unknown"})]);
+  expect(stockSegments("A_POSITIVE","FRESH_FROZEN_PLASMA",-1,10)).toEqual([]);
+ });
 });

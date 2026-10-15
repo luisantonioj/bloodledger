@@ -76,3 +76,18 @@ test("component read failure removes classification while retaining confirmed ch
  await expect(page.locator(".inventory-overview-bar.stock-unknown")).toHaveCount(40);
  await expect(page.getByText("Stock classification unavailable: current component evidence could not be verified.",{exact:true})).toBeVisible();
 });
+
+test("A+ FFP is segmented at 10/24/48 with hover and keyboard range help",async({page})=>{
+ await setup(page);
+ await page.route("**/api/v2/dashboard",route=>route.fulfill({contentType:"application/json",body:JSON.stringify({composition:"OPERATIONAL",scope:"INSTITUTION",inventory:[{...row,component:"FRESH_FROZEN_PLASMA",confirmedCount:60}],pendingScans:[],lastSuccessfulProjectionAt:instant,classification:"SIMULATION_ONLY"})}));
+ await page.route("**/api/v2/components",route=>route.fulfill({contentType:"application/json",body:JSON.stringify({scope:"INSTITUTION",classification:"SIMULATION_ONLY",components:Array.from({length:60},(_,i)=>({componentId:`COMP_FFP_${i}`,donationId:`DON_FFP_${i}`,issuerInstitutionId:row.institutionId,institutionId:row.institutionId,componentType:"FRESH_FROZEN_PLASMA",bloodType:"A_POSITIVE",collectedAt:instant,expiresAt:new Date(Date.now()+86400000).toISOString(),inventoryStatus:"AVAILABLE",expiryState:"CURRENT",reservationId:null,reservationVersion:null,inventoryVersion:1,policyVersion:"TEST",classification:"SIMULATION_ONLY"}))})}));
+ await page.goto("/");await page.getByRole("combobox",{name:"Inventory overview blood component"}).selectOption("FRESH_FROZEN_PLASMA");
+ const bar=page.locator('.inventory-overview-bar[aria-label^="A+ FFP:"]');
+ await expect(bar.locator(".stock-threshold-segment")).toHaveCount(4);
+ const adequate=bar.getByRole("button",{name:/A\+ FFP — Adequate: 25–48 units/});await adequate.hover();
+ await expect(page.getByRole("tooltip")).toContainText("25–48 units");await expect(page.getByRole("tooltip")).toContainText("adequate stock range");
+ expect(await bar.locator(".segment-adequate").getAttribute("data-start")).toBe("24");
+ expect(await bar.locator(".segment-adequate").getAttribute("data-end")).toBe("48");
+ await adequate.focus();await expect(page.getByRole("tooltip")).toBeVisible();await page.keyboard.press("Escape");await expect(page.getByRole("tooltip")).toHaveCount(0);
+ const surplus=bar.getByRole("button",{name:/Surplus: 49\+ units/});await surplus.click();await expect(page.getByRole("tooltip")).toContainText("not transfer approval");
+});

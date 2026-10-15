@@ -495,7 +495,12 @@ shows unavailable and stale states honestly.
 ### Page head
 
 The Dashboard inventory overview supports component selection and grouped All,
-showing ledger-confirmed count heights and text-labeled stock band colors.
+showing ledger-confirmed count heights and cumulative Critical/Low/Adequate/Surplus
+segments up to each series threshold. Each colored segment supports hover,
+keyboard focus and tap help showing its inclusive policy range and a brief
+explanation. Noneligible confirmed units form a neutral cap; missing evidence
+keeps the full bar neutral. The current eligible-stock classification remains
+a text label below the product.
 The user's accepted [official project demonstration policy](handoffs/LAT-OFFICIAL-DEMO-STOCK-BANDS-DECISION-2026-10-15.md)
 owns the 40 differentiated series, eligible measure and freshness convention.
 Only current own-institution component evidence controls colors; unavailable or
