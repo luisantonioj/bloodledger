@@ -88,15 +88,6 @@ test("A+ FFP is segmented at 10/24/48 with hover and keyboard range help",async(
  expect(await bar.locator(".segment-adequate").getAttribute("data-start")).toBe("24");
  expect(await bar.locator(".segment-adequate").getAttribute("data-end")).toBe("48");
  await adequate.focus();await expect(page.getByRole("tooltip")).toBeVisible();await page.keyboard.press("Escape");await expect(page.getByRole("tooltip")).toHaveCount(0);
- let failEstimate=false;
- await page.route("**/api/v2/analytics/source-surplus?*",route=>{
-  const date=new URL(route.request().url()).searchParams.get("businessDate")!;const origin=new Date(date+"T00:00:00Z");origin.setUTCDate(origin.getUTCDate()-1);
-  return route.fulfill({status:failEstimate?503:200,contentType:"application/json",body:JSON.stringify(failEstimate?{error:{message:"unavailable"}}:{schemaVersion:"SOURCE_SURPLUS_VIEW_V1",institutionId:row.institutionId,businessDate:date,status:"CURRENT",unavailableReason:null,census:{snapshotId:"CENSUS_TEST",capturedAt:new Date().toISOString()},forecast:{runId:"RUN_TEST",datasetVersion:"SYNTHETIC_FORECAST_V5_RUNTIME_V1",originDate:origin.toISOString().slice(0,10),horizonDate:date,generatedAt:new Date().toISOString()},reserve:{safetyAllowance:2,minimumReserve:10,rounding:"FLOOR"},series:[{bloodType:"A_POSITIVE",componentType:"FRESH_FROZEN_PLASMA",availableCount:60,forecastDemand:4,surplusQuantity:44,forecastId:"FC_TEST",evidenceId:"SURP_TEST",status:"AVAILABLE",unavailableReason:null}],policyVersion:"TEST",classification:"SIMULATION_ONLY",recommendationEligibility:"DISABLED_UNAPPROVED_POLICY"})});
- });
- const surplus=bar.getByRole("button",{name:/Surplus: 49\+ units/});await surplus.click();await expect(page.getByRole("tooltip")).toContainText("not transfer approval");
- await expect(page.getByRole("tooltip")).toContainText("12 eligible units above the stock band.");
- await expect(page.getByRole("tooltip")).toContainText("Forecast-based source surplus: 44 units.");
- failEstimate=true;await page.keyboard.press("Escape");await adequate.focus();await surplus.focus();
- await expect(page.getByRole("tooltip")).toContainText("Redistribution estimate unavailable.");
- await expect(page.getByRole("tooltip")).not.toContainText("Forecast-based source surplus: 44 units.");
+ const surplus=bar.getByRole("button",{name:/Surplus: 49\+ units/});await surplus.click();
+ await expect(page.getByRole("tooltip")).toHaveText("Surplus: 12 units");
 });

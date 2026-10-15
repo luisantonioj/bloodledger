@@ -107,3 +107,9 @@ snapshot/digest boundary. No command or domain mutation is submitted.
 
 Build,243 unit tests and4 chart browser tests PASS, including estimate versus
 above-band quantity and failed-read clearing. This extends the tooltip only.
+
+User simplification supersedes the preceding surplus-hover follow-up: show only
+“Surplus: X units”, where X is the eligible portion above the stock-band upper
+limit. Remove the added backend estimate read and descriptions from this tooltip.
+Forecast-derived source surplus remains exclusively separate on Analytics. No
+transferable-quantity claim is made by this compact above-band count.

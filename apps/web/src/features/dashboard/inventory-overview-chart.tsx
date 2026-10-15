@@ -52,7 +52,7 @@ export function InventoryOverviewChart({ items, institutionId }: { items: Aggreg
                   <div className="inventory-overview-track">
                     <strong aria-hidden="true" style={{ bottom: `calc(${barHeight}% + 9px)` }}>{item.confirmed}</strong>
                     <span className="inventory-overview-fill threshold-segmented-fill" style={{ height: `${barHeight}%` }}>
-                      {segments.map(segment => <StockThresholdSegment key={segment.band} segment={segment} total={item.confirmed} institutionId={institutionId} bloodType={group.bloodType} componentType={item.component} eligible={eligible} product={`${formatBloodType(group.bloodType)} ${componentLabel(item.component)}`}/>)}
+                      {segments.map(segment => <StockThresholdSegment key={segment.band} segment={segment} total={item.confirmed} product={`${formatBloodType(group.bloodType)} ${componentLabel(item.component)}`}/>)}
                     </span>
                   </div>
                   <span className="inventory-overview-product-label">{componentLabel(item.component)}</span>
