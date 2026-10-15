@@ -12,6 +12,7 @@ import { PostgresOperatorVerification } from '../build/src/operator-verification
 import { PostgresV2CommandStore } from '../build/src/v2-command.js';
 import { PostgresV2ProjectionReader } from '../build/src/database-v2.js';
 import { PostgresDevelopmentReader } from '../build/src/development-read.js';
+import { PostgresActivityHistoryReader } from '../build/src/activity-history.js';
 import { PostgresApplicationReadRepository } from '../build/src/database-application-read.js';
 import { sha256 } from '../build/src/hash.js';
 
@@ -38,7 +39,7 @@ try{
   check((await admin.query("SELECT count(*)::int n FROM app.v2_components")).rows[0].n,9);
   const config={host:'127.0.0.1',port:3000,jwtSecret:randomBytes(32).toString('hex'),operatorId:'USR_SYNTH_CAPTURE',operatorCredential:password(),workerConfigured:false,webOrigin:origin,webCookieSecure:false,activeWriteApiVersion:'v2'};
   const store=new PostgresV2CommandStore(runtime),projection=new PostgresV2ProjectionReader(runtime);
-  app=await buildApp(new MemoryRepository(),config,()=>new Date(),new PostgresSessionRepository(runtime),new PostgresApplicationReadRepository(runtime),undefined,{store,projection,keyring:{encryptionKey:randomBytes(32),lookupKey:randomBytes(32),encryptionKeyVersion:'TEST_ONLY'},developmentRead:new PostgresDevelopmentReader(runtime)},new PostgresOperatorVerification(runtime));
+  app=await buildApp(new MemoryRepository(),config,()=>new Date(),new PostgresSessionRepository(runtime),new PostgresApplicationReadRepository(runtime),undefined,{store,projection,activityHistory:new PostgresActivityHistoryReader(runtime),keyring:{encryptionKey:randomBytes(32),lookupKey:randomBytes(32),encryptionKeyVersion:'TEST_ONLY'},developmentRead:new PostgresDevelopmentReader(runtime)},new PostgresOperatorVerification(runtime));
   const login=async(username,pass)=>app.inject({method:'POST',url:'/api/v1/auth/session',headers:{origin},payload:{username,password:pass}});
   const cookie=r=>String(r.headers['set-cookie']).split(';')[0];
   const oldLogin=await login('synth_review_role02',oldPasswords.synth_review_role02);check(oldLogin.statusCode,200);const oldCookie=cookie(oldLogin);
