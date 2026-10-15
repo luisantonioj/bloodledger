@@ -13,7 +13,7 @@ export function DashboardPage({ principal }: { principal: Principal }) {
   const state = useLiveData<Dashboard>(endpoint);
 
   const requester = isRequester(principal);
-  const hasRequests = requester || principal.accountCategory === "BLOOD_BANK";
+  const hasRequests = requester;
   const requests = useLiveData<RequesterRequests>(hasRequests && can(principal, "transfers:read") ? "/api/v2/transfers" : null);
   const busy = state.busy || (hasRequests && requests.busy);
   const refresh = () => { state.manual(); if (hasRequests) requests.manual(); };

@@ -133,3 +133,13 @@ PDF exports are client-side exports of safe fields already loaded through permit
 2026-10-12 PRC consolidation follow-up (GAP-14): overview and availability matrix share the existing scoped dashboard inventory, with All/product selection and total/per-bank chart views. All requires complete reported product coverage rather than silently treating absent products as zero. No extra API, policy grant or summary/redistribution definition added. Reporting-status and replenishment dependencies remain GAP-15/16. Only PRC navigation is consolidated; protected UAT and other-role Network View unchanged.
 
 2026-10-12 unavailable-action help: unavailable frontend controls now expose concise reasons through hover/focus/tap explanations, including pending document upload, supplier routing, PRC supply/coordination, scanner matching, report capture/verification/official PDF and self-service passwords. This is presentation only: native operations remain disabled, no API is added, no permission is granted and none of these dependencies is marked connected. Existing data-dependent PDF/scanner controls explain missing loaded records without losing enabled behavior. Compliance wording now distinguishes Reports for Today (saved reports by scheduled checkpoint date) and Saved Stock Reports from verified compliance. Pagination/count displays preserved by user decision.
+
+### Official project demonstration stock bands — 2026-10-15
+
+The user's subsequent explicit approval authorizes the versioned 40-series
+[demonstration policy](../handoffs/LAT-OFFICIAL-DEMO-STOCK-BANDS-DECISION-2026-10-15.md).
+Frontend colors evaluate fresh own-institution V2.1 components and expose the
+policy table; no new backend read/schema or operational clinical rule is implied.
+This supersedes the earlier no-demo-band decision only for this project display.
+RQ-16 remains open for institutional policy; full FR-04 and redistribution
+authorization remain incomplete. Missing component evidence stays unavailable.

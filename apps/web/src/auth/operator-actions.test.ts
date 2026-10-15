@@ -7,6 +7,8 @@ const operators: OperatorProfile[] = [
 ];
 describe("PA-ACCOUNT-01 operator visibility",()=>{
   it("uses provisioned inventory capabilities for holds and local-release completion", () => {
+    expect(actionCapability("POST /api/v2/reservations")).toBe("transfer:approve");
+    expect(actionCapability("GET /api/v2/reservations")).toBeUndefined();
     expect(actionCapability("POST /api/v2/reconciliation")).toBe("inventory:reconcile");
     expect(actionCapability("POST /api/v2/reservations/RES_SYNTH/local-release-complete")).toBe("inventory:local-release");
   });

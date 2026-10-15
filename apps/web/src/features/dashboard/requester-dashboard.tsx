@@ -1,3 +1,4 @@
+import { DashboardRedistribution } from "./dashboard-redistribution";
 import { PaginatedTable, RecordPagination } from "../../components/ui/record-pagination";
 import { useState } from "react";
 import { can, canAct, type Principal } from "../../auth/permissions";
@@ -26,7 +27,7 @@ export function RequesterDashboard({ data, principal, requests, bankMode=false }
   const mayRead = can(principal, "transfers:read");
   const mayRequest = mayRead && (principal.accountId ? canAct(principal, "transfer:request") : can(principal, "transfers:write"));
   return <div className="requester-dashboard-grid">
-    <section className="requester-dashboard-card" aria-labelledby="requester-requests-heading">
+    {bankMode ? <DashboardRedistribution principal={principal}/> : <section className="requester-dashboard-card" aria-labelledby="requester-requests-heading">
       <header><div><h2 id="requester-requests-heading">{bankMode?"Requests":"My Requests"}</h2></div>{mayRead && <a className="requester-dashboard-link" href="/transfers">View all →</a>}</header>
       {!mayRead ? <div className="empty"><strong>Requests unavailable</strong>This account cannot view requests.</div>
         : !requests.data ? <div className="empty" aria-live="polite"><strong>{requests.error ? "Requests unavailable" : "Loading requests…"}</strong></div>
@@ -38,7 +39,7 @@ export function RequesterDashboard({ data, principal, requests, bankMode=false }
           <td><span className={statusClassName(row.status)}>{humanizeCode(row.status)}</span>{!row.ledger_transaction_id && <small>Awaiting ledger confirmation</small>}</td>
         </tr>)}</tbody></table></PaginatedTable>}
       {mayRead&&rows.length===0&&<RecordPagination total={0} ready={Boolean(requests.data)} label="Dashboard requests"/>}
-    </section>
+    </section>}
     <section className="requester-dashboard-card" aria-labelledby="requester-network-heading">
       <header><div><h2 id="requester-network-heading">Network Blood Availability</h2></div>{mayRequest && <a className="button primary compact" href={"/transfers?" + new URLSearchParams({newRequest:"1", bloodType, componentType:component}).toString()}>+ Request Blood</a>}</header>
       <div className="requester-network-body">

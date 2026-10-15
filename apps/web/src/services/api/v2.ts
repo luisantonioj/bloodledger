@@ -1,3 +1,4 @@
+import { parseLabelIdentity, type LabelIdentity } from "./label-identity";
 import { requestJson } from "./client";
 import type { MutationKeys } from "./mutation-keys";
 
@@ -32,6 +33,7 @@ export const V2_EXPIRY_STATES = ["CURRENT", "LABEL_EXPIRED_PENDING_EVALUATION", 
 export type V2ExpiryState = (typeof V2_EXPIRY_STATES)[number];
 
 export interface V2Component {
+  labelIdentity: LabelIdentity;
   componentId: string;
   donationId: string;
   issuerInstitutionId: string;
@@ -122,6 +124,7 @@ export function parseV2Component(value: unknown): V2Component {
   const expiryState = requiredString(body.expiryState, "V2_COMPONENT_RESPONSE_INVALID") as V2ExpiryState;
   if (!V2_EXPIRY_STATES.includes(expiryState)) throw new Error("V2_COMPONENT_RESPONSE_INVALID");
   return {
+    labelIdentity: parseLabelIdentity(body.labelIdentity),
     componentId: requiredString(body.componentId, "V2_COMPONENT_RESPONSE_INVALID"),
     donationId: requiredString(body.donationId, "V2_COMPONENT_RESPONSE_INVALID"),
     issuerInstitutionId: requiredString(body.issuerInstitutionId, "V2_COMPONENT_RESPONSE_INVALID"),
@@ -215,4 +218,8 @@ export function submitExpiryEvaluation(componentId: string, expectedVersion: num
 export function submitReservationAction(reservationId: string, action: string, payload: object, keys: MutationKeys, version: V2ContractVersion = "V2"): Promise<V2Command> {
   const path = "/api/v2/reservations/" + encodeURIComponent(reservationId) + "/" + encodeURIComponent(action);
   return commandMutation(path, keys, payload, version);
+}
+
+export function submitV2Reservation(payload: object, keys: MutationKeys): Promise<V2Command> {
+  return commandMutation("/api/v2/reservations", keys, payload, "V2.1");
 }

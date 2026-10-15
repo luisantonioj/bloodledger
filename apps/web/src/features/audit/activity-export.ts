@@ -27,5 +27,9 @@ export function filterActivity(events:ActivityEvent[],action:string,search:strin
   const query=search.trim().toLowerCase();
   return events.filter(row=>(action==="ALL"||row.actionCode===action)&&[row.institutionDisplayName,row.actionCode,humanizeCode(row.actionCode),row.targetType,row.outcome,row.safeErrorCode??"",row.correlationId,row.ledgerTransactionId??"",row.targetReference??""].some(value=>value.toLowerCase().includes(query)));
 }
-export const activityHeaders=["Date and time (Manila)","Event time (UTC)","Activity","Institution","Outcome","Target type","Target reference","Safe error","Correlation","Ledger reference","Record reference"];
-export function activityRows(events:ActivityEvent[]){return events.map(row=>[formatManilaDateTime(row.eventTime),row.eventTime,humanizeCode(row.actionCode),row.institutionDisplayName,humanizeCode(row.outcome),humanizeCode(row.targetType),row.targetReference??"Not supplied",row.safeErrorCode??"Not supplied",row.correlationId,row.ledgerTransactionId??"Not supplied",row.auditEventId]);}
+// The safe read currently supplies institution source, not an acting person's identity.
+export function activityReferences(row:ActivityEvent) {
+  return {scanId:null,requestId:row.targetType==="TRANSFER_REQUEST"?row.targetReference??null:null,transferId:null};
+}
+export const activityHeaders=["Date & Time","Activity","User / Source","Scan ID","Request ID","Transfer ID","Blockchain ID","Status"];
+export function activityRows(events:ActivityEvent[]){return events.map(row=>{const refs=activityReferences(row);return [formatManilaDateTime(row.eventTime),humanizeCode(row.actionCode),"Institution: "+row.institutionDisplayName,refs.scanId??"Not available",refs.requestId??"Not available",refs.transferId??"Not available",row.ledgerTransactionId??"Not available",humanizeCode(row.outcome)];});}

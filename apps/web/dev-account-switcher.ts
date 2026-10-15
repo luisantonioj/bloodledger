@@ -21,15 +21,26 @@ const toolbar = `<style>
 body{padding-top:var(--local-account-bar-height,64px)!important}
 .side{top:var(--local-account-bar-height,64px)!important;height:calc(100vh - var(--local-account-bar-height,64px))!important}
 #local-account-bar{position:fixed;inset:0 0 auto;z-index:10000;display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:10px 20px;background:#102132;color:white;font:13px/1.5 sans-serif;box-shadow:0 2px 8px #0002}
-#local-account-bar strong{font-size:11px;letter-spacing:.08em}#local-account-bar label{display:flex;align-items:center;gap:8px}
+#local-account-controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px;flex:1;min-width:0}#local-account-controls[hidden]{display:none}#local-account-toggle{margin-left:auto;padding:4px 10px;border:1px solid #728395;border-radius:5px;background:transparent;color:white;font:12px/1.5 sans-serif;cursor:pointer;white-space:nowrap}#local-account-toggle:focus-visible{outline:2px solid white;outline-offset:2px}#local-account-bar[data-collapsed="true"]{padding:4px 12px}#local-account-bar strong{font-size:11px;letter-spacing:.08em}#local-account-bar label{display:flex;align-items:center;gap:8px}
 #local-account-bar select{max-width:100%;padding:6px 10px;border:1px solid #cad2da;border-radius:5px;background:white;color:#102132;font:inherit}
 #local-account-status{font-size:12px;color:#d7e2ed}#local-account-bar select:disabled{opacity:.65}
 @media(max-width:600px){#local-account-bar{padding:8px 12px}#local-account-bar label{width:100%}#local-account-bar select{min-width:0;flex:1}}
-</style><aside id="local-account-bar" aria-label="Temporary local account switcher"><strong>LOCAL FRONTEND REVIEW</strong><label>Account<select id="local-account-select" aria-label="Switch local account" disabled><option value="">Loading accounts…</option></select></label><span id="local-account-status" role="status">Existing synthetic accounts · Live local data</span></aside><script type="module" src="${endpoint}/toolbar.js"></script>`;
+</style><aside id="local-account-bar" aria-label="Temporary local account switcher"><div id="local-account-controls"><strong>LOCAL FRONTEND REVIEW</strong><label>Account<select id="local-account-select" aria-label="Switch local account" disabled><option value="">Loading accounts…</option></select></label><span id="local-account-status" role="status">Existing synthetic accounts · Live local data</span></div><button type="button" id="local-account-toggle" aria-controls="local-account-controls" aria-expanded="true">Hide account switcher</button></aside><script type="module" src="${endpoint}/toolbar.js"></script>`;
 
 const script = `
 const bar=document.getElementById('local-account-bar'),select=document.getElementById('local-account-select'),status=document.getElementById('local-account-status');
 new ResizeObserver(()=>document.documentElement.style.setProperty('--local-account-bar-height',bar.getBoundingClientRect().height+'px')).observe(bar);
+const controls=document.getElementById('local-account-controls'),toggle=document.getElementById('local-account-toggle');
+const preferenceKey='bloodledger:local-switcher-collapsed';
+function setCollapsed(collapsed){
+  controls.hidden=collapsed;bar.dataset.collapsed=String(collapsed);toggle.setAttribute('aria-expanded',String(!collapsed));
+  toggle.textContent=collapsed?'Show account switcher':'Hide account switcher';
+  document.documentElement.style.setProperty('--local-account-bar-height',bar.getBoundingClientRect().height+'px');
+  try{localStorage.setItem(preferenceKey,String(collapsed));}catch{}
+}
+try{setCollapsed(localStorage.getItem(preferenceKey)==='true');}catch{}
+toggle.addEventListener('click',()=>setCollapsed(!controls.hidden));
+
 let previous='';
 try {
   const response=await fetch('${endpoint}',{credentials:'same-origin'});

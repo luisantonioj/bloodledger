@@ -15,7 +15,7 @@ for(const [path,selector] of [['/alerts','.alert-severity-filters'],['/audit','.
  let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);await page.route('**/api/v2/**',async route=>{await gate;await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:{message:'Layout fixture unavailable'}})});});await auth(page);await page.goto(path);
  await expect(page.locator(selector)).toBeVisible();await expect(page.getByText(/Unable to load|account session changed/i)).toHaveCount(0);
  if(path==='/alerts')await expect(page.locator('.alert-summary strong').first()).toHaveText('—');
- if(path==='/audit')await expect(page.locator('.audit-summary strong').first()).toHaveText('—');release();
+ if(path==='/audit')await expect(page.locator('.audit-table th')).toHaveCount(8);release();
 });
 test('first transient read retries quietly; persistent failure retains alert layout',async({page})=>{
  let reads=0;await page.route('**/api/v2/alerts',route=>{reads++;return route.fulfill({status:reads===1?503:200,contentType:'application/json',body:JSON.stringify(reads===1?{error:{message:'Transient initial read'}}:{scope:'INSTITUTION',alerts:[],aggregates:[],classification:'SIMULATION_ONLY'})});});await auth(page);await page.goto('/alerts');await expect(page.getByText('No alerts',{exact:true})).toBeVisible();expect(reads).toBe(2);await expect(page.getByText('Transient initial read',{exact:true})).toHaveCount(0);

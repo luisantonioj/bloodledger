@@ -521,3 +521,12 @@ population/T0 hold. No population, account change or backend contract change is
 part of this frontend work. TP-G01–G03 remain open: sanitized decisions have
 been requested from Lat/Buno, not inferred or recorded as approved. Formal UAT,
 physical OCR, forecast promotion and phase exit remain separate gates.
+
+## Lat official demonstration stock bands — 2026-10-15
+
+The user's later explicit approval selects TP-08/BL-TST-01 frontend follow-up
+under FR-03/04, superseding the earlier no-demo-band/freeze instruction solely
+for this change. The [decision record](handoffs/LAT-OFFICIAL-DEMO-STOCK-BANDS-DECISION-2026-10-15.md)
+owns scope/provenance; the versioned machine-readable policy owns the table.
+Real institutional RQ-16 and full FR-04 remain incomplete. No data generation,
+transfer authorization, forecast activation, clinical or phase acceptance.

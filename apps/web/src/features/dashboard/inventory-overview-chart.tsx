@@ -1,11 +1,15 @@
+import { StockThresholdSegment } from "./stock-threshold-segment";
+import { classifyStock, stockSegments } from "./stock-classification";
+import { useStockEvidence } from "./use-stock-evidence";
 import { formatBloodType } from "../../components/ui/display";
 import { useState, type CSSProperties } from "react";
 import type { Aggregate } from "../../services/api/types";
 import { componentLabel } from "../transfers/requester-transfer-data";
 import { inventoryOverviewComponents, summarizeInventoryByComponent } from "./inventory-overview";
 
-export function InventoryOverviewChart({ items }: { items: Aggregate[] }) {
+export function InventoryOverviewChart({ items, institutionId }: { items: Aggregate[]; institutionId?: string }) {
   const [component, setComponent] = useState("ALL");
+  const evidence = useStockEvidence(institutionId, items);
   const components = inventoryOverviewComponents(items);
   const summary = summarizeInventoryByComponent(items, component);
   const productCount = summary[0]?.components.length ?? 1;
@@ -26,12 +30,12 @@ export function InventoryOverviewChart({ items }: { items: Aggregate[] }) {
         <option value="ALL">All</option>
         {components.map(product => <option key={product} value={product}>{componentLabel(product)}</option>)}
       </select></span></label>
-      <p>{component === "ALL" ? "Components shown side by side. Scroll to compare blood types." : `${componentLabel(component)} units by blood type.`}</p>
+      <div className="inventory-overview-legend" aria-label="Inventory status legend">
+        <span><i className="critical" />Critical</span><span><i className="low" />Low</span><span><i className="adequate" />Adequate</span><span><i className="surplus" />Surplus</span>
+        {!evidence.counts && <span><i className="unknown" />Classification unavailable</span>}
+      </div>
     </div>
     <div className="inventory-overview-scroll" tabIndex={0} role="region" aria-label="Scrollable inventory chart" style={chartStyle}>
-      <div className="inventory-overview-legend" aria-label="Inventory status legend">
-        <span><i className="unknown" />Stock classification unavailable: no approved stock-level policy (RQ-16)</span>
-      </div>
       <div className="inventory-overview-frame">
         <div className="inventory-overview-axis-title">Quantity (units)</div>
         <div className="inventory-overview-axis" aria-hidden="true">{ticks.map((tick, index) => <span key={tick} style={{ "--tick-index": index } as CSSProperties}>{tick}</span>)}</div>
@@ -40,11 +44,15 @@ export function InventoryOverviewChart({ items }: { items: Aggregate[] }) {
             <div className="inventory-overview-products" role="list" aria-label={`${formatBloodType(group.bloodType)} components`}>
               {group.components.map(item => {
                 const barHeight = item.confirmed / maximum * 100;
-                const description = `${formatBloodType(group.bloodType)} ${componentLabel(item.component)}: ${item.confirmed} confirmed units, ${item.available} available; stock classification unavailable (RQ-16)`;
-                return <div className="inventory-overview-bar stock-unknown" role="listitem" key={item.component} aria-label={description} title={description}>
-                  <div className="inventory-overview-track" aria-hidden="true">
-                    <strong style={{ bottom: `calc(${barHeight}% + 9px)` }}>{item.confirmed}</strong>
-                    <span className="inventory-overview-fill" style={{ height: `${barHeight}%` }}>
+                const eligible = evidence.counts ? evidence.counts.get(group.bloodType + ":" + item.component) ?? 0 : null;
+                const band = classifyStock(group.bloodType, item.component, eligible);
+                const segments = stockSegments(group.bloodType, item.component, item.confirmed, eligible);
+                const description = `${formatBloodType(group.bloodType)} ${componentLabel(item.component)}: ${item.confirmed} confirmed units, ${item.available} available; ${eligible === null ? "eligible count unavailable" : `${eligible} eligible units`}; ${band ?? "classification unavailable"}`;
+                return <div className={`inventory-overview-bar stock-${band ?? "unknown"}`} role="listitem" key={item.component} aria-label={description}>
+                  <div className="inventory-overview-track">
+                    <strong aria-hidden="true" style={{ bottom: `calc(${barHeight}% + 9px)` }}>{item.confirmed}</strong>
+                    <span className="inventory-overview-fill threshold-segmented-fill" style={{ height: `${barHeight}%` }}>
+                      {segments.map(segment => <StockThresholdSegment key={segment.band} segment={segment} total={item.confirmed} product={`${formatBloodType(group.bloodType)} ${componentLabel(item.component)}`}/>)}
                     </span>
                   </div>
                   <span className="inventory-overview-product-label">{componentLabel(item.component)}</span>
@@ -56,6 +64,7 @@ export function InventoryOverviewChart({ items }: { items: Aggregate[] }) {
         </div>
       </div>
     </div>
-    <p className="inventory-overview-note">Ledger-confirmed counts; AVAILABLE is a ledger state, not a usable-stock or surplus assessment. Synthetic source surplus is shown separately on Analytics.</p>
+    {evidence.error && <p className="inventory-overview-note" role="status">{evidence.error}</p>}
+
   </section>;
 }

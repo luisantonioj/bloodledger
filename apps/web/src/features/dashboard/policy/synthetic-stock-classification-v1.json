@@ -1,0 +1,295 @@
+{
+  "version": "SYNTHETIC_STOCK_CLASSIFICATION_V1",
+  "status": "ACCEPTED_FOR_PROJECT_DEMONSTRATION",
+  "classification": "SIMULATION_ONLY",
+  "effectiveDate": "2026-10-15",
+  "owner": "Lat",
+  "approvalReference": "Yuri explicit approval in Handoff Handler on 2026-10-15; Jopia/Buno approval relayed by Yuri",
+  "measure": "Fresh complete V2.1 own-institution components: AVAILABLE, CURRENT expiry, reservationId null, expiresAt strictly after evaluation",
+  "maxReadAgeMs": 60000,
+  "automaticApproval": false,
+  "redistributionAuthorization": false,
+  "scope": "Each institution independently; no cross-component or cross-blood-group totals",
+  "series": [
+    {
+      "bloodType": "A_POSITIVE",
+      "componentType": "WHOLE_BLOOD",
+      "criticalMax": 8,
+      "lowMax": 18,
+      "adequateMax": 35
+    },
+    {
+      "bloodType": "A_POSITIVE",
+      "componentType": "PACKED_RED_BLOOD_CELLS",
+      "criticalMax": 15,
+      "lowMax": 35,
+      "adequateMax": 70
+    },
+    {
+      "bloodType": "A_POSITIVE",
+      "componentType": "FRESH_FROZEN_PLASMA",
+      "criticalMax": 10,
+      "lowMax": 24,
+      "adequateMax": 48
+    },
+    {
+      "bloodType": "A_POSITIVE",
+      "componentType": "PLATELETS",
+      "criticalMax": 4,
+      "lowMax": 10,
+      "adequateMax": 20
+    },
+    {
+      "bloodType": "A_POSITIVE",
+      "componentType": "CRYOPRECIPITATE",
+      "criticalMax": 5,
+      "lowMax": 12,
+      "adequateMax": 24
+    },
+    {
+      "bloodType": "A_NEGATIVE",
+      "componentType": "WHOLE_BLOOD",
+      "criticalMax": 2,
+      "lowMax": 5,
+      "adequateMax": 10
+    },
+    {
+      "bloodType": "A_NEGATIVE",
+      "componentType": "PACKED_RED_BLOOD_CELLS",
+      "criticalMax": 4,
+      "lowMax": 10,
+      "adequateMax": 20
+    },
+    {
+      "bloodType": "A_NEGATIVE",
+      "componentType": "FRESH_FROZEN_PLASMA",
+      "criticalMax": 3,
+      "lowMax": 7,
+      "adequateMax": 14
+    },
+    {
+      "bloodType": "A_NEGATIVE",
+      "componentType": "PLATELETS",
+      "criticalMax": 1,
+      "lowMax": 3,
+      "adequateMax": 6
+    },
+    {
+      "bloodType": "A_NEGATIVE",
+      "componentType": "CRYOPRECIPITATE",
+      "criticalMax": 2,
+      "lowMax": 5,
+      "adequateMax": 9
+    },
+    {
+      "bloodType": "B_POSITIVE",
+      "componentType": "WHOLE_BLOOD",
+      "criticalMax": 6,
+      "lowMax": 14,
+      "adequateMax": 28
+    },
+    {
+      "bloodType": "B_POSITIVE",
+      "componentType": "PACKED_RED_BLOOD_CELLS",
+      "criticalMax": 12,
+      "lowMax": 28,
+      "adequateMax": 56
+    },
+    {
+      "bloodType": "B_POSITIVE",
+      "componentType": "FRESH_FROZEN_PLASMA",
+      "criticalMax": 8,
+      "lowMax": 20,
+      "adequateMax": 40
+    },
+    {
+      "bloodType": "B_POSITIVE",
+      "componentType": "PLATELETS",
+      "criticalMax": 3,
+      "lowMax": 8,
+      "adequateMax": 16
+    },
+    {
+      "bloodType": "B_POSITIVE",
+      "componentType": "CRYOPRECIPITATE",
+      "criticalMax": 4,
+      "lowMax": 10,
+      "adequateMax": 18
+    },
+    {
+      "bloodType": "B_NEGATIVE",
+      "componentType": "WHOLE_BLOOD",
+      "criticalMax": 1,
+      "lowMax": 4,
+      "adequateMax": 8
+    },
+    {
+      "bloodType": "B_NEGATIVE",
+      "componentType": "PACKED_RED_BLOOD_CELLS",
+      "criticalMax": 3,
+      "lowMax": 8,
+      "adequateMax": 16
+    },
+    {
+      "bloodType": "B_NEGATIVE",
+      "componentType": "FRESH_FROZEN_PLASMA",
+      "criticalMax": 2,
+      "lowMax": 6,
+      "adequateMax": 12
+    },
+    {
+      "bloodType": "B_NEGATIVE",
+      "componentType": "PLATELETS",
+      "criticalMax": 1,
+      "lowMax": 2,
+      "adequateMax": 5
+    },
+    {
+      "bloodType": "B_NEGATIVE",
+      "componentType": "CRYOPRECIPITATE",
+      "criticalMax": 1,
+      "lowMax": 3,
+      "adequateMax": 7
+    },
+    {
+      "bloodType": "AB_POSITIVE",
+      "componentType": "WHOLE_BLOOD",
+      "criticalMax": 3,
+      "lowMax": 7,
+      "adequateMax": 14
+    },
+    {
+      "bloodType": "AB_POSITIVE",
+      "componentType": "PACKED_RED_BLOOD_CELLS",
+      "criticalMax": 6,
+      "lowMax": 14,
+      "adequateMax": 28
+    },
+    {
+      "bloodType": "AB_POSITIVE",
+      "componentType": "FRESH_FROZEN_PLASMA",
+      "criticalMax": 12,
+      "lowMax": 30,
+      "adequateMax": 60
+    },
+    {
+      "bloodType": "AB_POSITIVE",
+      "componentType": "PLATELETS",
+      "criticalMax": 2,
+      "lowMax": 6,
+      "adequateMax": 12
+    },
+    {
+      "bloodType": "AB_POSITIVE",
+      "componentType": "CRYOPRECIPITATE",
+      "criticalMax": 3,
+      "lowMax": 8,
+      "adequateMax": 15
+    },
+    {
+      "bloodType": "AB_NEGATIVE",
+      "componentType": "WHOLE_BLOOD",
+      "criticalMax": 1,
+      "lowMax": 3,
+      "adequateMax": 6
+    },
+    {
+      "bloodType": "AB_NEGATIVE",
+      "componentType": "PACKED_RED_BLOOD_CELLS",
+      "criticalMax": 2,
+      "lowMax": 6,
+      "adequateMax": 12
+    },
+    {
+      "bloodType": "AB_NEGATIVE",
+      "componentType": "FRESH_FROZEN_PLASMA",
+      "criticalMax": 4,
+      "lowMax": 10,
+      "adequateMax": 20
+    },
+    {
+      "bloodType": "AB_NEGATIVE",
+      "componentType": "PLATELETS",
+      "criticalMax": 0,
+      "lowMax": 2,
+      "adequateMax": 4
+    },
+    {
+      "bloodType": "AB_NEGATIVE",
+      "componentType": "CRYOPRECIPITATE",
+      "criticalMax": 1,
+      "lowMax": 2,
+      "adequateMax": 5
+    },
+    {
+      "bloodType": "O_POSITIVE",
+      "componentType": "WHOLE_BLOOD",
+      "criticalMax": 12,
+      "lowMax": 25,
+      "adequateMax": 50
+    },
+    {
+      "bloodType": "O_POSITIVE",
+      "componentType": "PACKED_RED_BLOOD_CELLS",
+      "criticalMax": 22,
+      "lowMax": 50,
+      "adequateMax": 100
+    },
+    {
+      "bloodType": "O_POSITIVE",
+      "componentType": "FRESH_FROZEN_PLASMA",
+      "criticalMax": 9,
+      "lowMax": 22,
+      "adequateMax": 44
+    },
+    {
+      "bloodType": "O_POSITIVE",
+      "componentType": "PLATELETS",
+      "criticalMax": 6,
+      "lowMax": 15,
+      "adequateMax": 30
+    },
+    {
+      "bloodType": "O_POSITIVE",
+      "componentType": "CRYOPRECIPITATE",
+      "criticalMax": 7,
+      "lowMax": 16,
+      "adequateMax": 32
+    },
+    {
+      "bloodType": "O_NEGATIVE",
+      "componentType": "WHOLE_BLOOD",
+      "criticalMax": 5,
+      "lowMax": 12,
+      "adequateMax": 24
+    },
+    {
+      "bloodType": "O_NEGATIVE",
+      "componentType": "PACKED_RED_BLOOD_CELLS",
+      "criticalMax": 10,
+      "lowMax": 24,
+      "adequateMax": 48
+    },
+    {
+      "bloodType": "O_NEGATIVE",
+      "componentType": "FRESH_FROZEN_PLASMA",
+      "criticalMax": 3,
+      "lowMax": 8,
+      "adequateMax": 16
+    },
+    {
+      "bloodType": "O_NEGATIVE",
+      "componentType": "PLATELETS",
+      "criticalMax": 2,
+      "lowMax": 5,
+      "adequateMax": 10
+    },
+    {
+      "bloodType": "O_NEGATIVE",
+      "componentType": "CRYOPRECIPITATE",
+      "criticalMax": 2,
+      "lowMax": 6,
+      "adequateMax": 11
+    }
+  ]
+}

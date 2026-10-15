@@ -2,6 +2,7 @@ import type { OperatorProfile } from "./permissions";
 
 // Visibility only. The API binds and authorizes the actual operator and command.
 export function actionCapability(action: string): string | undefined {
+  if (action === "POST /api/v2/reservations") return "transfer:approve";
   if (action === "POST /api/v2/transfers") return "transfer:request";
   if (action === "POST /api/v2/local-releases") return "inventory:local-release";
   if (action === "POST /api/v2/inbound-captures") return "inventory:capture";

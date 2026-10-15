@@ -699,7 +699,7 @@ test("regulatory navigation renders every selected read-only page and CSV bounda
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /Submit|Approve|Acknowledge|Dispatch|Receipt/ })).toHaveCount(0);
     if (path === "/consortium") await expect(page.locator(".regulatory-stats")).toBeVisible();
-    if (path === "/audit") await expect(page.locator(".audit-summary")).toBeVisible();
+    if (path === "/audit") await expect(page.locator(".audit-summary")).toHaveCount(0);
     if (path === "/reporting") await expect(page.locator(".report-summary")).toBeVisible();
     if (path === "/profile") await expect(page.locator(".profile-identity")).toBeVisible();
     if (path === "/reporting") {

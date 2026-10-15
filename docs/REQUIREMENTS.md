@@ -122,6 +122,12 @@ Acceptance:
 - Threshold values have an owner, effective date, and audit history.
 - A predicted surplus is labeled with forecast time and model version.
 
+Accepted demonstration follow-up (2026-10-15): the user's later explicit
+[project stock-band decision](handoffs/LAT-OFFICIAL-DEMO-STOCK-BANDS-DECISION-2026-10-15.md)
+authorizes SYNTHETIC_STOCK_CLASSIFICATION_V1 for frontend display only. Institutional
+RQ-16 remains open and FR-04 remains partially implemented; these invented bands
+are not clinical levels or distributable-surplus authorization.
+
 ### FR-05 — Submit blood requisition
 
 An authorized hospital user shall submit a request containing institution,
@@ -596,7 +602,7 @@ sprint:
 | RQ-13 | What applicant verification, abuse prevention, and recovery controls are required before public self-service application can supplement invitation-only onboarding? | Before enabling public application |
 | RQ-14 | What retention period and access policy apply to onboarding verification evidence and rejected applications? | Sprint 4 |
 | RQ-15 | Who may authorize emergency suspension while a transfer is dispatched or in transit, and how is safe receipt/custody resolution assigned? | Before operational in-transit suspension |
-| RQ-16 | What institutionally approved minimum-stock and safe-stock levels, shortage rule and surplus indicator replace the unavailable `FR-04` dashboard classification (Critical, Low, Adequate, Surplus)? This covers unit of measure, institution, blood-group and component scope, boundary comparisons, zero and missing-coverage handling, freshness tolerance, and the owner, approver, effective date and audit reference. The `SYNTHETIC_OPTIMIZATION_V1` and V2.1 surplus safety allowance and minimum reserve are not stock-classification thresholds. | Before any dashboard stock classification or `FR-04` acceptance |
+| RQ-16 | What institutionally approved minimum-stock and safe-stock levels, shortage rule and surplus indicator replace the unavailable `FR-04` dashboard classification (Critical, Low, Adequate, Surplus)? This covers unit of measure, institution, blood-group and component scope, boundary comparisons, zero and missing-coverage handling, freshness tolerance, and the owner, approver, effective date and audit reference. The `SYNTHETIC_OPTIMIZATION_V1` and V2.1 surplus safety allowance and minimum reserve are not stock-classification thresholds. | Before operational dashboard stock classification or full `FR-04` acceptance; accepted project-only demonstration exception is recorded under FR-04 |
 | RQ-17 | What PRC supply-request workflow replaces the disabled PRC form: who records a request, product lines and units, required-by deadline, how the PRC acknowledgement or reference is obtained and recorded (manual or integrated), the status lifecycle, PRC visibility and the evidence/audit rule? No PRC supply-request record, command or read exists; the PRC tab stays explicitly unavailable until then. | Before any PRC supply-request list, detail or submission |
 
 Unanswered questions must not be guessed by a coding agent. The relevant task is

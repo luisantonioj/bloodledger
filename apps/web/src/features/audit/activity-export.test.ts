@@ -1,7 +1,7 @@
 // FR-11/12: filtered exports retain safe, authorized scope and command provenance.
 import {describe,it,expect} from "vitest";
 import type {Principal} from "../../auth/permissions";
-import {permittedActivity,filterActivity,activityRows} from "./activity-export";
+import {permittedActivity,filterActivity,activityRows,activityHeaders,activityReferences} from "./activity-export";
 const bank={roleId:"ROLE-02",institutionId:"INST_BANK",institutionDisplayName:"Sample Bank",accountCategory:"BLOOD_BANK"} as Principal;
 const event={auditEventId:"EV_SAMPLE",institutionDisplayName:"Sample Bank",institutionId:"INST_BANK",actionCode:"RESERVE",targetType:"COMPONENT",outcome:"PENDING",safeErrorCode:null,correlationId:"COR_SAMPLE",ledgerTransactionId:null,eventTime:"2026-10-12T00:00:00Z"};
 const body={scope:"INSTITUTION",classification:"SIMULATION_ONLY",events:[event]};
@@ -29,4 +29,11 @@ describe("permitted activity exports",()=>{
   const data=permittedActivity({scope:"INSTITUTION",classification:"SIMULATION_ONLY",requests:[request,{...request,transfer_id:"TR_FOREIGN",destination_institution_id:"INST_OTHER"}],reservations:[],timeline:[command,{...command,command_id:"CMD_FOREIGN",resource_id:"TR_FOREIGN"}]},requester);
   expect(data.events).toHaveLength(1);expect(data.events[0]).toMatchObject({targetReference:"TR_OWN",outcome:"ACCEPTED",ledgerTransactionId:null,correlationId:"Not supplied"});
  });
+});
+
+it("uses mockup export columns without relabeling correlations as business references or institutions as users",()=>{
+ expect(activityHeaders).toEqual(["Date & Time","Activity","User / Source","Scan ID","Request ID","Transfer ID","Blockchain ID","Status"]);
+ const values=activityRows([event])[0];expect(values.slice(2)).toEqual(["Institution: Sample Bank","Not available","Not available","Not available","Not available","PENDING"]);expect(values).not.toContain(event.correlationId);
+ expect(activityReferences({...event,targetType:"TRANSFER_REQUEST",targetReference:"TRF_VERIFIED"})).toEqual({scanId:null,requestId:"TRF_VERIFIED",transferId:null});
+ expect(activityReferences({...event,targetType:"RESERVATION",targetReference:"RES_VERIFIED"}).transferId).toBeNull();
 });

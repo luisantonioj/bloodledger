@@ -1,3 +1,4 @@
+import { labelText } from "../../services/api/label-identity";
 import { PaginatedTable } from "../../components/ui/record-pagination";
 import { useEffect, useRef, useState } from "react";
 import type { Principal } from "../../auth/permissions";
@@ -48,7 +49,7 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
       {history.length > 1 && <button className="button compact" onClick={() => {setRecord(undefined); setBusy(true); setHistory(rows => rows.slice(0, -1));}}>Back to previous record</button>}
       {busy && <p role="status">Loading current authorized record…</p>}
       {error && <div role="alert"><p>{error}</p><button className="button" onClick={() => setRetry(value => value + 1)}>Retry record</button></div>}
-      {component && <><dl className="v2-operation-card">
+      {component && <><dl className="v2-operation-card"><dt>Unit ID</dt><dd>{labelText(component.labelIdentity)}</dd>
         <dt>Donation</dt><dd className="mono">{component.donationId}</dd><dt>Blood / component</dt><dd>{humanizeCode(component.bloodType)} / {humanizeCode(component.componentType)}</dd>
         <dt>Collection</dt><dd>{formatManilaDateTime(component.collectedAt)}</dd><dt>Expiry</dt><dd>{formatManilaDateTime(component.expiresAt)}</dd>
         <dt>Expiry state</dt><dd><ExpiryState state={component.expiryState}/></dd>

@@ -494,11 +494,23 @@ shows unavailable and stale states honestly.
 
 ### Page head
 
-The Dashboard inventory overview follows the original quantity-axis bar chart,
-with Critical, Low, Adequate and Surplus legend colors. The isolated visual
-review may supply fixed, clearly labeled sample indicators. The regular
-frontend displays unavailable status/surplus until approved backend evidence
-exists; available inventory must not be presented as predicted surplus.
+The Dashboard inventory overview supports component selection and grouped All,
+showing ledger-confirmed count heights and cumulative Critical/Low/Adequate/Surplus
+segments up to each series threshold. Each colored segment supports hover,
+keyboard focus and tap help showing its inclusive policy range and a brief
+explanation. Noneligible confirmed units form a neutral cap; missing evidence
+keeps the full bar neutral. Component labels sit below the zero baseline; per-bar status captions are
+omitted at the user’s request. Classification remains available through
+accessible bar descriptions and segment help.
+The user's accepted [official project demonstration policy](handoffs/LAT-OFFICIAL-DEMO-STOCK-BANDS-DECISION-2026-10-15.md)
+owns the 40 differentiated series, eligible measure and freshness convention.
+Only current own-institution component evidence controls colors; unavailable or
+unsupported evidence stays neutral. Policy boundaries and provenance remain in the versioned configuration and
+decision record; the chart omits the expandable threshold table and explanatory
+footer at the user’s request. These invented project bands do not establish clinical levels,
+forecast surplus or redistribution authorization. Source surplus stays separate
+on Analytics. This explicitly supersedes the earlier unavailable-only demo UI;
+institutional RQ-16 and complete FR-04 acceptance remain unresolved.
 
 Every feature page begins with a clear title. Add context only where it explains
 scope, freshness, access, or safety. Institution identity comes from the
@@ -773,7 +785,14 @@ All three blood-bank dashboards retain their inventory overview and add Requests
 
 ### Receipt-style bank mobile scanner — 2026-10-10
 
-The Blood Unit Transactions scanner now reuses the official requester receipt scanner's phone frame, light title/eyebrow, borderless close button, hidden-scrollbar content, equal Scan/Manual tabs and inline manual form. Banks additionally have Inbound/Outbound direction tabs. Changing direction clears that direction's volatile preview, and closing clears the scanner workspace.
+The Open Mobile Scanner dialog begins with two direction choices, Inbound and
+Outbound. Neither input workflow mounts until selected. Change direction returns
+to the chooser and clears the previous direction’s local draft/image/capture
+frame; closing and reopening also starts at the chooser. Existing account and
+operator permissions and the outbound preview-only boundary remain unchanged.
+
+
+The Blood Unit Transactions scanner now reuses the official requester receipt scanner's phone frame, light title/eyebrow, borderless close button, hidden-scrollbar content, equal Scan/Manual tabs and inline manual form. Banks select Inbound/Outbound on the initial choice screen; the scanner does not repeat those choices as tabs. Change direction returns to that screen. Changing direction clears that direction's volatile preview, and closing clears the scanner workspace.
 
 Inbound Scan embeds the existing verified capture PWA with `layout=receipt`: compact camera and capture actions replace its standalone hero, while OCR validation, operator/PIN authorization, idempotency, command status and privacy boundaries remain intact. The parent accepts height messages only from its own same-origin capture iframe so the phone uses one content scroll area. Standalone capture remains unchanged.
 
@@ -959,3 +978,33 @@ Compliance summary Today’s Checkpoints is renamed Reports for Today. It contin
 2026-10-14 PRC Supply Requests action consolidation: the blood-bank toolbar shows Request PRC Supply beside Refresh on the PRC tab, and retains New Blood Request on Blood Requests/Transfers. Removed the separate PRC chapter/Upstream blood supply coordination container and duplicate request action. The toolbar opens and scrolls directly to the single PRC form below the facility workflow; repeated clicks return to that form. Tab changes close request forms so a general blood request does not remain visible in the PRC-only workspace. Cancel and disabled PRC submission explanations preserved; no backend change.
 
 2026-10-14 supplied BloodLedger logo: original 1000x1000 PNG from Yuri replaces B/BL brand placeholders in sidebar, sign-in layouts, branded empty states and capture branding/unit review. Wordmark text remains. Web favicon and capture favicon/PWA icon use the same unchanged supplied artwork; original white background preserved, no image transformation. Changes stay in isolated design checkout; capture source updated without building, serving or deploying capture/UAT.
+
+2026-10-15 Lat dashboard redistribution: blood-bank facilities replace the Dashboard Requests card with a compact BROA redistribution card. The separate Redistribution sidebar/page is removed; supplier bookmarks resolve to Dashboard. Requester My Requests stays unchanged. Blood type, component and unit controls bind to the existing institution-scoped BROA read. The card highlights the first backend-ranked destination, its urgency/shortage/distance, source surplus and up to three candidates; expandable details retain policy, evaluation time, ranking and exclusions. Closed gates, failed reads and invalid/mismatched results show no destination. Source surplus remains separate from stock classification bands, and this read-only synthetic explanation never approves a transfer. Network Blood Availability retains its independent content height.
+
+2026-10-15 redistribution workflow follow-up: Dashboard defaults to automatic matching: current institution-scoped source-surplus series are checked against existing BROA reads (three concurrent requests maximum), refreshed every minute while visible and on return. Each product retains its backend ranking; the UI does not compare scores across products. Manual series selection remains available. A right-aligned, vertically centered Review redistribution action opens the new Redistribution tab beside Blood Requests and Transfers. It rechecks the destination/surplus and requires an existing committed PENDING request assigned to the supplying bank, then reads current eligible units and previews contract FEFO (expiry then component ID). Human confirmation plus transfer:approve operator verification submits the canonical V2.1 POST /reservations with exact component versions, idempotency and correlation. Queue acceptance remains distinct from commitment; only committed reservations link to preparation/dispatch. No partial offers, invented destination requests or automatic domain commands. Allocation expires after 60 seconds and must be refreshed; existing command recovery and conflict behavior apply. Refresh is aligned at the Dashboard card’s far right.
+
+2026-10-15 automatic-only redistribution presentation: remove both matching-mode buttons and all editable Dashboard series/quantity controls. The first eligible product from the existing deterministic automatic discovery order is shown in a read-only Available matches field; its existing required quantity is shown in read-only Units, on the same row even at narrow widths. The discovery probe remains one unit; no new quantity/allocation policy is inferred. Other eligible products continue to be checked and counted automatically. Manual review, full-request quantity verification, FEFO confirmation and operator-authorized reservation remain in the Redistribution review tab. Failed refresh clears the displayed suggestion and units.
+
+2026-10-15 suggested-match choice: restore a Suggested matches dropdown containing automatically discovered eligible product/destination combinations, including other backend-ranked destinations for the same product. Default is the first eligible product's first-ranked destination. Users may select another discovered match; the destination summary (including its actual rank), product, source surplus and review URL follow that selection. Units remains read-only on the same row; no manual mode returns. Review revalidates that the chosen destination remains in the eligible backend ranking, without requiring rank 1. A match removed by refresh cannot remain selected; discovery order supplies the fallback. No new ranking, quantity or approval policy is introduced.
+
+2026-10-15 redistribution card visual polish: remove the visible synthetic-support footer and automatic-refresh/product-count line at the user's request. Matching, refresh cadence and human approval behavior remain unchanged; partial discovery failures are retained within expandable details. Ranking details now has a bordered, shaded full-width summary row with Expand/Collapse hint and rotating chevron, retaining native keyboard expansion. Suggested matches reuses the shared requester-select chevron and spacing; read-only Units remains beside it.
+
+2026-10-15 Ranking details chevron refinement: remove Expand/Collapse text; the arrow points down while closed and rotates upward while open. Native details/summary interaction remains.
+
+2026-10-15 Ranking details text hierarchy: expanded content groups Destination ranking, Ranking basis and Excluded hospitals. Each hospital has its rank/name heading and prominent score, labeled urgency/shortage/distance metrics, and a smaller normalized/contribution table. Policy/time and factor weights use secondary metadata styling; exclusion names and reasons are visually distinct. Existing scoring values and expandable behavior are preserved.
+
+2026-10-15 Blood Inventory table mockup alignment: actual expiration dates use YYYY-MM-DD in Asia/Manila, with full timestamp available on hover and in component details. Time remaining and status use compact dot pills matching the supplied full mockup; time colors use its <=3-day red, 4–7-day yellow, >7-day green visual bands, and gray for elapsed expiry. These presentation bands do not establish clinical near-expiry policy or change RQ-03/expiry evaluation/FEFO. A green time pill means the displayed interval only. Label-expired AVAILABLE stock shows pending evaluation/expired, not green Available. Reserved status uses yellow. Remove the View reservation button and now-empty Actions column; reservation detail access elsewhere remains. Real component IDs remain because printed identifiers are not exposed by the authorized inventory read; contract gap is recorded in handoffs/LAT-TO-JOPIA-INVENTORY-LABEL-IDENTIFIER-2026-10-15.md. Mock IDs are not assigned to retained bags.
+
+2026-10-15 bank Requests & Transfers tables: Blood Requests adds Priority from recorded urgency, with missing values unavailable and no inferred RPS score. Transfers now uses Transfer ID / Blood Type / Units / From / To / Status. Transfer ID is the linked request reference while row selection continues to open the exact reservation. Blood/product and requested units use a unique, institution-scoped, consistent linked request; available reservation source/destination fields are fallbacks. Independently limited reads may omit linked requests; missing data stays unavailable rather than zero. Local releases remain accessible, explicitly identified without a fabricated transfer ID or hospital destination. PRC Supply uses Request ID / Product / Units / Required By / PRC Reference / Status headings with a single unavailable-state row until the authorized service exists; submission remains disabled. No API or custody mutation changed.
+
+2026-10-15 Activity History mockup columns: shared authorized history table and PDF use Date & Time / Activity / User / Source / Scan ID / Request ID / Transfer ID / Blockchain ID / Status. User / Source explicitly labels the supplied institution source, not an inferred acting user. Bank scan/request/transfer references are unavailable until an explicit scoped contract links them; a requester’s already verified request resource may populate Request ID only. Correlation IDs and reservation IDs are not relabeled as business transfer IDs. Blockchain ID uses the actual supplied ledger reference; Status retains the recorded audit outcome/command state. Remove Permitted events / Institutions shown / Failed outcomes / Ledger-linked summary cards; retain the filtered loaded-record count, search, activity filter, safe errors and scope-aware export. Empty/loading tables keep the eight headings. No audit source, authorization or mutation changes.
+
+### PR #51 transaction read integration — 2026-10-15
+
+Supersedes the earlier bank table source/linkage descriptions above. Blood-bank Inventory displays the exact `labelIdentity.value` as Unit ID while retaining `componentId` for actions and detail navigation. Missing legacy identity reads show Label unavailable. Labels are never reformatted or sent as search URL parameters.
+
+Blood Unit Transactions uses the paginated `/api/v2/unit-history` contract, keyed by `rowId`, with Time / Type / Scan ID / Transaction ID / Unit ID / Blood / Method / Status / Blockchain ID. Transfers uses `/api/v2/transfer-summaries`, keyed by `reservationId`, with Transfer ID / Blood Type / Units / From / To / Status. Transfer ID is a TRANSFER reservation ID; its linked TRF is labeled Request ID. Local releases remain explicitly labeled and have no destination. Requested, allocated and current-status quantities remain distinct.
+
+Bank ROLE-02 Activity History uses `/api/v2/activity-history` and its recorded actor, links, time source and ledger state. Actor role is labeled current, never historical. The regulatory audit and requester timeline retain their existing read sources. Blood Request Priority uses recorded urgency; PRC Supply remains unavailable under RQ-17.
+
+All three cursor lists retain loaded-row counts, explicit Load more, first-page refresh and safe unavailable/not-permitted errors. Local filters and PDF exports cover loaded matching rows only; exports retain exact column order and SIMULATION_ONLY provenance. Pending, projection pending, failed, conflict and off-chain records are visually distinct from confirmed events. Missing event time is not replaced by acceptance time. Technical references may be compacted visually with full values in title attributes and PDFs; printed Unit ID labels remain exact. Contract details live in `services/api/openapi-v2.json` and the Jopia handoff rather than being redefined here.
