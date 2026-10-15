@@ -796,3 +796,7 @@
 .blood-bank-inventory .inventory-chip-warning { color: var(--warning); background: var(--warning-container); }
 .blood-bank-inventory .inventory-chip-success { color: var(--success); background: var(--success-container); }
 .blood-bank-inventory .inventory-chip-expired { color: var(--inventory-expired-ink); background: var(--inventory-expired-container); }
+.bank-transfer-summary-table { min-width: 650px; }
+.bank-transfer-summary-table td small { display: block; margin-top: 4px; font-size: 11px; color: var(--ink-muted); }
+.bank-prc-supply-table { min-width: 650px; }
+.blood-bank-transfers .bank-page-toolbar > .requester-transfer-tabs { flex-wrap: wrap; max-width: 100%; }
