@@ -51,7 +51,7 @@ const reservation = {
   classification: "SIMULATION_ONLY" as const,
 };
 
-test("V2 components response preserves the envelope and excludes exact Donation No. values", async () => {
+test("V2 components response preserves the envelope and excludes encrypted Donation No. material", async () => {
   const sessions = {
     async findCredential() { return record; },
     async createSession() {},
@@ -83,7 +83,10 @@ test("V2 components response preserves the envelope and excludes exact Donation 
     assert.deepEqual(Object.keys(response.json()).sort(), ["classification", "components", "scope"]);
     assert.equal(response.json().scope, "INSTITUTION");
     assert.equal(response.json().classification, "SIMULATION_ONLY");
-    assert.doesNotMatch(response.body, /Donation No\.?|donationNumber|ciphertext|authTag|lookupHmac|ocr/i);
+    assert.doesNotMatch(response.body, /donationNumber|ciphertext|authTag|nonce|lookupHmac|ocrEngine/i);
+    // Without a sealed-label reader the display identity is unavailable, never derived from opaque IDs.
+    assert.equal(response.json().components[0].labelIdentity.status, "UNAVAILABLE");
+    assert.equal(response.json().components[0].labelIdentity.value, null);
   } finally {
     await app.close();
   }

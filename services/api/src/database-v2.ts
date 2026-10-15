@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { Pool } from "pg";
 import type { V2Command } from "./v2-command.js";
 import type { V2LedgerSubmitter } from "./v2-worker.js";
+import type { SealedDonationNumber } from "./label-identity.js";
 
 export interface V2ComponentProjection {
   componentId: string;
@@ -41,6 +42,8 @@ export interface V2ProjectionReader {
   listComponents(institutionId: string, roleId: string): Promise<V2ComponentProjection[]>;
   getComponent(componentId: string, institutionId: string, roleId: string): Promise<V2ComponentProjection | null>;
   findComponentByIdentity(issuerInstitutionId: string, donationNumberLookupHmac: string, componentType: string): Promise<Pick<V2ComponentProjection, "componentId" | "donationId" | "institutionId" | "inventoryStatus" | "reservationId" | "reservationVersion" | "inventoryVersion"> | null>;
+  // Sealed label material for components the institution currently holds; read-route use only.
+  listSealedDonationNumbers?(componentIds: readonly string[], institutionId: string): Promise<Map<string, SealedDonationNumber>>;
   recordInboundCapture?(captureId: string, payload: Record<string, unknown>, acceptedAt: string): Promise<void>;
   listInboundIntake?(institutionId?: string): Promise<Record<string, number>>;
   listReservations?(institutionId: string, roleId: string, limit: number, cursor?: string): Promise<{ reservations: V2ReservationProjection[]; nextCursor: string | null }>;
@@ -84,6 +87,11 @@ export class PostgresV2ProjectionReader implements V2ProjectionReader {
   private query = `SELECT c.component_id,c.donation_id,c.issuer_institution_id,c.component_type,c.blood_type,c.collected_at,c.expires_at,c.institution_id,c.inventory_status,c.reservation_id,c.ledger_version,c.policy_version,r.version AS reservation_version FROM app.v2_components c LEFT JOIN app.v2_reservations r ON r.reservation_id=c.reservation_id WHERE c.institution_id=$1`;
   async listComponents(institutionId: string, _roleId: string): Promise<V2ComponentProjection[]> { const result = await this.pool.query<Row>(`${this.query} ORDER BY c.expires_at,c.component_id`, [institutionId]); return result.rows.map((row) => mapRow(row)); }
   async getComponent(componentId: string, institutionId: string, _roleId: string): Promise<V2ComponentProjection | null> { const result = await this.pool.query<Row>(`${this.query} AND c.component_id=$2`, [institutionId, componentId]); return result.rows[0] ? mapRow(result.rows[0]) : null; }
+  async listSealedDonationNumbers(componentIds: readonly string[], institutionId: string): Promise<Map<string, SealedDonationNumber>> {
+    if (componentIds.length === 0) return new Map();
+    const result = await this.pool.query<Row>(`SELECT c.component_id,c.capture_method,d.donation_number_ciphertext,d.donation_number_nonce,d.donation_number_auth_tag,d.donation_number_key_version FROM app.v2_components c JOIN app.v2_donations d ON d.donation_id=c.donation_id WHERE c.institution_id=$1 AND c.component_id=ANY($2::text[])`, [institutionId, [...componentIds]]);
+    return new Map(result.rows.map((row) => [String(row.component_id), { ciphertext: String(row.donation_number_ciphertext), nonce: String(row.donation_number_nonce), authTag: String(row.donation_number_auth_tag), encryptionKeyVersion: String(row.donation_number_key_version), captureMethod: row.capture_method == null ? null : String(row.capture_method) }]));
+  }
   async findComponentByIdentity(issuerInstitutionId: string, donationNumberLookupHmac: string, componentType: string) {
     const result = await this.pool.query<Row>(`SELECT c.component_id,c.donation_id,c.institution_id,c.inventory_status,c.reservation_id,c.ledger_version,r.version AS reservation_version FROM app.v2_components c LEFT JOIN app.v2_reservations r ON r.reservation_id=c.reservation_id WHERE c.issuer_institution_id=$1 AND c.donation_number_lookup_hmac=$2 AND c.component_type=$3`, [issuerInstitutionId, donationNumberLookupHmac, componentType]);
     if (!result.rows[0]) return null;
