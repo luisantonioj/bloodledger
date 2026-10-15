@@ -2,6 +2,7 @@ import { ProductComparisonChart } from "../analytics/product-comparison-chart";
 import { ApiRequestError, retryAfterContextChange } from "../../services/api/client";
 import { useEffect, useState } from "react";
 import type { Principal } from "../../auth/permissions";
+import { InformationHelp } from "../../components/ui/information-help";
 import { RefreshButton } from "../../components/ui/refresh-button";
 import { formatBloodType, humanizeCode, formatManilaDateTime, statusClassName, compactRecordReference } from "../../components/ui/display";
 import { componentLabel, facilityLabel } from "../transfers/requester-transfer-data";
@@ -30,7 +31,7 @@ function EvidenceState({busy, error, status, reason}: {busy: boolean; error?: st
 export function SurplusPanel({principal, businessDate, refreshKey = 0, componentType}: {principal: Principal; businessDate: string; refreshKey?: number; componentType?: string}) {
   const state = useCoordination<SourceSurplusView>("/api/v2/analytics/source-surplus?" + new URLSearchParams({businessDate}), principal.institutionId, refreshKey);
   const data = state.data;
-  return <section className="analytics-preview-panel coordination-panel analytics-surplus-card"><header><div><span className="analytics-eyebrow">What could be left over?</span><h3>{componentType ? "Estimated excess stock" : "Source surplus — "+businessDate}</h3></div><div className="analytics-card-actions"><span className="analytics-state" data-state={data?.status}>{state.busy ? "Loading" : data ? ({CURRENT:"Current",STALE:"Older result",UNAVAILABLE:"Unavailable"}[data.status]) : "Unavailable"}</span><RefreshButton busy={state.busy} onRefresh={state.refresh}/></div></header>
+  return <section className="analytics-preview-panel coordination-panel analytics-surplus-card"><header><div><h3>{componentType ? "Estimated excess stock" : "Source surplus — "+businessDate}</h3></div><div className="analytics-card-actions"><span className="analytics-state" data-state={data?.status}>{state.busy ? "Loading" : data ? ({CURRENT:"Current",STALE:"Older result",UNAVAILABLE:"Unavailable"}[data.status]) : "Unavailable"}</span><RefreshButton busy={state.busy} onRefresh={state.refresh}/><InformationHelp label="Estimated excess stock">Units left after forecast demand and synthetic safety reserves are deducted from recorded stock for the selected date. This estimate is separate from live available inventory and does not approve redistribution. Open detailed data for the calculation and model provenance.</InformationHelp></div></header>
     <p className="analytics-section-description">Units left after forecast demand and synthetic safety reserves are deducted from recorded stock. This is not approval to redistribute.</p>
     {(state.busy || state.error || data?.status !== "CURRENT") && <EvidenceState busy={state.busy} error={state.error} status={data?.status} reason={data?.unavailableReason}/>}
     {data && <>
