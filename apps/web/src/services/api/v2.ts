@@ -216,3 +216,7 @@ export function submitReservationAction(reservationId: string, action: string, p
   const path = "/api/v2/reservations/" + encodeURIComponent(reservationId) + "/" + encodeURIComponent(action);
   return commandMutation(path, keys, payload, version);
 }
+
+export function submitV2Reservation(payload: object, keys: MutationKeys): Promise<V2Command> {
+  return commandMutation("/api/v2/reservations", keys, payload, "V2.1");
+}
