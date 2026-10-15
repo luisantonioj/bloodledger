@@ -19,7 +19,7 @@ backend generates opaque donation and component IDs. Raw OCR text, images, and
 the exact Donation No. never enter commands, Fabric, logs, server reports, or
 audit events; the encrypted value and keyed lookup evidence remain off-chain.
 Since 2026-10-15 the custody-scoped component reads return the decrypted value
-as a display-only `labelIdentity` (ADR-036, `LABEL_IDENTITY_READ_V1`).
+as a display-only `labelIdentity` (ADR-040, `LABEL_IDENTITY_READ_V1`).
 
 ## Contract and policy
 
