@@ -88,3 +88,22 @@ hover text, keyboard focus/Escape and tap behavior. Live ordinary Mediatrix
 login verified cumulative FFP segments and the 25–48 Adequate tooltip. Captures:
 build/lat-population-v3/official-stock-bands-live/segmented-ffp-tooltip.png.
 Gitleaks and whitespace checks PASS. No inventory/domain mutation.
+
+## Surplus hover quantity follow-up
+
+User requested an amount for redistribution in the Surplus hover. The tooltip
+now distinguishes eligible units above the static dashboard band from the
+existing backend forecast-based source-surplus estimate. These numbers need not
+match and neither authorizes a transfer. Human approval/current transfer checks
+remain explicit. No new reserve formula or numerical transfer cap is invented.
+
+The existing read is fetched only while a Surplus tooltip is open and refreshed
+every30 seconds. Accept only CURRENT own-institution/series evidence for the
+current Manila date, matching current eligible count, same-day nonfuture census
+and forecast generation, expected V5 dataset and previous-day origin/current-day
+horizon. Missing/failed/stale/duplicate evidence shows estimate unavailable;
+zero is displayed only when explicitly returned. Backend assesses its existing
+snapshot/digest boundary. No command or domain mutation is submitted.
+
+Build,243 unit tests and4 chart browser tests PASS, including estimate versus
+above-band quantity and failed-read clearing. This extends the tooltip only.
