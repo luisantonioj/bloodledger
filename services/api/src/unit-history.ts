@@ -1,3 +1,4 @@
+import { nullableIsoTimestamp } from "./time.js";
 import type { Pool } from "pg";
 import type { DonationKeyring } from "./donation-crypto.js";
 import { ApiFailure } from "./errors.js";
@@ -159,7 +160,7 @@ export function assembleUnitHistory(institutionId: string, evidence: UnitHistory
 
 type Row = Record<string, unknown>;
 const text = (value: unknown) => value === null || value === undefined ? null : String(value);
-const iso = (value: unknown) => value === null || value === undefined ? null : new Date(String(value)).toISOString();
+const iso = nullableIsoTimestamp;
 
 export class PostgresUnitHistoryReader implements UnitHistoryReader {
   constructor(private readonly pool: Pool) {}

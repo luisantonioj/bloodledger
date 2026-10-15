@@ -1,3 +1,4 @@
+import { nullableIsoTimestamp } from "./time.js";
 import type { Pool } from "pg";
 import { ApiFailure } from "./errors.js";
 
@@ -97,7 +98,7 @@ export function assembleActivityHistory(records: ActivityRecord[], hasMore: bool
 
 type Row = Record<string, unknown>;
 const text = (value: unknown) => value === null || value === undefined ? null : String(value);
-const iso = (value: unknown) => value === null || value === undefined ? null : new Date(String(value)).toISOString();
+const iso = nullableIsoTimestamp;
 const ACTOR_KIND = `CASE WHEN o.operator_id IS NOT NULL THEN 'VERIFIED_OPERATOR' WHEN EXISTS (SELECT 1 FROM app.institution_operators a WHERE a.account_id=e.actor_user_id) THEN 'INSTITUTION_ACCOUNT' WHEN u.user_id IS NOT NULL THEN 'USER_ACCOUNT' ELSE 'UNKNOWN' END`;
 
 export class PostgresActivityHistoryReader implements ActivityHistoryReader {

@@ -2,8 +2,9 @@
 // real login, PIN-bound operator verification, routes, SQL constraints and audit. Synthetic data only.
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import { PostgresPrcSupply } from '../build/src/prc-supply.js';
 
-export async function probePrcSupply({ admin, app, sessions, pins, origin }) {
+export async function probePrcSupply({ admin, runtime, app, sessions, pins, origin }) {
   const BANK_02 = 'USR_SYNTH_REVIEW_ROLE02', BANK_01 = 'USR_SYNTH_REVIEW_ROLE01', MEDIX_02 = 'USR_OP_BA806C9407FF05B6F3ECDA4D9CF4FCD9';
   const PRC = 'USR_OP_655989F204F82E3BE56E4A6E95F4A625', METROLIPA_03 = 'USR_OP_442D31C531892E2145033E6F18136B58';
   let assertions = 0, sequence = 0;
@@ -91,6 +92,24 @@ export async function probePrcSupply({ admin, app, sessions, pins, origin }) {
   assert.deepEqual(after, before); assertions++;
   const paged = (await read(prc, '/api/v2/prc-supply-requests?limit=1')).json();
   check(paged.rows.length, 1); assert.ok(paged.nextCursor); assertions++;
-  check((await read(prc, `/api/v2/prc-supply-requests?limit=5&cursor=${encodeURIComponent(paged.nextCursor)}`)).json().rows.length, 2);
+  const page2 = (await read(prc, `/api/v2/prc-supply-requests?limit=5&cursor=${encodeURIComponent(paged.nextCursor)}`)).json();
+  check(page2.rows.length, 2);
+  // Returned times keep milliseconds, so (time, id) cursors never skip rows within one second.
+  assert.ok([...paged.rows, ...page2.rows].some((row) => !row.submittedAt.endsWith('.000Z'))); assertions++;
+  // Delayed replay (Lat, 2026-10-15): an accepted submission replays after its required-by falls inside
+  // the 1 h window; a changed body still conflicts and a genuinely new submission is still refused.
+  // The service is called with a controlled clock; authorization is the same requester rule.
+  const service = new PostgresPrcSupply(runtime);
+  const requester = { userId: BANK_02, displayName: 'Synthetic Operator', institutionId: 'INST_MEDIATRIX', institutionDisplayName: 'Synthetic Mediatrix', institutionCategory: 'HOSPITAL', roleId: 'ROLE-02', roleDisplayName: 'Verified operator', permissions: [], classification: 'SIMULATION_ONLY', accountCategory: 'BLOOD_BANK', operatorId: BANK_02 };
+  const t0 = new Date(Date.now() + 365 * 24 * 3_600_000), later = new Date(t0.getTime() + 61 * 60_000);
+  const delayedBody = { bloodType: 'B_NEGATIVE', componentType: 'WHOLE_BLOOD', requestedQuantity: 1, urgency: 'CRITICAL', requiredBy: new Date(t0.getTime() + 2 * 3_600_000).toISOString(), correlationId: correlationId() };
+  const delayedKey = key();
+  const original = await service.submit(requester, delayedBody, delayedKey, t0);
+  check(original.replayed, false);
+  const delayedReplay = await service.submit(requester, delayedBody, delayedKey, later);
+  check(delayedReplay.replayed, true); check(delayedReplay.requestId, original.requestId); check(delayedReplay.status, 'SUBMITTED');
+  await assert.rejects(service.submit(requester, { ...delayedBody, requestedQuantity: 2 }, delayedKey, later), (error) => error.code === 'PRC_SUPPLY_IDEMPOTENCY_CONFLICT'); assertions++;
+  await assert.rejects(service.submit(requester, { ...delayedBody, correlationId: correlationId() }, key(), later), (error) => error.code === 'PRC_SUPPLY_REQUIRED_BY_OUT_OF_WINDOW'); assertions++;
+  check((await admin.query('SELECT count(*)::int n FROM app.prc_supply_requests WHERE request_id=$1', [original.requestId])).rows[0].n, 1);
   console.log(`PRC supply probe passed with ${assertions} assertions`);
 }
