@@ -1,3 +1,6 @@
+import {useValidatedRead} from "../../hooks/use-validated-read";
+import {parseNetworkAvailability} from "../../services/api/blood-bank-completion";
+import {formatManilaDateTime} from "../../components/ui/display";
 import { DashboardRedistribution } from "./dashboard-redistribution";
 import { PaginatedTable, RecordPagination } from "../../components/ui/record-pagination";
 import { useState } from "react";
@@ -22,7 +25,8 @@ const componentLabels: Record<string, string> = {
 export function RequesterDashboard({ data, principal, requests, bankMode=false }: { data: Dashboard; principal: Principal; requests: RequesterRequestsState; bankMode?:boolean }) {
   const [bloodType, setBloodType] = useState("O_POSITIVE");
   const [component, setComponent] = useState("PACKED_RED_BLOOD_CELLS");
-  const available = networkAvailableUnits(data, bloodType, component);
+  const network=useValidatedRead(bankMode?"/api/v2/network-availability":null,parseNetworkAvailability);
+  const available = bankMode ? network.data?network.data.rows.filter(row=>row.bloodType===bloodType&&row.componentType===component).reduce((sum,row)=>sum+row.availableUnits,0):null : networkAvailableUnits(data, bloodType, component);
   const rows = requests.data ? bankMode ? requests.data.requests : ownRequests(requests.data, principal.institutionId) : [];
   const mayRead = can(principal, "transfers:read");
   const mayRequest = mayRead && (principal.accountId ? canAct(principal, "transfer:request") : can(principal, "transfers:write"));
@@ -49,9 +53,10 @@ export function RequesterDashboard({ data, principal, requests, bankMode=false }
         </div>
         <div className={"requester-availability-result" + (available === null ? "" : available > 0 ? " has-supply" : " no-supply")} aria-live="polite">
           <div className="requester-availability-blood"><span className="requester-availability-type" aria-label={humanizeCode(bloodType)}>{formatBloodType(bloodType)}</span><span>{componentLabels[component]}</span></div>
-          <div className="requester-availability-quantity"><strong aria-label={available === null ? "Unavailable" : undefined}>{available ?? "—"}</strong><span>network units available</span></div>
+          <div className="requester-availability-quantity"><strong aria-label={available === null ? "Unavailable" : undefined}>{available ?? "—"}</strong><span>{bankMode?"City-wide, label-current available":"network units available"}</span></div>
           <div className="requester-availability-status"><span className={available !== null && available > 0 ? "status success" : "status warning"}>{available === null ? "Availability unavailable" : available > 0 ? "Current supply available" : "No current supply"}</span><small>{available === null ? "Waiting for a confirmed network projection." : "Availability does not guarantee request approval."}</small></div>
         </div>
+        {bankMode&&network.data&&<details><summary>Institution projection times</summary><ul>{[...new Map(network.data.rows.map(row=>[row.institutionId,row])).values()].map(row=><li key={row.institutionId}>{row.institutionDisplayName} · {row.lastProjectedAt?formatManilaDateTime(row.lastProjectedAt):"Projection time unavailable"}</li>)}</ul><small>As of {formatManilaDateTime(network.data.asOf)} · Absent products mean 0 recorded.</small></details>}
       </div>
     </section>
   </div>;

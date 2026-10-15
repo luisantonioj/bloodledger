@@ -1,3 +1,4 @@
+import { BankObservedDemand } from "./bank-observed-demand";
 import { ActionButton } from "../../components/ui/action-button";
 import { RefreshIcon } from "../../components/ui/refresh-button";
 import { useState } from "react";
@@ -34,6 +35,7 @@ export function monthlyObservedRequests(rows:RequestRow[]){
 }
 export function ObservedDemandAnalytics({principal}:{principal:Principal}){
   if(!canViewAnalyticsPage(principal))return <div className="analytics-empty"><strong>Analytics unavailable for this account</strong></div>;
+  if(principal.accountCategory === "BLOOD_BANK")return <BankObservedDemand/>;
   return <ObservedDemandContent principal={principal}/>;
 }
 function ObservedDemandContent({principal}:{principal:Principal}){

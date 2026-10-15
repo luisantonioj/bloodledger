@@ -12,7 +12,10 @@ import { ReconciliationHold } from "./reconciliation-hold";
 import { ReservationActions } from "../transfers/reservation-actions";
 import { CommandRecovery } from "../commands/command-recovery";
 
-export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline = false, showRecovery = true, navigationLocked = false, headerHelp, renderExtra, renderBody}: {initial: RecordSelection; principal: Principal; onClose: () => void; onRefresh?: () => void; inline?: boolean; showRecovery?: boolean; navigationLocked?: boolean; headerHelp?: React.ReactNode; renderBody?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode; renderExtra?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode}) {
+export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline = false, showRecovery = true, navigationLocked: externalNavigationLocked = false, onActionLockChange, headerHelp, renderExtra, renderBody}: {initial: RecordSelection; principal: Principal; onClose: () => void; onRefresh?: () => void; inline?: boolean; showRecovery?: boolean; navigationLocked?: boolean; onActionLockChange?:(locked:boolean)=>void; headerHelp?: React.ReactNode; renderBody?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode; renderExtra?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode}) {
+  const [actionLocked,setActionLocked]=useState(false);
+  const navigationLocked=externalNavigationLocked||actionLocked;
+  useEffect(()=>{onActionLockChange?.(actionLocked);return()=>onActionLockChange?.(false);},[actionLocked,onActionLockChange]);
   const [history, setHistory] = useState<RecordSelection[]>([initial]);
   const [record, setRecord] = useState<SelectedRecord>();
   const [busy, setBusy] = useState(true), [error, setError] = useState("");
@@ -80,7 +83,7 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
       {request && !renderBody && <dl><dt>Source</dt><dd>{facilityLabel(request.source_institution_id, principal)}</dd><dt>Destination</dt><dd>{facilityLabel(request.destination_institution_id, principal)}</dd>{renderExtra ? <><dt>Blood type</dt><dd>{formatBloodType(request.blood_type)}</dd><dt>Component</dt><dd>{componentLabel(request.component_type)}</dd></> : <><dt>Blood / component</dt><dd>{humanizeCode(request.blood_type)} / {humanizeCode(request.component_type)}</dd></>}<dt>Requested units</dt><dd>{request.quantity}</dd><dt>Request state</dt><dd>{humanizeCode(request.status)}</dd><dt>Ledger reference</dt><dd className="mono">{request.ledger_transaction_id ?? "Pending — no commitment"}</dd></dl>}
       {record && renderBody?.(record, open)}
       {record && renderExtra?.(record, open)}
-      {selected.kind === "reservation" && <ReservationActions key={"actions:" + selected.id} reservation={reservation} principal={principal} onRefresh={refresh}/>}
+      {selected.kind === "reservation" && <ReservationActions key={"actions:" + selected.id} reservation={reservation} principal={principal} onRefresh={refresh} onLockChange={setActionLocked}/>}
       {selected.kind === "component" && <ReconciliationHold key={"hold:" + selected.id} component={component} principal={principal} onRefresh={refresh}/>}
       {showRecovery && selected.kind !== "request" && <CommandRecovery key={"recovery:" + selected.id} resourceId={selected.id} onRefresh={refresh}/>}
     </div>

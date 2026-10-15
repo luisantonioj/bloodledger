@@ -15,7 +15,7 @@ export function BankRecordDetails({record, principal, open}: {record: SelectedRe
   const request = record.kind === "request" ? record.value : undefined;
   const transfer = record.kind === "reservation" ? record.value : undefined;
   const id = request?.transfer_id ?? transfer!.reservationId;
-  const status = request?.status ?? transfer!.status;
+  const status = request ? (request.decision_state ?? "DECISION_UNAVAILABLE") : transfer!.status;
   const unavailable = <span className="bank-review-muted">Not available</span>;
   const stages = ["Reserved", "Prepared", "Dispatched", "In transit", "Received"];
   const stage = status === "ACTIVE" && transfer?.preparedEvidencePresent ? 1 : {ACTIVE:0, RESERVED:0, PREPARED:1, DISPATCHED:2, IN_TRANSIT:3, RECEIVED:4}[status as "RESERVED"];
@@ -27,6 +27,7 @@ export function BankRecordDetails({record, principal, open}: {record: SelectedRe
         ["Supplying Blood Bank", facilityLabel(request.source_institution_id, principal)],
         ["Blood type", formatBloodType(request.blood_type)], ["Component", componentLabel(request.component_type)],
         ["Requested units", <strong>{request.quantity} unit(s)</strong>],
+        ["Reservation status", request.reservation_status ? humanizeCode(request.reservation_status) : "Not reserved"],
         ["Ledger reference", request.ledger_transaction_id ? <Reference value={request.ledger_transaction_id}/> : <span className="bank-review-muted">Awaiting ledger confirmation</span>]
       ]}/>
       <section className="bank-review-section"><h3>Requester and clinical details</h3><DetailRows rows={[["Required By", unavailable],["Requested By", unavailable],["Attending Physician", unavailable],["Case Reference", unavailable],["Authorized Pickup", unavailable],["Supporting Documents", unavailable],["Notes", unavailable]]}/></section>

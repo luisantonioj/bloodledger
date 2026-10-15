@@ -11,9 +11,9 @@ export function BankRecordActions({record, principal, reservations, open, approv
   const linked = request ? reservations.find(row => row.transfer_id === request.transfer_id) : undefined;
   const supplying = (request?.source_institution_id ?? transfer?.sourceInstitutionId) === principal.institutionId;
   const receiving = (request?.destination_institution_id ?? transfer?.destinationInstitutionId) === principal.institutionId;
-  const pending = request && ["REQUESTED", "SUBMITTED", "PENDING"].includes(request.status);
+  const pending = request && (request.decision_state ? request.decision_state==="AWAITING_DECISION" : ["REQUESTED", "SUBMITTED", "PENDING"].includes(request.status));
   if (transfer) return receiving && transfer.status === "IN_TRANSIT" && canAct(principal, "inventory:capture") ? <section className="bank-detail-actions"><a className="button" href="/transactions">Record inbound receipt by label</a><p>Use the existing verified OCR flow for bank receipt. Received stock remains RECEIVED.</p></section> : null;
-  const blocked = "This action is unavailable until its verified workflow and operator authorization are connected.";
+  const blocked = "RQ-18: request rejection, cancellation and partial offers need approved transitions. Reservation cancellation is a separate action.";
   return <section className="bank-detail-actions">
     {request && <>
       {linked && <button className="button compact" onClick={() => open("reservation", linked.reservation_id)}>View linked transfer</button>}

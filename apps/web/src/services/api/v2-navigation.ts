@@ -12,7 +12,7 @@ export interface ReservationDetail {
 }
 export interface TransferRequestDetail {
   transfer_id: string; source_institution_id: string; destination_institution_id: string;
-  blood_type: string; component_type: string; quantity: number; status: string;
+  blood_type: string; component_type: string; quantity: number; status: string; decision_state?:string; reservation_id?:string|null; reservation_status?:string|null;
   ledger_transaction_id: string | null;
 }
 export type RecordSelection = {kind: "component" | "reservation" | "request"; id: string};
@@ -54,7 +54,7 @@ export function parseTransferRequest(value: unknown, id: string, principal: Prin
   if (row.transfer_id !== id) throw invalid();
   const source = text(row.source_institution_id), destination = text(row.destination_institution_id);
   scope([source, destination].includes(principal.institutionId));
-  return {transfer_id: id, source_institution_id: source, destination_institution_id: destination, blood_type: text(row.blood_type), component_type: text(row.component_type), quantity: integer(row.quantity), status: text(row.status), ledger_transaction_id: nullable(row.ledger_transaction_id)};
+  return {transfer_id: id, source_institution_id: source, destination_institution_id: destination, blood_type: text(row.blood_type), component_type: text(row.component_type), quantity: integer(row.quantity), status: text(row.status), ...(row.decision_state!==undefined?{decision_state:text(row.decision_state),reservation_id:nullable(row.reservation_id),reservation_status:nullable(row.reservation_status)}:{}), ledger_transaction_id: nullable(row.ledger_transaction_id)};
 }
 
 export async function readSelectedRecord(selection: RecordSelection, principal: Principal, signal?: AbortSignal): Promise<SelectedRecord> {

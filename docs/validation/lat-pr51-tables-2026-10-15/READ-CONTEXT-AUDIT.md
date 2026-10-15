@@ -67,7 +67,7 @@ Each endpoint below already has cancellation, effect-generation and error guards
 | Applicant-status GET after applicant login/withdrawal | Not applicable: separate pre-institution applicant session on the application screen; no institution verifier installs while it remains active; no new retry added |
 | Applicant application/withdrawal/session POST/DELETE | Not applicable: writes, untouched |
 | V2 submit helpers, legacy transfer commands, alert acknowledgement, account/operator administration, operator verification | Not applicable: POST mutations; untouched and not automatically retried |
-| PRC Supply Requests | Historical audit disposition: unavailable at PR #55. RQ-17 is now decided as PA-DEF-06 / ADR-044; PR #57 supplies the backend. Lat-host migration/API activation and empty-list scopes are verified. PR #60 is merged. Delayed replay is resolved by #61: replay lookup precedes the new-write deadline check and timestamps/cursors retain milliseconds; populated live detail/actions await explicit plan approval |
+| PRC Supply Requests | Historical audit disposition: unavailable at PR #55. RQ-17 is now decided as PA-DEF-06 / ADR-044; PR #57 supplies the backend. Lat-host migration/API activation and empty-list scopes are verified. PR #60 is merged. Delayed replay is resolved by #61: replay lookup precedes the new-write deadline check and timestamps/cursors retain milliseconds; populated live detail/actions completed under Jopia’s explicit five-write plan; see [approved live results](../lat-prc-supply-2026-10-15/README.md#lat-host-approved-live-results--2026-10-15) |
 | PDF generation, static design previews, local image/camera previews | Not applicable: no backend read |
 
 ## Acceptance and evidence
@@ -95,7 +95,7 @@ npm exec --workspace @bloodledger/web -- playwright test \
 - `npm run scan:secrets`: **passed** Git history, staged index and tracked/candidate content.
 - `git diff --check`: passed. No backend or runtime-policy files changed.
 
-No live domain commands, backend modifications, account changes, reset, population, census or forecast rerun. RQ-02 remains open. RQ-17 is resolved for simulation by PA-DEF-06 (`SYNTHETIC_PRC_SUPPLY_V1`), ADR-044 (PR #56); PR #57 merged its off-chain backend. Subsequent Lat-host rollout and read-only scopes are verified below; frontend integration is merged PR #60, with #61 resolving replay ordering and preserving timestamp milliseconds; populated live detail/actions still await explicit plan approval. No clinical, regulatory, production or ISBT 128 acceptance is claimed.
+No live domain commands, backend modifications, account changes, reset, population, census or forecast rerun. RQ-02 remains open. RQ-17 is resolved for simulation by PA-DEF-06 (`SYNTHETIC_PRC_SUPPLY_V1`), ADR-044 (PR #56); PR #57 merged its off-chain backend. Subsequent Lat-host rollout and read-only scopes are verified below; frontend integration is merged PR #60, with #61 resolving replay ordering and preserving timestamp milliseconds; populated live detail/actions are complete under Jopia’s approved plan; see the later live-results record. No clinical, regulatory, production or ISBT 128 acceptance is claimed.
 
 
 ## PRC implementation prerequisite update — 2026-10-15
@@ -112,3 +112,8 @@ The [live PRC validation plan](../lat-prc-supply-2026-10-15/LIVE-PLAN.md) is pre
 only, awaiting Jopia’s explicit go-ahead. It is not execution evidence. PRC
 coordination stays in per-request detail history; `ACTIVITY_HISTORY_READ_V1` and
 its strict parser remain unchanged.
+
+
+### Current disposition after the approved PRC live run
+
+The earlier empty-list/migration notes above are historical. The approved live plan is complete on Lat’s host: five new writes plus one replay, two persistent requests (FULFILLED v3, CANCELLED v2), five PRC audit events, and unchanged protected state. See [the live evidence](../lat-prc-supply-2026-10-15/README.md#lat-host-approved-live-results--2026-10-15). No additional live actions inherit that authorization. New ADR-046 summary/network/history reads use the existing safe hooks or the guarded context-change retry; outbound verification is a synchronous mutation and never uses read retry. Its host migration remains separately gated.
