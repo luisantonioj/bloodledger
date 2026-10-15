@@ -502,12 +502,11 @@
 
 .compliance-workspace {display:grid;gap:20px;min-width:0}
 .compliance-checkpoints {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:18px}
-.compliance-checkpoint {display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);color:var(--ink);text-align:left;cursor:pointer;transition:background 160ms}
-.compliance-checkpoint:hover {background:var(--surface-subtle)}
+.compliance-checkpoint {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);color:var(--ink);text-align:left;transition:background 160ms}
 .compliance-checkpoint.selected {border-color:var(--primary);background:var(--primary-container)}
-.compliance-checkpoint > span {font-size:18px;font-weight:600}
-.compliance-checkpoint > strong {font-size:13px;font-weight:500}
-.compliance-checkpoint > small {font-size:11px;color:var(--ink-muted)}
+.compliance-checkpoint-copy > span {font-size:18px;font-weight:600}
+.compliance-checkpoint-copy > strong {font-size:13px;font-weight:500}
+.compliance-checkpoint-copy > small {font-size:11px;color:var(--ink-muted)}
 .compliance-checkpoint-actions {display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 18px 18px;color:var(--ink-muted);font-size:12px}
 .compliance-record-columns {display:grid;grid-template-columns:minmax(0,1.8fr) minmax(260px,1fr);gap:20px;align-items:start}
 .compliance-record-columns > section {min-width:0}
@@ -522,7 +521,8 @@
 .compliance-detail dt {color:var(--ink-muted)}
 .compliance-detail dd {margin:0;overflow-wrap:anywhere;color:var(--ink)}
 .compliance-detail-actions {display:flex;justify-content:flex-end;gap:8px;padding:0 18px 18px}
-.compliance-stock-table {min-width:650px}
+.compliance-stock-table {width:100%;min-width:650px;table-layout:fixed}
+.compliance-stock-table th,.compliance-stock-table td {width:calc(100% / 7);padding:12px}
 .compliance-stock-table td:not(:first-child),.compliance-stock-table th:not(:first-child) {text-align:center}
 .compliance-stock-note {padding:14px 18px;margin:0;color:var(--ink-muted);font-size:12px}
 .compliance-load-more {display:flex;align-items:center;gap:12px;padding:14px 18px}.compliance-load-more small{font-size:11px;color:var(--ink-muted)}
@@ -1076,3 +1076,27 @@
 .bank-request-approval .dashboard-redistribution-body > small { color: var(--ink-muted); font-size: 11px; line-height: 1.6; }
 
 .status.neutral { color: var(--ink-muted); background: var(--surface-subtle); }
+
+.compliance-checkpoint-copy {display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0}
+.compliance-checkpoint > .button {margin-left:auto;flex-shrink:0}
+.compliance-copy-status {flex-basis:100%;margin:0;font-size:12px;color:var(--ink-muted)}
+
+.compliance-copy-icon {display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0}
+.compliance-checkpoint > .unavailable-action {margin-left:auto}
+.compliance-demo-label {font-size:10px;color:var(--ink-muted)}
+.compliance-copy-feedback {padding:0 18px 16px}
+.compliance-date-filter {grid-template-columns:minmax(140px,220px)}
+.bank-stock-record-table {min-width:0;table-layout:fixed;width:100%}
+.bank-stock-record-table th:first-child {width:75%}
+.bank-stock-record-table td:last-child,.bank-stock-record-table th:last-child {text-align:right}
+.bank-stock-record-table td > small {display:block;margin-top:4px}
+
+.compliance-record-columns.bank-stock-record-columns {grid-template-columns:minmax(260px,1fr) minmax(0,1.8fr)}
+.compliance-detail-stock-table {min-width:480px}
+.compliance-detail-stock-table th,.compliance-detail-stock-table td {width:calc(100% / 7);padding:12px 10px;font-size:12px;line-height:1.5;vertical-align:middle}
+.bank-stock-record-table tbody tr {cursor:pointer}
+@media(max-width:1000px){.compliance-record-columns.bank-stock-record-columns{grid-template-columns:1fr}}
+
+.bank-stock-record-table td:first-child,.bank-stock-record-table .bank-review-link {font-size:14px;line-height:1.5}
+
+.bank-stock-record-table .bank-review-link,.bank-stock-record-table .bank-review-link:hover,.bank-stock-record-table .bank-review-link:focus {text-decoration:none}
