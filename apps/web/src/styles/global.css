@@ -729,10 +729,6 @@
 .redistribution-details p { overflow-wrap: anywhere; }
 @media (max-width: 480px) { .dashboard-redistribution-body { padding: 14px; } .dashboard-redistribution-filters { grid-template-columns: 1fr 1fr; } .dashboard-redistribution-filters label:last-child { grid-column: 1 / -1; max-width: 100px; } }
 .dashboard-redistribution > header { justify-content: space-between; }
-.redistribution-mode { display: flex; gap: 8px; flex-wrap: wrap; }
-.redistribution-mode button[aria-pressed=true] { border-color: var(--primary); color: var(--primary); background: var(--surface-subtle); }
-.redistribution-match-picker { margin: 0; }
-.redistribution-match-picker select { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 9px; background: var(--surface); }
 .redistribution-summary { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .redistribution-summary-copy { display: grid; gap: 7px; min-width: 0; }
 .redistribution-summary-copy > strong { font-size: 20px; color: var(--ink); }
@@ -744,3 +740,7 @@
 .redistribution-review .redistribution-confirm input { width: auto; flex: 0 0 auto; margin: 0; }
 .redistribution-review .dashboard-redistribution-body > button, .redistribution-review .dashboard-redistribution-body > a { justify-self: start; }
 .redistribution-review .data-table td { overflow-wrap: anywhere; }
+
+.redistribution-readonly-fields { display: grid; grid-template-columns: minmax(0, 1fr) 80px; gap: 12px; align-items: end; }
+.redistribution-readonly-fields label { margin: 0; min-width: 0; font-size: 12px; }
+.redistribution-readonly-fields input { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-subtle); color: var(--ink); text-overflow: ellipsis; }

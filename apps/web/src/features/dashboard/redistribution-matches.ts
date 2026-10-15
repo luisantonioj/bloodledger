@@ -32,6 +32,7 @@ export function useRedistributionMatches(institutionId: string, automatic: boole
       const results:BroaRedistributionView[]=[];let cursor=0,failed=false;
       // Bound concurrency; each series keeps its own backend ranking and surplus gate.
       await Promise.all(Array.from({length:Math.min(3,unique.length)},async()=>{while(cursor<unique.length&&!controller.signal.aborted){const row=unique[cursor++];try{results.push(await ranking(row.bloodType!,row.componentType!));}catch{failed=true;}}}));
+      if(failed && results.length===0)throw Error("No series could be checked");
       results.sort((a,b)=>V2_BLOOD_TYPES.indexOf(a.bloodType)-V2_BLOOD_TYPES.indexOf(b.bloodType)||V2_COMPONENT_TYPES.indexOf(a.componentType)-V2_COMPONENT_TYPES.indexOf(b.componentType));
       return {key,data:results.filter(eligibleRedistribution),partial:failed,reason:!results.some(eligibleRedistribution)?"NO_ELIGIBLE_MATCHES":undefined};
     }

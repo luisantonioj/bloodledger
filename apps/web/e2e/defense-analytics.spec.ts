@@ -54,16 +54,20 @@ test("Dashboard replaces supplier Requests and sidebar with compact BROA ranking
 });
 for(const scenario of ["closed","foreign","503","mismatch"])test(`Dashboard redistribution hides candidates on ${scenario}`,async({page})=>{
  await setup(page,async(route,path)=>{if(path!=="/api/v2/coordination/redistribution")return false;await route.fulfill({status:scenario==="503"?503:200,contentType:"application/json",body:JSON.stringify({...broa,...(scenario==="foreign"?{institutionId:"INST_OTHER"}:scenario==="mismatch"?{bloodType:"B_POSITIVE"}:scenario==="closed"?{gate:{...broa.gate,eligible:false,reason:"INSUFFICIENT_SURPLUS"}}:{})})});return true;});
- await page.goto("/");await page.getByRole("button",{name:"Choose manually",exact:true}).click();const panel=page.getByRole("region",{name:"Redistribution",exact:true});
- await expect(panel.getByText(scenario==="closed"?"Redistribution unavailable":"Redistribution evidence could not be loaded. Refresh to try again.",{exact:true})).toBeVisible();
+ await page.goto("/");const panel=page.getByRole("region",{name:"Redistribution",exact:true});
+ await expect(panel.getByText(scenario==="closed"?"NO ELIGIBLE MATCHES":"Redistribution evidence could not be loaded. Refresh to try again.",{exact:true})).toBeVisible();
  await expect(panel.locator(".redistribution-shortlist li")).toHaveCount(0);await expect(panel.getByText("Top-ranked destination",{exact:true})).toHaveCount(0);
 });
-test("Dashboard redistribution filters bind series and quantity and refresh clears failed evidence",async({page})=>{
+test("Dashboard redistribution is automatic-only, read-only and clears failed evidence on refresh",async({page})=>{
  let fail=false;
- await setup(page,async(route,path)=>{if(path!=="/api/v2/coordination/redistribution")return false;const params=new URL(route.request().url()).searchParams;await route.fulfill({status:fail?503:200,contentType:"application/json",body:JSON.stringify({...broa,bloodType:params.get("bloodType"),componentType:params.get("componentType"),gate:{...broa.gate,requiredQuantity:Number(params.get("requiredQuantity"))}})});return true;});
+ await setup(page,async(route,path)=>{if(!fail||path!=="/api/v2/coordination/redistribution")return false;await route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:{code:"UNAVAILABLE"}})});return true;});
  await page.goto("/");const panel=page.getByRole("region",{name:"Redistribution",exact:true});await expect(panel.getByText("Top-ranked destination",{exact:true})).toBeVisible();
- await panel.getByRole("button",{name:"Choose manually",exact:true}).click();await page.getByLabel("Redistribution blood type",{exact:true}).selectOption("B_POSITIVE");await page.getByLabel("Redistribution component",{exact:true}).selectOption("FRESH_FROZEN_PLASMA");await page.getByLabel("Redistribution units",{exact:true}).fill("2");await expect(panel.getByText("2 units",{exact:true})).toBeVisible();
- fail=true;await panel.getByRole("button",{name:"Refresh redistribution",exact:true}).click();await expect(panel.getByRole("alert")).toBeVisible();await expect(panel.locator(".redistribution-shortlist li")).toHaveCount(0);
+ const match=panel.getByLabel("Redistribution match",{exact:true}),units=panel.getByLabel("Redistribution units",{exact:true});
+ await expect(match).toHaveAttribute("readonly","");await expect(units).toHaveAttribute("readonly","");await expect(units).toHaveValue("1");await expect(match).toHaveValue("A+ · PRBC → Lipa Medix");
+ await expect(panel.getByRole("button",{name:/Choose manually|Automatic matches/})).toHaveCount(0);await expect(panel.getByRole("combobox")).toHaveCount(0);
+ const boxes=await Promise.all([match.boundingBox(),units.boundingBox()]);expect(boxes[0]!.y).toBe(boxes[1]!.y);
+ await page.setViewportSize({width:390,height:844});const mobile=await Promise.all([match.boundingBox(),units.boundingBox()]);expect(mobile[0]!.y).toBe(mobile[1]!.y);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ fail=true;await panel.getByRole("button",{name:"Refresh redistribution",exact:true}).click();await expect(panel.getByRole("alert")).toBeVisible();await expect(panel.locator(".redistribution-shortlist li")).toHaveCount(0);await expect(match).toHaveValue("No available match");await expect(units).toHaveValue("—");
 });
 test("requester Dashboard retains My Requests without redistribution reads",async({page})=>{const requests=await setup(page,undefined,"ROLE-03");await page.goto("/");await expect(page.getByRole("heading",{name:"My Requests",exact:true})).toBeVisible();await expect(page.getByRole("region",{name:"Redistribution",exact:true})).toHaveCount(0);expect(requests.some(value=>value.includes("/coordination/redistribution"))).toBe(false);});
 
@@ -89,7 +93,7 @@ test("surplus heading follows the selected business date",async({page})=>{
 test("automatic matches discover multiple surplus series without manual filtering",async({page})=>{
  const queries:string[]=[];
  await setup(page,async(route,path)=>{const params=new URL(route.request().url()).searchParams;if(path==="/api/v2/analytics/source-surplus"){const value=surplus(params.get("businessDate")!);value.series.push({...value.series[0],bloodType:"B_POSITIVE"});await route.fulfill({contentType:"application/json",body:JSON.stringify(value)});return true;}if(path!=="/api/v2/coordination/redistribution")return false;queries.push(params.get("bloodType")!);await route.fulfill({contentType:"application/json",body:JSON.stringify({...broa,bloodType:params.get("bloodType")})});return true;});
- await page.goto("/");const picker=page.getByLabel("Redistribution match",{exact:true});await expect(picker.locator("option")).toHaveCount(2);expect(queries).toContain("B_POSITIVE");await picker.selectOption("B_POSITIVE|PACKED_RED_BLOOD_CELLS");await page.getByRole("link",{name:"Review redistribution →",exact:true}).click();await expect(page.getByRole("tab",{name:"Redistribution",exact:true})).toHaveAttribute("aria-selected","true");await expect(page.getByText(/No pending unreserved request/)).toBeVisible();
+ await page.goto("/");await expect(page.getByText("Checks current source surplus every minute. 2 eligible product matches.",{exact:true})).toBeVisible();expect(queries).toContain("B_POSITIVE");await expect(page.getByLabel("Redistribution match",{exact:true})).toHaveValue("A+ · PRBC → Lipa Medix");await page.getByRole("link",{name:"Review redistribution →",exact:true}).click();await expect(page.getByRole("tab",{name:"Redistribution",exact:true})).toHaveAttribute("aria-selected","true");await expect(page.getByText(/No pending unreserved request/)).toBeVisible();
 });
 test("redistribution review verifies FEFO and operator, queues one reservation and polls commitment",async({page})=>{
  let posted:Record<string,unknown>|undefined, polls=0;
