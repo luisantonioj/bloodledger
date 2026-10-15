@@ -152,7 +152,7 @@ uses `localReleaseId` and reservation detail. No separate local-release detail
 endpoint exists. Null references produce no link; absent/denied/missing states
 must not reveal another institution. Encrypted Donation No. material is private;
 the exact printed label is returned only as `labelIdentity` for components the
-caller's institution holds, under `LABEL_IDENTITY_READ_V1` (ADR-036).
+caller's institution holds, under `LABEL_IDENTITY_READ_V1` (ADR-040).
 
 Commands retain QUEUED, SUBMITTING, LEDGER_COMMITTED_PROJECTION_PENDING,
 COMMITTED, RETRY_WAIT, FAILED and CONFLICT distinctions. Historical unknown
