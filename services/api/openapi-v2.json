@@ -265,7 +265,7 @@
     "/transfers": {
       "get": {
         "operationId": "readOperationalTransfers",
-        "description": "SIMULATION_ONLY, institution-scoped V2 projection. ROLE-01/02/03 only. Historical records excluded. Existing V1 reads are preserved separately. Each requests[] row includes urgency (see Urgency: ROUTINE, URGENT or CRITICAL; never null) for the Priority column. requests[] and reservations[] are each capped at 100 independently; use /transfer-summaries for joined reservation rows.",
+        "description": "SIMULATION_ONLY, institution-scoped V2 projection. ROLE-01/02/03 only. Historical records excluded. Existing V1 reads are preserved separately. Each requests[] row includes urgency (see Urgency: ROUTINE, URGENT or CRITICAL; never null) for the Priority column. requests[] and reservations[] are each capped at 100 independently; use /transfer-summaries for joined reservation rows. ADR-046 (additive): each requests[] row also carries reservation_id, reservation_status (both null without a reservation) and decision_state: AWAITING_DECISION (PENDING with no reservation), RESERVATION_RECORDED (approved; follow reservation_status for custody progress) or the recorded request status otherwise. status remains the ledger request status, which stays PENDING after approval.",
         "responses": {
           "200": {
             "description": "Authorized V2 evidence"
@@ -3329,6 +3329,155 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PrcSupplyMutationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/dashboard/summary": {
+      "get": {
+        "operationId": "readBloodBankSummary",
+        "description": "BLOOD_BANK_SUMMARY_V1. ROLE-01/02 for their own institution; ROLE-03/04/05 receive 403.",
+        "responses": {
+          "200": {
+            "description": "Own-institution summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BloodBankSummary"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/network-availability": {
+      "get": {
+        "operationId": "readNetworkAvailability",
+        "description": "NETWORK_AVAILABILITY_V1. ROLE-01/02/03 (permission matrix: city-wide aggregate availability). Regulators use their own aggregate reads and receive 403 here.",
+        "responses": {
+          "200": {
+            "description": "City-wide availability aggregate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkAvailability"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/analytics/request-history": {
+      "get": {
+        "operationId": "readRequestHistory",
+        "description": "REQUEST_HISTORY_AGGREGATE_V1. ROLE-01/02 for their own institution. from/to are inclusive Asia/Manila dates, at most 366 days; otherwise 400 REQUEST_HISTORY_RANGE_INVALID.",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Complete request aggregate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestHistoryAggregate"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/reservations/{reservationId}/outbound-verifications": {
+      "post": {
+        "operationId": "verifyOutboundLabels",
+        "description": "OUTBOUND_LABEL_VERIFICATION_V1. Source-custody ROLE-01/02 with a PIN-verified operator (capability transfer:prepare) on an ACTIVE, unprepared reservation at expectedVersion. The scanned set must equal the reserved units exactly. Errors: 400 OUTBOUND_VERIFICATION_INPUT_INVALID / OUTBOUND_LABEL_DUPLICATE; 404 V2_RESERVATION_NOT_FOUND (also for another institution); 409 RESERVATION_VERSION_CONFLICT, RESERVATION_TRANSITION_INVALID, OUTBOUND_LABELS_MISMATCH (counts only, never label values), OUTBOUND_VERIFICATION_IDEMPOTENCY_CONFLICT; 503 V2_KEYS_UNAVAILABLE. Synchronous off-chain write; the same actor, Idempotency-Key and labels replay the original evidence (replayed true).",
+        "parameters": [
+          {
+            "name": "reservationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^RES_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for institution accounts."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutboundVerificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Evidence issued or replayed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutboundVerification"
                 }
               }
             }
@@ -7311,6 +7460,374 @@
           },
           "policyVersion": {
             "const": "ACTIVITY_HISTORY_READ_V2"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "BloodBankSummary": {
+        "type": "object",
+        "description": "BLOOD_BANK_SUMMARY_V1 (ADR-046). Complete own-institution counts from the ledger projection at asOf; never a capped list. inventory.available/reserved count units whose printed label expiry is after asOf; labelExpiredPendingEvaluation counts AVAILABLE/RESERVED units whose label has expired but which have not been ledger-evaluated (not usable stock). requests.*AwaitingDecision count PENDING requests with no reservation (the ledger request stays PENDING after approval; approval records its single reservation). expiringSoon is POLICY_BLOCKED until RQ-03 approves a near-expiry threshold. Low Stock is derived by the client from SYNTHETIC_STOCK_CLASSIFICATION_V1, not served here.",
+        "required": [
+          "scope",
+          "asOf",
+          "inventory",
+          "requests",
+          "expiringSoon",
+          "policyVersion",
+          "classification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "scope": {
+            "const": "INSTITUTION"
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "inventory": {
+            "type": "object",
+            "required": [
+              "available",
+              "reserved",
+              "labelExpiredPendingEvaluation",
+              "lastProjectedAt"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "available": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "reserved": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "labelExpiredPendingEvaluation": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "lastProjectedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
+            }
+          },
+          "requests": {
+            "type": "object",
+            "required": [
+              "incomingAwaitingDecision",
+              "outgoingAwaitingDecision"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "incomingAwaitingDecision": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Requests addressed to this bank as supplier."
+              },
+              "outgoingAwaitingDecision": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Requests this bank sent to another supplier."
+              }
+            }
+          },
+          "expiringSoon": {
+            "type": "object",
+            "required": [
+              "availability",
+              "count",
+              "blocker"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "availability": {
+                "const": "POLICY_BLOCKED"
+              },
+              "count": {
+                "type": "null"
+              },
+              "blocker": {
+                "const": "RQ-03"
+              }
+            }
+          },
+          "policyVersion": {
+            "const": "BLOOD_BANK_SUMMARY_V1"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "NetworkAvailability": {
+        "type": "object",
+        "description": "NETWORK_AVAILABILITY_V1 (ADR-046). Complete city-wide aggregate, per the permission matrix row 'View city-wide aggregate availability' (ROLE-01/02/03). One row per ACTIVE institution × blood type × component holding label-current AVAILABLE units at asOf; an absent combination means none recorded, not unknown. Reserved, in-transit, held and label-expired units are excluded. Not transferable supply or a redistribution approval.",
+        "required": [
+          "scope",
+          "asOf",
+          "rows",
+          "policyVersion",
+          "classification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "scope": {
+            "const": "CITY_AGGREGATE"
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "institutionId",
+                "institutionDisplayName",
+                "bloodType",
+                "componentType",
+                "availableUnits",
+                "lastProjectedAt"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "institutionId": {
+                  "type": "string"
+                },
+                "institutionDisplayName": {
+                  "type": "string"
+                },
+                "bloodType": {
+                  "$ref": "#/components/schemas/BloodType"
+                },
+                "componentType": {
+                  "$ref": "#/components/schemas/ComponentTypeV21"
+                },
+                "availableUnits": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "lastProjectedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "policyVersion": {
+            "const": "NETWORK_AVAILABILITY_V1"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "RequestHistoryAggregate": {
+        "type": "object",
+        "description": "REQUEST_HISTORY_AGGREGATE_V1 (ADR-046). Complete aggregate of recorded V2 transfer requests where the caller's institution is supplier (INCOMING) or requester (OUTGOING), grouped by Asia/Manila request date, blood type, component and urgency. requestedUnits are requested, not received or transfused. Departments are not recorded (departmentAvailability NOT_RECORDED).",
+        "required": [
+          "scope",
+          "asOf",
+          "range",
+          "rows",
+          "departmentAvailability",
+          "policyVersion",
+          "classification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "scope": {
+            "const": "INSTITUTION"
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "range": {
+            "type": "object",
+            "required": [
+              "from",
+              "to",
+              "timeZone"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "type": "string",
+                "format": "date"
+              },
+              "to": {
+                "type": "string",
+                "format": "date"
+              },
+              "timeZone": {
+                "const": "Asia/Manila"
+              }
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "requestDate",
+                "direction",
+                "bloodType",
+                "componentType",
+                "urgency",
+                "requestCount",
+                "requestedUnits"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "requestDate": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "direction": {
+                  "type": "string",
+                  "enum": [
+                    "INCOMING",
+                    "OUTGOING"
+                  ]
+                },
+                "bloodType": {
+                  "$ref": "#/components/schemas/BloodType"
+                },
+                "componentType": {
+                  "$ref": "#/components/schemas/ComponentTypeV21"
+                },
+                "urgency": {
+                  "$ref": "#/components/schemas/Urgency"
+                },
+                "requestCount": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "requestedUnits": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "departmentAvailability": {
+            "const": "NOT_RECORDED"
+          },
+          "policyVersion": {
+            "const": "REQUEST_HISTORY_AGGREGATE_V1"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "OutboundVerificationRequest": {
+        "type": "object",
+        "description": "Exact body. scannedLabels are the confirmed printed Donation No. values of every unit being prepared, each once. They are matched by keyed lookup and never stored or returned.",
+        "required": [
+          "expectedVersion",
+          "correlationId",
+          "scannedLabels"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "scannedLabels": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        }
+      },
+      "OutboundVerification": {
+        "type": "object",
+        "description": "OUTBOUND_LABEL_VERIFICATION_V1 (ADR-047) server-issued preparation evidence. Pass evidenceId and evidenceDigest as preparedEvidenceId/preparedEvidenceDigest to POST /reservations/{reservationId}/prepare for the same reservationVersion. Off-chain record; ledger NOT_APPLICABLE until prepare commits.",
+        "required": [
+          "evidenceId",
+          "evidenceDigest",
+          "reservationId",
+          "reservationVersion",
+          "componentIds",
+          "matchedUnits",
+          "verifiedAt",
+          "replayed",
+          "ledger",
+          "policyVersion",
+          "classification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "evidenceId": {
+            "type": "string",
+            "pattern": "^EVD_[A-F0-9]{40}$"
+          },
+          "evidenceDigest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "reservationId": {
+            "type": "string"
+          },
+          "reservationVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "componentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "matchedUnits": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "ledger": {
+            "type": "object",
+            "required": [
+              "status"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "const": "NOT_APPLICABLE"
+              }
+            }
+          },
+          "policyVersion": {
+            "const": "OUTBOUND_LABEL_VERIFICATION_V1"
           },
           "classification": {
             "const": "SIMULATION_ONLY"
