@@ -59,7 +59,7 @@ test("missing linkage is explicit and paging cursors reject tampering", () => {
 });
 
 function activity(overrides: Partial<ActivityRecord> & Pick<ActivityRecord, "eventId" | "activityCode">): ActivityRecord {
-  return { eventSource: "COMMAND", targetType: "TRANSFER", processingStatus: "COMMITTED", safeErrorCode: null, correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF", ledgerTransactionId: "tx-1", ledgerCommittedAt: "2026-10-09T15:02:20.000Z", recordedAt: "2026-10-09T15:02:19.000Z", commandEventTime: "2026-10-09T15:02:18.373Z", actorUserId: "USR_SYNTH_OPERATOR_01", actorKind: "VERIFIED_OPERATOR", actorDisplayName: "Synthetic Operator", actorCurrentRoleId: "ROLE-02", captureId: null, captureMethod: null, requestId: null, reservationId: null, reservationPurpose: null, localReleaseId: null, componentIds: [], ...overrides };
+  return { eventSource: "COMMAND", targetType: "TRANSFER", processingStatus: "COMMITTED", safeErrorCode: null, correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF", ledgerTransactionId: "tx-1", ledgerCommittedAt: "2026-10-09T15:02:20.000Z", recordedAt: "2026-10-09T15:02:19.000Z", commandEventTime: "2026-10-09T15:02:18.373Z", actorUserId: "USR_SYNTH_OPERATOR_01", actorKind: "VERIFIED_OPERATOR", actorDisplayName: "Synthetic Operator", actorCurrentRoleId: "ROLE-02", captureId: null, captureMethod: null, requestId: null, reservationId: null, reservationPurpose: null, localReleaseId: null, componentIds: [], actorInstitutionId: "INST_MEDIATRIX", prcSupplyRequestId: null, coordinationPriorStatus: null, coordinationResultingStatus: null, coordinationReasonCode: null, ...overrides };
 }
 
 test("ACTIVITY_HISTORY_READ_V1 links scan, request and transfer only from recorded references", () => {
@@ -140,7 +140,7 @@ test("activity history is limited to the audit-reader role in its own institutio
   try {
     const response = await auditor.app.inject({ method: "GET", url: "/api/v2/activity-history", headers: auditor.headers });
     assert.equal(response.statusCode, 200, response.body);
-    assert.deepEqual(auditor.calls, [["activity", HOME, 50, null]]);
+    assert.deepEqual(auditor.calls, [["activity", HOME, 50, null, false]]);
     assert.equal(response.json().rows[0].links.transferId, "TRF_S");
     assert.doesNotMatch(response.body, /ciphertext|authTag|nonce|lookupHmac|payload|pin/i);
   } finally { await auditor.app.close(); }
