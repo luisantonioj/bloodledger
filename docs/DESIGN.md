@@ -1076,3 +1076,31 @@ component selection, preserved detailed rows, read failures, scope rejection,
 and 20 surplus rows retained behind the charts, working component selection and
 no 390px page overflow. No domain POST, forecast or census rerun. Desktop/mobile
 screenshots were inspected privately.
+
+### 2026-10-15 Redistribution approval within Blood Requests
+
+Supersedes the separate Redistribution review tab. Dashboard Review
+redistribution now opens Blood Requests with the selected product/destination
+context. A unique confirmed PENDING source-assigned request with no reservation
+opens directly in Request details and gains a request-specific URL. Multiple
+matches stay in the existing request list for explicit selection; no match shows
+an explanation, never an invented request. Show all blood requests clears the
+suggestion context. Legacy redistribution-tab URLs open the same request flow.
+
+Approve Transfer sits in Request details for that matching request. It reuses
+the existing current-request read, full requested quantity, source surplus/BROA
+check, 60-second FEFO allocation, component versions, human confirmation,
+operator/PIN verification, idempotency, correlation and command-status polling.
+No policy, permission or backend request shape changes. Acceptance remains
+queued until committed; the reserved-transfer link continues to preparation and
+dispatch. Switching records/tabs or closing details is disabled while the
+approval remains unresolved, preserving its original attempt. Other unavailable
+request actions remain unavailable; no generic approval API is invented.
+
+Validation: check:web passed; 352 unit tests (including design tokens) and
+56 affected browser cases passed with one worker (`defense-analytics`,
+`blood-bank-pages`, `prc-supply`, `pr51-table-contracts`). Coverage includes direct
+unique-match navigation, explicit choice for multiple matches, no-match and
+legacy URLs, FEFO selection, operator binding, queued/committed distinction and
+navigation locking. Live preview checks are read-only; no domain approval or
+other live command was executed. Classification stays SIMULATION_ONLY.

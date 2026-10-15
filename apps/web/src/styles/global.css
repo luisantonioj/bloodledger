@@ -1052,3 +1052,17 @@
 .analytics-simple-workspace .analytics-date-actions select:focus-visible, .analytics-simple-workspace .analytics-date-actions input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .analytics-recorded-context > header h2 { border: 0; padding: 0; }
 .analytics-recorded-context a { color: var(--primary); text-underline-offset: 3px; }
+
+/* Redistribution is reviewed in the matching Blood Request, without an extra tab. */
+.bank-redistribution-context { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 18px; margin-bottom: 18px; border: 1px solid var(--line); border-left: 3px solid var(--primary); border-radius: var(--radius-md); background: var(--surface); }
+.bank-redistribution-context strong { font-size: 12px; }
+.bank-redistribution-context p { margin: 6px 0 0; font-size: 11px; line-height: 1.6; color: var(--ink-muted); }
+.bank-redistribution-context > .button { flex-shrink: 0; }
+.bank-request-approval { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 14px; min-width: 0; }
+.bank-request-approval > .bank-section-heading { padding: 0 0 10px; border: 0; }
+.bank-request-approval > .dashboard-redistribution-body { padding: 0; gap: 12px; font-size: 11px; }
+.bank-request-approval .data-table th, .bank-request-approval .data-table td { padding: 9px; font-size: 10px; }
+.bank-request-approval .redistribution-confirm { align-items: start; font-size: 11px; line-height: 1.6; }
+.bank-request-approval .redistribution-confirm input { margin-top: 3px; }
+.bank-request-approval .dashboard-redistribution-body > small { color: var(--ink-muted); line-height: 1.6; }
+@media (max-width: 700px) { .bank-redistribution-context { flex-direction: column; align-items: start; } }

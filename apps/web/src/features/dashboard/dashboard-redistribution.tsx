@@ -17,7 +17,7 @@ export function DashboardRedistribution({principal}: {principal: Principal}) {
   const rankedValid = Boolean(data);
   const eligible = data && eligibleRedistribution(data);
   const ranked = eligible ? data.ranked : [];
-  const reviewLink = data && ranked.length ? "/transfers?"+new URLSearchParams({tab:"redistribution",bloodType:data.bloodType,componentType:data.componentType,destination:destination!.destinationInstitutionId,quantity,runId:data.runId??""}) : "";
+  const reviewLink = data && ranked.length ? "/transfers?"+new URLSearchParams({tab:"requests",review:"redistribution",bloodType:data.bloodType,componentType:data.componentType,destination:destination!.destinationInstitutionId,quantity,runId:data.runId??""}) : "";
   return <section className="requester-dashboard-card dashboard-redistribution" aria-labelledby="dashboard-redistribution-heading">
     <header><h2 id="dashboard-redistribution-heading">Redistribution</h2><button className="button compact dashboard-refresh" type="button" aria-label="Refresh redistribution" disabled={state.busy} aria-busy={state.busy} onClick={state.refresh}><RefreshIcon/>Refresh</button></header>
     <div className="dashboard-redistribution-body">

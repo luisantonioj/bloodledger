@@ -12,7 +12,7 @@ import { ReconciliationHold } from "./reconciliation-hold";
 import { ReservationActions } from "../transfers/reservation-actions";
 import { CommandRecovery } from "../commands/command-recovery";
 
-export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline = false, showRecovery = true, headerHelp, renderExtra, renderBody}: {initial: RecordSelection; principal: Principal; onClose: () => void; onRefresh?: () => void; inline?: boolean; showRecovery?: boolean; headerHelp?: React.ReactNode; renderBody?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode; renderExtra?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode}) {
+export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline = false, showRecovery = true, navigationLocked = false, headerHelp, renderExtra, renderBody}: {initial: RecordSelection; principal: Principal; onClose: () => void; onRefresh?: () => void; inline?: boolean; showRecovery?: boolean; navigationLocked?: boolean; headerHelp?: React.ReactNode; renderBody?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode; renderExtra?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode}) {
   const [history, setHistory] = useState<RecordSelection[]>([initial]);
   const [record, setRecord] = useState<SelectedRecord>();
   const [busy, setBusy] = useState(true), [error, setError] = useState("");
@@ -31,9 +31,9 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
     return () => {if (previous?.isConnected) previous.focus();};
   }, []);
   useEffect(() => {closeButton.current?.focus();}, [selected]);
-  function open(kind: RecordSelection["kind"], id: string) {setRecord(undefined); setBusy(true); setError(""); setHistory(rows => [...rows, {kind, id}]);}
+  function open(kind: RecordSelection["kind"], id: string) {if(navigationLocked)return;setRecord(undefined); setBusy(true); setError(""); setHistory(rows => [...rows, {kind, id}]);}
   function keyDown(event: React.KeyboardEvent) {
-    if (event.key === "Escape") {event.stopPropagation(); onClose();}
+    if (event.key === "Escape") {event.stopPropagation(); if(!navigationLocked)onClose();}
     if (event.key !== "Tab" || inline) return;
     const items = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],select,input,[tabindex="0"]') ?? []);
     const first = items[0], last = items[items.length - 1];
@@ -45,9 +45,9 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
   const request = record?.kind === "request" ? record.value : undefined;
   const refresh = () => {setRetry(value => value + 1); onRefresh?.();};
   return <div className={inline ? "requester-inline-detail" : "preview-modal-backdrop"}><section ref={panel} className={inline ? "requester-record-detail" : "preview-modal record-explorer-modal"} role={inline ? "region" : "dialog"} aria-modal={inline ? undefined : true} aria-labelledby="record-explorer-title" onKeyDown={keyDown}>
-    <header><div><h2 id="record-explorer-title">{selected.kind === "component" ? "Component details" : selected.kind === "reservation" ? (renderExtra ? "Transfer details" : "Reservation details") : (renderExtra ? "Request details" : "Transfer request details")}</h2>{(!renderBody || selected.kind === "component") && <p className="mono">{selected.id}</p>}</div>{reservation && !renderBody && <span className={statusClassName(reservation.status)}>{humanizeCode(reservation.status)}</span>}<button ref={closeButton} aria-label="Close record details" onClick={onClose}>×</button>{headerHelp}</header>
+    <header><div><h2 id="record-explorer-title">{selected.kind === "component" ? "Component details" : selected.kind === "reservation" ? (renderExtra ? "Transfer details" : "Reservation details") : (renderExtra ? "Request details" : "Transfer request details")}</h2>{(!renderBody || selected.kind === "component") && <p className="mono">{selected.id}</p>}</div>{reservation && !renderBody && <span className={statusClassName(reservation.status)}>{humanizeCode(reservation.status)}</span>}<button ref={closeButton} aria-label="Close record details" disabled={navigationLocked} onClick={onClose}>×</button>{headerHelp}</header>
     <div className="preview-modal-body">
-      {history.length > 1 && <button className="button compact" onClick={() => {setRecord(undefined); setBusy(true); setHistory(rows => rows.slice(0, -1));}}>Back to previous record</button>}
+      {history.length > 1 && <button className="button compact" disabled={navigationLocked} onClick={() => {setRecord(undefined); setBusy(true); setHistory(rows => rows.slice(0, -1));}}>Back to previous record</button>}
       {busy && <p role="status">Loading current authorized record…</p>}
       {error && <div role="alert"><p>{error}</p><button className="button" onClick={() => setRetry(value => value + 1)}>Retry record</button></div>}
       {component && <><dl className="v2-operation-card"><dt>Unit ID</dt><dd>{labelText(component.labelIdentity)}</dd>
