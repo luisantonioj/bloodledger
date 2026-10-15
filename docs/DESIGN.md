@@ -1123,3 +1123,5 @@ coverage for unrelated rows and for closing details without automatic reopening.
 2026-10-15 Analytics header cleanup: move the introductory description into existing page information help; remove the page’s Simulation preview / Read only badge and the two question eyebrows. Expected blood demand and Estimated excess stock each place Refresh before an information hover/focus button at the far right. Existing state indicators, evidence/provenance and simulation classification elsewhere remain.
 
 2026-10-15 Analytics chart cleanup: hide the normal Current header labels on demand/excess panels, retain loading/stale/unavailable states, and place Refresh last at the far right after Information. Remove chart footnotes, product/date captions and the page-bottom simulation note; interpretation and scope remain available in information help and existing model/evidence details.
+
+2026-10-15 Analytics control order refinement: both demand and excess headers place Refresh first and Information last at the far right.
