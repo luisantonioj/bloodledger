@@ -130,3 +130,12 @@ Original live-read and migration evidence above predates the #61 rebase. No
 retained API deployment or live PRC mutation is part of this follow-up.
 Populated live reads and all live actions remain unvalidated; live actions
 require Jopia's explicit go-ahead. No external PRC integration is claimed.
+
+## Post-merge live plan — awaiting approval
+
+Main `014d862` includes #58–#61. The replay finding is resolved and #60 is merged.
+The [minimal live plan](LIVE-PLAN.md) is prepared **only**; no action in that plan
+has been executed. It requires Jopia’s explicit go-ahead for the named host and
+five persistent coordination writes. PRC remains excluded from Activity History
+V1; the [coordinated V2 proposal](../../handoffs/LAT-TO-JOPIA-PRC-ACTIVITY-V2-PROPOSAL-2026-10-15.md)
+is not a parser, policy or contract change.
