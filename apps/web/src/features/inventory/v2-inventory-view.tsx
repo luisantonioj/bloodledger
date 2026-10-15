@@ -1,3 +1,4 @@
+import { InventoryStatus, InventoryTimeRemaining, inventoryExpiryDate } from "./inventory-presentation";
 import { ActionButton } from "../../components/ui/action-button";
 import { RecordPagination } from "../../components/ui/record-pagination";
 import { ActionIcon } from "../../components/ui/action-icon";
@@ -20,16 +21,6 @@ import {
   type V2ComponentsResponse,
   type V2ContractVersion,
 } from "../../services/api/v2";
-
-function TimeRemaining({ expiresAt }: { expiresAt: string }) {
-  const remaining = Date.parse(expiresAt) - Date.now();
-  const expired = remaining <= 0;
-  const days = expired ? Math.floor(-remaining / 86400000) : Math.ceil(remaining / 86400000);
-  const text = expired
-    ? days === 0 ? "Expired less than a day ago" : `Expired ${days} day${days === 1 ? "" : "s"} ago`
-    : `${days} day${days === 1 ? "" : "s"}`;
-  return <span className={expired ? "inventory-time-expired" : undefined}>{text}</span>;
-}
 
 export function V2InventoryView({ principal }: { principal: Principal }) {
   const [selected, setSelected] = useState<RecordSelection | undefined>(() => selectionFromSearch(location.search));
@@ -102,7 +93,7 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
   const pageRows = visible.slice(currentPage * 20, currentPage * 20 + 20);
   const bloodCounts=components.filter(c=>componentFilter==="ALL"||c.componentType===componentFilter);
   const componentCounts=components.filter(c=>bloodFilter==="ALL"||c.bloodType===bloodFilter);
-  async function exportPdf(){setExporting(true);setExportError("");try{await exportTablePdf({title:"Blood Inventory",scope:principal.institutionDisplayName,filters:`Blood type: ${bloodFilter}; Component: ${componentFilter}; Search: ${search||"None"}`,headers:["Component ID","Blood type","Component","Expiration","Expiry evidence","Inventory status"],rows:visible.map(c=>[c.componentId,formatBloodType(c.bloodType),componentLabel(c.componentType),formatManilaDateTime(c.expiresAt),humanizeCode(c.expiryState),humanizeCode(c.inventoryStatus)]),filename:"blood-inventory"});}catch(reason){setExportError(reason instanceof Error?reason.message:"PDF export failed.");}finally{setExporting(false);}}
+  async function exportPdf(){setExporting(true);setExportError("");try{await exportTablePdf({title:"Blood Inventory",scope:principal.institutionDisplayName,filters:`Blood type: ${bloodFilter}; Component: ${componentFilter}; Search: ${search||"None"}`,headers:["Component ID","Blood type","Component","Expiration","Expiry evidence","Inventory status"],rows:visible.map(c=>[c.componentId,formatBloodType(c.bloodType),componentLabel(c.componentType),inventoryExpiryDate(c.expiresAt),humanizeCode(c.expiryState),humanizeCode(c.inventoryStatus)]),filename:"blood-inventory"});}catch(reason){setExportError(reason instanceof Error?reason.message:"PDF export failed.");}finally{setExporting(false);}}
   return <div className="v2-inventory blood-bank-inventory"><header className="page-head"><h1 className="page-title">Blood Inventory</h1><div className="bank-toolbar-actions"><ActionButton className="button compact" disabled={!visible.length||exporting||historical} unavailableReason={historical?"PDF export is available for operational inventory only.":exporting?"The PDF is being prepared. Please wait.":"Load inventory records that match your filters before exporting."} onClick={()=>void exportPdf()}><ActionIcon kind="download"/>{exporting?"Exporting…":"Export PDF"}</ActionButton>{canViewTransactions&&<ActionButton className="button compact" disabled  unavailableReason="CSV import is unavailable. Use verified label intake in Blood Unit Transactions instead."><ActionIcon kind="upload"/>Import CSV</ActionButton>}{canViewTransactions&&<a className="button compact" href="/transactions"><ActionIcon kind="scanner"/>Blood Unit Transactions</a>}<RefreshButton busy={busy} onRefresh={()=>void refresh()}/></div></header>{exportError&&<p role="status">{exportError}</p>}{historical ? <><button className="button compact" onClick={()=>setHistorical(false)}>Show operational inventory</button><HistoricalStockView/></> : <div>
 
 
@@ -118,13 +109,13 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
       <label>Component<span className="requester-select"><select aria-label="Component filter" value={componentFilter} onChange={event=>setComponentFilter(event.target.value)}><option value="ALL">All components</option>{V2_COMPONENT_TYPES.filter(value=>version==="V2.1"||value!=="CRYOPRECIPITATE").map(value=><option key={value} value={value}>{componentLabel(value)}{data?` (${componentCounts.filter(c=>c.componentType===value).length})`:""}</option>)}</select></span></label>
       <label className="bank-search">Search inventory<input type="search" placeholder="Search by component ID, reservation or status…" value={search} onChange={event=>setSearch(event.target.value)}/></label>
     </section>
-      <div className="table-wrap"><table className="data-table inventory-table"><thead><tr><th>Component ID</th><th>Blood type</th><th>Component</th><th>Expiration date</th><th>Time remaining</th><th>Status</th><th className="inventory-actions-cell">Actions</th></tr></thead><tbody>{pageRows.map((component) => <tr key={component.componentId}>
+      <div className="table-wrap"><table className="data-table inventory-table"><thead><tr><th>Component ID</th><th>Blood type</th><th>Component</th><th>Expiration date</th><th>Time remaining</th><th>Status</th></tr></thead><tbody>{pageRows.map((component) => <tr key={component.componentId}>
         <td><button className="button compact unit-reference mono" aria-label={"Open component " + component.componentId} onClick={() => setSelected({kind:"component", id:component.componentId})}>{component.componentId}</button><small className="v2-secondary-id">{component.donationId}</small></td>
         <td><span className="aggregate-plain-text">{formatBloodType(component.bloodType)}</span></td>
         <td>{componentLabel(component.componentType)}</td>
-        <td className="data-time">{formatManilaDateTime(component.expiresAt)}</td><td><TimeRemaining expiresAt={component.expiresAt}/></td>
-        <td><span className={statusClassName(component.inventoryStatus)+(component.inventoryStatus==="AVAILABLE"?" inventory-status-available":component.inventoryStatus==="RESERVED"?" inventory-status-reserved":"")}>{humanizeCode(component.inventoryStatus)}</span></td><td className="inventory-actions-cell">{component.reservationId&&<button className="button compact" aria-label={"Open reservation "+component.reservationId} onClick={()=>setSelected({kind:"reservation",id:component.reservationId!})}>View reservation</button>}</td>
-      </tr>)}{visible.length===0&&<tr><td colSpan={7}><div className="requester-records-empty inventory-table-empty" aria-live="polite">
+        <td className="data-time mono"><time dateTime={component.expiresAt} title={formatManilaDateTime(component.expiresAt)}>{inventoryExpiryDate(component.expiresAt)}</time></td><td><InventoryTimeRemaining expiresAt={component.expiresAt}/></td>
+        <td><InventoryStatus component={component}/></td>
+      </tr>)}{visible.length===0&&<tr><td colSpan={6}><div className="requester-records-empty inventory-table-empty" aria-live="polite">
         <strong>{!data ? busy ? "Loading inventory…" : error ? "Inventory could not refresh" : "Inventory unavailable" : components.length===0 ? error ? "Inventory could not refresh" : "No blood unit records" : "No components match your filters"}</strong>
         <span>{!data ? "Blood unit records will appear here when inventory is available." : components.length===0 ? "No component records are available in this inventory view." : "Try another blood type, component or search."}</span>
       </div></td></tr>}</tbody></table></div>

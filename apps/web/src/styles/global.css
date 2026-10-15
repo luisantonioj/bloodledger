@@ -788,3 +788,11 @@
 .redistribution-ranking-exclusions li { display: grid; gap: 4px; overflow-wrap: anywhere; }
 .redistribution-ranking-exclusions strong { font-size: 12px; color: var(--ink-secondary); font-weight: 500; }
 .redistribution-ranking-exclusions span { font-size: 11px; color: var(--ink-muted); }
+
+/* Inventory mockup dot pills; values and ledger statuses remain authoritative. */
+.blood-bank-inventory .inventory-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 100px; border: 1px solid transparent; font-size: 11px; font-weight: 500; letter-spacing: .02em; white-space: nowrap; color: var(--ink-secondary); background: var(--neutral-container); }
+.blood-bank-inventory .inventory-chip-dot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: currentColor; }
+.blood-bank-inventory .inventory-chip-critical { color: var(--critical); background: var(--critical-container); }
+.blood-bank-inventory .inventory-chip-warning { color: var(--warning); background: var(--warning-container); }
+.blood-bank-inventory .inventory-chip-success { color: var(--success); background: var(--success-container); }
+.blood-bank-inventory .inventory-chip-expired { color: var(--inventory-expired-ink); background: var(--inventory-expired-container); }

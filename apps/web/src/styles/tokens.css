@@ -1,4 +1,6 @@
 :root {
+  --inventory-expired-container: #ECEDEF;
+  --inventory-expired-ink: #454A52;
   --network-label: #536172;
   --network-ink: #182231;
   --network-secondary: #657184;
