@@ -16,8 +16,10 @@ The API derives the receiving custody institution from the authenticated
 session. The issuer remains a separate field so Red Cross/PRC or an explicitly
 enabled bank can be represented without changing the exact Donation No. The
 backend generates opaque donation and component IDs. Raw OCR text, images, and
-the exact Donation No. never enter commands, Fabric, logs, reports, or audit
-events; the encrypted value and keyed lookup evidence remain off-chain.
+the exact Donation No. never enter commands, Fabric, logs, server reports, or
+audit events; the encrypted value and keyed lookup evidence remain off-chain.
+Since 2026-10-15 the custody-scoped component reads return the decrypted value
+as a display-only `labelIdentity` (ADR-036, `LABEL_IDENTITY_READ_V1`).
 
 ## Contract and policy
 

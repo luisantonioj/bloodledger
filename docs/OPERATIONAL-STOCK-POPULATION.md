@@ -150,7 +150,9 @@ versions come from `/api/v2/reservations/{reservationId}`. TRANSFER uses its
 `transferId` to find the scoped request in `/api/v2/transfers`; LOCAL_RELEASE
 uses `localReleaseId` and reservation detail. No separate local-release detail
 endpoint exists. Null references produce no link; absent/denied/missing states
-must not reveal another institution. Exact Donation No. material is private.
+must not reveal another institution. Encrypted Donation No. material is private;
+the exact printed label is returned only as `labelIdentity` for components the
+caller's institution holds, under `LABEL_IDENTITY_READ_V1` (ADR-036).
 
 Commands retain QUEUED, SUBMITTING, LEDGER_COMMITTED_PROJECTION_PENDING,
 COMMITTED, RETRY_WAIT, FAILED and CONFLICT distinctions. Historical unknown

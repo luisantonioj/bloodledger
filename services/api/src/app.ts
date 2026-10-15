@@ -21,6 +21,9 @@ import { sha256 } from "./hash.js";
 import { csvCell } from "./csv.js";
 import { captureSyntheticLocationEvidence } from "./location-evidence.js";
 import { registerV2Routes } from "./v2-routes.js";
+import type { UnitHistoryReader } from "./unit-history.js";
+import type { TransferSummaryReader } from "./transfer-summary.js";
+import type { ActivityHistoryReader } from "./activity-history.js";
 import type { CoordinationReader } from "./coordination-views.js";
 import type { DonationKeyring } from "./donation-crypto.js";
 import type { V2CommandStore } from "./v2-command.js";
@@ -126,7 +129,7 @@ export async function buildApp(
   sessions?: SessionRepository,
   applicationReads?: ApplicationReadRepository,
   applicationWrites?: ApplicationWriteRepository,
-  v2?: { store: V2CommandStore; developmentRead?: DevelopmentReader; keyring?: DonationKeyring; census?: CensusStore; mlInventory?: MlInventoryEvidenceReader; projection?: V2ProjectionReader; coordination?: CoordinationReader; enabledIssuerInstitutionIds?: readonly string[] },
+  v2?: { store: V2CommandStore; developmentRead?: DevelopmentReader; keyring?: DonationKeyring; census?: CensusStore; mlInventory?: MlInventoryEvidenceReader; projection?: V2ProjectionReader; coordination?: CoordinationReader; unitHistory?: UnitHistoryReader; transferSummaries?: TransferSummaryReader; activityHistory?: ActivityHistoryReader; enabledIssuerInstitutionIds?: readonly string[] },
   accountAccess?: PostgresOperatorVerification,
 ): Promise<FastifyInstance> {
   const app = Fastify({
