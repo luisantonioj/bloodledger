@@ -13,6 +13,8 @@ import type { V2ProjectionReader } from "./database-v2.js";
 import { validateInboundOcrInput } from "./inbound-ocr-policy.js";
 import { resolveLabelIdentity, type LabelIdentity, type SealedDonationNumber } from "./label-identity.js";
 import { assembleUnitHistory, decodeHistoryCursor, type UnitHistoryReader } from "./unit-history.js";
+import { assembleTransferSummaries, decodeSummaryCursor, type TransferSummaryReader } from "./transfer-summary.js";
+import { assembleActivityHistory, decodeActivityCursor, type ActivityHistoryReader } from "./activity-history.js";
 import { isReconciliationReasonCode, RECONCILIATION_POLICY_VERSION, RECONCILIATION_REASONS } from "./reconciliation-policy.js";
 import { COMPROMISE_POLICY_VERSION, COMPROMISE_REASONS, isCompromiseReasonCode } from "./compromise-policy.js";
 import { DOH_CENSUS_DISPLAY_ORDER, DOH_CENSUS_DISPLAY_POLICY_VERSION } from "./report-policy.js";
@@ -44,6 +46,8 @@ export interface V2RouteDependencies {
   projection?: V2ProjectionReader;
   coordination?: CoordinationReader;
   unitHistory?: UnitHistoryReader;
+  transferSummaries?: TransferSummaryReader;
+  activityHistory?: ActivityHistoryReader;
   webOrigin: string;
   clock: () => Date;
   enabledIssuerInstitutionIds?: readonly string[];
@@ -187,6 +191,26 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const limit = pageLimit(request.query.limit);
     const cursor = decodeHistoryCursor(request.query.cursor);
     return assembleUnitHistory(principal.institutionId, await dependencies.unitHistory.readUnitHistory(principal.institutionId, limit, cursor), dependencies.keyring);
+  });
+
+  app.get<{ Querystring: { limit?: string; cursor?: string } }>("/api/v2/transfer-summaries", async (request) => {
+    const { principal } = await restore(request);
+    if (!["ROLE-01","ROLE-02","ROLE-03"].includes(principal.roleId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Regulatory readers receive aggregate reports, not transfer records.");
+    if (!dependencies.transferSummaries) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Transfer summaries are not available.");
+    const limit = pageLimit(request.query.limit);
+    const cursor = decodeSummaryCursor(request.query.cursor);
+    const page = await dependencies.transferSummaries.readTransferSummaries(principal.institutionId, principal.roleId, limit, cursor);
+    return assembleTransferSummaries(page.records, page.hasMore);
+  });
+
+  app.get<{ Querystring: { limit?: string; cursor?: string } }>("/api/v2/activity-history", async (request) => {
+    const { principal } = await restore(request);
+    if (principal.roleId !== "ROLE-02") throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Activity history requires the assigned audit-reader role.");
+    if (!dependencies.activityHistory) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Activity history is not available.");
+    const limit = pageLimit(request.query.limit);
+    const cursor = decodeActivityCursor(request.query.cursor);
+    const page = await dependencies.activityHistory.readActivityHistory(principal.institutionId, limit, cursor);
+    return assembleActivityHistory(page.records, page.hasMore);
   });
 
   app.get<{ Params: { componentId: string } }>("/api/v2/components/:componentId", async (request) => {

@@ -265,7 +265,7 @@
     "/transfers": {
       "get": {
         "operationId": "readOperationalTransfers",
-        "description": "SIMULATION_ONLY, institution-scoped V2 projection. ROLE-01/02/03 only. Historical records excluded. Existing V1 reads are preserved separately.",
+        "description": "SIMULATION_ONLY, institution-scoped V2 projection. ROLE-01/02/03 only. Historical records excluded. Existing V1 reads are preserved separately. Each requests[] row includes urgency (see Urgency: ROUTINE, URGENT or CRITICAL; never null) for the Priority column. requests[] and reservations[] are each capped at 100 independently; use /transfer-summaries for joined reservation rows.",
         "responses": {
           "200": {
             "description": "Authorized V2 evidence"
@@ -3044,6 +3044,82 @@
           }
         }
       }
+    },
+    "/transfer-summaries": {
+      "get": {
+        "operationId": "listTransferSummaries",
+        "description": "TRANSFER_SUMMARY_READ_V1. ROLE-01/02/03; ROLE-04/05 receive 403. Same scope as reservation reads: ROLE-03 sees reservations whose linked request is inbound to its institution; ROLE-01/02 see reservations sourced by or inbound to their institution. Newest first by reservedAt then reservationId (descending); rows with no reserve command sort last. limit counts reservations. The list is complete only when nextCursor is null. No server-side search: clients filter loaded rows and the browser PDF covers loaded rows. Facility display names are limited to the source and destination of returned rows.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PageLimit"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^TSUM_[A-Za-z0-9_-]{1,120}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Joined transfer and local-release summaries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferSummaryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/activity-history": {
+      "get": {
+        "operationId": "listActivityHistory",
+        "description": "ACTIVITY_HISTORY_READ_V1 institution audit trail. ROLE-02 only (the assigned audit-reader role), for events its own institution recorded; other roles receive 403. Regulators keep the existing aggregate /audit read, which carries no actor or label detail, and requesters keep their /transfers timeline. Events are all V2 commands acted by the institution plus its off-chain alert acknowledgements; each appears once. Newest first by recordedAt then eventId (descending). limit counts events. Complete only when nextCursor is null. No server-side search: clients may filter loaded rows by activity, actor, references or correlationId and export loaded rows to the browser PDF. No payloads, PINs, credentials, labels or OCR text are returned.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PageLimit"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^ACT_[A-Za-z0-9_-]{1,140}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Institution activity history page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityHistoryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5771,6 +5847,529 @@
           }
         },
         "additionalProperties": false
+      },
+      "Urgency": {
+        "type": "string",
+        "enum": [
+          "ROUTINE",
+          "URGENT",
+          "CRITICAL"
+        ],
+        "description": "Recorded transfer-request urgency (Priority column). NOT NULL on every V2 transfer request and validated against this enum at submission; there is no EMERGENCY alias. It is not the RPS score or a BROA rank."
+      },
+      "ReservationStatus": {
+        "type": "string",
+        "enum": [
+          "ACTIVE",
+          "COMPLETED",
+          "RESERVED",
+          "PREPARED",
+          "DISPATCHED",
+          "IN_TRANSIT",
+          "RECEIVED",
+          "RELEASED",
+          "CANCELLED",
+          "COMPROMISED"
+        ],
+        "description": "Reservation (custody workflow) status from the V2.1 projection. Distinct from requestStatus and command processing status."
+      },
+      "TransferSummaryRow": {
+        "type": "object",
+        "description": "TRANSFER_SUMMARY_READ_V1 row: one reservation (custody workflow). Transfers table columns: Transfer ID=reservationId (purpose TRANSFER), Blood Type=bloodType+componentType, Units=units, From=source, To=destination, Status=status. Row selection and versioned custody actions use reservationId and version. A transfer request has at most one reservation (unique index), so a request is never split across rows.",
+        "required": [
+          "reservationId",
+          "purpose",
+          "status",
+          "version",
+          "transferId",
+          "localReleaseId",
+          "requestStatus",
+          "urgency",
+          "bloodType",
+          "componentType",
+          "productAvailability",
+          "units",
+          "source",
+          "destination",
+          "destinationApplicability",
+          "reservedAt"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "reservationId": {
+            "type": "string",
+            "pattern": "^RES_[A-Z0-9_-]{1,56}$"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "TRANSFER",
+              "LOCAL_RELEASE"
+            ],
+            "description": "LOCAL_RELEASE rows are kept in this list so retained releases stay reachable; show them as Local release."
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReservationStatus"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "transferId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The linked transfer request ID (Request ID). Null for LOCAL_RELEASE."
+          },
+          "localReleaseId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Null for TRANSFER."
+          },
+          "requestStatus": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Status of the linked transfer request; null for LOCAL_RELEASE or a missing request."
+          },
+          "urgency": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Urgency"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Linked request urgency; null for LOCAL_RELEASE or a missing request."
+          },
+          "bloodType": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BloodType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "componentType": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ComponentTypeV21"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "productAvailability": {
+            "type": "string",
+            "enum": [
+              "RECORDED",
+              "UNAVAILABLE"
+            ],
+            "description": "TRANSFER: from the linked request. LOCAL_RELEASE: from its committed RESERVE_LOCAL_RELEASE command. UNAVAILABLE when that record is missing; nothing is inferred."
+          },
+          "units": {
+            "type": "object",
+            "required": [
+              "requested",
+              "allocated",
+              "currentStatus"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "requested": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "Requested quantity: the transfer request quantity, or the local-release quantity."
+              },
+              "allocated": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "Units in the committed reservation selectedComponentIds snapshot (reallocation is disabled)."
+              },
+              "currentStatus": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Current inventory status counts of the allocated units, for example {\"RESERVED\":2} or {\"RECEIVED\":1}. Units are counted by their current projection; a count is not a dispatch or receipt claim unless that status is shown."
+              }
+            }
+          },
+          "source": {
+            "type": "object",
+            "required": [
+              "institutionId",
+              "displayName"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "institutionId": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Recorded institutions.display_name (synthetic in this prototype)."
+              }
+            }
+          },
+          "destination": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "institutionId",
+                  "displayName"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "institutionId": {
+                    "type": "string"
+                  },
+                  "displayName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Recorded institutions.display_name (synthetic in this prototype)."
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "destinationApplicability": {
+            "type": "string",
+            "enum": [
+              "RECORDED",
+              "UNAVAILABLE",
+              "NOT_APPLICABLE"
+            ],
+            "description": "NOT_APPLICABLE for LOCAL_RELEASE, which has no hospital destination."
+          },
+          "reservedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "UTC acceptance time of the committed reserve command; null when missing."
+          }
+        }
+      },
+      "TransferSummaryResponse": {
+        "type": "object",
+        "required": [
+          "scope",
+          "rows",
+          "nextCursor",
+          "policyVersion",
+          "classification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "scope": {
+            "const": "INSTITUTION"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransferSummaryRow"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^TSUM_[A-Za-z0-9_-]{1,120}$"
+          },
+          "policyVersion": {
+            "const": "TRANSFER_SUMMARY_READ_V1"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "ActivityHistoryRow": {
+        "type": "object",
+        "description": "ACTIVITY_HISTORY_READ_V1 row: one independent event, either a durable V2 command or an off-chain alert acknowledgement. Activity History columns: Date & Time=eventTime, Activity=activityCode, User / Source=actor, Scan ID=links.scanId, Request ID=links.transferId, Transfer ID=links.reservationId when links.reservationPurpose is TRANSFER, Blockchain ID=ledger.transactionId, Status=eventStatus. Events sharing a ledger transaction or business reference stay separate rows.",
+        "required": [
+          "eventId",
+          "eventSource",
+          "activityCode",
+          "targetType",
+          "eventTime",
+          "eventTimeSource",
+          "recordedAt",
+          "actor",
+          "links",
+          "eventStatus",
+          "processingStatus",
+          "safeErrorCode",
+          "correlationId",
+          "ledger"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "description": "CMD_ command ID, or IDEM_ idempotency key for an off-chain acknowledgement. Stable row key."
+          },
+          "eventSource": {
+            "type": "string",
+            "enum": [
+              "COMMAND",
+              "OFF_CHAIN_ACKNOWLEDGEMENT"
+            ]
+          },
+          "activityCode": {
+            "type": "string",
+            "description": "V2 command operation (SUBMIT_TRANSFER, RESERVE_COMPONENTS, RESERVE_LOCAL_RELEASE, PREPARE_RESERVATION, DISPATCH_RESERVATION, START_RESERVATION_TRANSIT, RECEIVE_RESERVATION, REGISTER_INBOUND_COMPONENT, RECEIVE_INBOUND_COMPONENT, COMPLETE_LOCAL_RELEASE, CANCEL_RESERVATION, COMPROMISE_RESERVATION, PLACE_RECONCILIATION_HOLD, RESOLVE_RECONCILIATION_HOLD, EVALUATE_COMPONENT_EXPIRY, REGISTER_COMPONENT), or ALERT_ACKNOWLEDGED_OFF_CHAIN. Display labels belong to the client."
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "eventTime": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "UTC. Command events: the business event time recorded on the command and submitted to the ledger. Acknowledgements: the server acknowledgement time. Null when a legacy command recorded none; never replaced by another time."
+          },
+          "eventTimeSource": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "COMMAND_EVENT_TIME",
+              "OFF_CHAIN_ACKNOWLEDGED_AT",
+              null
+            ]
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC server time the event was durably recorded (command acceptance or acknowledgement). Used for ordering."
+          },
+          "actor": {
+            "type": "object",
+            "required": [
+              "kind",
+              "reference",
+              "displayName",
+              "currentRoleId"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "VERIFIED_OPERATOR",
+                  "INSTITUTION_ACCOUNT",
+                  "USER_ACCOUNT",
+                  "UNKNOWN"
+                ],
+                "description": "VERIFIED_OPERATOR: an institution operator that passed operator verification for the command. INSTITUTION_ACCOUNT: the shared institution account. USER_ACCOUNT: an individual synthetic application account. UNKNOWN: the recorded actor has no account row. No SYSTEM actor writes these events."
+              },
+              "reference": {
+                "type": "string",
+                "description": "Opaque recorded actor ID (USR_...). Not an employee ID."
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Recorded application_users.display_name, which the database constrains to synthetic 'Synthetic ...' values. Null for UNKNOWN."
+              },
+              "currentRoleId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The actor's role at read time, not proof of the role held at the event."
+              }
+            }
+          },
+          "links": {
+            "type": "object",
+            "required": [
+              "scanId",
+              "transferId",
+              "reservationId",
+              "reservationPurpose",
+              "localReleaseId",
+              "componentIds"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "scanId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Confirmed inbound OCR capture ID (INCAP_) for REGISTER_INBOUND_COMPONENT and RECEIVE_INBOUND_COMPONENT; null otherwise."
+              },
+              "transferId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Transfer request ID (TRF_; Request ID column) recorded on the command or linked through its reservation. Same wire meaning as transferId in /transfer-summaries and /unit-history."
+              },
+              "reservationId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Reservation the command references. Shown as Transfer ID only when reservationPurpose is TRANSFER."
+              },
+              "reservationPurpose": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "TRANSFER",
+                  "LOCAL_RELEASE",
+                  null
+                ]
+              },
+              "localReleaseId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "componentIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Units the event references: its componentId, its selectedComponentIds, or the committed reservation snapshot for reservation actions. Empty when none."
+              }
+            }
+          },
+          "eventStatus": {
+            "type": "string",
+            "enum": [
+              "CONFIRMED",
+              "LEDGER_COMMITTED_PROJECTION_PENDING",
+              "PENDING",
+              "FAILED",
+              "CONFLICT",
+              "OFF_CHAIN_RECORDED"
+            ],
+            "description": "CONFIRMED only for COMMITTED commands. OFF_CHAIN_RECORDED for acknowledgements, which never go to the ledger and are not pending synchronization."
+          },
+          "processingStatus": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Raw command status; null for acknowledgements."
+          },
+          "safeErrorCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "correlationId": {
+            "type": "string",
+            "description": "Technical provenance; not a business ID."
+          },
+          "ledger": {
+            "type": "object",
+            "required": [
+              "status",
+              "transactionId",
+              "committedAt"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "COMMITTED",
+                  "NOT_COMMITTED",
+                  "NOT_APPLICABLE"
+                ]
+              },
+              "transactionId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "committedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      },
+      "ActivityHistoryResponse": {
+        "type": "object",
+        "required": [
+          "scope",
+          "rows",
+          "nextCursor",
+          "policyVersion",
+          "classification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "scope": {
+            "const": "INSTITUTION"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityHistoryRow"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^ACT_[A-Za-z0-9_-]{1,140}$"
+          },
+          "policyVersion": {
+            "const": "ACTIVITY_HISTORY_READ_V1"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        }
       }
     },
     "responses": {
