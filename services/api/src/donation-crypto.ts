@@ -53,6 +53,12 @@ export function encryptDonationNumber(value: string, keyring: DonationKeyring): 
   };
 }
 
+// Keyed lookup used to match a scanned label against stored components without storing the value.
+export function donationLookupHmac(value: string, keyring: DonationKeyring): string {
+  validateDonationNumber(value);
+  return createHmac("sha256", keyring.lookupKey).update(value, "utf8").digest("hex");
+}
+
 export function decryptDonationNumber(encrypted: Omit<EncryptedDonationNumber, "lookupHmac">, keyring: DonationKeyring): string {
   if (encrypted.encryptionKeyVersion !== keyring.encryptionKeyVersion) throw new Error("DONATION_KEY_VERSION_UNAVAILABLE");
   try {

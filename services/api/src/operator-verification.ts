@@ -18,7 +18,7 @@ export function allowedOperatorAction(principal: WebPrincipal, operator: Operato
   if (operator.roleId !== "ROLE-01" && operator.roleId !== "ROLE-02") return false;
   if (action === "POST /api/v2/transfers") return operator.roleId === "ROLE-02";
   if (action === "POST /api/v2/reservations" || /^POST \/api\/v2\/transfers\/[A-Z0-9_-]+\/(approval|rejection|cancellation)$/.test(action)) return operator.roleId === "ROLE-02";
-  return /^POST \/api\/v2\/(inbound-captures|local-releases|reconciliation|reconciliation\/[A-Z0-9_-]+\/resolve|components\/[A-Z0-9_-]+\/expiry|alerts\/[A-Z0-9_-]+\/acknowledge|reservations\/[A-Z0-9_-]+\/(prepare|dispatch|transit|receive|local-release-complete|cancel|compromise))$/.test(action);
+  return /^POST \/api\/v2\/(inbound-captures|local-releases|reconciliation|reconciliation\/[A-Z0-9_-]+\/resolve|components\/[A-Z0-9_-]+\/expiry|alerts\/[A-Z0-9_-]+\/acknowledge|reservations\/[A-Z0-9_-]+\/(prepare|dispatch|transit|receive|local-release-complete|cancel|compromise|outbound-verifications))$/.test(action);
 }
 export async function identityTransaction<T>(pool: Pool, action: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();

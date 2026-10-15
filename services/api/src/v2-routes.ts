@@ -15,6 +15,8 @@ import { resolveLabelIdentity, type LabelIdentity, type SealedDonationNumber } f
 import { assembleUnitHistory, decodeHistoryCursor, type UnitHistoryReader } from "./unit-history.js";
 import { assembleTransferSummaries, decodeSummaryCursor, type TransferSummaryReader } from "./transfer-summary.js";
 import { activityContract, assembleActivityHistory, decodeActivityCursor, type ActivityHistoryReader } from "./activity-history.js";
+import { assembleNetworkAvailability, assembleRequestHistory, assembleSummary, bloodBankRoutes, parseHistoryRange, type BloodBankReader } from "./blood-bank-reads.js";
+import type { PostgresOutboundVerification } from "./outbound-verification.js";
 import { isReconciliationReasonCode, RECONCILIATION_POLICY_VERSION, RECONCILIATION_REASONS } from "./reconciliation-policy.js";
 import { COMPROMISE_POLICY_VERSION, COMPROMISE_REASONS, isCompromiseReasonCode } from "./compromise-policy.js";
 import { DOH_CENSUS_DISPLAY_ORDER, DOH_CENSUS_DISPLAY_POLICY_VERSION } from "./report-policy.js";
@@ -48,6 +50,8 @@ export interface V2RouteDependencies {
   unitHistory?: UnitHistoryReader;
   transferSummaries?: TransferSummaryReader;
   activityHistory?: ActivityHistoryReader;
+  bloodBank?: BloodBankReader;
+  outboundVerification?: Pick<PostgresOutboundVerification, "verify">;
   webOrigin: string;
   clock: () => Date;
   enabledIssuerInstitutionIds?: readonly string[];
@@ -201,6 +205,32 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const cursor = decodeSummaryCursor(request.query.cursor);
     const page = await dependencies.transferSummaries.readTransferSummaries(principal.institutionId, principal.roleId, limit, cursor);
     return assembleTransferSummaries(page.records, page.hasMore);
+  });
+
+  // ADR-046 blood-bank completion reads.
+  app.get("/api/v2/dashboard/summary", async (request) => {
+    const { principal } = await restore(request); bloodBankRoutes(principal).summary();
+    if (!dependencies.bloodBank) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "The blood-bank summary is not available.");
+    const now = dependencies.clock();
+    return assembleSummary(await dependencies.bloodBank.summary(principal.institutionId, now), now);
+  });
+  app.get("/api/v2/network-availability", async (request) => {
+    const { principal } = await restore(request); bloodBankRoutes(principal).network();
+    if (!dependencies.bloodBank) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Network availability is not available.");
+    const now = dependencies.clock();
+    return assembleNetworkAvailability(await dependencies.bloodBank.networkAvailability(now), now);
+  });
+  app.get<{ Querystring: { from?: string; to?: string } }>("/api/v2/analytics/request-history", async (request) => {
+    const { principal } = await restore(request); bloodBankRoutes(principal).history();
+    if (!dependencies.bloodBank) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Request history is not available.");
+    const range = parseHistoryRange(request.query.from, request.query.to);
+    return assembleRequestHistory(principal.institutionId, range, await dependencies.bloodBank.requestHistory(principal.institutionId, range.from, range.to), dependencies.clock());
+  });
+  // ADR-047: outbound scan → server-issued preparation evidence; off-chain, synchronous, idempotent.
+  app.post<{ Params: { reservationId: string } }>("/api/v2/reservations/:reservationId/outbound-verifications", async (request) => {
+    sameOrigin(request); const { principal } = await restore(request);
+    if (!dependencies.outboundVerification) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Outbound verification is not available.");
+    return dependencies.outboundVerification.verify(principal, request.params.reservationId, request.body, String(request.headers["idempotency-key"] ?? ""), dependencies.clock());
   });
 
   app.get<{ Querystring: { limit?: string; cursor?: string; contract?: string } }>("/api/v2/activity-history", async (request) => {
