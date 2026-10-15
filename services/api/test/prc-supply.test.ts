@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { allowedOperatorAction } from "../src/operator-verification.js";
 import { operatorActions, operatorPrincipal } from "../src/institution-access.js";
-import { decodePrcCursor, isPrcResponder, isRequester, PRC_TRANSITIONS, presentRequest, readScope, validateAction, validateSubmission } from "../src/prc-supply.js";
+import { assertRequiredByWindow, parseSubmission, decodePrcCursor, isPrcResponder, isRequester, PRC_TRANSITIONS, presentRequest, readScope, validateAction, validateSubmission } from "../src/prc-supply.js";
 import type { WebPrincipal } from "../src/session.js";
 
 // PA-DEF-06 / ADR-044 SYNTHETIC_PRC_SUPPLY_V1 rules; synthetic principals only.
@@ -24,6 +24,15 @@ test("submission accepts one product line inside the 1 h–30 d required-by wind
   for (const invalid of [{ ...body, requestedQuantity: 0 }, { ...body, requestedQuantity: 11 }, { ...body, requestedQuantity: 1.5 }, { ...body, urgency: "EMERGENCY" }, { ...body, bloodType: "O" }, { ...body, requiredBy: "2026-10-17T08:00:00Z" }, { ...body, note: "free text" }, { ...body, correlationId: "CORR_x" }]) {
     assert.throws(() => validateSubmission(invalid, now), /input is invalid/);
   }
+});
+
+test("shape parsing is separate from the moving required-by window used only for new writes", () => {
+  // A replay of an accepted body is parsed without the clock; the window applies to a new write.
+  const late = { ...body, requiredBy: at(30 * 60_000) };
+  assert.equal(parseSubmission(late).requiredBy, late.requiredBy);
+  assert.throws(() => assertRequiredByWindow(late.requiredBy, now), /between 1 hour and 30 days/);
+  assert.doesNotThrow(() => assertRequiredByWindow(body.requiredBy, now));
+  assert.throws(() => parseSubmission({ ...late, note: "x" }), /input is invalid/);
 });
 
 test("actions take exact bodies and the decided reference and reason vocabularies", () => {
@@ -87,4 +96,15 @@ test("presentation keeps null reference, fulfilment and ledger semantics explici
   assert.deepEqual(row.ledger, { status: "NOT_APPLICABLE" });
   assert.equal(decodePrcCursor(undefined), null);
   assert.throws(() => decodePrcCursor("PRCS_bad"), /cursor/i);
+});
+
+test("timestamps from node-postgres keep milliseconds for display and cursors", async () => {
+  const { isoTimestamp, nullableIsoTimestamp } = await import("../src/time.js");
+  const fromDatabase = new Date("2026-10-15T11:45:02.722Z");
+  assert.equal(isoTimestamp(fromDatabase), "2026-10-15T11:45:02.722Z");
+  assert.equal(isoTimestamp("2026-10-15 11:45:02.722+00"), "2026-10-15T11:45:02.722Z");
+  assert.equal(nullableIsoTimestamp(null), null);
+  const row = presentRequest({ request_id: ID, requesting_institution_id: "INST_MEDIATRIX", institution_name: null, blood_type: "O_NEGATIVE", component_type: "PLATELETS", requested_quantity: 1, fulfilled_quantity: null, urgency: "ROUTINE", required_by: new Date("2026-10-16T08:00:00.500Z"), status: "SUBMITTED", prc_reference: null, decline_reason: null, submitted_at: fromDatabase, acknowledged_at: null, closed_at: null, version: 1 });
+  assert.equal(row.submittedAt, "2026-10-15T11:45:02.722Z");
+  assert.equal(row.requiredBy, "2026-10-16T08:00:00.500Z");
 });

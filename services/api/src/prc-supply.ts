@@ -1,3 +1,4 @@
+import { nullableIsoTimestamp } from "./time.js";
 import type { Pool, PoolClient } from "pg";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { ApiFailure } from "./errors.js";
@@ -50,14 +51,25 @@ function oneOf<T extends readonly string[]>(value: unknown, values: T): T[number
 
 export interface SubmitInput { bloodType: string; componentType: string; requestedQuantity: number; urgency: string; requiredBy: string; correlationId: string }
 
-export function validateSubmission(value: unknown, now: Date): SubmitInput {
+// Shape only. The moving required-by window is checked separately, after an idempotent replay
+// has had the chance to return the originally accepted result.
+export function parseSubmission(value: unknown): SubmitInput {
   const body = exact(value, ["bloodType", "componentType", "requestedQuantity", "urgency", "requiredBy", "correlationId"]);
   const requestedQuantity = body.requestedQuantity;
   if (!Number.isSafeInteger(requestedQuantity) || Number(requestedQuantity) < 1 || Number(requestedQuantity) > MAX_QUANTITY) invalid();
   if (typeof body.requiredBy !== "string" || !UTC.test(body.requiredBy) || new Date(body.requiredBy).toISOString() !== body.requiredBy) invalid();
-  const lead = Date.parse(body.requiredBy as string) - now.getTime();
-  if (lead < MIN_LEAD_MS || lead > MAX_LEAD_MS) throw new ApiFailure(400, "PRC_SUPPLY_REQUIRED_BY_OUT_OF_WINDOW", "Required by must be between 1 hour and 30 days after submission.");
   return { bloodType: oneOf(body.bloodType, PRC_BLOOD_TYPES), componentType: oneOf(body.componentType, PRC_COMPONENT_TYPES), requestedQuantity: Number(requestedQuantity), urgency: oneOf(body.urgency, PRC_URGENCIES), requiredBy: body.requiredBy as string, correlationId: correlation(body) };
+}
+
+export function assertRequiredByWindow(requiredBy: string, now: Date): void {
+  const lead = Date.parse(requiredBy) - now.getTime();
+  if (lead < MIN_LEAD_MS || lead > MAX_LEAD_MS) throw new ApiFailure(400, "PRC_SUPPLY_REQUIRED_BY_OUT_OF_WINDOW", "Required by must be between 1 hour and 30 days after submission.");
+}
+
+export function validateSubmission(value: unknown, now: Date): SubmitInput {
+  const input = parseSubmission(value);
+  assertRequiredByWindow(input.requiredBy, now);
+  return input;
 }
 
 export interface ActionInput { expectedVersion: number; correlationId: string; prcReference?: string; fulfilledQuantity?: number; reasonCode?: string }
@@ -93,7 +105,7 @@ export function readScope(principal: WebPrincipal): { all: true } | { institutio
   return forbidden();
 }
 
-const iso = (value: unknown) => value === null || value === undefined ? null : new Date(String(value)).toISOString();
+const iso = nullableIsoTimestamp;
 const text = (value: unknown) => value === null || value === undefined ? null : String(value);
 
 export function presentRequest(row: Row) {
@@ -175,9 +187,11 @@ export class PostgresPrcSupply {
 
   async submit(principal: WebPrincipal, value: unknown, idempotencyKey: string, now: Date): Promise<Row> {
     if (!isRequester(principal)) forbidden();
-    const input = validateSubmission(value, now);
+    const input = parseSubmission(value);
     const requestId = `PRCSR_${sha256({ actor: principal.userId, idempotencyKey }).slice(0, 40).toUpperCase()}`;
     return identityTransaction(this.pool, (client) => this.audited(client, principal, "PRC_SUPPLY_SUBMIT", requestId, value, idempotencyKey, input.correlationId, now, async () => {
+      // Only a new write is held to the window at the server clock; a stored result replays first.
+      assertRequiredByWindow(input.requiredBy, now);
       await client.query("INSERT INTO app.prc_supply_requests(request_id,requesting_institution_id,blood_type,component_type,requested_quantity,urgency,required_by,status,submitted_by,submitted_at,correlation_id,policy_version,classification) VALUES($1,$2,$3,$4,$5,$6,$7,'SUBMITTED',$8,$9,$10,$11,'SIMULATION_ONLY')",
         [requestId, principal.institutionId, input.bloodType, input.componentType, input.requestedQuantity, input.urgency, input.requiredBy, principal.userId, now, input.correlationId, PRC_SUPPLY_POLICY_VERSION]);
       const row = await client.query<Row>(`${SELECT} WHERE p.request_id=$1`, [requestId]);

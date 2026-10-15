@@ -1,3 +1,4 @@
+import { nullableIsoTimestamp } from "./time.js";
 import type { Pool } from "pg";
 import { ApiFailure } from "./errors.js";
 
@@ -84,7 +85,7 @@ export function assembleTransferSummaries(records: TransferSummaryRecord[], hasM
 type Row = Record<string, unknown>;
 const text = (value: unknown) => value === null || value === undefined ? null : String(value);
 const int = (value: unknown) => value === null || value === undefined ? null : Number(value);
-const iso = (value: unknown) => value === null || value === undefined ? null : new Date(String(value)).toISOString();
+const iso = nullableIsoTimestamp;
 
 export class PostgresTransferSummaryReader implements TransferSummaryReader {
   constructor(private readonly pool: Pool) {}

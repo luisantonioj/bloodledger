@@ -64,7 +64,7 @@ try{
   const {probeOperationalStock}=await import('./operational-stock-database-probe.mjs');
   await probeOperationalStock({admin,runtime,app,cookie:sessions.INST_MEDIATRIX,pin:credentials.pins.USR_SYNTH_REVIEW_ROLE02});
   const {probePrcSupply}=await import('./prc-supply-database-probe.mjs');
-  await probePrcSupply({admin,app,sessions,pins:credentials.pins,origin});
+  await probePrcSupply({admin,runtime,app,sessions,pins:credentials.pins,origin});
   if(process.env.BLOODLEDGER_ACCOUNTS_BROWSER==='1'){
     const {chromium}=await import('@playwright/test');
     await app.listen({host:'127.0.0.1',port:5174});
