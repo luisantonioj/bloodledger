@@ -67,7 +67,7 @@ Each endpoint below already has cancellation, effect-generation and error guards
 | Applicant-status GET after applicant login/withdrawal | Not applicable: separate pre-institution applicant session on the application screen; no institution verifier installs while it remains active; no new retry added |
 | Applicant application/withdrawal/session POST/DELETE | Not applicable: writes, untouched |
 | V2 submit helpers, legacy transfer commands, alert acknowledgement, account/operator administration, operator verification | Not applicable: POST mutations; untouched and not automatically retried |
-| PRC Supply Requests | Not applicable: no read contract exists; unavailable row/disabled form retained under RQ-17 |
+| PRC Supply Requests | Historical audit disposition: unavailable at PR #55. RQ-17 is now decided as PA-DEF-06 / ADR-044; PR #57 supplies the backend. Lat-host migration/API activation and empty-list scopes are verified. Main UI stays unavailable pending draft UI PR #60 and delayed-replay review; populated live detail/actions remain unvalidated |
 | PDF generation, static design previews, local image/camera previews | Not applicable: no backend read |
 
 ## Acceptance and evidence
@@ -95,4 +95,13 @@ npm exec --workspace @bloodledger/web -- playwright test \
 - `npm run scan:secrets`: **passed** Git history, staged index and tracked/candidate content.
 - `git diff --check`: passed. No backend or runtime-policy files changed.
 
-No live domain commands, backend modifications, account changes, reset, population, census or forecast rerun. RQ-02 and RQ-17 remain open. No clinical, regulatory, production or ISBT 128 acceptance is claimed.
+No live domain commands, backend modifications, account changes, reset, population, census or forecast rerun. RQ-02 remains open. RQ-17 is resolved for simulation by PA-DEF-06 (`SYNTHETIC_PRC_SUPPLY_V1`), ADR-044 (PR #56); PR #57 merged its off-chain backend. Subsequent Lat-host rollout and read-only scopes are verified below; frontend integration is draft PR #60, with populated live detail/actions still unvalidated. No clinical, regulatory, production or ISBT 128 acceptance is claimed.
+
+
+## PRC implementation prerequisite update — 2026-10-15
+
+This supersedes the audit's earlier RQ-17/no-contract note. PR #57's merged OpenAPI is authoritative for PRC list/detail and synchronous actions. Jopia confirmed his migration at 2026-10-15T02:54:52Z (10:54 Asia/Manila); his persistent API remains stopped on older code.
+
+With Jopia's explicit authorization, Lat separately took a private backup, verified the PRC migration was the sole pending migration, applied the documented migrator (31 applied/1 pending → 32 applied/0 pending), and compared every existing app table count unchanged. Local counts are 532 components, 595 commands and 1 account-audit row; new PRC requests are empty. The API was rebuilt from merged main and restarted: health READY. Guarded UAT worker restored after the queue check; general sync-worker stays stopped.
+
+Ordinary bank/PRC sign-in list reads return 200, scopes INSTITUTION/PRC_ALL, zero rows and null cursors. A synthetic missing ID returns 404 PRC_SUPPLY_NOT_FOUND. Populated live detail remains unvalidated because no requests exist; no live domain action was executed. Main UI remains unavailable until the separate connected UI PR #60 merges. That draft PR contains full fixture validation, screenshots and a source-reviewed backend delayed-replay finding for Jopia; it does not change backend code or policy. Live PRC actions still require explicit go-ahead. Policy remains simulation-only, not PRC or Mediatrix policy.
