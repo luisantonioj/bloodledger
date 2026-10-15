@@ -1,9 +1,10 @@
+import type { ReactNode } from "react";
 import { ActionButton } from "../../components/ui/action-button";
 import { canAct, type Principal } from "../../auth/permissions";
 import type { RecordSelection, SelectedRecord } from "../../services/api/v2-navigation";
 import { InformationHelp } from "../../components/ui/information-help";
 
-export function BankRecordActions({record, principal, reservations, open}: {record: SelectedRecord; principal: Principal; reservations: {reservation_id: string; transfer_id: string | null}[]; open: (kind: RecordSelection["kind"], id: string) => void}) {
+export function BankRecordActions({record, principal, reservations, open, approval}: {approval?: ReactNode; record: SelectedRecord; principal: Principal; reservations: {reservation_id: string; transfer_id: string | null}[]; open: (kind: RecordSelection["kind"], id: string) => void}) {
   if (record.kind === "component") return null;
   const request = record.kind === "request" ? record.value : undefined;
   const transfer = record.kind === "reservation" ? record.value : undefined;
@@ -17,13 +18,14 @@ export function BankRecordActions({record, principal, reservations, open}: {reco
     {request && <>
       {linked && <button className="button compact" onClick={() => open("reservation", linked.reservation_id)}>View linked transfer</button>}
     </>}
-    {pending && <>
-      <header><h3>Actions</h3><InformationHelp label="Record actions">Request cancellation, partial offers and approval need verified decision commands. Transfer receipt and outbound scan must match the reservation, custody state and authorized operator. These controls remain unavailable here until that integration is complete.</InformationHelp></header>
+    {pending && !approval && <>
+      <header><h3>Actions</h3><InformationHelp label="Record actions">Check the current request and FEFO allocation before approving a redistribution match. Cancellation and partial offers remain unavailable here. Preparation, dispatch and receipt follow the permitted transfer workflow.</InformationHelp></header>
       <div className="bank-detail-action-buttons">
         {pending && <ActionButton className="button compact" disabled  unavailableReason={blocked}>Cancel Request</ActionButton>}
         {pending && supplying && request.quantity > 1 && <ActionButton className="button compact" disabled  unavailableReason={blocked}>Offer Available Units</ActionButton>}
-        {pending && supplying && <ActionButton className="button primary compact" disabled  unavailableReason={blocked}>Approve Transfer</ActionButton>}
-      </div><p className="bank-action-note">Request decision actions are awaiting an approved backend contract.</p>
+        {pending && supplying && !approval && <ActionButton className="button primary compact" disabled  unavailableReason={blocked}>Approve Transfer</ActionButton>}
+      </div>{!approval && <p className="bank-action-note">Request decision actions are awaiting an approved backend contract.</p>}
     </>}
+    {approval}
   </section>;
 }

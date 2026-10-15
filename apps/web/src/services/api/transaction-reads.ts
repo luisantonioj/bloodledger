@@ -28,10 +28,31 @@ export function parseActivityHistoryRow(value:unknown){
  return {eventId:text(row.eventId),eventSource,activityCode:choice(row.activityCode,ACTIVITY_CODES),targetType:text(row.targetType),eventTime:nullableTimestamp(row.eventTime),eventTimeSource:nullableChoice(row.eventTimeSource,["COMMAND_EVENT_TIME","OFF_CHAIN_ACKNOWLEDGED_AT"]),recordedAt:timestamp(row.recordedAt),actor:{kind,reference:text(actor.reference),displayName,currentRoleId},links:{scanId:nullableText(links.scanId),transferId:nullableText(links.transferId),reservationId:nullableText(links.reservationId),reservationPurpose:nullableChoice(links.reservationPurpose,["TRANSFER","LOCAL_RELEASE"]),localReleaseId:nullableText(links.localReleaseId),componentIds:stringList(links.componentIds)},eventStatus,processingStatus,safeErrorCode:nullableText(row.safeErrorCode),correlationId:text(row.correlationId),ledger:valueLedger};
 }
 export interface ReadPage<T>{rows:T[];nextCursor:string|null}
-function parsePage<T>(value:unknown,policy:string,prefix:string,parse:(value:unknown)=>T,key:keyof T):ReadPage<T>{const row=object(value);if(row.scope!=="INSTITUTION"||row.classification!=="SIMULATION_ONLY"||row.policyVersion!==policy||!Array.isArray(row.rows))throw invalidRead();const cursor=nullableText(row.nextCursor);if(cursor&&!new RegExp("^"+prefix+"_[A-Za-z0-9_-]{1,"+(prefix==="ACT"?140:120)+"}$").test(cursor))throw invalidRead();const rows=row.rows.map(parse);if(new Set(rows.map(item=>item[key])).size!==rows.length)throw invalidRead();return {rows,nextCursor:cursor};}
+function parsePage<T>(value:unknown,policy:string,prefix:string,parse:(value:unknown)=>T,key:keyof T):ReadPage<T>{const row=object(value);if(row.scope!=="INSTITUTION"||row.classification!=="SIMULATION_ONLY"||row.policyVersion!==policy||!Array.isArray(row.rows))throw invalidRead();const cursor=nullableText(row.nextCursor);if(cursor&&!new RegExp("^"+prefix+"_[A-Za-z0-9_-]{1,"+(prefix.startsWith("ACT")?140:120)+"}$").test(cursor))throw invalidRead();const rows=row.rows.map(parse);if(new Set(rows.map(item=>item[key])).size!==rows.length)throw invalidRead();return {rows,nextCursor:cursor};}
 export type UnitHistoryRow=ReturnType<typeof parseUnitHistoryRow>;
 export type TransferSummaryRow=ReturnType<typeof parseTransferSummaryRow>;
-export type ActivityHistoryRow=ReturnType<typeof parseActivityHistoryRow>;
+export type ActivityHistoryRow=ReturnType<typeof parseActivityHistoryRow>|ReturnType<typeof parseActivityHistoryRowV2>;
 export const parseUnitHistory=(value:unknown)=>parsePage(value,"UNIT_HISTORY_READ_V1","HIST",parseUnitHistoryRow,"rowId");
 export const parseTransferSummaries=(value:unknown)=>parsePage(value,"TRANSFER_SUMMARY_READ_V1","TSUM",parseTransferSummaryRow,"reservationId");
 export const parseActivityHistory=(value:unknown)=>parsePage(value,"ACTIVITY_HISTORY_READ_V1","ACT",parseActivityHistoryRow,"eventId");
+
+export const PRC_ACTIVITY_CODES=["PRC_SUPPLY_SUBMIT","PRC_SUPPLY_CANCEL","PRC_SUPPLY_ACKNOWLEDGE","PRC_SUPPLY_FULFIL","PRC_SUPPLY_DECLINE"] as const;
+export function parseActivityHistoryRowV2(value:unknown){
+ const raw=object(value), actor=object(raw.actor), links=object(raw.links);
+ const institutionId=nullableText(actor.institutionId), prcSupplyRequestId=nullableText(links.prcSupplyRequestId);
+ const prc=raw.eventSource==="PRC_SUPPLY_COORDINATION";
+ if(!prc){
+  if(prcSupplyRequestId!==null||raw.coordination!==null)throw invalidRead();
+  const row=parseActivityHistoryRow(value);
+  return {...row,actor:{...row.actor,institutionId},links:{...row.links,prcSupplyRequestId:null},coordination:null};
+ }
+ const activityCode=choice(raw.activityCode,PRC_ACTIVITY_CODES),transition=object(raw.coordination);
+ const priorStatus=nullableChoice(transition.priorStatus,["SUBMITTED","ACKNOWLEDGED"]),resultingStatus=choice(transition.resultingStatus,["SUBMITTED","ACKNOWLEDGED","FULFILLED","DECLINED","CANCELLED"]),reasonCode=nullableChoice(transition.reasonCode,["NO_STOCK","OUT_OF_SCOPE","DUPLICATE_REQUEST","DEADLINE_NOT_FEASIBLE"]);
+ const expected={PRC_SUPPLY_SUBMIT:[null,"SUBMITTED"],PRC_SUPPLY_CANCEL:["SUBMITTED","CANCELLED"],PRC_SUPPLY_ACKNOWLEDGE:["SUBMITTED","ACKNOWLEDGED"],PRC_SUPPLY_FULFIL:["ACKNOWLEDGED","FULFILLED"]} as const;
+ if(activityCode==="PRC_SUPPLY_DECLINE"?(resultingStatus!=="DECLINED"||priorStatus===null||reasonCode===null):priorStatus!==expected[activityCode][0]||resultingStatus!==expected[activityCode][1]||reasonCode!==null)throw invalidRead();
+ if(!/^AUD_[A-Z0-9]+$/.test(text(raw.eventId))||!prcSupplyRequestId||!/^PRCSR_[A-Z0-9]{40}$/.test(prcSupplyRequestId)||raw.targetType!=="PRC_SUPPLY_REQUEST"||raw.eventTimeSource!=="PRC_COORDINATION_RECORDED_AT"||raw.eventTime!==raw.recordedAt||raw.processingStatus!==null||raw.eventStatus!=="OFF_CHAIN_RECORDED"||[links.scanId,links.transferId,links.reservationId,links.reservationPurpose,links.localReleaseId].some(v=>v!==null)||stringList(links.componentIds).length)throw invalidRead();
+ // Validate the common V1 fields using its existing off-chain shape, then restore V2 identity.
+ const row=parseActivityHistoryRow({...raw,eventSource:"OFF_CHAIN_ACKNOWLEDGEMENT",activityCode:"ALERT_ACKNOWLEDGED_OFF_CHAIN",eventTimeSource:"OFF_CHAIN_ACKNOWLEDGED_AT"});
+ return {...row,eventSource:"PRC_SUPPLY_COORDINATION" as const,activityCode,eventTimeSource:"PRC_COORDINATION_RECORDED_AT" as const,actor:{...row.actor,institutionId},links:{...row.links,prcSupplyRequestId},coordination:{priorStatus,resultingStatus,reasonCode}};
+}
+export const parseActivityHistoryV2=(value:unknown)=>parsePage(value,"ACTIVITY_HISTORY_READ_V2","ACT2",parseActivityHistoryRowV2,"eventId");

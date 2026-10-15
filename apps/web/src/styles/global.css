@@ -1052,3 +1052,27 @@
 .analytics-simple-workspace .analytics-date-actions select:focus-visible, .analytics-simple-workspace .analytics-date-actions input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .analytics-recorded-context > header h2 { border: 0; padding: 0; }
 .analytics-recorded-context a { color: var(--primary); text-underline-offset: 3px; }
+
+/* Redistribution is reviewed in the matching Blood Request, without an extra tab. */
+/* Keep transfer approval compact inside the selected request details. */
+.bank-request-approval { min-width: 0; }
+.bank-request-approval > .bank-section-heading { padding: 0 0 10px; border: 0; }
+.bank-request-approval .bank-section-heading h3 { font: 600 15px var(--font-sans); margin: 0; }
+.bank-request-approval > .dashboard-redistribution-body { padding: 0; gap: 16px; font-size: 12px; }
+.bank-request-approval .dashboard-redistribution-body > strong { font-size: 13px; line-height: 1.5; }
+.bank-request-approval .approval-intro { color: var(--ink-muted); line-height: 1.65; margin: 0; }
+.approval-allocation { min-width: 0; display: grid; gap: 10px; }
+.approval-allocation-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.approval-allocation-heading strong { font-size: 12px; line-height: 1.5; }
+.bank-request-approval .approval-units { table-layout: fixed; width: 100%; min-width: 0; }
+.bank-request-approval .approval-units th, .bank-request-approval .approval-units td { padding: 10px 6px; font-size: 11px; white-space: normal; vertical-align: middle; overflow-wrap: anywhere; }
+.bank-request-approval .approval-units th { font-size: 10px; letter-spacing: .06em; }
+.bank-request-approval .approval-units th:first-child { width: 40%; }
+.bank-request-approval .approval-units th:last-child { width: 22%; text-align: right; white-space: nowrap; }
+.bank-request-approval .approval-units td:last-child { text-align: right; }
+.bank-request-approval .redistribution-confirm { align-items: start; font-size: 12px; font-weight: 400; line-height: 1.6; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-subtle); }
+.bank-request-approval .redistribution-confirm input { margin-top: 3px; }
+.bank-request-approval .dashboard-redistribution-body > .button.primary { justify-self: stretch; }
+.bank-request-approval .dashboard-redistribution-body > small { color: var(--ink-muted); font-size: 11px; line-height: 1.6; }
+
+.status.neutral { color: var(--ink-muted); background: var(--surface-subtle); }

@@ -1076,3 +1076,46 @@ component selection, preserved detailed rows, read failures, scope rejection,
 and 20 surplus rows retained behind the charts, working component selection and
 no 390px page overflow. No domain POST, forecast or census rerun. Desktop/mobile
 screenshots were inspected privately.
+
+### 2026-10-15 Redistribution approval within Blood Requests
+
+Supersedes the separate Redistribution review tab. Dashboard Review
+redistribution now opens Blood Requests with the selected product/destination
+context as a navigation shortcut only. The full Blood Requests table, columns,
+ordering, normal pagination and user-controlled search/status filters remain
+unchanged; no recommendation banner, special filtered view or Show all toggle is
+introduced. A unique confirmed PENDING source-assigned request with no reservation
+opens directly in Request details and gains a request-specific URL. Other requests
+stay visible. Multiple or absent matches leave the normal full list available
+for manual selection, never an invented request. Auto-selection runs once so
+closing details or switching tabs behaves normally. Legacy redistribution-tab
+URLs open the same request flow.
+
+Approve Transfer sits in Request details for that matching request. It reuses
+the existing current-request read, full requested quantity, source surplus/BROA
+check, 60-second FEFO allocation, component versions, human confirmation,
+operator/PIN verification, idempotency, correlation and command-status polling.
+No policy, permission or backend request shape changes. Acceptance remains
+queued until committed; the reserved-transfer link continues to preparation and
+dispatch. Switching records/tabs or closing details is disabled while the
+approval remains unresolved, preserving its original attempt. Other unavailable
+request actions remain unavailable; no generic approval API is invented.
+
+Validation: check:web passed; 352 unit tests (including design tokens) and
+56 affected browser cases passed with one worker (`defense-analytics`,
+`blood-bank-pages`, `prc-supply`, `pr51-table-contracts`). Coverage includes direct
+unique-match navigation, explicit choice for multiple matches, no-match and
+legacy URLs, FEFO selection, operator binding, queued/committed distinction and
+navigation locking. Live preview checks are read-only; no domain approval or
+other live command was executed. Classification stays SIMULATION_ONLY.
+
+2026-10-15 shortcut correction: the initial recommendation-only list/banner was
+removed after user review. Routing now changes the selected request only, without
+changing the Blood Requests table or hiding unrelated requests. Added browser
+coverage for unrelated rows and for closing details without automatic reopening.
+
+2026-10-15 request approval layout: the connected redistribution approval section omits the disabled cancellation/partial-offer placeholders. It groups allocation refresh with the FEFO heading, uses compact component references with full values on hover and stacked Manila expiry times, and separates confirmation from the primary approval action. Queued-versus-committed reservation guidance remains visible. The full Blood Requests table and command verification behavior are unchanged.
+
+2026-10-15 Requests & Transfers: remove the standalone Request priority (RPS) panel, including its ranking filters and breakdown table, at the user’s request. Blood Requests, request detail approval and the dashboard redistribution shortcut retain their existing behavior.
+
+2026-10-15 ADR-045 Activity History: bank ROLE-02 explicitly negotiates V2, with V1 fallback only on 400 ACTIVITY_CONTRACT_UNSUPPORTED. Contract changes clear loaded rows and cursors. PRC off-chain events are included by default, filterable by source, and link to their own PRC detail in the Activity cell. Eight table/PDF headers remain; PRC IDs never populate scan, blood-request, transfer or blockchain cells. Actors identify their institution and label roles as current. Cancellation uses a neutral badge; PRC Supply Requests belongs to Operations in the sidebar.

@@ -139,3 +139,77 @@ has been executed. It requires Jopia’s explicit go-ahead for the named host an
 five persistent coordination writes. PRC remains excluded from Activity History
 V1; the [coordinated V2 proposal](../../handoffs/LAT-TO-JOPIA-PRC-ACTIVITY-V2-PROPOSAL-2026-10-15.md)
 is not a parser, policy or contract change.
+
+## Lat host approved live results — 2026-10-15
+
+Jopia explicitly authorized the [LIVE-PLAN](LIVE-PLAN.md) on both hosts in
+[the merged PR #65 handoff](../../handoffs/JOPIA-TO-LAT-ACTIVITY-V2-AND-PRC-LIVE-2026-10-15.md).
+Executor: Lat (self-validation). API source is merged main `1afd616`; web
+`2614010` also preserves the saved request-review/table/Analytics changes.
+Policy remains PA-DEF-06 / ADR-044, SIMULATION_ONLY; no external PRC service.
+
+Preparation: fresh private custom-format pg_dump verified readable with
+pg_restore --list; migration status **32 applied / 0 pending**; health **READY**;
+V1/V2 pending queues and population writer lock **0**. Rebuilt the API inside
+its existing container because generated build files are container-owned,
+restarted API/web, and restored the guarded UAT worker after the empty-queue
+check. General sync-worker stayed stopped. No migration or account change.
+Private backup, exact before/after snapshots and logs remain gitignored.
+
+Ordinary account switching/sign-in and UI controls performed all five new
+writes, with the existing ROLE-02 bank operator and PRC_REVIEWER operator,
+private PIN verification and synchronous results. Reference
+`PRC-SIM-LIVE-0001` was unused. The single explicit replay used the same
+fulfilment endpoint, original operator/key/body and a fresh verification grant
+through the same-origin API; it was not an automatic retry.
+
+| Step | Result | History entries | PRC rows / PRC audit | Protected state |
+|---|---|---|---|---|
+| Submit A: A+ PRBC, 2 units, ROUTINE | SUBMITTED v1 | 1 | 1 / 1 | Unchanged |
+| Acknowledge A: PRC-SIM-LIVE-0001 | ACKNOWLEDGED v2 | 2 | 1 / 2 | Unchanged |
+| Fulfil 1 unit of A | FULFILLED v3, 1 of 2 | 3 | 1 / 3 | Unchanged |
+| Explicit same-attempt fulfil replay | replayed: true; still v3 | 3 | 1 / 3 | Unchanged |
+| Submit B: A+ PRBC, 1 unit, ROUTINE | SUBMITTED v1 | 1 | 2 / 4 | Unchanged |
+| Cancel B | CANCELLED v2 | 2 | 2 / 5 | Unchanged |
+
+A: `PRCSR_7591CED70423E2865A5A610253F81D876EC002E0`, Required By
+`2026-10-17T13:37:00.000Z` (Oct 17, 21:37 Manila).
+B: `PRCSR_CF15168C75385CA7A96F16B7B7E9B59740F4AD48`, Required By
+`2026-10-17T13:39:00.000Z` (Oct 17, 21:39 Manila).
+Both deadlines stayed unchanged. Each first write returned replayed: false,
+ledger NOT_APPLICABLE. The replay created no new version, request or audit row.
+
+After submission A, automation paused because an exact accessible-label lookup
+failed to locate the visible Coordination action control. Read-only screenshot
+inspection confirmed the controls and PRC reviewer capability were present.
+Correcting that locator resumed from the saved A ID; submission was not repeated.
+No unexpected domain response or account/policy change occurred.
+
+All columns of every row in components, donations, commands, census snapshots,
+census counts, algorithm runs and source-surplus evidence were fingerprinted
+before and after each step, after replay and after final reads: **unchanged**.
+Counts remain **532 components / 595 commands**, with no pending V1/V2 commands
+or writer lock. PRC baseline was 0 rows / 0 PRC audit; final is **2 / 5**.
+The two records persist; no rollback, deletion, decline, recovery, extra request,
+OCR intake, census or forecast rerun was performed.
+
+Read-only UI verifies A’s terminal fulfilment/history, B’s cancellation/history,
+neutral CANCELLED styling and one Account Management sidebar heading.
+Negotiated Activity History V2 returns all **5** PRC off-chain events on the
+requesting bank’s account; unchanged V1 returns **0** PRC events. Actor institution,
+current-role label, separate PRC request link and unchanged eight headers are
+visible. No access grants were added.
+
+- [PRC fulfilled request and history](live-prc-fulfilled.png)
+- [Bank terminal requests and cancelled history](live-bank-terminal.png)
+- [Bank Activity History V2 PRC events](live-activity-v2.png)
+
+Frontend validation: `npm run check:web` passes (existing bundle advisory);
+`npm run test:web` **362 passed / 43 files**, including design-token checks;
+five affected Playwright specs **62 passed**, `--workers=1` (Activity V2,
+PR #51 contracts, blood-bank pages, PRC supply and defense Analytics).
+Activity V2 tests cover V1 compatibility, policy/enum/scope and cursor checks,
+equal-second millisecond timestamps, partial-page failure/retry, search/export,
+explicit unsupported-version fallback, and 401/403 without downgrade.
+
+After adding explicit cancellation-tone, single-sidebar-heading and direct-PRC-detail-link regression assertions, the two changed specs were rerun: **19 passed**, one worker. `git diff --check` and the full history/index/candidate secret scan passed.

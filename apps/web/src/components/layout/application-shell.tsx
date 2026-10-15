@@ -21,7 +21,7 @@ const iconPaths: Record<string, string> = {
 };
 
 const sectionFor = (href: string) => href === "/" ? "Overview"
-  : ["/inventory", "/transactions", "/receipts", "/transfers", "/alerts", "/audit"].includes(href) ? "Operations"
+  : ["/inventory", "/transactions", "/receipts", "/transfers", "/prc-supply", "/alerts", "/audit"].includes(href) ? "Operations"
     : ["/redistribution", "/analytics", "/consortium", "/reporting"].includes(href) ? "Insights"
       : "Account Management";
 
