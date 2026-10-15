@@ -1029,3 +1029,50 @@ SIMULATION_ONLY provenance stays visible. An unavailable service disables the
 form instead of showing invented records. Mutations are synchronous; uncertain
 attempts lock replacement submission and expose explicit same-attempt retry
 with the original operator. See [validation and limitations](validation/lat-prc-supply-2026-10-15/README.md).
+
+### 2026-10-15 Analytics hierarchy and readability
+
+Blood-bank Analytics separates the date/institution controls, forecast comparison,
+source-surplus estimate and supporting recorded evidence. Forecast cards stack at
+full width so product, estimated units, estimated range and result status are
+readable together. Current/stale/unavailable status remains visible; unavailable
+results use a compact empty state instead of an empty table. Model/dataset and
+training dates sit behind an accessible disclosure. Source surplus keeps its
+separate synthetic meaning and backend-provided values, with numeric alignment,
+compact evidence references (full values on hover) and an expandable calculation.
+Recorded stock and observed requests remain separate supporting sections.
+Requester/PRC/DOH pages clarify their actual source in a short introductory line;
+shared summary cards use clearer spacing and value hierarchy. No API, data,
+forecast activation, authorization or policy changes. Simulation provenance and
+recommendation restrictions remain visible.
+
+Validated on the combined table-layout/PRC preview branch: `check:web` passed;
+348 unit tests (including design-token checks) and 28 affected browser tests
+passed with one worker (`defense-analytics`, `pr51-table-contracts`,
+`regulatory-alerts`). Read-only live Mediatrix checks show 20 V5 forecasts and
+20 source-surplus rows, working model disclosure and no 390px page overflow.
+No live domain POST, census or forecast rerun. Screenshots were reviewed locally.
+
+### 2026-10-15 Analytics product comparison revision
+
+Supersedes the table-first bank Analytics presentation above. The primary view
+answers expected demand and estimated excess for one selected component (PRBC
+initially). Two labeled horizontal comparisons show the returned blood types
+and unit counts. Each chart explicitly uses its own unit scale. No absent blood
+type or component is filled with zero; unavailable series show no bar/value.
+Demand remains a V5 simulation preview, with decimal estimates and uncertainty
+ranges explained; the detailed rows preserve all products, ranges, status and
+provenance under View detailed data. Source surplus remains separate from stock
+bands and redistribution approval, and stale/unavailable evidence cannot render
+a usable excess quantity. Its backend calculation and evidence are expandable.
+Recorded stock and actual request history are separate supporting views. V4
+availability remains accessible under its own disclosure; this does not activate
+V5, rerun models or alter forecast contracts, accounts or permissions.
+
+Validation: check:web and 348 unit tests (including design tokens) passed;
+20 defense-analytics browser cases passed with one worker, including synchronized
+component selection, preserved detailed rows, read failures, scope rejection,
+401 clearing and requester isolation. Live read-only checks show 20 forecast
+and 20 surplus rows retained behind the charts, working component selection and
+no 390px page overflow. No domain POST, forecast or census rerun. Desktop/mobile
+screenshots were inspected privately.

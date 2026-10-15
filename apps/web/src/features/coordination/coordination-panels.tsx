@@ -1,8 +1,9 @@
+import { ProductComparisonChart } from "../analytics/product-comparison-chart";
 import { ApiRequestError, retryAfterContextChange } from "../../services/api/client";
 import { useEffect, useState } from "react";
 import type { Principal } from "../../auth/permissions";
 import { RefreshButton } from "../../components/ui/refresh-button";
-import { formatBloodType, humanizeCode, formatManilaDateTime } from "../../components/ui/display";
+import { formatBloodType, humanizeCode, formatManilaDateTime, statusClassName, compactRecordReference } from "../../components/ui/display";
 import { componentLabel, facilityLabel } from "../transfers/requester-transfer-data";
 import { V2_BLOOD_TYPES, V2_COMPONENT_TYPES } from "../../services/api/v2";
 import { manilaBusinessDate } from "../../services/api/forecast";
@@ -26,14 +27,19 @@ export function useCoordination<T extends CoordinationView>(path: string, instit
 function EvidenceState({busy, error, status, reason}: {busy: boolean; error?: string; status?: string; reason?: string | null}) {
   return <p role={error ? "alert" : "status"}>{busy ? "Loading current evidence…" : error ?? (status ? humanizeCode(status) + (reason ? " · " + humanizeCode(reason) : "") : "Evidence unavailable")}</p>;
 }
-export function SurplusPanel({principal, businessDate, refreshKey = 0}: {principal: Principal; businessDate: string; refreshKey?: number}) {
+export function SurplusPanel({principal, businessDate, refreshKey = 0, componentType}: {principal: Principal; businessDate: string; refreshKey?: number; componentType?: string}) {
   const state = useCoordination<SourceSurplusView>("/api/v2/analytics/source-surplus?" + new URLSearchParams({businessDate}), principal.institutionId, refreshKey);
   const data = state.data;
-  return <section className="analytics-preview-panel coordination-panel"><header><h3>Source surplus — {businessDate}</h3><RefreshButton busy={state.busy} onRefresh={state.refresh}/></header><Notice/>
-    <p>Surplus = available − forecast − {data?.reserve.safetyAllowance ?? 2} safety − {data?.reserve.minimumReserve ?? 10} reserve, never below 0. {data ? "Rounding: " + humanizeCode(data.reserve.rounding) + "." : "Awaiting reserve-policy evidence."}</p>
-    <EvidenceState busy={state.busy} error={state.error} status={data?.status} reason={data?.unavailableReason}/>
-    {data && <><p>Census: {data.census ? formatManilaDateTime(data.census.capturedAt) : "Unavailable"} · Forecast: {data.forecast ? formatManilaDateTime(data.forecast.generatedAt) : "Unavailable"}</p>
-      <div className="table-wrap"><table className="data-table"><thead><tr><th>Blood type</th><th>Component</th><th>Available</th><th>Forecast</th><th>Surplus</th><th>Series status</th><th>Evidence</th></tr></thead><tbody>{data.series.map((row,index) => <tr key={row.forecastId || index}><td>{row.bloodType ? formatBloodType(row.bloodType) : "Unavailable"}</td><td>{row.componentType ? componentLabel(row.componentType) : "Unavailable"}</td><td>{amount(row.availableCount)}</td><td>{amount(row.forecastDemand)}</td><td>{row.status === "AVAILABLE" && data.status === "CURRENT" ? amount(row.surplusQuantity) : "Unavailable"}</td><td>{humanizeCode(row.status)}{row.unavailableReason && <small>{humanizeCode(row.unavailableReason)}</small>}</td><td className="mono">{row.evidenceId ?? "Unavailable"}</td></tr>)}</tbody></table></div><small>Policy: {data.policyVersion} · {businessDate}</small></>}
+  return <section className="analytics-preview-panel coordination-panel analytics-surplus-card"><header><div><span className="analytics-eyebrow">What could be left over?</span><h3>{componentType ? "Estimated excess stock" : "Source surplus — "+businessDate}</h3></div><div className="analytics-card-actions"><span className="analytics-state" data-state={data?.status}>{state.busy ? "Loading" : data ? ({CURRENT:"Current",STALE:"Older result",UNAVAILABLE:"Unavailable"}[data.status]) : "Unavailable"}</span><RefreshButton busy={state.busy} onRefresh={state.refresh}/></div></header>
+    <p className="analytics-section-description">Units left after forecast demand and synthetic safety reserves are deducted from recorded stock. This is not approval to redistribute.</p>
+    {(state.busy || state.error || data?.status !== "CURRENT") && <EvidenceState busy={state.busy} error={state.error} status={data?.status} reason={data?.unavailableReason}/>}
+    {data && <>
+      {componentType && <ProductComparisonChart tone="excess" label="Estimated excess by blood type" rows={data.series.filter(row => row.componentType === componentType && row.bloodType !== null).map(row => ({bloodType:row.bloodType!,value:row.status === "AVAILABLE" && data.status === "CURRENT" ? row.surplusQuantity : null,note:row.status !== "AVAILABLE" ? "Evidence unavailable" : undefined}))}/>}
+      <p className="analytics-plain-caption">{componentType ? componentLabel(componentType) : "All components"} · Source surplus — {businessDate}<span>Estimated excess uses recorded stock and a forecast. It is not live available inventory.</span></p>
+      <details className="analytics-full-data"><summary>View detailed data</summary>
+      <div className="table-wrap"><table className="data-table analytics-readable-table analytics-surplus-table"><thead><tr><th>Blood type</th><th>Component</th><th className="numeric">Available units</th><th className="numeric">Forecast units</th><th className="numeric">Surplus units</th><th>Series status</th><th>Evidence</th></tr></thead><tbody>{data.series.map((row,index) => <tr key={row.forecastId || index}><td><strong>{row.bloodType ? formatBloodType(row.bloodType) : "Unavailable"}</strong></td><td>{row.componentType ? componentLabel(row.componentType) : "Unavailable"}</td><td className="numeric">{amount(row.availableCount)}</td><td className="numeric">{amount(row.forecastDemand)}</td><td className="numeric analytics-surplus-value">{row.status === "AVAILABLE" && data.status === "CURRENT" ? amount(row.surplusQuantity) : "Unavailable"}</td><td><span className={statusClassName(row.status)}>{humanizeCode(row.status)}</span>{row.unavailableReason && <small>{humanizeCode(row.unavailableReason)}</small>}</td><td className="mono analytics-evidence-id" title={row.evidenceId ?? undefined}>{row.evidenceId ? compactRecordReference(row.evidenceId) : "Unavailable"}</td></tr>)}</tbody></table></div></details>
+      <details className="analytics-method-details"><summary>How is excess calculated?</summary><p>Surplus = available − forecast − {data.reserve.safetyAllowance} safety − {data.reserve.minimumReserve} reserve, never below 0. Rounding: {humanizeCode(data.reserve.rounding)}.</p><dl className="analytics-result-facts"><div><dt>Policy</dt><dd>{data.policyVersion}</dd></div><div><dt>Stock captured · Manila</dt><dd>{data.census ? formatManilaDateTime(data.census.capturedAt) : "Unavailable"}</dd></div><div><dt>Forecast generated · Manila</dt><dd>{data.forecast ? formatManilaDateTime(data.forecast.generatedAt) : "Unavailable"}</dd></div><div><dt>Use</dt><dd>SIMULATION_ONLY · recommendation disabled</dd></div></dl></details>
+    </>}
   </section>;
 }
 function SeriesControls({bloodType, componentType, onBloodType, onComponent}: {bloodType: string; componentType: string; onBloodType: (value:string)=>void; onComponent: (value:string)=>void}) {
