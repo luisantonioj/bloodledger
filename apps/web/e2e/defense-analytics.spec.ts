@@ -26,6 +26,7 @@ async function setup(page:Page,override?:(route:Route,path:string)=>Promise<bool
   if(path==="/api/v2/coordination/priority")return send(rps);
   if(path==="/api/v2/coordination/redistribution")return send(broa);
   if(path==="/api/v2/analytics/inventory-evidence")return send({...safety,schemaVersion:"BLOODLEDGER_INVENTORY_EVIDENCE_V1",institutionId,businessDate:date,evaluatedAt:date+"T01:00:00Z",evaluationDate:date,status:"UNAVAILABLE",unavailableReason:"ML_SNAPSHOT_UNAVAILABLE",snapshot:null});
+  if(path==="/api/v2/dashboard")return send({composition:"OPERATIONAL",scope:"INSTITUTION",inventory:[],pendingScans:[],lastSuccessfulProjectionAt:null,classification:"SIMULATION_ONLY"});
   if(path==="/api/v2/transfers")return send({scope:"INSTITUTION",requests:[],reservations:[],timeline:[],classification:"SIMULATION_ONLY"});
   return send({error:{code:"UNAVAILABLE"}},404);
  });return requests;
@@ -36,7 +37,36 @@ test("analytics shows V4 unavailable beside explicit V5 and surplus without writ
 });
 test("mobile analytics keeps both versions and tables inside viewport",async({page})=>{await setup(page);await page.setViewportSize({width:390,height:844});await page.goto("/analytics");await expect(card(page,"V5 simulation preview").locator("tbody tr")).toHaveCount(20);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);});
 test("RPS exposes quantity and urgency/wait breakdown with no ranking action",async({page})=>{await setup(page);await page.goto("/transfers");await expect(card(page,"Request priority (RPS)")).toContainText("TRF_BROWSER");await expect(card(page,"Request priority (RPS)")).toContainText("CRITICAL");await expect(card(page,"Request priority (RPS)")).toContainText("Lipa Medix");await expect(card(page,"Request priority (RPS)")).not.toContainText("INST_SYNTH_MEDIX");await expect(card(page,"Request priority (RPS)").getByRole("columnheader",{name:"Wait contribution",exact:true})).toBeVisible();await expect(card(page,"Request priority (RPS)").getByRole("button",{name:/approve|reserve|offer/i})).toHaveCount(0);});
-test("BROA shows gate, normalized factors, exclusions and unscored context",async({page})=>{await setup(page);await page.goto("/redistribution");await expect(page.getByRole("heading",{name:"BROA-ranked destinations",exact:true})).toBeVisible();await expect(page.getByText("INST_SYNTH_NO_DISTANCE: DISTANCE UNAVAILABLE",{exact:true})).toBeVisible();await expect(page.locator("meter")).toHaveCount(3);await expect(page.getByRole("heading",{name:"1. Lipa Medix · score 0.85",exact:true})).toBeVisible();await expect(page.getByText(/Relationship context not scored/)).toBeVisible();await expect(page.getByRole("button",{name:/approve|reserve|offer/i})).toHaveCount(0);});
+test("Dashboard replaces supplier Requests and sidebar with compact BROA ranking",async({page})=>{
+ const requests=await setup(page);await page.goto("/redistribution");
+ const panel=page.getByRole("region",{name:"Redistribution",exact:true});
+ await expect(panel.getByText("Top-ranked destination",{exact:true})).toBeVisible();
+ await expect(panel.locator(".redistribution-summary strong")).toHaveText("Lipa Medix");
+ await expect(panel.getByText("22 units",{exact:true})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Requests",exact:true})).toHaveCount(0);
+ await expect(page.getByRole("navigation").getByRole("link",{name:"Redistribution",exact:true})).toHaveCount(0);
+ await panel.getByText("Ranking details",{exact:true}).click();
+ await expect(panel.getByText(/Normalized: urgency/)).toBeVisible();
+ await expect(panel.getByText("INST_SYNTH_NO_DISTANCE: DISTANCE UNAVAILABLE",{exact:true})).toBeVisible();
+ expect(requests.some(value=>value==="GET /api/v2/transfers")).toBe(false);
+ expect(requests.every(value=>value.startsWith("GET "))).toBe(true);
+ await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+for(const scenario of ["closed","foreign","503","mismatch"])test(`Dashboard redistribution hides candidates on ${scenario}`,async({page})=>{
+ await setup(page,async(route,path)=>{if(path!=="/api/v2/coordination/redistribution")return false;await route.fulfill({status:scenario==="503"?503:200,contentType:"application/json",body:JSON.stringify({...broa,...(scenario==="foreign"?{institutionId:"INST_OTHER"}:scenario==="mismatch"?{bloodType:"B_POSITIVE"}:scenario==="closed"?{gate:{...broa.gate,eligible:false,reason:"INSUFFICIENT_SURPLUS"}}:{})})});return true;});
+ await page.goto("/");const panel=page.getByRole("region",{name:"Redistribution",exact:true});
+ await expect(panel.getByText(scenario==="closed"?"Redistribution unavailable":"Redistribution evidence could not be loaded. Refresh to try again.",{exact:true})).toBeVisible();
+ await expect(panel.locator(".redistribution-shortlist li")).toHaveCount(0);await expect(panel.getByText("Top-ranked destination",{exact:true})).toHaveCount(0);
+});
+test("Dashboard redistribution filters bind series and quantity and refresh clears failed evidence",async({page})=>{
+ let fail=false;
+ await setup(page,async(route,path)=>{if(path!=="/api/v2/coordination/redistribution")return false;const params=new URL(route.request().url()).searchParams;await route.fulfill({status:fail?503:200,contentType:"application/json",body:JSON.stringify({...broa,bloodType:params.get("bloodType"),componentType:params.get("componentType"),gate:{...broa.gate,requiredQuantity:Number(params.get("requiredQuantity"))}})});return true;});
+ await page.goto("/");const panel=page.getByRole("region",{name:"Redistribution",exact:true});await expect(panel.getByText("Top-ranked destination",{exact:true})).toBeVisible();
+ await page.getByLabel("Redistribution blood type",{exact:true}).selectOption("B_POSITIVE");await page.getByLabel("Redistribution component",{exact:true}).selectOption("FRESH_FROZEN_PLASMA");await page.getByLabel("Redistribution units",{exact:true}).fill("2");await expect(panel.getByText("2 units",{exact:true})).toBeVisible();
+ fail=true;await panel.getByRole("button",{name:"Refresh redistribution",exact:true}).click();await expect(panel.getByRole("alert")).toBeVisible();await expect(panel.locator(".redistribution-shortlist li")).toHaveCount(0);
+});
+test("requester Dashboard retains My Requests without redistribution reads",async({page})=>{const requests=await setup(page,undefined,"ROLE-03");await page.goto("/");await expect(page.getByRole("heading",{name:"My Requests",exact:true})).toBeVisible();await expect(page.getByRole("region",{name:"Redistribution",exact:true})).toHaveCount(0);expect(requests.some(value=>value.includes("/coordination/redistribution"))).toBe(false);});
+
 for(const scenario of ["503","foreign"]){test(`surplus ${scenario} clears unsafe evidence`,async({page})=>{await setup(page,async(route,path)=>{if(path!=="/api/v2/analytics/source-surplus")return false;const date=new URL(route.request().url()).searchParams.get("businessDate")!;await route.fulfill({status:scenario==="503"?503:200,contentType:"application/json",body:JSON.stringify(scenario==="503"?{error:{message:"internal diagnostic must not render"}}:{...surplus(date),institutionId:"INST_OTHER"})});return true;});await page.goto("/analytics");await expect(page.locator("section.coordination-panel").filter({has:page.getByRole("heading",{name:/^Source surplus — /})}).getByRole("alert")).toContainText("could not be loaded");await expect(page.locator("section.coordination-panel").filter({has:page.getByRole("heading",{name:/^Source surplus — /})}).locator("tbody tr")).toHaveCount(0);await expect(page.getByText("internal diagnostic must not render")).toHaveCount(0);});}
 test("requester cannot navigate or deep-link into redistribution",async({page})=>{await setup(page,undefined,"ROLE-03");await page.goto("/redistribution");await expect(page.getByRole("link",{name:"Redistribution",exact:true})).toHaveCount(0);await expect(page.getByRole("alert")).toContainText("cannot access this page");});
 test("V5 failure on refresh clears its prior success without changing V4",async({page})=>{let fail=false;await setup(page,async(route,path)=>{if(!fail||path!=="/api/v1/demand-forecasts"||!new URL(route.request().url()).searchParams.has("datasetVersion"))return false;await route.fulfill({status:403,contentType:"application/json",body:JSON.stringify({error:{message:"internal diagnostic must not render"}})});return true;});await page.goto("/analytics");await expect(card(page,"V5 simulation preview").locator("tbody tr")).toHaveCount(20);fail=true;await page.getByRole("button",{name:"Refresh forecast",exact:true}).click();await expect(card(page,"V5 simulation preview").locator("tbody tr")).toHaveCount(0);await expect(card(page,"V5 simulation preview")).toContainText("not authorized");await expect(card(page,"V4 default")).toContainText("Forecast unavailable");await expect(page.getByText("internal diagnostic must not render")).toHaveCount(0);});

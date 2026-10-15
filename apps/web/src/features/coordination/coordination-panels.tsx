@@ -10,12 +10,15 @@ import { readCoordination, seriesQuery, type CoordinationView, type SourceSurplu
 
 const amount = (value: number | null | undefined) => value == null ? "Unavailable" : value.toLocaleString("en-PH", {maximumFractionDigits: 3});
 function Notice() { return <p className="coordination-notice">SIMULATION_ONLY · recommendation disabled · Read-only explanation; no automatic approval.</p>; }
-function useCoordination<T extends CoordinationView>(path: string, institutionId: string, refreshKey = 0) {
+export function useCoordination<T extends CoordinationView>(path: string, institutionId: string, refreshKey = 0) {
   const [result, setResult] = useState<{path: string; data?: T; error?: string}>();
   const [refresh, setRefresh] = useState(0), [busy, setBusy] = useState(true);
   useEffect(() => {
     const controller = new AbortController(); setResult(undefined); setBusy(true);
-    void readCoordination<T>(path, institutionId, controller.signal).then(data => {if (!controller.signal.aborted) setResult({path, data});}).catch(error => {if (!controller.signal.aborted) setResult({path, error: error instanceof ApiRequestError && error.status === 403 ? "Access denied for this decision-support view." : "Validated decision-support evidence could not be loaded."});}).finally(() => {if (!controller.signal.aborted) setBusy(false);});
+    // Session restoration may install the verifier while the first read is in flight.
+    // Retry that client-only epoch rejection once, with the current scoped session.
+    const read = () => readCoordination<T>(path, institutionId, controller.signal);
+    void read().catch(error => {if (!controller.signal.aborted && error instanceof ApiRequestError && error.code === "AUTH_CONTEXT_CHANGED") return read(); throw error;}).then(data => {if (!controller.signal.aborted) setResult({path, data});}).catch(error => {if (!controller.signal.aborted) setResult({path, error: error instanceof ApiRequestError && error.status === 403 ? "Access denied for this decision-support view." : "Validated decision-support evidence could not be loaded."});}).finally(() => {if (!controller.signal.aborted) setBusy(false);});
     return () => controller.abort();
   }, [path, institutionId, refresh, refreshKey]);
   return {data: result?.path === path && result.data?.institutionId === institutionId ? result.data : undefined, error: result?.path === path ? result.error : undefined, busy, refresh: () => setRefresh(value => value + 1)};
