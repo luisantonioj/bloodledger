@@ -89,5 +89,8 @@ test("A+ FFP is segmented at 10/24/48 with hover and keyboard range help",async(
  expect(await bar.locator(".segment-adequate").getAttribute("data-end")).toBe("48");
  await adequate.focus();await expect(page.getByRole("tooltip")).toBeVisible();await page.keyboard.press("Escape");await expect(page.getByRole("tooltip")).toHaveCount(0);
  const surplus=bar.getByRole("button",{name:/Surplus: 49\+ units/});await surplus.click();
- await expect(page.getByRole("tooltip")).toHaveText("Surplus: 12 units");
+ await expect(page.getByRole("tooltip")).toContainText("A+ FFP · Surplus");
+ await expect(page.getByRole("tooltip")).toContainText("49+ units");
+ await expect(page.getByRole("tooltip")).toContainText("Above the project stock band; not transfer approval.");
+ await expect(page.getByRole("tooltip")).toContainText("Surplus: 12 units");
 });

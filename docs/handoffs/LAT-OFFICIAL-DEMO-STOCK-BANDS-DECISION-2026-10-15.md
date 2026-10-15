@@ -113,3 +113,8 @@ User simplification supersedes the preceding surplus-hover follow-up: show only
 limit. Remove the added backend estimate read and descriptions from this tooltip.
 Forecast-derived source surplus remains exclusively separate on Analytics. No
 transferable-quantity claim is made by this compact above-band count.
+
+Final hover clarification: retain the original product/Surplus heading, policy
+range and short original explanation, and append only “Surplus: X units”.
+No added forecast estimate, extra descriptions or backend reads in the tooltip.
+Build and four affected chart browser cases passed for this final presentation.
