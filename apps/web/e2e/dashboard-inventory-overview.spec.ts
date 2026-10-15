@@ -10,7 +10,13 @@ async function setup(page: Page) {
     if (path === "/api/v1/auth/session") body = { principal: { accountId: "ACC_SYNTH_OVERVIEW", accountCategory: "BLOOD_BANK", userId: "USR_SYNTH_OVERVIEW", institutionId: row.institutionId, institutionDisplayName: row.institutionDisplayName, displayName: "Synthetic operator", roleId: "ROLE-02", roleDisplayName: "Blood Bank", permissions: ["dashboard:operational", "inventory:read", "transfers:read", "profile:read"], operators: [], classification: "SIMULATION_ONLY" } };
     if (path === "/api/v2/dashboard") {
       if (denied) return route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ error: { message: "Access denied" } }) });
-      body = { composition: "OPERATIONAL", scope: "INSTITUTION", inventory: [row, { ...row, inventoryStatus: "RESERVED", confirmedCount: 2 }, { ...row, component: "FRESH_FROZEN_PLASMA", confirmedCount: 4 }, { ...row, bloodType: "B_POSITIVE", component: "CRYOPRECIPITATE", confirmedCount: 7 }], pendingScans: [], lastSuccessfulProjectionAt: instant, classification: "SIMULATION_ONLY" };
+      body = { composition: "OPERATIONAL", scope: "INSTITUTION", inventory: [row, { ...row, inventoryStatus: "RESERVED", confirmedCount: 2 }, { ...row, component: "WHOLE_BLOOD", confirmedCount: 36 }, { ...row, component: "FRESH_FROZEN_PLASMA", confirmedCount: 25 }, { ...row, bloodType: "B_POSITIVE", component: "CRYOPRECIPITATE", confirmedCount: 7 }], pendingScans: [], lastSuccessfulProjectionAt: instant, classification: "SIMULATION_ONLY" };
+    }
+    if (path === "/api/v2/components") {
+      if(denied)return route.fulfill({status:403,contentType:"application/json",body:JSON.stringify({error:{code:"AUTH_DENIED"}})});
+      const date=new Date(Date.now()+86400000).toISOString();
+      const stocks=[{bloodType:"A_POSITIVE",componentType:"PACKED_RED_BLOOD_CELLS",count:9},{bloodType:"A_POSITIVE",componentType:"FRESH_FROZEN_PLASMA",count:25},{bloodType:"A_POSITIVE",componentType:"WHOLE_BLOOD",count:36},{bloodType:"B_POSITIVE",componentType:"CRYOPRECIPITATE",count:7}];
+      body={scope:"INSTITUTION",classification:"SIMULATION_ONLY",components:stocks.flatMap((r,index)=>Array.from({length:r.count},(_,i)=>({componentId:`COMP_${index}_${i}`,donationId:`DON_${index}_${i}`,issuerInstitutionId:row.institutionId,institutionId:row.institutionId,componentType:r.componentType,bloodType:r.bloodType,collectedAt:instant,expiresAt:date,inventoryStatus:"AVAILABLE",expiryState:"CURRENT",reservationId:null,reservationVersion:null,inventoryVersion:1,policyVersion:"SYNTHETIC_TEST",classification:"SIMULATION_ONLY"})))};
     }
     if (path === "/api/v2/transfers") body = { requests: [], reservations: [], timeline: [], classification: "SIMULATION_ONLY" };
     return route.fulfill({ contentType: "application/json", body: JSON.stringify(body) });
@@ -22,26 +28,22 @@ test("component selector separates products, restores All and clears protected c
   const deny = await setup(page);
   await page.goto("/");
   const chart = page.locator(".inventory-overview-card");
-  await expect(chart.getByText("Stock classification unavailable: no approved stock-level policy (RQ-16)", { exact: true })).toBeVisible();
-  await expect(chart.locator(".stock-critical, .stock-low, .stock-adequate, .stock-surplus")).toHaveCount(0);
+  await expect(chart.locator(".stock-surplus")).not.toHaveCount(0);
+  await expect(chart.locator(".stock-low")).not.toHaveCount(0);
+  await expect(chart.locator(".stock-adequate")).not.toHaveCount(0);
+  await expect(chart.locator(".stock-critical")).not.toHaveCount(0);
   const filter = chart.getByRole("combobox", { name: "Inventory overview blood component" });
   await expect(filter).toHaveValue("ALL");
   await expect(chart.locator(".inventory-overview-group")).toHaveCount(8);
   await expect(chart.locator(".inventory-overview-bar")).toHaveCount(40);
-  await expect(chart.getByRole("listitem", { name: "A+ PRBC: 11 confirmed units, 9 available; stock classification unavailable (RQ-16)", exact: true })).toBeAttached();
-  await expect(chart.getByRole("listitem", { name: "A+ FFP: 4 confirmed units, 4 available; stock classification unavailable (RQ-16)", exact: true })).toBeAttached();
-  const unknown = chart.locator(".stock-unknown .inventory-overview-fill").first();
-  expect(await unknown.evaluate(element => {
-    const probe = document.createElement("i");
-    probe.style.color = getComputedStyle(element).getPropertyValue("--ink-muted").trim();
-    element.append(probe);
-    const neutral = getComputedStyle(probe).color;
-    probe.remove();
-    return getComputedStyle(element).backgroundColor === neutral;
-  })).toBe(true);
+  await expect(chart.getByRole("listitem", { name: "A+ PRBC: 11 confirmed units, 9 available; 9 eligible units; critical", exact: true })).toBeAttached();
+  await expect(chart.getByRole("listitem", { name: "A+ FFP: 25 confirmed units, 25 available; 25 eligible units; adequate", exact: true })).toBeAttached();
+  await chart.getByText("Stock-level thresholds",{exact:true}).click();
+  await expect(chart.getByText("SYNTHETIC_STOCK_CLASSIFICATION_V1",{exact:false})).toBeVisible();
+  await chart.getByText("Stock-level thresholds",{exact:true}).click();
   await filter.selectOption("FRESH_FROZEN_PLASMA");
   await expect(chart.locator(".inventory-overview-bar")).toHaveCount(8);
-  await expect(chart.locator(".inventory-overview-product-label")).toHaveText(Array(8).fill("FFP"));
+  await expect(chart.locator(".inventory-overview-product-label")).toHaveText(["FFPAdequate",...Array(7).fill("FFPCritical")]);
   await filter.selectOption("PLATELETS");
   await expect(chart.locator(".inventory-overview-track strong")).toHaveText(Array(8).fill("0"));
   await filter.selectOption("ALL");
@@ -63,4 +65,14 @@ test("All stays inside the chart at narrow widths and can be scrolled with the k
   await scroller.focus();
   await page.keyboard.press("ArrowRight");
   await expect.poll(() => scroller.evaluate(element => element.scrollLeft)).toBeGreaterThan(0);
+});
+
+test("component read failure removes classification while retaining confirmed chart counts",async({page})=>{
+ await setup(page);let fail=false;
+ await page.route("**/api/v2/components",async route=>{if(!fail)return route.fallback();return route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:{message:"diagnostic hidden"}})});});
+ await page.goto("/");await expect(page.locator(".inventory-overview-bar.stock-surplus")).not.toHaveCount(0);fail=true;
+ await page.getByRole("button",{name:"Refresh",exact:true}).click();
+ await expect(page.locator(".inventory-overview-bar.stock-surplus,.inventory-overview-bar.stock-critical,.inventory-overview-bar.stock-low,.inventory-overview-bar.stock-adequate")).toHaveCount(0);
+ await expect(page.locator(".inventory-overview-bar.stock-unknown")).toHaveCount(40);
+ await expect(page.getByText("Stock classification unavailable: current component evidence could not be verified.",{exact:true})).toBeVisible();
 });

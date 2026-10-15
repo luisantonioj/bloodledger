@@ -22,7 +22,7 @@ export function DashboardView({data,principal,refreshError,onRetry,requests,load
     {principal.accountCategory === "PRC" && <PrcDashboardPlaceholder data={data} loading={loading}/>}
     {isRequester(principal) && <RequesterDashboard data={data} principal={principal} requests={requests}/>}
     {!isRequester(principal) && data.composition === "OPERATIONAL" && hasProjection && data.inventory.length > 0 && (
-      <InventoryOverviewChart items={data.inventory} />
+      <InventoryOverviewChart items={data.inventory} institutionId={!refreshError && data.scope === "INSTITUTION" && principal.accountCategory === "BLOOD_BANK" ? principal.institutionId : undefined} />
     )}
     {principal.accountCategory === "BLOOD_BANK" && (!hasProjection || data.inventory.length === 0) && <section className="inventory-overview-card" aria-labelledby="inventory-overview-title"><header><div><h2 id="inventory-overview-title">Blood Inventory Overview</h2></div><a className="inventory-overview-link" href="/inventory">View inventory →</a></header><div className="dashboard-inventory-placeholder" aria-live="polite"><strong>{loading?"Loading inventory…":hasProjection?"No inventory records":"Inventory overview unavailable"}</strong><p>{loading?"The inventory overview will appear here once loaded.":hasProjection?"Confirmed inventory will appear here when units are recorded.":"The overview will appear here when inventory data is available."}</p></div></section>}
     {principal.accountCategory === "BLOOD_BANK" && <RequesterDashboard data={data} principal={principal} requests={requests} bankMode/>}

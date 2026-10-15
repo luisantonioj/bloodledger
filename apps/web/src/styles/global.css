@@ -661,3 +661,10 @@
 .inventory-overview-track>strong{font-size:22px}
 .stock-unknown .inventory-overview-fill,.inventory-overview-legend i.unknown{background:var(--ink-muted)}
 @media(max-width:760px){.inventory-overview-controls{align-items:stretch}.inventory-overview-controls label{width:100%}.inventory-overview-legend{justify-content:flex-start}}
+
+/* Accepted project demonstration policy: distinguish all four bands without relying on color alone. */
+.stock-surplus .inventory-overview-fill{background:var(--information)}
+.inventory-overview-bar{grid-template-rows:minmax(0,1fr) 62px}
+.stock-band-label{display:block;margin-top:5px;font-size:10px;font-weight:600}
+.stock-band-critical{color:var(--critical)}.stock-band-low{color:var(--warning)}.stock-band-adequate{color:var(--success)}.stock-band-surplus{color:var(--information)}.stock-band-unknown{color:var(--ink-muted)}
+.stock-policy-details{padding:12px 18px;border-top:1px solid var(--line);font-size:12px}.stock-policy-details summary{cursor:pointer;font-weight:600}.stock-policy-details p{line-height:1.5;color:var(--ink-secondary)}

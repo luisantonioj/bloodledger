@@ -494,11 +494,16 @@ shows unavailable and stale states honestly.
 
 ### Page head
 
-The Dashboard inventory overview follows the original quantity-axis bar chart,
-with Critical, Low, Adequate and Surplus legend colors. The isolated visual
-review may supply fixed, clearly labeled sample indicators. The regular
-frontend displays unavailable status/surplus until approved backend evidence
-exists; available inventory must not be presented as predicted surplus.
+The Dashboard inventory overview supports component selection and grouped All,
+showing ledger-confirmed count heights and text-labeled stock band colors.
+The user's accepted [official project demonstration policy](handoffs/LAT-OFFICIAL-DEMO-STOCK-BANDS-DECISION-2026-10-15.md)
+owns the 40 differentiated series, eligible measure and freshness convention.
+Only current own-institution component evidence controls colors; unavailable or
+unsupported evidence stays neutral. A details table exposes exact boundaries and
+policy provenance. These invented project bands do not establish clinical levels,
+forecast surplus or redistribution authorization. Source surplus stays separate
+on Analytics. This explicitly supersedes the earlier unavailable-only demo UI;
+institutional RQ-16 and complete FR-04 acceptance remain unresolved.
 
 Every feature page begins with a clear title. Add context only where it explains
 scope, freshness, access, or safety. Institution identity comes from the
