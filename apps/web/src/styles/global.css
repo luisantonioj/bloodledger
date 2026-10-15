@@ -800,3 +800,5 @@
 .bank-transfer-summary-table td small { display: block; margin-top: 4px; font-size: 11px; color: var(--ink-muted); }
 .bank-prc-supply-table { min-width: 650px; }
 .blood-bank-transfers .bank-page-toolbar > .requester-transfer-tabs { flex-wrap: wrap; max-width: 100%; }
+.blood-bank-audit .audit-table { min-width: 1100px; }
+.blood-bank-audit .audit-source-label { display: block; margin-bottom: 4px; color: var(--ink-muted); font-size: 10px; }
