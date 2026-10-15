@@ -12,6 +12,16 @@ let verifier: Verifier | undefined;
 let sessionEpoch = 0;
 export function setCommandVerifier(next?: Verifier) { verifier = next; sessionEpoch++; }
 
+// A verifier install or removal advances the epoch and rejects reads already in flight. Retry an
+// idempotent read once while its caller is still current; a real account change remounts the view.
+export async function retryAfterContextChange<T>(read: () => Promise<T>, active: () => boolean = () => true): Promise<T> {
+  try { return await read(); }
+  catch (reason) {
+    if (reason instanceof ApiRequestError && reason.code === "AUTH_CONTEXT_CHANGED" && active()) return read();
+    throw reason;
+  }
+}
+
 export async function requestJson<T>(path: string, init: RequestInit = {}, fallback = "Request failed."): Promise<T> {
   const epoch = sessionEpoch;
   const headers = new Headers(init.headers);
