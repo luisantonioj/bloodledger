@@ -756,7 +756,5 @@
 .redistribution-details[open] summary { border-bottom: 1px solid var(--line); }
 .redistribution-details > p { margin: 12px 14px; line-height: 1.6; }
 .redistribution-details-toggle { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-muted); font-size: 11px; font-weight: 400; }
-.redistribution-details-toggle > span::before { content: "Expand"; }
-.redistribution-details[open] .redistribution-details-toggle > span::before { content: "Collapse"; }
 .redistribution-details-toggle svg { transition: transform .15s ease; }
-.redistribution-details[open] .redistribution-details-toggle svg { transform: rotate(90deg); }
+.redistribution-details[open] .redistribution-details-toggle svg { transform: rotate(180deg); }
