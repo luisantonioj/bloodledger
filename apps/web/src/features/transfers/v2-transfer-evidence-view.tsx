@@ -2,7 +2,6 @@ import { TransferSummaryTable } from "./transfer-summary-table";
 import { URGENCIES } from "../../services/api/transaction-reads";
 import { type BankRequestRow, type BankReservationRow } from "./bank-transfer-list";
 import { RedistributionReview, redistributionRequestCandidates } from "./redistribution-review";
-import { RpsPanel } from "../coordination/coordination-panels";
 import { PaginatedTable, RecordPagination } from "../../components/ui/record-pagination";
 import { useLiveData } from "../../hooks/use-live-data";
 import { humanizeCode, formatBloodType, statusClassName, compactRecordReference } from "../../components/ui/display";
@@ -73,7 +72,6 @@ export function V2TransferEvidenceView({ principal }: { principal: Principal }) 
       </section>
       {tab!=="prc"&&<aside className="bank-detail-card">{selected?<V2RecordExplorer inline navigationLocked={approvalLocked} showRecovery={false} key={selected.kind+selected.id} initial={selected} principal={principal} onClose={()=>{if(!approvalLocked)setSelected(undefined);}} onRefresh={state.manual} renderBody={(record,open)=><BankRecordDetails record={record} principal={principal} open={open}/>} renderExtra={(record,open)=><BankRecordActions record={record} principal={principal} reservations={reservations} open={open} approval={reviewContext&&record.kind==="request"&&record.value.source_institution_id===principal.institutionId&&record.value.destination_institution_id===destination&&record.value.blood_type===reviewBlood&&record.value.component_type===reviewComponent?<RedistributionReview principal={principal} requests={requests} reservations={reservations} requestId={record.value.transfer_id} onRefresh={state.manual} onLockChange={setApprovalLocked}/>:undefined}/>} headerHelp={<InformationHelp label="Record details">Review the current authorized record, linked components and ledger evidence. Pending commands and confirmed inventory or custody states remain separate.</InformationHelp>}/>:<><header className="bank-section-heading"><h2>{tab==="requests"?"Request details":"Transfer details"}</h2><InformationHelp label="Record details">Select a record from the list to inspect its current state and permitted links. Details are read again when opened.</InformationHelp></header><div className="requester-records-empty"><strong>Select a {tab==="requests"?"request":"transfer"}</strong><span>Its details will appear here.</span></div></>}</aside>}
     </div>
-    {tab==="requests"&&principal.institutionId==="INST_MEDIATRIX"&&["ROLE-01","ROLE-02"].includes(principal.roleId)&&<RpsPanel principal={principal}/>}
     {tab!=="prc"&&<div ref={formArea} className="bank-request-form-anchor"><V2Operations principal={principal} onRefresh={state.manual} showRequest={formOpen} onCancelRequest={()=>setFormOpen(false)} initialBloodType={initialBloodType} initialComponentType={initialComponentType}/></div>}
   </div>;
 }
