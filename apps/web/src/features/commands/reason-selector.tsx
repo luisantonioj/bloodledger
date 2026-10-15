@@ -1,3 +1,4 @@
+import { retryAfterContextChange } from "../../services/api/client";
 import { useEffect, useState } from "react";
 import { readReasonPolicy, type ReasonKind, type ReasonPolicy } from "../../services/api/uat-reasons";
 
@@ -7,7 +8,7 @@ export function ReasonSelector({ kind, value, onChange, disabled }: { kind: Reas
   useEffect(() => {
     const controller = new AbortController(); let closed = false;
     setPolicy(undefined); setError(""); onChange("");
-    void readReasonPolicy(kind, controller.signal).then(row => { if (!closed) setPolicy(row); }).catch(reason => { if (!closed) setError(reason instanceof Error ? reason.message : "Reason policy unavailable."); });
+    void retryAfterContextChange(() => readReasonPolicy(kind, controller.signal), () => !closed && !controller.signal.aborted).then(row => { if (!closed) setPolicy(row); }).catch(reason => { if (!closed) setError(reason instanceof Error ? reason.message : "Reason policy unavailable."); });
     return () => { closed = true; controller.abort(); };
     // Reset selection only when the policy is reloaded.
     // eslint-disable-next-line react-hooks/exhaustive-deps

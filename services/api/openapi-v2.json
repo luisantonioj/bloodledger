@@ -3120,6 +3120,213 @@
           }
         }
       }
+    },
+    "/prc-supply-requests": {
+      "get": {
+        "operationId": "listPrcSupplyRequests",
+        "description": "SYNTHETIC_PRC_SUPPLY_V1. BLOOD_BANK accounts and their ROLE-01/02 operators read their own institution's requests (scope INSTITUTION); the PRC account and its operators read all (scope PRC_ALL). DOH, requester (ROLE-03) and legacy non-account sessions receive 403. Newest submission first (submittedAt, requestId descending); complete only when nextCursor is null. Search is client-side over loaded rows.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/PageLimit"
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^PRCS_[A-Za-z0-9_-]{1,140}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped PRC supply requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrcSupplyListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "post": {
+        "operationId": "submitPrcSupplyRequest",
+        "description": "Submit one product line. BLOOD_BANK institution account with a PIN-verified ROLE-02 operator (capability prc-supply:request) only. Same-origin, idempotent (same actor, key and body replay the result; a different body is PRC_SUPPLY_IDEMPOTENCY_CONFLICT) and audited. Recorded synchronously off-chain; no inventory or ledger effect.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^VFY_[0-9A-F]{40}$"
+            },
+            "description": "Bound grant from POST /auth/operator-verifications for this exact action, body and Idempotency-Key."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrcSupplySubmission"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recorded (status SUBMITTED) or replayed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrcSupplyMutationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
+    "/prc-supply-requests/{requestId}": {
+      "get": {
+        "operationId": "getPrcSupplyRequest",
+        "description": "Detail with audited history, in the same scope as the list. Out-of-scope requests return 404.",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^PRCSR_[A-Z0-9]{40}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PRC supply request detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrcSupplyRequestDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/prc-supply-requests/{requestId}/{action}": {
+      "post": {
+        "operationId": "actOnPrcSupplyRequest",
+        "description": "cancel: the requesting institution's PIN-verified ROLE-02 operator (prc-supply:cancel), SUBMITTED only. acknowledge (enter prcReference), fulfil (fulfilledQuantity) and decline (reasonCode): the PRC account's PIN-verified PRC reviewer (prc-supply:respond); acknowledge and fulfil from SUBMITTED/ACKNOWLEDGED respectively, decline from either. Conflicts: PRC_SUPPLY_VERSION_CONFLICT, PRC_SUPPLY_TRANSITION_INVALID, PRC_SUPPLY_REFERENCE_CONFLICT, PRC_SUPPLY_IDEMPOTENCY_CONFLICT. Same-origin, idempotent, version-checked, audited, off-chain.",
+        "parameters": [
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^PRCSR_[A-Z0-9]{40}$"
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "cancel",
+                "acknowledge",
+                "fulfil",
+                "decline"
+              ]
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^VFY_[0-9A-F]{40}$"
+            },
+            "description": "Bound grant from POST /auth/operator-verifications for this exact action, body and Idempotency-Key."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrcSupplyAction"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transition recorded or replayed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrcSupplyMutationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6368,6 +6575,390 @@
           },
           "classification": {
             "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "PrcSupplyRequest": {
+        "type": "object",
+        "description": "SYNTHETIC_PRC_SUPPLY_V1 (PA-DEF-06, ADR-044) off-chain PRC supply coordination record: one product line per request, never an inventory, receipt or ledger event. PRC Supply table columns: Request ID=requestId, Product=bloodType+componentType, Units=requestedQuantity (or fulfilledQuantity of requestedQuantity), Required By=requiredBy, PRC Reference=prcReference, Status=status.",
+        "required": [
+          "requestId",
+          "requestingInstitution",
+          "bloodType",
+          "componentType",
+          "requestedQuantity",
+          "fulfilledQuantity",
+          "urgency",
+          "requiredBy",
+          "status",
+          "prcReference",
+          "referenceProvenance",
+          "declineReason",
+          "submittedAt",
+          "acknowledgedAt",
+          "closedAt",
+          "version",
+          "ledger",
+          "policyVersion",
+          "classification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^PRCSR_[A-Z0-9]{40}$"
+          },
+          "requestingInstitution": {
+            "type": "object",
+            "required": [
+              "institutionId",
+              "displayName"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "institutionId": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "bloodType": {
+            "$ref": "#/components/schemas/BloodType"
+          },
+          "componentType": {
+            "$ref": "#/components/schemas/ComponentTypeV21"
+          },
+          "requestedQuantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "fulfilledQuantity": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "description": "Recorded by PRC at fulfilment, 1..requestedQuantity; less than requested means partly fulfilled. Null before fulfilment. Not a receipt or stock claim."
+          },
+          "urgency": {
+            "$ref": "#/components/schemas/Urgency"
+          },
+          "requiredBy": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC deadline set at submission (1 hour to 30 days ahead); display in Asia/Manila. Not editable."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SUBMITTED",
+              "ACKNOWLEDGED",
+              "FULFILLED",
+              "DECLINED",
+              "CANCELLED"
+            ],
+            "description": "Coordination status only, separate from command, reservation and stock status. FULFILLED, DECLINED and CANCELLED are terminal."
+          },
+          "prcReference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[A-Z0-9][A-Z0-9-]{2,31}$",
+            "description": "Entered by the synthetic PRC operator on acknowledgement; unique. Null means awaiting PRC acknowledgement (or declined before acknowledgement). Never generated."
+          },
+          "referenceProvenance": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "PRC_RECORDED_IN_SYSTEM",
+              null
+            ]
+          },
+          "declineReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "NO_STOCK",
+              "OUT_OF_SCOPE",
+              "DUPLICATE_REQUEST",
+              "DEADLINE_NOT_FEASIBLE",
+              null
+            ]
+          },
+          "submittedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "acknowledgedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "closedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Time of fulfilment, decline or cancellation."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "ledger": {
+            "type": "object",
+            "required": [
+              "status"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "const": "NOT_APPLICABLE"
+              }
+            },
+            "description": "Off-chain record; never pending ledger synchronization."
+          },
+          "policyVersion": {
+            "const": "SYNTHETIC_PRC_SUPPLY_V1"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "PrcSupplyRequestDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PrcSupplyRequest"
+          },
+          {
+            "type": "object",
+            "required": [
+              "history"
+            ],
+            "properties": {
+              "history": {
+                "type": "array",
+                "description": "Audited actions on this request, oldest first. Actor display names are DB-constrained synthetic values.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "action",
+                    "priorStatus",
+                    "resultingStatus",
+                    "reasonCode",
+                    "actor",
+                    "recordedAt"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "enum": [
+                        "PRC_SUPPLY_SUBMIT",
+                        "PRC_SUPPLY_CANCEL",
+                        "PRC_SUPPLY_ACKNOWLEDGE",
+                        "PRC_SUPPLY_FULFIL",
+                        "PRC_SUPPLY_DECLINE"
+                      ]
+                    },
+                    "priorStatus": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "resultingStatus": {
+                      "type": "string"
+                    },
+                    "reasonCode": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "actor": {
+                      "type": "object",
+                      "required": [
+                        "reference",
+                        "institutionId",
+                        "displayName"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "reference": {
+                          "type": "string"
+                        },
+                        "institutionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "displayName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    },
+                    "recordedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "PrcSupplyMutationResult": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PrcSupplyRequest"
+          },
+          {
+            "type": "object",
+            "required": [
+              "replayed"
+            ],
+            "properties": {
+              "replayed": {
+                "type": "boolean",
+                "description": "True when the same actor, Idempotency-Key and body returned the originally recorded result."
+              }
+            }
+          }
+        ]
+      },
+      "PrcSupplyListResponse": {
+        "type": "object",
+        "required": [
+          "scope",
+          "rows",
+          "nextCursor",
+          "policyVersion",
+          "classification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "INSTITUTION",
+              "PRC_ALL"
+            ]
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PrcSupplyRequest"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^PRCS_[A-Za-z0-9_-]{1,140}$"
+          },
+          "policyVersion": {
+            "const": "SYNTHETIC_PRC_SUPPLY_V1"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "PrcSupplySubmission": {
+        "type": "object",
+        "description": "Exact body. No free-text note is accepted in V1.",
+        "required": [
+          "bloodType",
+          "componentType",
+          "requestedQuantity",
+          "urgency",
+          "requiredBy",
+          "correlationId"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "bloodType": {
+            "$ref": "#/components/schemas/BloodType"
+          },
+          "componentType": {
+            "$ref": "#/components/schemas/ComponentTypeV21"
+          },
+          "requestedQuantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "urgency": {
+            "$ref": "#/components/schemas/Urgency"
+          },
+          "requiredBy": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+            "description": "1 hour to 30 days after the server clock at submission, else PRC_SUPPLY_REQUIRED_BY_OUT_OF_WINDOW."
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "PrcSupplyAction": {
+        "type": "object",
+        "description": "Exact body per action. cancel: expectedVersion, correlationId. acknowledge: + prcReference. fulfil: + fulfilledQuantity (1..requestedQuantity). decline: + reasonCode.",
+        "required": [
+          "expectedVersion",
+          "correlationId"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "prcReference": {
+            "type": "string",
+            "pattern": "^[A-Z0-9][A-Z0-9-]{2,31}$"
+          },
+          "fulfilledQuantity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10
+          },
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "NO_STOCK",
+              "OUT_OF_SCOPE",
+              "DUPLICATE_REQUEST",
+              "DEADLINE_NOT_FEASIBLE"
+            ]
           }
         }
       }

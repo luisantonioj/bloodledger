@@ -1,3 +1,4 @@
+import { retryAfterContextChange } from "../../services/api/client";
 import { useEffect, useState } from "react";
 import { canAct, type Principal } from "../../auth/permissions";
 import { V2_BLOOD_TYPES, V2_COMPONENT_TYPES, readV2Components, submitV2Reservation, type V2Component } from "../../services/api/v2";
@@ -32,7 +33,7 @@ export function RedistributionReview({principal,requests,reservations,onRefresh}
   useEffect(()=>{
     let closed=false;setSnapshot(undefined);setError("");setConfirmed(false);
     if(!selected)return;
-    void Promise.all([readSelectedRecord({kind:"request",id:selected},principal),readV2Components("V2.1")]).then(([record,stock])=>{
+    void Promise.all([retryAfterContextChange(() => readSelectedRecord({kind:"request",id:selected},principal), () => !closed),retryAfterContextChange(() => readV2Components("V2.1"), () => !closed)]).then(([record,stock])=>{
       if(closed)return;
       if(record.kind!=="request"||record.value.status!=="PENDING"||record.value.source_institution_id!==principal.institutionId||record.value.destination_institution_id!==destination||record.value.blood_type!==blood||record.value.component_type!==component)throw Error("Request changed");
       const at=Date.now(),units=redistributionUnits(stock.components,principal.institutionId,record.value,at);

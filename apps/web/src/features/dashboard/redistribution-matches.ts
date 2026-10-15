@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ApiRequestError } from "../../services/api/client";
+import { retryAfterContextChange } from "../../services/api/client";
 import { readCoordination, seriesQuery, type BroaRedistributionView, type SourceSurplusView } from "../../services/api/coordination";
 import { manilaBusinessDate } from "../../services/api/forecast";
 import { V2_BLOOD_TYPES, V2_COMPONENT_TYPES } from "../../services/api/v2";
@@ -19,7 +19,7 @@ export function useRedistributionMatches(institutionId: string, automatic: boole
     const controller=new AbortController();setResult(undefined);
     if(quantity===null)return()=>controller.abort();
     async function read<T extends BroaRedistributionView|SourceSurplusView>(path:string):Promise<T>{
-      try{return await readCoordination<T>(path,institutionId,controller.signal);}catch(error){if(!controller.signal.aborted && error instanceof ApiRequestError && error.code==="AUTH_CONTEXT_CHANGED")return readCoordination<T>(path,institutionId,controller.signal);throw error;}
+      return retryAfterContextChange(() => readCoordination<T>(path,institutionId,controller.signal), () => !controller.signal.aborted);
     }
     async function run(){
       const ranking=async(blood:string,product:string)=>validRedistribution(await read<BroaRedistributionView>("/api/v2/coordination/redistribution?"+seriesQuery(blood,product)+"&requiredQuantity="+quantity),institutionId,blood,product,quantity!);

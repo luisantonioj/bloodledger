@@ -10,7 +10,7 @@ import {
   readActiveForecast,
   type ForecastResponse,
 } from "../../services/api/forecast";
-import { ApiRequestError } from "../../services/api/client";
+import { ApiRequestError, retryAfterContextChange } from "../../services/api/client";
 import { canViewAnalyticsPreview } from "./analytics-access";
 
 function uncertainty(lower: number | null, upper: number | null): string {
@@ -35,7 +35,7 @@ export function AnalyticsPreview({ principal }: { principal: Principal }) {
     setError("");
     setBusy(true);
     try {
-      const result = await readActiveForecast(businessDate, dataset);
+      const result = await retryAfterContextChange(() => readActiveForecast(businessDate, dataset), () => id === requestId.current);
       if (id !== requestId.current) return;
       if (result.forecasts.some((item) => item.institutionId !== principal.institutionId)) throw new Error("FORECAST_SCOPE_INVALID");
       setData(result);

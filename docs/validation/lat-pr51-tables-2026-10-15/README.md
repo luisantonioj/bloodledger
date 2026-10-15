@@ -23,9 +23,15 @@ Origin `http://127.0.0.1:5174` proxies to API port 3000. Ordinary institution lo
 
 Each paginated read reached `nextCursor: null`; UI reports All rows loaded. No domain POSTs were made. Mobile viewport 390px had no document overflow. Label values were not printed in verification logs.
 
-**Pending — Jopia host:** Jopia clarified that the private Medix credential file exists only on his host and approved finishing this PR with that live check pending. He will run ordinary ROLE-02 Medix reads against this branch and post the result here: 16 inbound summaries, 2 OCR-matched receipts (1 CONFIRMED, 1 FAILED / Not committed), and 18 activity events. The retired recipient remains retired. ROLE-03 live validation is explicitly waived; backend tests cover its scoping. Different retained datasets explain why this host's counts need not match Jopia's. No accounts, passwords, operators or data were changed.
+**Medix check: complete — Jopia host, see [PR #52 comment](https://github.com/luisantonioj/bloodledger/pull/52#issuecomment-6189519671).** Jopia ran ordinary ROLE-02 Medix login-form reads against `595e689`: 16 inbound transfer summaries, 2 OCR-matched receipts (1 CONFIRMED with Fabric ID, 1 FAILED / Not committed), 18 activity events (17 CONFIRMED, 1 FAILED), and the recorded printed inventory label. No domain command or account/data change. The first-inventory-load race found there was fixed in PR #54, with 3/3 first-load live checks on Jopia's host. These are attributed Jopia results, not a fresh Lat-host execution.
+
+ROLE-03 live check is waived: Medix has no ROLE-03 login; Metrolipa has no transfers. Backend tests cover scoping. The retired recipient remains retired. Different retained datasets explain the separate Lat/Jopia totals above. RQ-02 and RQ-17 remain open.
+
+Final decisions after PR #53: **ADR-040** label identity, **ADR-041** unit history, **ADR-042** identifier vocabulary and transfer summaries, **ADR-043** activity history. See the [post-merge read audit](READ-CONTEXT-AUDIT.md) for PR #54 review and follow-up validation.
 
 ## Automated validation
+
+Original PR #52 results are retained below. The post-merge retry audit has 295 passing unit tests and 99 passing affected browser cases; its current commands/results are in [READ-CONTEXT-AUDIT.md](READ-CONTEXT-AUDIT.md).
 
 Node 24.17.0, npm workspace commands:
 
@@ -54,4 +60,4 @@ Captured from the live Mediatrix session; only the temporary account-switcher to
 
 PR #51's four web contracts are wired, including exact printed label IDs, cursor reads, glossary-correct request/reservation links, recorded actor provenance and matching PDF columns. All prior unpublished frontend work was preserved. The build/type check, 288 unit tests and 49 browser tests passed. Screenshots and live totals are above.
 
-Remaining gaps: Medix live validation is pending — Jopia host, as agreed; please post your ROLE-02 read-only result on the PR. This host's retained-data counts are documented separately and do not claim to reproduce your database. PRC remains unavailable under RQ-17. `ARCHITECTURE.md` also contains duplicate ADR-036–039 identifiers for older onboarding and newer read-contract decisions; the implementation follows PR #51's machine-readable contract, without silently rewriting the ADR register. No backend workaround, account reactivation or data regeneration was introduced.
+Post-merge disposition: Medix validation is complete on the Jopia host, as linked above; ROLE-03 live validation is waived. PR #53 resolved the prior ADR numbering collision using ADR-040–043. PR #54 fixed the first-load inventory race. The follow-up [read audit](READ-CONTEXT-AUDIT.md) documents other direct GET consumers and guarded context retries. PRC remains unavailable under RQ-17, and RQ-02 remains unresolved. No backend workaround, account reactivation or data regeneration was introduced.

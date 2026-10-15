@@ -9,7 +9,7 @@ import { RefreshButton } from "../../components/ui/refresh-button";
 import { componentLabel } from "../transfers/requester-transfer-data";
 import { HistoricalStockView } from "./historical-stock-view";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiRequestError } from "../../services/api/client";
+import { ApiRequestError, retryAfterContextChange } from "../../services/api/client";
 import { formatBloodType, formatManilaDateTime, humanizeCode, statusClassName } from "../../components/ui/display";
 import { type Principal } from "../../auth/permissions";
 import { V2RecordExplorer } from "./v2-record-explorer";
@@ -49,9 +49,10 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
     }
     setBusy(true);
     try {
+      const active = () => current === requestSequence.current;
       const [components, intakeStatus] = await Promise.all([
-        readV2Components(version),
-        canReadIntake ? readInboundIntake() : Promise.resolve(undefined),
+        retryAfterContextChange(() => readV2Components(version), active),
+        canReadIntake ? retryAfterContextChange(() => readInboundIntake(), active) : Promise.resolve(undefined),
       ]);
       if (current !== requestSequence.current) return;
       if (components.components.some(component => component.institutionId !== principal.institutionId)) {

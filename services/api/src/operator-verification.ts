@@ -7,6 +7,9 @@ import { operatorPrincipal, type OperatorProfile } from "./institution-access.js
 
 export interface VerificationInput { operatorId: string; pin: string; action: string; payload: unknown; idempotencyKey: string }
 export function allowedOperatorAction(principal: WebPrincipal, operator: OperatorProfile, action: string): boolean {
+  // PA-DEF-06: blood-bank ROLE-02 submits/cancels PRC supply requests; the PRC reviewer responds.
+  if (action === "POST /api/v2/prc-supply-requests" || /^POST \/api\/v2\/prc-supply-requests\/PRCSR_[A-Z0-9]{40}\/cancel$/.test(action)) return principal.accountCategory === "BLOOD_BANK" && operator.capabilityProfile === "ROLE" && operator.roleId === "ROLE-02";
+  if (/^POST \/api\/v2\/prc-supply-requests\/PRCSR_[A-Z0-9]{40}\/(acknowledge|fulfil|decline)$/.test(action)) return principal.accountCategory === "PRC" && operator.capabilityProfile === "PRC_REVIEWER";
   if (operator.capabilityProfile === "PRC_REVIEWER" && action === "POST /api/v2/onboarding/operators") return principal.accountCategory === "PRC";
   if (operator.capabilityProfile === "INSTITUTION_ADMIN" && (action === "POST /api/v2/onboarding/operators" || /^POST \/api\/v2\/onboarding\/institutions\/[A-Z0-9_-]+\/profile$/.test(action))) return true;
   if (operator.capabilityProfile === "PRC_REVIEWER") return principal.accountCategory === "PRC" && /^POST \/api\/v2\/onboarding\/(invitations|applications\/[A-Z0-9_-]+\/(review|approve|reject|activate)|institutions\/[A-Z0-9_-]+\/(suspend|reactivate|profile|account)|operators\/[A-Z0-9_-]+\/(reset-pin|revoke))$/.test(action);

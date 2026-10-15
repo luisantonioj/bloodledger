@@ -1,3 +1,4 @@
+import { retryAfterContextChange } from "../../services/api/client";
 import { ActionButton } from "../../components/ui/action-button";
 import { useEffect, useState } from "react";
 import type { Principal } from "../../auth/permissions";
@@ -36,7 +37,7 @@ export function ComplianceReports({ principal }: { principal: Principal }) {
   const [checkpoint, setCheckpoint] = useState("09:00");
   useEffect(() => {
     const controller = new AbortController(); setBusy(true); setError("");
-    readCensusIndex(principal, controller.signal, cursor).then(next => {
+    retryAfterContextChange(() => readCensusIndex(principal, controller.signal, cursor), () => !controller.signal.aborted).then(next => {
       if (!controller.signal.aborted) setIndex(previous => cursor && previous ? {...next,snapshots:[...new Map([...previous.snapshots,...next.snapshots].map(row => [row.snapshotId,row])).values()]} : next);
     }).catch(reason => { if (!controller.signal.aborted) {setIndex(undefined); setError(reason instanceof Error ? reason.message : "Reports are unavailable.");} }).finally(() => {if (!controller.signal.aborted) setBusy(false);});
     return () => controller.abort();

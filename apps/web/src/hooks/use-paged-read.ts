@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState} from "react";
-import {ApiRequestError,requestJson} from "../services/api/client";
+import {ApiRequestError,requestJson,retryAfterContextChange} from "../services/api/client";
 import type {ReadPage} from "../services/api/transaction-reads";
 export function usePagedRead<T>(endpoint:string|null,parse:(value:unknown)=>ReadPage<T>,rowKey:keyof T,scopeKey:string){
  const [revision,setRevision]=useState(0),[result,setResult]=useState<{key:string;page:ReadPage<T>}>(),[busy,setBusy]=useState(false),[error,setError]=useState("");
@@ -10,7 +10,7 @@ export function usePagedRead<T>(endpoint:string|null,parse:(value:unknown)=>Read
   try{
    const path=endpoint+"?"+new URLSearchParams({limit:"50",...(cursor?{cursor}:{})});
    const fetch=()=>requestJson<unknown>(path,{signal:abort.signal});
-   const raw=await fetch().catch(reason=>{if(reason instanceof ApiRequestError&&reason.code==="AUTH_CONTEXT_CHANGED"&&!abort.signal.aborted)return fetch();throw reason;});
+   const raw=await retryAfterContextChange(fetch, () => !abort.signal.aborted && active.current === current);
    const page=parse(raw);if(abort.signal.aborted||active.current!==current)return;
    if(cursor&&page.nextCursor===cursor)throw Error("Repeated cursor");
    const previous=append&&result?.key===current?result.page.rows:[];

@@ -576,6 +576,7 @@ withdrawal creates a new `SUBMITTED` application linked to the prior record.
 | PA-DEF-03 | Accepted prototype assumption | `UNIT_HISTORY_READ_V1` | Jopia / 2026-10-15 | Blood Unit Transactions read only `app.v2_commands` for registration, OCR-matched receipt, transfer receipt, dispatch and local-release completion events acted on by the caller's institution (ROLE-01/02/03). Rows are one event per unit, ordered by accepted time descending and paged by event. Direction is relative to the acting institution. Transaction ID is the durable command, Scan ID is the confirmed OCR capture, Method is `OCR`, `WEB_COMMAND` or not recorded, and Status separates `CONFIRMED`, projection-pending, pending, failed and conflict. Blockchain ID is the actual Fabric transaction or none. Missing membership, method or label stays explicitly unavailable. Search is client-side over loaded rows; the browser PDF covers loaded rows. | Approved event coverage, custody-direction rules and history retention policy |
 | PA-DEF-04 | Accepted prototype assumption | `TRANSFER_SUMMARY_READ_V1` | Jopia / 2026-10-15 | The Transfers table reads one row per reservation in the existing reservation scope, including local releases flagged `LOCAL_RELEASE` with destination `NOT_APPLICABLE`. Product and requested units come from the linked request (or the local-release reserve command); allocated units come from the committed selection snapshot; current unit-status counts are shown separately. Priority is the recorded request urgency (`ROUTINE`, `URGENT`, `CRITICAL`). Missing linkage is `UNAVAILABLE`. | Approved transfer-table semantics and reporting rules |
 | PA-DEF-05 | Accepted prototype assumption | `ACTIVITY_HISTORY_READ_V1` | Jopia / 2026-10-15 | ROLE-02 Activity History lists every V2 command and off-chain acknowledgement its institution recorded, newest first and paged. Request, Transfer, Scan and Blockchain IDs come only from recorded command fields and foreign-key projections. The actor is shown by kind, opaque reference, the DB-constrained synthetic display name and current role (not proof of role at the event); unknown actors stay `UNKNOWN`. Off-chain events are `OFF_CHAIN_RECORDED` with ledger `NOT_APPLICABLE`. | Privacy review of operator display identity and an approved audit retention policy |
+| PA-DEF-06 | Accepted prototype assumption | `SYNTHETIC_PRC_SUPPLY_V1` | Jopia / 2026-10-15 | Resolves `RQ-17` for simulation only. A blood-bank ROLE-02 operator records one off-chain PRC supply request per product line. The synthetic PRC account acknowledges it in-system with a PRC-entered reference, then fulfils or declines it; the requester may cancel before acknowledgement. Requests never change inventory; supplied units enter only through confirmed inbound OCR capture. See [the decision](#pa-def-06--synthetic-prc-supply-requests-2026-10-15). Not PRC or Mediatrix policy. | Approved PRC supply procedure, reference format, deadlines and visibility, or a real PRC integration |
 
 Prototype-assumption versions are immutable. A replacement adds a new version,
 marks the earlier one superseded for new operations, preserves historical
@@ -603,7 +604,6 @@ sprint:
 | RQ-14 | What retention period and access policy apply to onboarding verification evidence and rejected applications? | Sprint 4 |
 | RQ-15 | Who may authorize emergency suspension while a transfer is dispatched or in transit, and how is safe receipt/custody resolution assigned? | Before operational in-transit suspension |
 | RQ-16 | What institutionally approved minimum-stock and safe-stock levels, shortage rule and surplus indicator replace the unavailable `FR-04` dashboard classification (Critical, Low, Adequate, Surplus)? This covers unit of measure, institution, blood-group and component scope, boundary comparisons, zero and missing-coverage handling, freshness tolerance, and the owner, approver, effective date and audit reference. The `SYNTHETIC_OPTIMIZATION_V1` and V2.1 surplus safety allowance and minimum reserve are not stock-classification thresholds. | Before operational dashboard stock classification or full `FR-04` acceptance; accepted project-only demonstration exception is recorded under FR-04 |
-| RQ-17 | What PRC supply-request workflow replaces the disabled PRC form: who records a request, product lines and units, required-by deadline, how the PRC acknowledgement or reference is obtained and recorded (manual or integrated), the status lifecycle, PRC visibility and the evidence/audit rule? No PRC supply-request record, command or read exists; the PRC tab stays explicitly unavailable until then. | Before any PRC supply-request list, detail or submission |
 
 Unanswered questions must not be guessed by a coding agent. The relevant task is
 blocked or implemented behind an explicitly approved prototype assumption.
@@ -613,6 +613,7 @@ blocked or implemented behind an explicitly approved prototype assumption.
 | ID | Resolution | Date/owner | Remaining replacement gate |
 |---|---|---|---|
 | RQ-11 | Mobile OCR is primary for the Sprint 4 synthetic PWA, with mandatory per-field confidence of at least 90, exact validation, authenticated confirmation, volatile-only image/raw-text handling, and Code 128/Data Matrix/synthetic QR fallback under `PA-S4-01`. | 2026-08-17 / Jopia | `RQ-02` and approved institutional fixtures/privacy evidence before real-label or ISBT claims |
+| RQ-17 | Resolved for simulation by `PA-DEF-06` (`SYNTHETIC_PRC_SUPPLY_V1`): off-chain PRC supply requests recorded by blood-bank ROLE-02 operators, one product line each, with a required-by deadline, PRC in-system acknowledgement and reference, and a five-state lifecycle. No free-text note, external PRC connection or inventory effect. | 2026-10-15 / Jopia | Approved PRC procedure, reference format, deadline and visibility rules, or a real PRC integration |
 
 ## PA-ACCOUNT-01 — Approved synthetic institution accounts (2026-10-08)
 
@@ -646,3 +647,36 @@ purged 30 days after closure; minimal non-secret decisions/references remain.
 Only authorized PRC reviewers and scoped applicants can access the records.
 No documents/messages or real institutional evidence are collected; RQ-14
 remains open for real data. Replacement requires a superseding policy.
+
+## PA-DEF-06 — Synthetic PRC supply requests (2026-10-15)
+
+**Accepted by Jopia; SIMULATION_ONLY.** Resolves `RQ-17` for the prototype
+only, under `SYNTHETIC_PRC_SUPPLY_V1` and ADR-044. It records how a blood bank
+asks the Philippine Red Cross (PRC) for stock inside BloodLedger. It is not PRC
+or Mediatrix policy, and it is superseded, not edited, when approved PRC
+evidence arrives.
+
+| Rule | Decision |
+|---|---|
+| Record type | An off-chain coordination record in PostgreSQL. It is not a Fabric custody event (PRC is an application user, not a peer, under ADR-001/ADR-002), and it never changes inventory, FEFO, census or forecasts. Units PRC supplies enter stock only through the existing confirmed inbound OCR capture. |
+| Who submits | A `BLOOD_BANK` institution account through a verified ROLE-02 operator (PIN verification, idempotency key, correlation ID). ROLE-01 can read its institution's requests. Requester (ROLE-03) and DOH accounts cannot submit. |
+| Product lines | Exactly one blood type and component (the V2.1 vocabulary, including cryoprecipitate) per request. Several products means several requests, and each request is one table row. |
+| Units | `requestedQuantity` is an integer from 1 to 10, matching the synthetic transfer cap. At fulfilment PRC records `fulfilledQuantity` (1 to the requested quantity); a smaller number means partly fulfilled. Neither number is a receipt or usable-stock claim. |
+| Urgency | `ROUTINE`, `URGENT` or `CRITICAL`, the same enum as transfer requests. |
+| Required by | Mandatory UTC timestamp, at least 1 hour and at most 30 days after submission, shown in Asia/Manila. It is never inferred from creation time or expiry, and it can't be edited: cancel and resubmit instead. |
+| Coordination note | **Not collected in V1.** Free text could carry patient or donor details. The form's note field is removed until an approved, privacy-reviewed field exists. |
+| PRC acknowledgement and reference | A synthetic PRC operator with the new `prc-supply:respond` capability (PRC reviewer profile, PIN-verified) acknowledges the request in BloodLedger and enters the PRC reference: `^[A-Z0-9][A-Z0-9-]{2,31}$`, unique across PRC supply requests. Provenance is `PRC_RECORDED_IN_SYSTEM`. Until then the reference is null and shown as "Awaiting PRC acknowledgement". No reference is generated, and no external PRC system is contacted. |
+| Lifecycle | `SUBMITTED` → `ACKNOWLEDGED` (PRC, with reference) → `FULFILLED` (PRC, with fulfilled quantity). PRC may move `SUBMITTED` or `ACKNOWLEDGED` to `DECLINED` with a reason code: `NO_STOCK`, `OUT_OF_SCOPE`, `DUPLICATE_REQUEST` or `DEADLINE_NOT_FEASIBLE`. The requester may move `SUBMITTED` to `CANCELLED`. `FULFILLED`, `DECLINED` and `CANCELLED` are terminal. This status is coordination status only, separate from command, reservation and stock status. |
+| Visibility | The requesting institution's ROLE-01/02 see their own requests. The PRC account sees all requests. Other hospitals, requesters and DOH see none in V1; DOH aggregates are deferred. |
+| Mutations | Every action is PIN-verified, idempotent (the same key and body replays the result), version-checked (`expectedVersion`), correlated and audited in `app.account_audit`. It is recorded synchronously off-chain: there is no ledger queue, and the ledger status is not applicable. The request detail carries its audited history. Activity History (`ACTIVITY_HISTORY_READ_V1`) is unchanged: adding PRC events needs a coordinated contract version, because current clients reject unknown event sources (amended 2026-10-15 at implementation). |
+| Reads | A cursor-paged list, newest submission first, plus a detail read, both in the scopes above. Search runs client-side over loaded rows. PDF export covers loaded rows with the SIMULATION_ONLY marking. |
+| Deferred | Free-text notes, multi-product requests, edits, DOH aggregates, escalation and SLA rules, a real PRC integration, and a PRC issuer label policy for OCR intake. |
+
+Implemented on 2026-10-15: `GET`/`POST /api/v2/prc-supply-requests`,
+`GET /api/v2/prc-supply-requests/{requestId}` and
+`POST /api/v2/prc-supply-requests/{requestId}/{cancel|acknowledge|fulfil|decline}`.
+Operator capabilities are `prc-supply:request` and `prc-supply:cancel` (bank
+ROLE-02) and `prc-supply:respond` (PRC reviewer). The additive migration
+`20261015000000000_create-prc-supply-requests.js` and
+`services/api/openapi-v2.json` are authoritative for the exact shape and error
+codes.

@@ -17,7 +17,7 @@ owns the frontend handling and its browser rerun.
 
 Machine-readable truth is
 [`openapi-v2.json`](../../services/api/openapi-v2.json). The decisions are
-ADR-036 to ADR-039 in
+ADR-040 to ADR-043 in
 [`ARCHITECTURE.md`](../ARCHITECTURE.md#15-architecture-decision-register), and
 `PA-DEF-02` to `PA-DEF-05` and `RQ-17` in
 [`REQUIREMENTS.md`](../REQUIREMENTS.md#8-prototype-assumption-register). This
@@ -203,6 +203,11 @@ single service-unavailable row and the disabled form exactly as you built
 them. "Unavailable" must not read as "zero requests". No endpoint will be
 added until `RQ-17` is decided.
 
+> **Update 2026-10-15:** Jopia resolved `RQ-17` for simulation as `PA-DEF-06`
+> (`SYNTHETIC_PRC_SUPPLY_V1`, ADR-044); see
+> [REQUIREMENTS.md](../REQUIREMENTS.md#pa-def-06--synthetic-prc-supply-requests-2026-10-15).
+> Keep the unavailable state until Jopia's backend PR adds the endpoints.
+
 ## 10. Activity History — `GET /api/v2/activity-history?limit=&cursor=`
 
 Access is ROLE-02 (the audit-reader role) for its own institution; other roles
@@ -288,7 +293,9 @@ bank Activity History table from `/api/v2/audit` to this read.
     - Every row has product, requested and allocated units, current status
       counts and facility names.
     - Local releases show destination `NOT_APPLICABLE`.
-    - The Medix recipient (ROLE-03) sees exactly its 16 inbound transfers.
+    - The Medix blood-bank account (ROLE-02) sees exactly its 16 inbound
+      transfers. Medix has no ROLE-03 login, and the reader returned the same
+      rows in ROLE-03 scope.
     - All retained urgency is `ROUTINE`.
   - **Activity history:**
     - Mediatrix: 587 of 587 events (commands plus 2 off-chain

@@ -12,6 +12,16 @@ let verifier: Verifier | undefined;
 let sessionEpoch = 0;
 export function setCommandVerifier(next?: Verifier) { verifier = next; sessionEpoch++; }
 
+// A verifier install or removal advances the epoch and rejects reads already in flight. Retry an
+// idempotent read once while its caller is still current; a real account change remounts the view.
+export async function retryAfterContextChange<T>(read: () => Promise<T>, active: () => boolean = () => true): Promise<T> {
+  try { return await read(); }
+  catch (reason) {
+    if (reason instanceof ApiRequestError && reason.code === "AUTH_CONTEXT_CHANGED" && active()) return read();
+    throw reason;
+  }
+}
+
 export async function requestJson<T>(path: string, init: RequestInit = {}, fallback = "Request failed."): Promise<T> {
   const epoch = sessionEpoch;
   const headers = new Headers(init.headers);
@@ -33,7 +43,11 @@ export async function requestJson<T>(path: string, init: RequestInit = {}, fallb
     headers: controlledHeaders,
   });
   const body = await response.json().catch(() => null) as ApiErrorEnvelope | null;
-  if (epoch !== sessionEpoch && path !== "/api/v1/auth/session") throw new ApiRequestError(401, "The account session changed.", "AUTH_CONTEXT_CHANGED");
+  if (epoch !== sessionEpoch && path !== "/api/v1/auth/session") {
+    // Do not terminate a newer session for an old response, but preserve a real denial.
+    if (response.status === 401) throw new ApiRequestError(401, body?.error?.message ?? fallback, body?.error?.code ?? "AUTH_REQUIRED");
+    throw new ApiRequestError(401, "The account session changed.", "AUTH_CONTEXT_CHANGED");
+  }
   if (!response.ok) {
     if (epoch === sessionEpoch && response.status === 401 && path !== "/api/v1/auth/session") window.dispatchEvent(new Event("bloodledger:session-ended"));
     throw new ApiRequestError(response.status, body?.error?.message ?? fallback, body?.error?.code);
