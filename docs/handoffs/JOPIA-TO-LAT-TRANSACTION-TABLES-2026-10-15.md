@@ -203,6 +203,11 @@ single service-unavailable row and the disabled form exactly as you built
 them. "Unavailable" must not read as "zero requests". No endpoint will be
 added until `RQ-17` is decided.
 
+> **Update 2026-10-15:** Jopia resolved `RQ-17` for simulation as `PA-DEF-06`
+> (`SYNTHETIC_PRC_SUPPLY_V1`, ADR-044); see
+> [REQUIREMENTS.md](../REQUIREMENTS.md#pa-def-06--synthetic-prc-supply-requests-2026-10-15).
+> Keep the unavailable state until Jopia's backend PR adds the endpoints.
+
 ## 10. Activity History — `GET /api/v2/activity-history?limit=&cursor=`
 
 Access is ROLE-02 (the audit-reader role) for its own institution; other roles
