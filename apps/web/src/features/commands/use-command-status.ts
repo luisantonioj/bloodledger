@@ -1,3 +1,4 @@
+import { retryAfterContextChange } from "../../services/api/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { readCommand, type V2Command } from "../../services/api/v2";
 import { COMMAND_PRESENTATION } from "./command-state";
@@ -29,7 +30,7 @@ export function useCommandStatus(onTerminal?: () => void) {
         return;
       }
       try {
-        const next = await readCommand(command.statusUrl);
+        const next = await retryAfterContextChange(() => readCommand(command.statusUrl), () => !closed);
         if (closed) return;
         if (next.commandId !== command.commandId || next.resourceId !== command.resourceId ||
             next.resourceType !== command.resourceType || next.statusUrl !== command.statusUrl ||

@@ -149,7 +149,7 @@ for (const [code,message] of [
       submits++; await json(route,{error:{code,message:"Conflict"}},409);return true;
     });
     await openComponent(page);await page.getByRole("button",{name:"Evaluate expiry",exact:true}).click();await verify(page);
-    await expect(page.getByRole("alert")).toContainText(message);
+    await expect(page.getByRole("alert").filter({hasText:message})).toContainText(message);
     await expect(page.getByRole("button",{name:"Evaluate expiry",exact:true})).toBeDisabled();
     expect(submits).toBe(1);
     await page.getByRole("button",{name:"Refresh component",exact:true}).click();
@@ -171,11 +171,11 @@ for (const workflow of ["transfer"]) {
     await page.getByRole("button",{name:"+ New Blood Request",exact:true}).click();
     const submit = page.getByRole("button",{name:"Submit",exact:true});
     await submit.click();await verify(page);
-    await expect(page.getByRole("alert")).toContainText("fresh time");
+    await expect(page.getByRole("alert").filter({hasText:"fresh time"})).toContainText("fresh time");
     await submit.click();await verify(page);
-    await expect(page.getByRole("alert")).toContainText("device clock");
+    await expect(page.getByRole("alert").filter({hasText:"device clock"})).toContainText("device clock");
     await submit.click();await verify(page);
-    await expect(page.getByRole("alert")).toContainText("Service unavailable");
+    await expect(page.getByRole("alert").filter({hasText:"Service unavailable"})).toContainText("Service unavailable");
     await page.getByRole("button",{name:"Retry same request",exact:true}).click();await verify(page);
     await expect.poll(()=>calls.length).toBe(4);
     expect(calls[1].key).not.toBe(calls[0].key); expect(calls[1].body.eventTime).not.toBe(calls[0].body.eventTime);
@@ -192,8 +192,8 @@ for (const [status,code,message] of [[400,"REQUEST_INVALID","request body is inv
       calls++;await json(route,{error:{code,message:"Rejected"}},status);return true;
     },{capabilities:["transfer:request"]});
     await page.goto("/transfers");await page.getByRole("button",{name:"+ New Blood Request",exact:true}).click();await page.getByRole("button",{name:"Submit",exact:true}).click();await verify(page);
-    await expect(page.getByRole("alert")).toContainText(message);
-    await expect(page.getByRole("button",{name:"Correct request before submitting",exact:true})).toBeDisabled();
+    await expect(page.getByRole("alert").filter({hasText:message})).toContainText(message);
+    await expect(page.getByRole("button",{name:"Correct request before submitting unavailable",exact:true})).toBeDisabled();
     await page.waitForTimeout(100);expect(calls).toBe(1);
     await page.getByLabel("Quantity",{exact:true}).fill("2");
     await expect(page.getByRole("button",{name:"Submit",exact:true})).toBeEnabled();

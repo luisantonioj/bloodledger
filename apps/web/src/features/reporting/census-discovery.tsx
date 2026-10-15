@@ -1,3 +1,4 @@
+import { retryAfterContextChange } from "../../services/api/client";
 import { ActionButton } from "../../components/ui/action-button";
 import { PaginatedTable } from "../../components/ui/record-pagination";
 import { RefreshIcon } from "../../components/ui/refresh-button";
@@ -15,7 +16,7 @@ export function CensusDiscovery({ principal }: { principal: Principal }) {
     const current = ++generation.current; setBusy(true); setError("");
     if (!cursor) setCensus(undefined);
     try {
-      const next = await readCensusIndex(principal, request.signal, cursor);
+      const next = await retryAfterContextChange(() => readCensusIndex(principal, request.signal, cursor), () => !request.signal.aborted && current === generation.current);
       if (current !== generation.current) return;
       setCensus(previous => ({...next, snapshots:cursor && previous ? [...new Map([...previous.snapshots, ...next.snapshots].map(row => [row.snapshotId, row])).values()] : next.snapshots}));
     } catch (reason) {

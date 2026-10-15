@@ -1,3 +1,4 @@
+import { retryAfterContextChange } from "../../services/api/client";
 import { labelText } from "../../services/api/label-identity";
 import { PaginatedTable } from "../../components/ui/record-pagination";
 import { useEffect, useRef, useState } from "react";
@@ -21,7 +22,7 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
   useEffect(() => {
     const controller = new AbortController(); let closed = false;
     setRecord(undefined); setError(""); setBusy(true);
-    void readSelectedRecord(selected, principal, controller.signal).then(value => {if (!closed) setRecord(value);}).catch(reason => {if (!closed) setError(recordErrorMessage(reason));}).finally(() => {if (!closed) setBusy(false);});
+    void retryAfterContextChange(() => readSelectedRecord(selected, principal, controller.signal), () => !closed && !controller.signal.aborted).then(value => {if (!closed) setRecord(value);}).catch(reason => {if (!closed) setError(recordErrorMessage(reason));}).finally(() => {if (!closed) setBusy(false);});
     return () => {closed = true; controller.abort();};
   }, [selected, principal, retry]);
   useEffect(() => {

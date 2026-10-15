@@ -1,3 +1,4 @@
+import { retryAfterContextChange } from "../../services/api/client";
 import { useEffect, useState } from "react";
 import { readV2Components, type V2Component } from "../../services/api/v2";
 import { eligibleStockCounts } from "./stock-classification";
@@ -12,7 +13,7 @@ export function useStockEvidence(institutionId: string | undefined, refreshKey: 
     const read = async () => {
       const current = ++sequence;
       try {
-        const response = await readV2Components("V2.1"), fetchedAt = Date.now();
+        const response = await retryAfterContextChange(() => readV2Components("V2.1"), () => !closed && current === sequence), fetchedAt = Date.now();
         if (closed || current !== sequence) return;
         if (!eligibleStockCounts(response.components, institutionId, fetchedAt, fetchedAt)) throw Error("Invalid stock scope");
         setEvidence({institutionId, components: response.components, fetchedAt}); setNow(fetchedAt); setError("");

@@ -1,3 +1,4 @@
+import { retryAfterContextChange } from "../../services/api/client";
 import { useEffect, useState } from "react";
 import { InformationHelp } from "../../components/ui/information-help";
 import { humanizeCode } from "../../components/ui/display";
@@ -9,7 +10,7 @@ export function InventoryEvidencePanel({ businessDate, institutionId, refreshKey
   useEffect(() => {
     let active = true;
     setResult(undefined);
-    void readInventoryEvidence(businessDate, institutionId).then(data => { if (active) setResult({ key, data }); }).catch(() => { if (active) setResult({ key, error: "Validated inventory evidence could not be loaded." }); });
+    void retryAfterContextChange(() => readInventoryEvidence(businessDate, institutionId), () => active).then(data => { if (active) setResult({ key, data }); }).catch(() => { if (active) setResult({ key, error: "Validated inventory evidence could not be loaded." }); });
     return () => { active = false; };
   }, [businessDate, institutionId, key]);
   const current = result?.key === key ? result : undefined;
