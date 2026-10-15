@@ -1,3 +1,4 @@
+import { retryAfterContextChange } from "../../services/api/client";
 import { useEffect, useRef, useState } from "react";
 import { readCommand, readCommandByKey } from "../../services/api/v2";
 import { CommandStatusCard } from "./command-status-card";
@@ -14,7 +15,7 @@ export function CommandRecovery({ resourceId, onRefresh }: { resourceId?: string
     if (busy || command.command || !valid) return;
     setBusy(true); setError("");
     try {
-      const existing = lookup === "command" ? await readCommand("/api/v2/commands/" + id) : await readCommandByKey(id);
+      const existing = await retryAfterContextChange(() => lookup === "command" ? readCommand("/api/v2/commands/" + id) : readCommandByKey(id), () => mounted.current);
       if (!mounted.current) return;
       if (!existing) throw new Error("No accepted command was found for this request key. Nothing was resubmitted.");
       // Reconciliation commands use a case ID, so recover those in their own workspace.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiRequestError, requestJson } from "../services/api/client";
+import { ApiRequestError, requestJson, retryAfterContextChange } from "../services/api/client";
 import { pollingDelay } from "./polling";
 
 export function useLiveData<T>(endpoint:string|null) {
@@ -23,15 +23,13 @@ export function useLiveData<T>(endpoint:string|null) {
       const current=++attempt;
       controller?.abort(); controller=new AbortController(); const signal=controller.signal; setBusy(true);
       try {
-        const next=await requestJson<T>(endpoint,{signal},"The data service is unavailable.");
+        const next=await retryAfterContextChange(() => requestJson<T>(endpoint,{signal},"The data service is unavailable."), () => !closed && !signal.aborted && current === attempt);
         if(closed||signal.aborted||current!==attempt)return;
         hasData.current=true;setData(next); setError(""); failures=0;
       }
       catch(reason) { if(!closed&&!signal.aborted&&current===attempt){
         failures++;
-        const sessionChanged=reason instanceof ApiRequestError && reason.code==="AUTH_CONTEXT_CHANGED";
-        if(sessionChanged){hasData.current=false;setData(undefined);setError("");quickRetry=true;}
-        else if(!hasData.current && failures===1 && (!(reason instanceof ApiRequestError) || reason.status>=500)){setError("");quickRetry=true;}
+        if(!hasData.current && failures===1 && (!(reason instanceof ApiRequestError) || reason.status>=500)){setError("");quickRetry=true;}
         else {
         if(reason instanceof ApiRequestError&&(reason.status===401||reason.status===403))setData(undefined);
         setError(reason instanceof Error?reason.message:"The data service is unavailable.");
