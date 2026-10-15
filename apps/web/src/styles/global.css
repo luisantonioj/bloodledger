@@ -802,3 +802,36 @@
 .blood-bank-transfers .bank-page-toolbar > .requester-transfer-tabs { flex-wrap: wrap; max-width: 100%; }
 .blood-bank-audit .audit-table { min-width: 1100px; }
 .blood-bank-audit .audit-source-label { display: block; margin-bottom: 4px; color: var(--ink-muted); font-size: 10px; }
+.paged-read-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 14px 18px; font-size: 12px; color: var(--ink-muted); }
+.paged-read-controls > p { flex-basis: 100%; margin: 0; }
+.paged-read-controls > button { margin-left: auto; }
+.history-event-status { display: inline-block; padding: 4px 8px; border-radius: 100px; font-size: 10px; font-weight: 600; background: var(--neutral-container); color: var(--ink-secondary); }
+.history-event-status.event-confirmed { background: var(--success-container); color: var(--success); }
+.history-event-status.event-pending { background: var(--warning-container); color: var(--warning); }
+.history-event-status.event-failed { background: var(--critical-container); color: var(--critical); }
+.history-event-status.event-off-chain { background: var(--information-container); color: var(--information); }
+.label-unavailable { font-family: var(--font-sans); color: var(--ink-muted); font-style: italic; }
+.blood-bank-inventory .unit-reference { background: transparent; border-color: transparent; padding-left: 0; font-size: 12px; }
+.history-provenance { display: block; margin-top: 5px; font-size: 10px; color: var(--ink-muted); }
+.history-list-toolbar { padding: 10px 18px; justify-content: flex-end; }
+.history-event-status.event-projection-pending { background: var(--information-container); color: var(--information); border: 1px solid var(--information); }
+.history-event-status.event-conflict { background: var(--warning-container); color: var(--critical); border: 1px dashed var(--critical); }
+.history-provenance p { overflow-wrap: anywhere; }
+.bank-transfer-summary-table { table-layout: fixed; min-width: 760px; }
+.bank-transfer-summary-table th:first-child { width: 25%; }
+.bank-transfer-summary-table th:nth-child(2) { width: 12%; }
+.bank-transfer-summary-table th:nth-child(3) { width: 20%; }
+.bank-transfer-summary-table .requester-record-link, .bank-transfer-summary-table td small { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
+.blood-bank-audit .audit-table { table-layout: fixed; }
+.blood-bank-audit .audit-table td { overflow-wrap: anywhere; }
+.blood-bank-audit .audit-table th:nth-child(1) { width: 12%; }
+.blood-bank-audit .audit-table th:nth-child(2) { width: 15%; }
+.blood-bank-audit .audit-table th:nth-child(3) { width: 17%; }
+.blood-bank-audit .audit-table th:nth-child(n+4):nth-child(-n+6) { width: 11%; }
+.blood-bank-audit .audit-table th:nth-child(7) { width: 11%; }
+.transaction-history-table { table-layout: fixed; min-width: 1200px; }
+.transaction-history-table th:nth-child(1) { width: 12%; }
+.transaction-history-table th:nth-child(2) { width: 7%; }
+.transaction-history-table th:nth-child(5) { width: 14%; }
+.transaction-history-table th:nth-child(8) { width: 15%; }
+.transaction-history-table td { overflow-wrap: anywhere; }

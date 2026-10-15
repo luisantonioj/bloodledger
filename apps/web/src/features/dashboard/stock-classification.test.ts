@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { classifyStock, eligibleStockCounts, stockSegments, stockClassificationPolicy as policy } from "./stock-classification";
 import type { V2Component } from "../../services/api/v2";
 const now = Date.parse("2026-10-15T00:00:00Z");
-const component = (patch: Partial<V2Component> = {}): V2Component => ({ componentId:"COMP_TEST",donationId:"DON_TEST",issuerInstitutionId:"INST_MEDIATRIX",institutionId:"INST_MEDIATRIX",componentType:"PACKED_RED_BLOOD_CELLS",bloodType:"A_POSITIVE",collectedAt:"2026-10-14T00:00:00Z",expiresAt:"2026-10-16T00:00:00Z",inventoryStatus:"AVAILABLE",expiryState:"CURRENT",reservationId:null,reservationVersion:null,inventoryVersion:1,policyVersion:"TEST",classification:"SIMULATION_ONLY",...patch });
+const component = (patch: Partial<V2Component> = {}): V2Component => ({ labelIdentity:{status:"UNAVAILABLE",kind:"DONATION_NUMBER",value:null,source:null,unavailableReason:"NOT_RECORDED",policyVersion:"LABEL_IDENTITY_READ_V1"}, componentId:"COMP_TEST",donationId:"DON_TEST",issuerInstitutionId:"INST_MEDIATRIX",institutionId:"INST_MEDIATRIX",componentType:"PACKED_RED_BLOOD_CELLS",bloodType:"A_POSITIVE",collectedAt:"2026-10-14T00:00:00Z",expiresAt:"2026-10-16T00:00:00Z",inventoryStatus:"AVAILABLE",expiryState:"CURRENT",reservationId:null,reservationVersion:null,inventoryVersion:1,policyVersion:"TEST",classification:"SIMULATION_ONLY",...patch });
 // FR-04 / accepted project demonstration policy: exact boundaries for all 40 combinations.
 describe("differentiated project stock bands", () => {
   it("contains exactly eight groups and five components with unique, ordered series", () => {

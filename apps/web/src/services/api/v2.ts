@@ -1,3 +1,4 @@
+import { parseLabelIdentity, type LabelIdentity } from "./label-identity";
 import { requestJson } from "./client";
 import type { MutationKeys } from "./mutation-keys";
 
@@ -32,6 +33,7 @@ export const V2_EXPIRY_STATES = ["CURRENT", "LABEL_EXPIRED_PENDING_EVALUATION", 
 export type V2ExpiryState = (typeof V2_EXPIRY_STATES)[number];
 
 export interface V2Component {
+  labelIdentity: LabelIdentity;
   componentId: string;
   donationId: string;
   issuerInstitutionId: string;
@@ -122,6 +124,7 @@ export function parseV2Component(value: unknown): V2Component {
   const expiryState = requiredString(body.expiryState, "V2_COMPONENT_RESPONSE_INVALID") as V2ExpiryState;
   if (!V2_EXPIRY_STATES.includes(expiryState)) throw new Error("V2_COMPONENT_RESPONSE_INVALID");
   return {
+    labelIdentity: parseLabelIdentity(body.labelIdentity),
     componentId: requiredString(body.componentId, "V2_COMPONENT_RESPONSE_INVALID"),
     donationId: requiredString(body.donationId, "V2_COMPONENT_RESPONSE_INVALID"),
     issuerInstitutionId: requiredString(body.issuerInstitutionId, "V2_COMPONENT_RESPONSE_INVALID"),

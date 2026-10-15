@@ -19,10 +19,14 @@ export function InventoryTimeRemaining({expiresAt}:{expiresAt:string}) {
   const value=inventoryTimeRemaining(expiresAt);
   return <span className={"inventory-chip inventory-chip-"+value.tone} title="Mockup display bands: up to 3 days, 4–7 days, over 7 days. Not a usability determination."><span className="inventory-chip-dot" aria-hidden="true"/>{value.label}</span>;
 }
-export function InventoryStatus({component}:{component:V2Component}) {
+export function inventoryStatusInfo(component:V2Component) {
   const expiredLabel=component.expiryState!=="CURRENT"||Date.parse(component.expiresAt)<=Date.now();
   const blocked=expiredLabel&&component.inventoryStatus==="AVAILABLE";
   const tone=blocked?"expired":component.inventoryStatus==="AVAILABLE"?"success":component.inventoryStatus==="RESERVED"?"warning":component.inventoryStatus==="EXPIRED"?"expired":["QUARANTINED","DISCARDED","RECONCILIATION_HOLD"].includes(component.inventoryStatus)?"critical":"neutral";
   const label=blocked?component.expiryState==="EXPIRED"?"Expired":"Expiry evaluation pending":humanizeCode(component.inventoryStatus).toLowerCase().replace(/^./,char=>char.toUpperCase());
+  return {tone,label,blocked};
+}
+export function InventoryStatus({component}:{component:V2Component}) {
+  const {tone,label,blocked}=inventoryStatusInfo(component);
   return <span className={"inventory-chip inventory-chip-"+tone} title={blocked?"Label expired; not usable. Recorded inventory state: "+component.inventoryStatus:component.inventoryStatus}><span className="inventory-chip-dot" aria-hidden="true"/>{label}</span>;
 }
