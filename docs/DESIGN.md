@@ -1113,3 +1113,5 @@ other live command was executed. Classification stays SIMULATION_ONLY.
 removed after user review. Routing now changes the selected request only, without
 changing the Blood Requests table or hiding unrelated requests. Added browser
 coverage for unrelated rows and for closing details without automatic reopening.
+
+2026-10-15 request approval layout: the connected redistribution approval section omits the disabled cancellation/partial-offer placeholders. It groups allocation refresh with the FEFO heading, uses compact component references with full values on hover and stacked Manila expiry times, and separates confirmation from the primary approval action. Queued-versus-committed reservation guidance remains visible. The full Blood Requests table and command verification behavior are unchanged.

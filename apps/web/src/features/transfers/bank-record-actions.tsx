@@ -18,7 +18,7 @@ export function BankRecordActions({record, principal, reservations, open, approv
     {request && <>
       {linked && <button className="button compact" onClick={() => open("reservation", linked.reservation_id)}>View linked transfer</button>}
     </>}
-    {pending && <>
+    {pending && !approval && <>
       <header><h3>Actions</h3><InformationHelp label="Record actions">Check the current request and FEFO allocation before approving a redistribution match. Cancellation and partial offers remain unavailable here. Preparation, dispatch and receipt follow the permitted transfer workflow.</InformationHelp></header>
       <div className="bank-detail-action-buttons">
         {pending && <ActionButton className="button compact" disabled  unavailableReason={blocked}>Cancel Request</ActionButton>}
