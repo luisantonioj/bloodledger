@@ -11,6 +11,9 @@ export function OperatorVerification({principal, children}: {principal: Principa
   const [busy, setBusy] = useState(false);
   const awaiting = useRef<{resolve: (id: string) => void; reject: (error: Error) => void} | undefined>(undefined);
   const generation = useRef(0);
+  // PRC replay is actor-scoped: a retry must retain the operator who verified that key.
+  const prcOperators = useRef(new Map<string, string>());
+  const isPrc = (action: string) => action.startsWith("POST /api/v2/prc-supply-requests");
   // Bind the account epoch before descendants start protected reads on a deep link.
   useLayoutEffect(() => {
     if (!principal.verificationRequired) return;
@@ -19,7 +22,12 @@ export function OperatorVerification({principal, children}: {principal: Principa
       const operators = eligibleOperators(principal.operators ?? [], request.action);
       if (!operators.length) return reject(new Error("No authorized operator is available for this action."));
       awaiting.current = {resolve, reject};
-      setOperatorId(operators[0].operatorId); setPin(""); setError(""); setPending(request);
+      const boundOperator = isPrc(request.action) ? prcOperators.current.get(request.idempotencyKey) : undefined;
+      if (boundOperator && !operators.some(operator => operator.operatorId === boundOperator)) {
+        awaiting.current = undefined;
+        return reject(new Error("The original PRC operator is no longer authorized. Review the request before continuing."));
+      }
+      setOperatorId(boundOperator ?? operators[0].operatorId); setPin(""); setError(""); setPending(request);
     }));
     return () => { generation.current++; setCommandVerifier(); awaiting.current?.reject(new Error("The account session ended.")); awaiting.current = undefined; };
   }, [principal]);
@@ -31,6 +39,7 @@ export function OperatorVerification({principal, children}: {principal: Principa
     try {
       const result = await requestJson<{verificationId: string}>("/api/v2/auth/operator-verifications", {method: "POST", body: JSON.stringify({...pending, operatorId, pin: privatePin})});
       if (current !== generation.current) return;
+      if (isPrc(pending.action)) prcOperators.current.set(pending.idempotencyKey, operatorId);
       awaiting.current?.resolve(result.verificationId); awaiting.current = undefined; setPending(undefined);
     } catch (reason) { if (current === generation.current) setError(reason instanceof Error ? reason.message : "Verification failed."); }
     finally { if (current === generation.current) setBusy(false); }
@@ -40,7 +49,7 @@ export function OperatorVerification({principal, children}: {principal: Principa
     <header><div><h2 id="operator-verification-title">Verify operator</h2><p>{facilityName} · Authorize this action</p></div><button aria-label="Cancel verification" onClick={cancel}>×</button></header>
     <form className="preview-modal-body auth-form" onSubmit={event => void verify(event)}>
       <div className="operator-verification-fields">
-        <label>Operator<span className="requester-select"><select aria-label="Operator" value={operatorId} disabled={busy} onChange={event => setOperatorId(event.target.value)}>{eligibleOperators(principal.operators ?? [], pending.action).map(operator => <option key={operator.operatorId} value={operator.operatorId}>{operator.roleId} · {operator.operatorId}</option>)}</select></span></label>
+        <label>Operator<span className="requester-select"><select aria-label="Operator" value={operatorId} disabled={busy || Boolean(pending && isPrc(pending.action) && prcOperators.current.has(pending.idempotencyKey))} onChange={event => setOperatorId(event.target.value)}>{eligibleOperators(principal.operators ?? [], pending.action).map(operator => <option key={operator.operatorId} value={operator.operatorId}>{operator.roleId} · {operator.operatorId}</option>)}</select></span></label>
         <label>Operator PIN<input type="password" inputMode="numeric" pattern="[0-9]{8}" minLength={8} maxLength={8} autoComplete="off" value={pin} disabled={busy} onChange={event => setPin(event.target.value)} required/></label>
       </div>
       {error && <p role="alert">{error}</p>}

@@ -2,6 +2,9 @@ import type { OperatorProfile } from "./permissions";
 
 // Visibility only. The API binds and authorizes the actual operator and command.
 export function actionCapability(action: string): string | undefined {
+  if (action === "POST /api/v2/prc-supply-requests") return "prc-supply:request";
+  if (/^POST \/api\/v2\/prc-supply-requests\/[^/]+\/cancel$/.test(action)) return "prc-supply:cancel";
+  if (/^POST \/api\/v2\/prc-supply-requests\/[^/]+\/(acknowledge|fulfil|decline)$/.test(action)) return "prc-supply:respond";
   if (action === "POST /api/v2/reservations") return "transfer:approve";
   if (action === "POST /api/v2/transfers") return "transfer:request";
   if (action === "POST /api/v2/local-releases") return "inventory:local-release";

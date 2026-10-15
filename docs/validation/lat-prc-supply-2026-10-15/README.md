@@ -1,0 +1,109 @@
+# Lat PRC supply UI validation — 2026-10-15
+
+Classification: **SIMULATION_ONLY**. Lat validates frontend integration against
+merged backend `797377e`, PA-DEF-06 (`SYNTHETIC_PRC_SUPPLY_V1`) and ADR-044.
+Requirements and `services/api/openapi-v2.json` remain authoritative. This is
+not PRC or Mediatrix policy; no clinical, regulatory, production or ISBT claim.
+RQ-02 remains open. Layout follow-ups and policy-status documentation are
+separate PRs #58 and #59.
+
+## Connected interface
+
+- Uses published `PrcSupply*` shapes, cursor list, scoped detail/history and
+  synchronous mutation results. No command polling or automatic POST retry.
+- Blood-bank ROLE-02 submits/cancels with capability and PIN verification;
+  ROLE-01 has a read-only entry. PRC responds. Requester/DOH have no PRC reads
+  or actions. Read parsers check institution scope, enums and policy provenance.
+- Six table/PDF headers, loaded-row counts/search, Load more, Manila dates,
+  null-reference explanation, decline reason and fulfilled-of-requested units.
+- Required By and quantity validation, cryoprecipitate, no free-text notes.
+  Existing-record actions send `expectedVersion`; the published submission
+  schema does not contain that field. All actions use correlation/idempotency
+  keys and the existing verification flow.
+- Off-chain coordination stays separate from inventory, custody, ledger events
+  and general Activity History. Supplied units require normal OCR intake.
+- Failed/unavailable reads keep submission disabled. Lost-response attempts
+  retain their intent and original operator; explicit retries require PIN again.
+
+## Authorized Lat-host migration and runtime checks
+
+User relayed Jopia's explicit authorization to migrate this retained host.
+Jopia's own migration was not treated as evidence that Lat's database was ready.
+
+1. Created a fresh private `pg_dump` backup with restrictive permissions under
+   gitignored `build/lat-prc-supply-private/`; raw evidence is not committed.
+2. Migration status was **31 applied, 1 pending**. Confirmed the only pending
+   migration was `20261015000000000_create-prc-supply-requests`.
+3. Checked V1/V2 queues empty and writer lock zero, then stopped the guarded
+   UAT worker. General sync-worker stayed stopped.
+4. Ran the documented `npm run migrate:up --workspace @bloodledger/database`
+   with private runtime environment and Node 24.17.0. Status became
+   **32 applied, 0 pending**. Migrator reported applied timestamp
+   `2026-10-15T03:01:28.127Z`.
+5. Compared every pre-existing `app` table count before/after: unchanged.
+   Local counts: **532 components, 595 commands, 1 account-audit row**. The new
+   PRC request table is empty. These differ from Jopia's host and are recorded
+   as local evidence, not a failure.
+6. Built the unchanged merged API sources and restarted the persistent API;
+   health returned **READY**. Restored the guarded UAT worker after queue
+   check; 595 commands remained committed. Restarted the web container to
+   restore its shared API network namespace. General sync-worker stays stopped.
+
+No reset, repopulation, identity/account changes, census or forecast reruns.
+
+## Read-only live UI evidence
+
+Ordinary account sign-in at `http://127.0.0.1:5174/`:
+
+| Account | List | Scope | Rows | Next cursor | Missing detail |
+|---|---|---|---|---|---|
+| Mediatrix blood bank, ROLE-02 | 200 | INSTITUTION | 0 | null | 404 PRC_SUPPLY_NOT_FOUND |
+| PRC account, ROLE-04 | 200 | PRC_ALL | 0 | null | 404 PRC_SUPPLY_NOT_FOUND |
+
+Desktop and 390px mobile views checked without horizontal page overflow.
+Missing-detail checks used a valid-format synthetic nonexistent ID. Positive
+populated detail validation is **NOT RUN**: no retained PRC requests exist and
+live submissions are not authorized. All live PRC mutation counts are **zero**.
+Fixture tests, rather than live writes, cover every action and history flow.
+
+Screenshots contain no credentials or PINs:
+
+- [Mediatrix empty list](mediatrix-empty.png)
+- [PRC empty list](prc-empty.png)
+- [Unsubmitted bank form](bank-form.png)
+
+## Automated validation
+
+- `npm run check:web`: passed; existing large-bundle advisory remains.
+- `npm run test:web`: **348 passed**, 42 files.
+- `npm exec --workspace @bloodledger/web -- vitest run src/styles/design-tokens.test.ts`: **2 passed** (also included above).
+- Final affected browser suite: **82 passed**, one worker:
+
+```bash
+npm exec --workspace @bloodledger/web -- playwright test \
+  prc-supply.spec.ts pr51-table-contracts.spec.ts bank-table-columns.spec.ts \
+  institution-inventory-first-load.spec.ts defense-analytics.spec.ts \
+  uat-workflows.spec.ts requester-transfers.spec.ts expiry-wiring.spec.ts --workers=1
+```
+
+- PRC-specific cases: **14 passed**, included in the 82. Covers all actions,
+  roles, error/unavailable states, loaded search/PDF, same-key replay, original
+  operator binding, stale version, deadline rejection and cancelled verification.
+- Two affected bank-tab/form navigation cases: **2 passed**, separately:
+
+```bash
+npm exec --workspace @bloodledger/web -- playwright test blood-bank-pages.spec.ts \
+  --grep 'bank row selection|bank request forms' --workers=1
+```
+
+- `git diff --check` and `npm run scan:secrets`: passed before publication.
+
+## Backend follow-up and remaining evidence
+
+[Delayed submission replay handoff](../../handoffs/LAT-TO-JOPIA-PRC-DELAYED-REPLAY-2026-10-15.md):
+backend deadline validation precedes replay lookup. The UI preserves uncertain
+attempts but cannot restore server replay behavior after the deadline window.
+This is a source-reviewed finding with synthetic client coverage, not a live
+mutation reproduction. Backend is unchanged. Jopia should review before merge.
+Populated live reads and all live actions remain unvalidated; actions require
+Jopia's explicit go-ahead. No external PRC integration is claimed.

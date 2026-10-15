@@ -1014,3 +1014,18 @@ All three cursor lists retain loaded-row counts, explicit Load more, first-page 
 2026-10-15 related table spacing refinement: Transfers separates blood type/component and requested/allocated quantities, allocates more width to facility names, and removes Current unit states disclosure. State counts and request status remain hover context; version stays with the identity hover, and the existing record button opens full reservation details. Bank Activity History removes per-row disclosures, preserves provenance in activity hover/search, and displays safe error codes inline. Activity views share stacked Manila dates/times, clear actor/source hierarchy and balanced reference columns. PRC retains its six headers and unavailable state with deliberate column widths and more readable empty-state spacing; no fabricated rows or endpoint changes.
 
 Transfers and PRC use the full records-area width; selected reservation details follow below the table. The empty detail placeholder is hidden in these tabs. Activity reference columns keep compact IDs on one line while full values remain available on hover and in exports. Desktop and 390px mobile live reads were checked without domain submissions; the affected browser suite and web unit suite passed.
+
+
+### 2026-10-15 PRC supply coordination workspace
+
+The connected PRC workspace supersedes the earlier unavailable PRC form and
+RQ-17 presentation notes under [PA-DEF-06](REQUIREMENTS.md#pa-def-06--synthetic-prc-supply-requests-2026-10-15) / ADR-044.
+Blood-bank users enter from the PRC tab; read-only institution and PRC accounts
+have an authorized navigation entry. The workspace uses the six agreed table
+headers, loaded-row search/PDF and cursor controls, then an expandable request
+detail with coordination history and capability-gated actions. Required By is
+shown in Manila time; the form collects no free-text notes. Off-chain and
+SIMULATION_ONLY provenance stays visible. An unavailable service disables the
+form instead of showing invented records. Mutations are synchronous; uncertain
+attempts lock replacement submission and expose explicit same-attempt retry
+with the original operator. See [validation and limitations](validation/lat-prc-supply-2026-10-15/README.md).

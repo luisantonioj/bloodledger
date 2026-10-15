@@ -1,3 +1,4 @@
+import { canReadPrcSupply } from "../services/api/prc-supply";
 import { can, type Permission, type Principal } from "../auth/permissions";
 import { canViewAnalyticsPage } from "../features/analytics/analytics-access";
 
@@ -16,6 +17,7 @@ export const navigation: NavigationItem[] = [
   { href: "/transactions", label: "Blood Unit Transactions", permission: "inventory:read", when: p => p.accountCategory ? p.accountCategory === "BLOOD_BANK" : ["ROLE-01","ROLE-02"].includes(p.roleId) },
   { href: "/receipts", label: "Blood Unit Receipt", permission: "transfers:read", when: p => p.accountCategory ? p.accountCategory === "REQUESTOR" : p.roleId === "ROLE-03" },
   { href: "/transfers", label: "Requests & Transfers", permission: "transfers:read" },
+  { href: "/prc-supply", label: "PRC Supply Requests", when: p => canReadPrcSupply(p) && (p.accountCategory === "PRC" || !can(p, "transfers:read")) },
   { href: "/alerts", label: "Alerts", permission: "alerts:read" },
   { href: "/audit", label: "Activity History", when: p => can(p,"audit:read") || (p.accountCategory === "REQUESTOR" || !p.accountCategory && p.roleId === "ROLE-03") && can(p,"transfers:read") },
   { href: "/analytics", label: "Analytics", when: canViewAnalyticsPage },

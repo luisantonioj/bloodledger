@@ -901,3 +901,39 @@
 .blood-bank-audit .audit-table th:nth-child(3) { width: 18%; }
 .blood-bank-audit .audit-table th:nth-child(n+4):nth-child(-n+6), .blood-bank-audit .audit-table th:nth-child(7) { width: 11%; }
 .blood-bank-audit .audit-table td:nth-child(4), .blood-bank-audit .audit-table td:nth-child(5), .blood-bank-audit .audit-table td:nth-child(7) { white-space: nowrap; }
+
+.transaction-history-table { table-layout: fixed; min-width: 1200px; }
+.transaction-history-table th:nth-child(1) { width: 12%; }
+.transaction-history-table th:nth-child(2) { width: 7%; }
+.transaction-history-table th:nth-child(5) { width: 14%; }
+.transaction-history-table th:nth-child(8) { width: 15%; }
+.transaction-history-table td { overflow-wrap: anywhere; }
+
+/* PA-DEF-06: off-chain PRC coordination, separate from custody screens. */
+.bank-record-layout.prc-record-layout { grid-template-columns: minmax(0, 1fr); }
+.prc-supply-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 18px; }
+.prc-supply-toolbar > span { color: var(--ink-muted); font-size: 11px; }
+.prc-supply-embedded > .bank-record-card { border: 0; border-radius: 0; }
+.prc-supply-workspace .bank-list-filters { grid-template-columns: minmax(0, 1fr); }
+.prc-supply-workspace .bank-prc-supply-table { table-layout: fixed; min-width: 900px; }
+.prc-supply-workspace .bank-prc-supply-table th:nth-child(1) { width: 20%; }
+.prc-supply-workspace .bank-prc-supply-table th:nth-child(2) { width: 12%; }
+.prc-supply-workspace .bank-prc-supply-table th:nth-child(3) { width: 8%; }
+.prc-supply-workspace .bank-prc-supply-table th:nth-child(4) { width: 20%; }
+.prc-supply-workspace .bank-prc-supply-table th:nth-child(5) { width: 23%; }
+.prc-supply-workspace .bank-prc-supply-table th:nth-child(6) { width: 17%; }
+.prc-supply-workspace .bank-prc-supply-table td { vertical-align: middle; padding: 14px 12px; overflow-wrap: anywhere; font-size: 12px; line-height: 1.5; }
+.prc-supply-workspace .bank-prc-supply-table td small { display: block; margin-top: 4px; color: var(--ink-muted); font-size: 11px; }
+.prc-supply-workspace .requester-record-link { font-size: 11px; text-align: left; }
+.prc-supply-message { padding: 8px 18px; font-size: 12px; line-height: 1.6; }
+.prc-supply-detail { margin-top: 18px; }
+.prc-detail-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; padding: 18px; margin: 0; }
+.prc-detail-facts dt { color: var(--ink-muted); font-size: 11px; margin-bottom: 4px; }
+.prc-detail-facts dd { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+.prc-action-form { padding: 18px; border-top: 1px solid var(--line); }
+.prc-action-form fieldset { display: flex; align-items: end; flex-wrap: wrap; gap: 16px; border: 0; padding: 0; margin: 0; }
+.prc-action-form label { display: grid; gap: 6px; font-size: 12px; }
+.prc-supply-detail > h3 { padding: 0 18px; }
+.prc-request-history { display: grid; gap: 14px; padding: 0 18px 18px 36px; }
+.prc-request-history li > span, .prc-request-history li > small { display: block; margin-top: 4px; color: var(--ink-muted); font-size: 11px; }
+@media (max-width: 700px) { .prc-detail-facts { grid-template-columns: minmax(0, 1fr); } .prc-supply-toolbar .bank-toolbar-actions { flex-wrap: wrap; } }
