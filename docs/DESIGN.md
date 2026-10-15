@@ -1081,11 +1081,15 @@ screenshots were inspected privately.
 
 Supersedes the separate Redistribution review tab. Dashboard Review
 redistribution now opens Blood Requests with the selected product/destination
-context. A unique confirmed PENDING source-assigned request with no reservation
-opens directly in Request details and gains a request-specific URL. Multiple
-matches stay in the existing request list for explicit selection; no match shows
-an explanation, never an invented request. Show all blood requests clears the
-suggestion context. Legacy redistribution-tab URLs open the same request flow.
+context as a navigation shortcut only. The full Blood Requests table, columns,
+ordering, normal pagination and user-controlled search/status filters remain
+unchanged; no recommendation banner, special filtered view or Show all toggle is
+introduced. A unique confirmed PENDING source-assigned request with no reservation
+opens directly in Request details and gains a request-specific URL. Other requests
+stay visible. Multiple or absent matches leave the normal full list available
+for manual selection, never an invented request. Auto-selection runs once so
+closing details or switching tabs behaves normally. Legacy redistribution-tab
+URLs open the same request flow.
 
 Approve Transfer sits in Request details for that matching request. It reuses
 the existing current-request read, full requested quantity, source surplus/BROA
@@ -1104,3 +1108,8 @@ unique-match navigation, explicit choice for multiple matches, no-match and
 legacy URLs, FEFO selection, operator binding, queued/committed distinction and
 navigation locking. Live preview checks are read-only; no domain approval or
 other live command was executed. Classification stays SIMULATION_ONLY.
+
+2026-10-15 shortcut correction: the initial recommendation-only list/banner was
+removed after user review. Routing now changes the selected request only, without
+changing the Blood Requests table or hiding unrelated requests. Added browser
+coverage for unrelated rows and for closing details without automatic reopening.
