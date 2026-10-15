@@ -12,6 +12,5 @@ export function ProductComparisonChart({ rows, label, tone = "demand" }: { rows:
       <div className="analytics-product-amount"><strong>{row.value === null ? "Unavailable" : amount(row.value)}</strong>{row.note && <small>{row.note}</small>}</div>
     </li>)}</ul>
     {!rows.length && <p className="analytics-chart-missing">{tone === "demand" ? "No results for this component. Missing forecasts are not zero demand." : "No results for this component. Missing evidence is not zero excess."}</p>}
-    <p className="analytics-chart-footnote">Only blood types with returned records are shown. Each chart uses its own unit scale.</p>
   </div>;
 }
