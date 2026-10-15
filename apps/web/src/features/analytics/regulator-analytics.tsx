@@ -51,6 +51,7 @@ function DohAnalytics({principal}:{principal:Principal}) {
   const activity = filtered ? reportingActivity(filtered) : [];
   return <div className="regulator-analytics">
     <header className="page-head analytics-page-head"><h1 className="page-title">Analytics</h1><RefreshButton busy={state.busy} onRefresh={state.manual}/></header>
+    <p className="analytics-page-description">Saved census captures in the loaded report batch. These records do not establish reporting completion or compliance.</p>
     <ReportingFilters filters={filters} onChange={setFilters} groupLabel="Reporting facility" groups={facilities} groupAvailable products={false}/>
     <SummaryCards cards={[
       ["Recorded Reports",filtered ? filtered.snapshots.length : null,"Census records in the loaded report batch. A saved record is not a verification outcome or proof of submission to DOH. Open Compliance Reports to browse further records."],
