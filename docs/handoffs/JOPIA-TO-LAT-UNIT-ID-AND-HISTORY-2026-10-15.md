@@ -138,7 +138,7 @@ previews, and this read adds no submission workflow.
 
 ## 8. Validation (Jopia self-validation)
 
-- `npm test` in `services/api`: 162 tests, 162 passed.
+- `npm test` in `services/api`: 163 tests, 163 passed.
 - `test/label-identity.test.ts` covers exact values with preserved issuer
   format and leading zeros, provenance, shared-donation rows keeping distinct
   `componentId` values, custody scope, a 404 for another institution's
@@ -152,15 +152,29 @@ previews, and this read adds no submission workflow.
   method, cursor round-trip and tampering, page limits, institution scoping,
   exclusion of sealed material, and a 403 for ROLE-04.
 - OpenAPI JSON formatting and the V2/inbound static-boundary patterns pass.
-- **Not yet run:** reads against the retained PostgreSQL stack. Docker was
-  unavailable in the WSL shell used for this change. The history SQL
-  (`PostgresUnitHistoryReader`) and sealed-label SQL are covered only by type
-  checks and fake readers. Before Lat wires the UI, Jopia should read
-  `/api/v2/components` and `/api/v2/unit-history` with a ROLE-01 Mediatrix
-  session and a ROLE-03 recipient session, and confirm:
-  - labels are `MMYY-MM-NNNN` with `source: CONFIRMED_OCR_CAPTURE`;
-  - registrations show `INCAP_` scan IDs and Fabric transaction IDs;
-  - the retained multi-unit transfers expand to one row per unit.
+- `unit-history.test.ts` also covers an OCR-matched transfer receipt, which is
+  `OCR` with its `INCAP_` scan ID even though its payload has no
+  `captureMethod` key. The live check below found this case.
+- **Live retained-data check, 2026-10-15.** The branch's own Postgres readers
+  and assembler ran read-only against the retained `bloodledger_dev` database,
+  using the existing keys. No commands were sent, nothing was reset, and the
+  API container was not restarted.
+  - Inventory: Mediatrix has 530 rows and `INST_SYNTH_MEDIX` has 1. All 531
+    labels are `AVAILABLE` from `CONFIRMED_OCR_CAPTURE`, all match
+    `MMYY-MM-NNNN` (for example `MM26-10-1521`), and all are distinct.
+  - History at Mediatrix: 537 of 537 events load across 6 pages with unique
+    row IDs, no duplicate events across pages, and correct ordering. They are
+    531 OCR registrations with `INCAP_` scan IDs, 4 dispatches and 2 local
+    releases (both `WEB_COMMAND`). All are `CONFIRMED` with a Fabric
+    transaction ID, none have a null event time, and every unit has its label.
+  - History at `INST_SYNTH_MEDIX`: 2 OCR-matched receipts, one `CONFIRMED`
+    with a ledger transaction and one `FAILED` (`CORE_FIELD_NOT_ALLOWED`,
+    `NOT_COMMITTED`). The failed row still shows the label because that
+    institution holds the unit now.
+  - The retained data has no multi-unit transfer, so row expansion for
+    multi-unit transfers is covered only by unit tests. The persistent API
+    container was not running, so HTTP-level reads were checked with inject
+    tests rather than a live session.
 
 This is research-prototype display behavior. It does not establish clinical,
 regulatory or production readiness, and it does not resolve `RQ-02`.

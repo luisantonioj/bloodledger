@@ -107,6 +107,17 @@ test("missing membership and legacy registrations are explicit, never reconstruc
   assert.equal(rows[1].labelIdentity.source, "LEGACY_REGISTRATION");
 });
 
+test("an OCR-matched transfer receipt keeps its scan ID and OCR method", () => {
+  // Mirrors the retained payload shape: captureId without a captureMethod key.
+  const receipt = command({ commandId: "CMD_OCR_RECEIPT", operation: "RECEIVE_INBOUND_COMPONENT", captureId: "INCAP_R", reservationId: "RES_T4" });
+  const [row] = assembleUnitHistory(OTHER, evidence([receipt], { members: new Map([["RES_T4", ["COMP_R"]]]), reservations: new Map([["RES_T4", { transferId: "TRF_T4", localReleaseId: null }]]), components: new Map([["COMP_R", unit("COMP_R", OTHER, "PLATELETS", "MM26-10-1428")]]) }), keyring).rows;
+  assert.equal(row.eventType, "TRANSFER_RECEIVED");
+  assert.equal(row.direction, "INBOUND");
+  assert.equal(row.scanId, "INCAP_R");
+  assert.equal(row.method, "OCR");
+  assert.equal(row.links.transferId, "TRF_T4");
+});
+
 test("history cursors round-trip and reject tampering", () => {
   const cursor = encodeHistoryCursor({ acceptedAt: "2026-10-15T01:00:00.000Z", commandId: "CMD_REG" });
   assert.deepEqual(decodeHistoryCursor(cursor), { acceptedAt: "2026-10-15T01:00:00.000Z", commandId: "CMD_REG" });

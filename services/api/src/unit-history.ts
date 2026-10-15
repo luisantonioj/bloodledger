@@ -111,7 +111,8 @@ export function assembleUnitHistory(institutionId: string, evidence: UnitHistory
     const isReservationEvent = RESERVATION_OPERATIONS.has(command.operation);
     const memberIds = isReservationEvent ? (command.reservationId ? evidence.members.get(command.reservationId) : undefined) : command.componentId ? [command.componentId] : undefined;
     const committed = LEDGER_COMMITTED.has(command.status);
-    const scanned = command.captureMethod === "OCR" && command.captureId !== null;
+    // RECEIVE_INBOUND_COMPONENT is only created by the confirmed-OCR intake route; its payload has no captureMethod key.
+    const scanned = command.captureId !== null && (command.captureMethod === "OCR" || command.operation === "RECEIVE_INBOUND_COMPONENT");
     const shared: Omit<UnitHistoryRow, "rowId" | "unitMembership" | "componentId" | "labelIdentity" | "bloodType" | "componentType" | "unitAttributesSource"> = {
       eventType: mapping.eventType,
       direction: mapping.direction,
