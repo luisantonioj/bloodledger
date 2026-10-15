@@ -1,5 +1,5 @@
 import { StockThresholdSegment } from "./stock-threshold-segment";
-import { classifyStock, stockThresholds, stockClassificationPolicy, stockSegments } from "./stock-classification";
+import { classifyStock, stockSegments } from "./stock-classification";
 import { useStockEvidence } from "./use-stock-evidence";
 import { formatBloodType } from "../../components/ui/display";
 import { useState, type CSSProperties } from "react";
@@ -65,7 +65,6 @@ export function InventoryOverviewChart({ items, institutionId }: { items: Aggreg
       </div>
     </div>
     {evidence.error && <p className="inventory-overview-note" role="status">{evidence.error}</p>}
-    <details className="stock-policy-details"><summary>Stock-level thresholds</summary><p>{stockClassificationPolicy.version} · effective {stockClassificationPolicy.effectiveDate}. Invented project demonstration values, not institutional clinical levels. Current own-institution AVAILABLE units only; reserved and expired units are excluded. Missing evidence stays unavailable.</p><div className="table-wrap"><table className="data-table"><thead><tr><th>Blood group</th><th>Component</th><th>Critical</th><th>Low</th><th>Adequate</th><th>Surplus</th></tr></thead><tbody>{summary.flatMap(group => group.components.map(product => { const t = stockThresholds(group.bloodType, product.component); return t ? <tr key={group.bloodType+product.component}><td>{formatBloodType(group.bloodType)}</td><td>{componentLabel(product.component)}</td><td>0–{t.criticalMax}</td><td>{t.criticalMax+1}–{t.lowMax}</td><td>{t.lowMax+1}–{t.adequateMax}</td><td>{t.adequateMax+1}+</td></tr> : null; }))}</tbody></table></div></details>
-    <p className="inventory-overview-note">Each bar fills the threshold ranges from bottom to top. Heights show confirmed units; gray portions are not eligible for threshold colors. Hover or focus a segment for its range. Official project demonstration bands; Surplus is not forecast surplus or transfer approval.</p>
+
   </section>;
 }

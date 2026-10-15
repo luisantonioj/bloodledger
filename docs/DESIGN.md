@@ -505,8 +505,9 @@ accessible bar descriptions and segment help.
 The user's accepted [official project demonstration policy](handoffs/LAT-OFFICIAL-DEMO-STOCK-BANDS-DECISION-2026-10-15.md)
 owns the 40 differentiated series, eligible measure and freshness convention.
 Only current own-institution component evidence controls colors; unavailable or
-unsupported evidence stays neutral. A details table exposes exact boundaries and
-policy provenance. These invented project bands do not establish clinical levels,
+unsupported evidence stays neutral. Policy boundaries and provenance remain in the versioned configuration and
+decision record; the chart omits the expandable threshold table and explanatory
+footer at the user’s request. These invented project bands do not establish clinical levels,
 forecast surplus or redistribution authorization. Source surplus stays separate
 on Analytics. This explicitly supersedes the earlier unavailable-only demo UI;
 institutional RQ-16 and complete FR-04 acceptance remain unresolved.

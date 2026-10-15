@@ -40,9 +40,6 @@ test("component selector separates products, restores All and clears protected c
   await expect(chart.locator(".inventory-overview-bar")).toHaveCount(40);
   await expect(chart.getByRole("listitem", { name: "A+ PRBC: 11 confirmed units, 9 available; 9 eligible units; critical", exact: true })).toBeAttached();
   await expect(chart.getByRole("listitem", { name: "A+ FFP: 25 confirmed units, 25 available; 25 eligible units; adequate", exact: true })).toBeAttached();
-  await chart.getByText("Stock-level thresholds",{exact:true}).click();
-  await expect(chart.getByText("SYNTHETIC_STOCK_CLASSIFICATION_V1",{exact:false})).toBeVisible();
-  await chart.getByText("Stock-level thresholds",{exact:true}).click();
   await filter.selectOption("FRESH_FROZEN_PLASMA");
   await expect(chart.locator(".inventory-overview-bar")).toHaveCount(8);
   await expect(chart.locator(".inventory-overview-product-label")).toHaveText(Array(8).fill("FFP"));
