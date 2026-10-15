@@ -521,3 +521,37 @@ population/T0 hold. No population, account change or backend contract change is
 part of this frontend work. TP-G01–G03 remain open: sanitized decisions have
 been requested from Lat/Buno, not inferred or recorded as approved. Formal UAT,
 physical OCR, forecast promotion and phase exit remain separate gates.
+
+## V3 operational stock recovery — 2026-10-11
+
+Buno's V2 population window (2026-10-10T08:00Z → 2026-10-11T00:00Z) closed with
+nothing populated on Lat's retained host. **V2 is `MISSED_WINDOW`**: not
+populated and not renewed. Jopia, Lat and Buno agreed a recovery sequence the
+same morning. The [UAT runbook](UAT-RUNBOOK.md#1-timeline-asiamanila) owns its
+timeline.
+
+- **Scenario:** `SYNTHETIC_OPERATIONAL_STOCK_522_V3` ([PR39](https://github.com/luisantonioj/bloodledger/pull/39),
+  [Buno's evidence](handoffs/BUNO-OPERATIONAL-STOCK-522-V3-EVIDENCE.md)) keeps
+  V2's source, counts, mapping and offsets, with a frozen window
+  2026-10-11T06:00Z / T0 15:30Z / verification end 23:00Z. Jopia
+  [accepted it](https://github.com/luisantonioj/bloodledger/pull/39#issuecomment-6105343615)
+  for Lat's target `3ddfcfd9…` and policy `ad7012c6…`, disclosing that V3 was
+  prepared, and replayed, on Jopia's host.
+- **Baseline:** `uat-baseline-2026-10-12` (main with #38, #37 and #39; J8 PASS on the
+  identical tree), then `.1` (#40, TP-JOP-D16), `.2` (#41, TP-JOP-D17), `.3`
+  (#43, the live navigation helper opens the Transfers tab that PR37 introduced)
+  and `.4` (#44, TP-JOP-D18). The revisions change only the population runner and
+  that test helper.
+- **Defects:** [TP-JOP-D16, D17 and D18](TESTING-DEFECTS.md) were latent runner
+  defects from J4, PR31 and the first verification window to cross Manila
+  midnight, in paths V1 never exercised. D16 and D17 stopped Lat's run before
+  any write; D18 stopped only the post-restart verification.
+- **Jopia decisions:** deploy the baseline before population, keep Lat's older
+  general sync-worker stopped through UAT, and (2026-10-12) use
+  `SYNTHETIC_PREPARATION_EVIDENCE_V1` for UAT prepare actions, as defined in the
+  [runbook](UAT-RUNBOOK.md#5-j9-dry-run-sunday-evening).
+
+Lat records the actual population, T0, restart and dry-run results as
+`LAT_LOCAL_VALIDATION`. This section records no population result and no UAT
+gate decision. TP-G01–G03 still need sanitized records from Lat and Buno before
+the go/no-go.

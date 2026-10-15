@@ -15,19 +15,25 @@ see [J5](handoffs/JOPIA-J5-LIVE-CUSTODY-REHEARSAL-2026-10-09.md)) or **NOT_RUN**
 
 ## 1. Timeline (Asia/Manila)
 
+Buno's V2 population window (Oct 10 16:00 → Oct 11 08:00) closed with nothing
+populated on Lat's host. V2 is `MISSED_WINDOW`, superseded by
+`SYNTHETIC_OPERATIONAL_STOCK_522_V3` ([Buno's V3 evidence](handoffs/BUNO-OPERATIONAL-STOCK-522-V3-EVIDENCE.md),
+[Jopia's acceptance](https://github.com/luisantonioj/bloodledger/pull/39#issuecomment-6105343615)).
+This V3 timeline supersedes the V2 rows:
+
 | When | Step | Owner |
 |---|---|---|
-| Sat Oct 10, before 16:00 | Commit/push frontend work for review; **no retained-host redeploy** | Lat |
-| Sat Oct 10 16:00 → Sun Oct 11 08:00 | Buno's V2 population on Lat's host. **No deploy, no worker, no restart** | Lat, Buno |
-| Sun Oct 11 08:00 → 16:00 | T0 verification window. **No deploy, no worker, no restart** | Buno, Lat |
-| Sun Oct 11 12:00 → 14:00 cutoff | Jopia merges reviewed frontend scope, runs full regression and tags the UAT baseline; unfinished tasks leave the script | Jopia |
-| Sun Oct 11 after 16:00 | Sections 2–4: back up, deploy the baseline, start the worker | Lat, Jopia on call |
-| Sun Oct 11 evening | Section 5: J9 dry run | Lat, Jopia |
+| Sun Oct 11, by 14:00 | Merge #38, #37 and #39, run J8 and tag `uat-baseline-2026-10-12` | Jopia |
+| Sun Oct 11, before 14:00 | Sections 2–3: back up and deploy the baseline **before** population. Both workers stay stopped | Lat |
+| Sun Oct 11 14:00 → 23:30 | V3 population window (2026-10-11T06:00Z → 15:30Z, end exclusive): preview, confirm, apply. Apply must start by 16:00 | Lat; Jopia approves each digest |
+| Sun Oct 11 23:30 → Mon 07:00 | T0 verification and restart check (verification ends 2026-10-11T23:00Z), then section 4 worker start and section 5 J9 dry run | Lat, Jopia on call |
 | Mon Oct 12 07:00 | Section 6: go/no-go | Lat, Jopia, Buno |
+| Mon Oct 12, before the session | Repeat the section 6 checks | Lat |
 
-The frontend review cutoff reflects Jopia’s direct handoff to Lat on October 10,
-superseding the earlier Saturday merge/tag row. Reviewing or merging code does
-not release the retained-host population/T0 hold.
+The deploy moved before population (Jopia, 2026-10-11) so that the API runs the
+D13/D14 fixes during population and nothing is recreated between T0 and UAT.
+The population runner holds the writer lock until T0 verification, so the worker
+and the dry run cannot start earlier.
 
 ## 2. Before deploying
 
@@ -39,7 +45,9 @@ git status --short
 ```
 
 The working tree must be clean, with Lat's frontend work committed and merged.
-Then confirm the population run has released its lock, back up, and record the
+Keep design work in a separate worktree, never in the mounted checkout: on
+Oct 11, design edits reached the UAT checkout four times from editor and agent
+sessions left open on it. Then confirm the population run has released its lock, back up, and record the
 starting state (**Validated**):
 
 ```bash
@@ -61,13 +69,19 @@ capture PWA (**Validated** on Jopia's host: identical environment hash, ledger
 height and component counts before and after):
 
 ```bash
-git fetch origin && git switch --detach <uat-baseline-tag>
+git fetch origin && git switch --detach uat-baseline-2026-10-12.4
 docker stop bloodledger-persistent-web bloodledger-persistent-api
 docker rm bloodledger-persistent-web bloodledger-persistent-api
 docker run --rm -v "$PWD:/workspace" -w /workspace node:24.17.0 npm ci --ignore-scripts
 bash scripts/development-data/start-local.sh --apply
 curl -s http://127.0.0.1:3000/healthz
 ```
+
+`uat-baseline-2026-10-12.4` is the current baseline. Its revisions `.1`, `.2`
+and `.4` change only the population runner (TP-JOP-D16, TP-JOP-D17,
+TP-JOP-D18), and `.3` only the live navigation test helper (#43). The API, web,
+chaincode and migrations are identical to `uat-baseline-2026-10-12`, so moving a
+deployed checkout between these tags needs no redeploy.
 
 `npm ci` is required: it installs `fast-jwt` 6.3.4 (TP-JOP-D11).
 `start-local.sh` builds the API and the capture PWA and prints the URLs. Check
@@ -85,6 +99,11 @@ bash scripts/development-data/uat-worker.sh status
 bash scripts/development-data/uat-worker.sh start
 bash scripts/development-data/uat-worker.sh stop
 ```
+
+Lat's host also has an older general worker container,
+`bloodledger-persistent-sync-worker`. It runs code from before the D13 fix and
+the population wrapper refuses to run beside it, so it stays stopped (Jopia,
+2026-10-11) and `uat-worker.sh` is the only worker for UAT.
 
 `start` refuses while a population writer lock is held, when a worker already
 runs, or when unfinished commands exist. Review those commands before using
@@ -114,10 +133,29 @@ and record defects in [`TESTING-DEFECTS.md`](TESTING-DEFECTS.md).
 | 11 | Audit, census and report reads | PRC, DOH | Read-only, scoped | API tests; Lat browser suite |
 | 12 | Revoked session cannot act | Any | Next request asks for sign-in | API tests |
 
-**Expiry demonstration limit:** Buno's V2 stock reaches its earliest label expiry on
-Oct 13 08:00, so no unit will be `LABEL_EXPIRED_PENDING_EVALUATION` on Oct 12.
-Step 10 can use an existing `EXPIRED` alert; the evaluation action itself cannot
-be shown with this data.
+**Expiry demonstration:** no V3 unit expires during UAT. The earliest are the
+reserved TRANSFER members, at 2026-10-13T15:30Z (Tue Oct 13 23:30 Manila).
+Lat's retained AVAILABLE whole-blood AB+ unit, however, passed its label
+expiry on 2026-10-08T23:00Z, so it shows `LABEL_EXPIRED_PENDING_EVALUATION` and
+can demonstrate the expiry evaluation action. It is the only such unit: if the
+dry run evaluates it, the session cannot repeat the action. The 2026-10-12 dry
+run left it for the session. Evaluating it there also creates a new `EXPIRED`
+alert, because alerts are derived from components in `EXPIRED` status, so step 10
+can acknowledge that alert; the existing one is already acknowledged.
+
+**Preparation evidence (`SYNTHETIC_PREPARATION_EVIDENCE_V1`, Jopia, 2026-10-12):**
+the prepare action requires an evidence ID, a SHA-256 digest and a preparation
+time, and the chaincode checks only their format. For each preparation, the
+operator writes a short private note stating "SIMULATION_ONLY synthetic
+preparation stand-in; no physical evidence reviewed", the reservation ID, the
+operator role and the preparation time. The digest is the note's SHA-256, and the
+evidence ID is `EVD_SYNTH_` followed by the first 24 hex characters of that
+digest in upper case. Keep the notes outside Git. A note records that a synthetic
+preparation step happened, not that any unit was physically checked.
+
+**Capture labels:** step 2 and step 5a use only synthetic labels approved by Buno
+for UAT. Check that each Donation No is unused on the host, read-only, before
+scanning.
 
 ## 6. Go/no-go — Monday 07:00
 
@@ -128,7 +166,9 @@ All must pass; otherwise postpone the affected tasks or the session.
 | Fabric and PostgreSQL healthy | `bash scripts/bloodledger-dev.sh status` (**NOT_RUN** this week; `query-channel.sh` is **Validated**) |
 | API ready | `curl -s http://127.0.0.1:3000/healthz` shows `READY` |
 | Web and capture load | 200 on `/` and `/capture/` at port 5174 |
-| Worker running, queue clear | `uat-worker.sh status`: RUNNING, no stuck commands |
+| Local account switcher off | `curl -s http://127.0.0.1:5174/ \| grep -c local-account-bar` prints `0`. If not, recreate only the web container as `start-local.sh` does, without `BLOODLEDGER_LOCAL_ACCOUNT_SWITCHER` |
+| UAT checkout at the baseline | `git describe --tags --exact-match` shows `uat-baseline-2026-10-12.4` and `git status --short` is empty |
+| Worker running, queue clear | `uat-worker.sh status`: RUNNING, no stuck commands; `bloodledger-persistent-sync-worker` not running |
 | Clocks agree (J3 five-minute bound) | Compare `docker exec bloodledger-persistent-api date -u` with Windows (`powershell.exe -NoProfile -Command "[DateTime]::UtcNow.ToString('o')"`, **Validated**: 113 ms skew). Escalate to Jopia if over 60 seconds; the fix is not validated here |
 | Six logins work | Sign in and out once per account |
 | Fresh backup | Section 2 `pg_dump` with today's date |
@@ -143,6 +183,7 @@ All must pass; otherwise postpone the affected tasks or the session.
 | API unhealthy or 5xx | `docker restart bloodledger-persistent-api bloodledger-persistent-web` (the web container shares the API network), then `uat-worker.sh start` |
 | PostgreSQL restarted or briefly unavailable | The worker keeps running (TP-JOP-D14); check `uat-worker.sh status` and that queued commands drain |
 | Peer down after a Docker restart | `bash scripts/bloodledger-dev.sh start`, then restart API/web and the worker |
+| `git status --short` not empty in the UAT checkout | Close the editor or agent that wrote it, then `git stash push -u -m "<what and when>"` and confirm `HEAD` is still the tag. Never commit on the UAT checkout |
 | Anything else | Stop the task, note the time and step, call Jopia |
 
 Do not run builds, test suites or other heavy work on the UAT host during the
@@ -162,4 +203,6 @@ database, or delete volumes during UAT. Record defects with stable IDs; no parti
   never autonomous. Forecasts use the synthetic V4 default.
 - Near-expiry alerts and DOH census copy/export stay disabled.
 - Capture uses desktop synthetic OCR; physical Android OCR is not validated.
+- Preparation evidence is a synthetic stand-in (`SYNTHETIC_PREPARATION_EVIDENCE_V1`);
+  no physical preparation is checked or recorded.
 - Full NFR-06 browser timing and onboarding (RQ-14) remain outside executed scope.
