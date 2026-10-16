@@ -18,7 +18,7 @@ if [[ "$(jq -r '.version' <<< "$definition")" == historical-v1 ]]; then
 fi
 sequence="$((sequence+1))"
 # Stage the full additive package, retaining operational contracts and their namespaces.
-docker run --rm -v "$repository_root:/workspace" -w /workspace node:24.17.0 \
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$repository_root:/workspace" -w /workspace node:24.17.0 \
   sh -ec 'npm run build --workspace @bloodledger/inventory-contract && node chaincode/scripts/prepare-package.mjs'
 package_digest="$(find chaincode/build/package/dist -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d ' ' -f1)"
 label="bloodledger-historical-v1_${package_digest:0:12}"

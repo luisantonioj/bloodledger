@@ -18,7 +18,7 @@ jq -e '.endorsement_plugin=="escc" and .validation_plugin=="vscc" and ((.init_re
 }
 sequence="$(jq -r '.sequence' <<< "$definition")"
 [[ "$sequence" =~ ^[1-9][0-9]*$ ]] || { echo 'Invalid existing sequence' >&2; exit 1; }
-docker run --rm -v "$repository_root:/workspace" -w /workspace node:24.17.0 \
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$repository_root:/workspace" -w /workspace node:24.17.0 \
   sh -ec 'npm run build --workspace @bloodledger/inventory-contract && node chaincode/scripts/prepare-package.mjs'
 package_digest="$(find chaincode/build/package/dist -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d ' ' -f1)"
 label="bloodledger-persistent-development-v1_${package_digest:0:12}"
