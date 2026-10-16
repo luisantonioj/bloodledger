@@ -72,9 +72,11 @@ pass with the J1 fix.
    use needs separate approval.
 6. **Replay:** recover lost responses through
    `GET /api/v2/commands?idempotencyKey=`. Treat inbound-capture
-   `ALREADY_REGISTERED` as "a different key already recorded this unit". Since
-   J1, a retry of your own key never returns it. Strict parsers keep rejecting unknown history
-   methods and contract versions.
+   `ALREADY_REGISTERED` as "a different key already recorded this unit". On an
+   API that runs J1, a retry of your own key never returns it. Your retained
+   host runs `1124d6a` and still can, until a J1 rollout is separately
+   authorized. Strict parsers keep rejecting unknown history methods and
+   contract versions.
 7. **Supplied photo:** keep it out of Git and out of fixtures. If it shows a
    real Donation No. or institution details, it belongs only in the access
    path Buno's dataset handoff defines.
@@ -83,7 +85,7 @@ pass with the J1 fix.
 
 | # | Work | Change type | Gate |
 | --- | --- | --- | --- |
-| J1 | **Done in this PR.** F3: `inbound-captures` checks the command store by idempotency key before identity resolution, returns the original command and rejects key reuse with a different capture. New OCR-matched receipts record a body-bound `captureRequestSha256` that never reaches the ledger. Receipts accepted before it existed replay on their recorded fields only. | API + OpenAPI text; no schema, migration or chaincode change | `services/api/test/inbound-capture-replay.test.ts`; API suite 201/201 on the Jopia host. Not yet deployed to any retained host. |
+| J1 | **Done in this PR.** F3: `inbound-captures` checks the command store by idempotency key before identity resolution, returns the original command and rejects key reuse with a different capture. New OCR-matched receipts record a body-bound `captureRequestSha256` that never reaches the ledger. Receipts accepted before it existed replay on their recorded fields only. | API + OpenAPI text; no schema, migration or chaincode change | `services/api/test/inbound-capture-replay.test.ts`; API suite 201/201 on the Jopia host. Not deployed to any retained host. From `1124d6a` to `main`, only `services/api` changed (PR #72 and J1), so a rollout would be API-only with no migration. It still needs its own authorization. |
 | J2 | F1: additive `OUTBOUND_LABEL_VERIFICATION_V2` with a component per entry; V1 unchanged | API + OpenAPI; reuses `app.v2_outbound_verifications` (`policy_version`), verify whether a migration is needed | Fixtures below |
 | J3 | Items 4 and F2: ADR-049 receipt label verification, endpoint, `receive` evidence binding | API + additive migration; chaincode unchanged | Rollout of the migration authorized separately; `RQ-09`/`RQ-10` unchanged |
 | J4 | Whether `prepare` must reference stored `EVD_` evidence | Decision, then a versioned API check | After Lat's live-gated outbound wiring |
