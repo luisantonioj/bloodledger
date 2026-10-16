@@ -1,0 +1,64 @@
+{
+  "classification": "SIMULATION_ONLY",
+  "apiTargetCommit": "d83509bf333d073061c3cb125ac4914798ee8ab0",
+  "frontendBuildCommit": "35d86f32418f8150588a9eee40b9f983670cf10b",
+  "backupSha256": "2a47f8b66f93c7c189f7ff9bec123759c6e1aaac0ed95ca94312c886e725e263",
+  "counts": {
+    "before": {
+      "institutions": 9,
+      "application_users": 22,
+      "onboarding_applications": 0,
+      "account_audit": 6,
+      "v2_components": 532,
+      "v2_reservations": 27,
+      "v2_commands": 595
+    },
+    "after-outbound": {
+      "institutions": 9,
+      "application_users": 22,
+      "onboarding_applications": 0,
+      "account_audit": 6,
+      "v2_components": 532,
+      "v2_reservations": 27,
+      "v2_commands": 595
+    },
+    "after-public": {
+      "institutions": 9,
+      "application_users": 22,
+      "onboarding_applications": 0,
+      "account_audit": 6,
+      "v2_components": 532,
+      "v2_reservations": 27,
+      "v2_commands": 595
+    }
+  },
+  "newTables": {
+    "v2_outbound_verifications": 0,
+    "onboarding_sample_claims": 0,
+    "institution_profiles": 0
+  },
+  "migrationStatus": {
+    "applied": 34,
+    "pending": 0
+  },
+  "gateStatus": {
+    "exactSourceAndPending": "PASS",
+    "quiesce": "PASS",
+    "backup": "PASS",
+    "outboundMigration": "PASS",
+    "publicMigration": "PASS",
+    "apiBuild": "FAILED_EACCES",
+    "apiReadiness": "NOT_RUN",
+    "enabledWebDeployment": "NOT_RUN",
+    "liveBrowserReadiness": "NOT_RUN"
+  },
+  "servicesAtStop": {
+    "api": "STOPPED",
+    "web": "STOPPED",
+    "workers": "STOPPED"
+  },
+  "publicFlagEnabled": false,
+  "livePublicSubmissions": 0,
+  "liveActivations": 0,
+  "liveDeregistrations": 0
+}

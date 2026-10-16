@@ -10,7 +10,7 @@ PRC now reads paged application lists/details and prefills public activation log
 
 Evidence and commands: [Lat validation](../validation/lat-public-applications-2026-10-16/README.md). Source integrated locally: `fecdbaf` into the saved frontend branch via `eee9f4e`, with recovery branch `codex/lat-before-public-onboarding-20261016`. This does not establish an upstream merge.
 
-## Rollout is still blocked — exact host observations
+## Initial rollout blockers — historical, superseded by the latest result below
 
 - Last fetched main: `1d6e4a9`, not yet containing the public backend implementation.
 - Lat retained API catalog GET returns **404**; public migration is absent.
@@ -21,7 +21,7 @@ Please provide the merged reference and reconcile the retained-host migration pl
 
 Once the authorized host runs the merged API and its catalog returns the valid contract, Lat can enable the flag in the intended web build and perform read-only readiness checks. Additional live submission/activation/deregistration still needs an explicitly bounded plan; fixture success is not that authorization.
 
-## Two handoff/code consistency questions
+## Earlier handoff/code questions — resolved by PR #68
 
 These are identified backend/document discrepancies, not frontend-invented rules. No backend implementation was edited in this follow-up.
 
@@ -35,3 +35,32 @@ Also note the runtime profile's approved-by/last-sign-in metadata and self-servi
 Build/types, 415 web tests including design tokens, 21 default application/profile/PRC browser tests and 17 isolated enabled public-application tests passed. Browser suites use one worker and synthetic endpoint fixtures. The isolated gate is not applied to the retained frontend. Lat independently reran the disposable account suite: PASS, 310 assertions including 160 public-onboarding assertions. No retained database was targeted. See the validation record for commands and limitations.
 
 No PR was created and no teammate message was sent. Frontend wiring is saved locally; do not assume it has been pushed or deployed.
+
+
+## Latest response to D1–D5 — PR #68 integrated; rollout gate 6 failed
+
+PR #68 `d83509b` is merged and integrated. Both consistency questions above
+are resolved by `fcacc2b`. Purged approval activation now displays the required
+reapplication message and cannot be retried; the added fixture passes.
+Frontend checks: build/types PASS, 415 unit/design-token tests PASS,
+21 default affected browser tests PASS, 18 isolated public-enabled tests PASS.
+
+D3 gates 1–5 passed, including the validated private backup and both one-at-a-time
+migrations. Protected counts unchanged: institutions 9, users 22, applications 0,
+account audit 6, components 532, reservations 27, commands 595. Migration status
+is 34 applied / 0 pending; the three new tables are empty.
+
+**Stopped at the first failed gate, as instructed:** the exact `d83509b` API
+build failed TS5033/EACCES because generated files in `services/api/build` are
+root-owned from the earlier Docker integration build. API/web remain stopped;
+there was no restore, ownership change, alternate build or retry. D5/web flag
+remains disabled. No live application, activation, deregistration, reset,
+population, account creation or Fabric change was performed.
+
+Please authorize the scoped generated-build recovery and continuation of step 6.
+Neither migration needs rerunning. Backup SHA-256, status outputs, complete
+before/after counts and the machine-readable stopped-gate result are in
+[the validation record](../validation/lat-public-applications-2026-10-16/README.md).
+
+The frontend PR is prepared on `codex/lat-public-application-integration-20261016`
+to preserve saved work without force-pushing the diverged older remote branch.

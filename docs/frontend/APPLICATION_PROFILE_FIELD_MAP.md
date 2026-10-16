@@ -72,3 +72,18 @@ use facilityProfile only when returned; policy-defined/null/purged profiles,
 approver identity, last sign-in and security self-service remain unavailable.
 Public submission stays disabled until backend merge and authorized migration/
 deployment are verified. Synthetic fixtures do not implement arbitrary uploads.
+
+
+## PR #68 integration and staged rollout — 2026-10-16
+
+Merged `d83509b` resolves the earlier contract questions: approval/rejection
+closes the application; activation after retained detail purge returns
+ONB_APPLICATION_DETAIL_PURGED (reapply, no retry). Capability declarations
+are excluded from the durable facility profile. Lat maps the error and retains
+declarations only in scoped application detail.
+
+Both authorized retained-host migrations applied in order with unchanged
+protected counts (34 applied / 0 pending). API deployment stopped at the first
+failed gate: TS5033/EACCES writing root-owned generated API build files.
+No services were restored, no public flag was enabled, and no live application,
+activation or deregistration occurred. See the [rollout evidence](../validation/lat-public-applications-2026-10-16/README.md).

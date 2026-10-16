@@ -30,7 +30,7 @@ Classification: **SIMULATION_ONLY**. Frontend integration/self-validation, with 
 
 The obsolete client-only sample generator was removed. Server availability is essential to the user's registered/deleted reuse rule; successful Fill Up reads do not consume samples.
 
-## Live host gate — not satisfied
+## Initial live host gate — historical, superseded by the rollout below
 
 `VITE_BLOODLEDGER_PUBLIC_APPLICATIONS_READY` remains **unset/false** in the retained frontend. Production submission requires this deliberate deployment gate **and** a successfully parsed category catalog read. Tests enable the gate only in a separate synthetic preview build.
 
@@ -64,3 +64,93 @@ Jopia's backend handoff reports 196 API tests and 310 disposable integration ass
 ## Next step
 
 Return the [rollout and consistency follow-up](../../handoffs/LAT-TO-JOPIA-PUBLIC-APPLICATIONS-WIRING-AND-ROLLOUT-2026-10-16.md). Obtain scoped retained-host rollout authorization only after confirming the backend merge and resolving the two-migration plan. Do not infer authority for live registration/deletion from this successful fixture run.
+
+
+## Authorized PR #68 retained-host rollout — stopped at API build gate
+
+The user relayed Jopia's D1–D5 authorization on 2026-10-16. PR #68 is merged at
+**`d83509bf333d073061c3cb125ac4914798ee8ab0`**, including fix `fcacc2b`.
+It was merged into Lat's saved wiring at `35d86f3`. Both prior discrepancies
+are resolved: approval/rejection anchors retention; capability declarations
+are excluded from the durable profile. The frontend now maps
+`ONB_APPLICATION_DETAIL_PURGED` to a reapplication message and blocks retry;
+one additional synthetic browser scenario covers it.
+
+Frontend checks after this merge: `npm run check:web` PASS, `npm run test:web`
+**415 / 47 files** PASS (including design-token checks); default affected
+Playwright **21 PASS**, isolated public-enabled suite **18 PASS**;
+both use `--workers=1`. No live web build was enabled. The earlier 17-test
+and disposable 310-assertion results above belong to the pre-fix baseline;
+Jopia reports 325 disposable assertions for the corrected backend.
+
+### Completed gates
+
+1. Checked out exact merged-main `d83509b` in detached mode in the retained
+   checkout. Local `main` is attached to another checkout; it was not altered.
+   Migration status listed exactly the two authorized pending files.
+2. Stopped retained web/API, verified both workers stopped. Pre-stop queues:
+   V1 0, V2 0, population writer lock 0. No volumes or identities removed.
+3. Took custom-format PostgreSQL dump and validated `pg_restore --list`.
+   Private dump: ignored `build/lat-public-rollout-private/before-public-rollout.dump`
+   (0600, parent 0700). **SHA-256:
+   `2a47f8b66f93c7c189f7ff9bec123759c6e1aaac0ed95ca94312c886e725e263`**.
+4. Baseline counts and both post-migration comparisons matched:
+
+| Table | Before | After outbound | After public |
+|---|---:|---:|---:|
+| institutions | 9 | 9 | 9 |
+| application_users | 22 | 22 | 22 |
+| onboarding_applications | 0 | 0 | 0 |
+| account_audit | 6 | 6 | 6 |
+| v2_components | 532 | 532 | 532 |
+| v2_reservations | 27 | 27 | 27 |
+| v2_commands | 595 | 595 | 595 |
+
+5. Ran each separately with `BLOODLEDGER_MIGRATION_COUNT=1 npm run migrate:up`:
+   outbound first, public second. History advanced **32→33→34 applied**,
+   pending **2→1→0**. All new tables (`v2_outbound_verifications`,
+   `onboarding_sample_claims`, `institution_profiles`) are empty.
+   Sanitized status outputs: [before](before-migration-status.txt),
+   [after outbound](after-outbound-migration-status.txt),
+   [after public](after-public-migration-status.txt).
+
+### First failed gate — stopped, no self-directed recovery
+
+At step 6, `npm run build --workspace @bloodledger/api`, from exact `d83509b`,
+failed with TypeScript **TS5033 / EACCES** writing generated files under
+`services/api/build`, including `src/public-onboarding.js` and
+`src/blood-bank-reads.js`. Inspected files are `root:root`, mode `0644`.
+The earlier disposable integration suite built generated API artifacts through
+Docker as root; the subsequent host-user build cannot overwrite them.
+
+The `docker start` was chained after successful build and **did not run**.
+Compilation may have partially updated generated artifacts; do not start this
+API until a clean successful build from the recorded target is confirmed.
+
+Following Jopia's explicit “stop at the first failed gate, restore nothing
+yourself” instruction, no chmod/chown, alternate builder, rollback, restore,
+restart or further readiness probe was executed. **API/web remain stopped.**
+D5 remains unmet: the public flag is still unset/false, web deployment and live
+browser Fill Up checks are **NOT_RUN**. Source was returned to Lat's integrated
+branch for the frontend PR only; services were not restored by that switch.
+
+**No live application, activation or deregistration was performed.** No reset,
+population, census/forecast rerun, account creation or Fabric change occurred.
+[Machine-readable gate result](RETAINED-ROLLOUT.json).
+
+### Continuation decision for Jopia
+
+Authorize a narrowly scoped generated-artifact build recovery (for example,
+build the exact target using the existing pinned Node container, or repair
+ownership only in the generated API build directory), then resume step 6.
+Do not rerun either applied migration. Confirm the read-only catalog,
+selection, PRC list and unchanged counts before D5/web deployment. The intended
+frontend build reference is `35d86f3` plus this evidence update; actual enabled
+web build remains **NOT_DEPLOYED**.
+
+### Branch delivery
+
+The existing remote `codex/lat-analytics-activity-layouts` diverges from Lat's
+saved rebased work. No force-push is used. Delivery uses
+`codex/lat-public-application-integration-20261016`, preserving the saved work
+and icon commit. PR reference is recorded after creation.
