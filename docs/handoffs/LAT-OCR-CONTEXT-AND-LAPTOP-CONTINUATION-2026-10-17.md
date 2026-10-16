@@ -6,29 +6,48 @@
 **Purpose:** Continue the OCR work on another local laptop without losing the
 implementation, decisions, limitations or teammate responsibilities.
 
-## Publication and teammate-review update — 2026-10-17
+## Current checkpoint — updated after Buno/Jopia responses
 
-The original OCR commit **5724b367ecb5fbf1928e8f99f74d5979a8b00850** has now
-been pushed to `origin/codex/lat-doh-reporting-dashboard-20261016`. The earlier
-local-only statements below describe the original handoff snapshot and are
-superseded for current source availability. This context file is included in
-the follow-up publication. No PR is being created.
+**Latest published source:** `f87b465fd4e2bd24df6f4ee9407faa34f0a94bc2`
+(`fix(web): guard OCR components and recover frozen intake`), on
+`origin/codex/lat-doh-reporting-dashboard-20261016`. It includes original OCR
+implementation `5724b367ecb5fbf1928e8f99f74d5979a8b00850` and the first
+committed version of this laptop handoff. The remote branch has been verified;
+the earlier missing-source problem is resolved. No PR was created.
 
-Latest response and validation:
-[LAT-TO-BUNO-JOPIA-OCR-SOURCE-AND-GUARDS-2026-10-17.md](LAT-TO-BUNO-JOPIA-OCR-SOURCE-AND-GUARDS-2026-10-17.md).
-Buno's latest instruction supersedes the earlier private-archive request:
-regenerate the same planning package after fetching the tools. No corpus photos
-or private files are transferred through Git.
+**This document revision:** documentation-only reconciliation after `f87b465`,
+saved on the same published branch. Fetch that branch for the current handoff.
+Use `f87b465` as the reproducible implementation baseline, not just `5724b36`;
+a later documentation-only commit does not change that application baseline.
 
-Jopia accepted directions, not new wire contracts. His J1 replay fix is on
-`origin/codex/jopia-label-contracts-inbound-replay`; main remains `25bddeb` at
-this review. It has not been merged into this frontend branch or deployed here.
-The frontend follow-up adds a V1 outbound component usability guard, binds
-inbound retries to the original operator and offers explicit actor-scoped
-command lookup after a lost response. Requester scanner confirmation and both
-readiness flags remain disabled. J2–J6 stay gated; server F1/F2/F4 are not
-claimed fixed by client code. All photography, review, model and device gates
-below remain open.
+Latest teammate reply and detailed evidence:
+
+- [Lat → Buno/Jopia: published source, regeneration and guards](LAT-TO-BUNO-JOPIA-OCR-SOURCE-AND-GUARDS-2026-10-17.md).
+- [Follow-up validation](../validation/lat-label-extraction-2026-10-17/JOPIA-BUNO-FOLLOWUP.md).
+
+**Buno:** reviewed the baseline and prepared collection/independent-review/
+benchmark protocol. The latest instruction replaces the older private-archive
+request: fetch the tools and regenerate the identical planning package locally.
+No archive transfer is needed. The package is still 180 fictional label plans,
+540 photo tasks and **zero collected photographs**. No recognition benchmark,
+training decision or model change is supported yet. Forecasting is unchanged.
+
+**Jopia:** accepted existing references and future directions; the future
+receipt/outbound/intake/history shapes are not wire contracts until their ADR,
+OpenAPI and tests land under the stated authorization. J1 (`7b32384`) is on
+`origin/codex/jopia-label-contracts-inbound-replay`, reviewed at head
+`81c67cd759b7237bea5e0a5036b29f9a6ff09882`. Fetched main is still
+`25bddeb171fb1ef7468752bcc31264be27049adf` at this update; J1 is not in main,
+not merged into this frontend branch and not deployed here. Recheck on the new
+laptop because these refs may advance after this document.
+
+**Lat follow-up completed:** V1 outbound component equality guard (usability
+only), original-operator binding for frozen intake retries, explicit actor-scoped
+command lookup, preservation when retry PIN verification is cancelled, and
+safe handling of legacy own-key ALREADY_REGISTERED responses. Identifier CER
+without reviewed identifier characters is now null. Both readiness flags stay
+default-off; requester scanner confirmation stays disabled. No backend,
+migration, retained deployment, live write or model activation was performed.
 
 ## 1. Read this first
 
@@ -50,7 +69,8 @@ Suggested opening message for the new laptop:
 >
 > Continue BloodLedger OCR from
 > docs/handoffs/LAT-OCR-CONTEXT-AND-LAPTOP-CONTINUATION-2026-10-17.md.
-> Verify commit 5724b367ecb5fbf1928e8f99f74d5979a8b00850 is present and inspect
+> Fetch branch codex/lat-doh-reporting-dashboard-20261016 and verify commit
+> f87b465fd4e2bd24df6f4ee9407faa34f0a94bc2 is present. Inspect
 > the checkout before changing anything. Preserve the existing layouts and
 > strict verified OCR path. Review the Jopia/Buno dependencies and the saved
 > validation. Do not claim all three label families or handwriting are supported
@@ -59,29 +79,30 @@ Suggested opening message for the new laptop:
 
 ## 2. Exact source baseline and what was saved
 
-| Item | State when this handoff was written |
+| Item | Current known state |
 | --- | --- |
 | Repository | `luisantonioj/bloodledger` |
 | Origin | `https://github.com/luisantonioj/bloodledger.git` |
 | Original local checkout | `/home/yuri/projects/bloodledger-current` |
-| Branch | `codex/lat-doh-reporting-dashboard-20261016` |
-| OCR commit | `5724b367ecb5fbf1928e8f99f74d5979a8b00850` (`5724b36`) |
-| Commit title | `feat(web): add editable OCR label extraction preview` |
-| Immediate parent | `df656f27087a20f72cf990ca6818d52e2e58d29e` — saved DOH dashboard work |
-| Commit scope | 39 files: shared scanner, extraction preview, tests, experiment tools, gap notes and teammate handoffs |
-| Publication | Local commit made; no push or PR was performed for this OCR work |
-| Remote availability | Not verified against the live remote; no cached remote-tracking branch contained the OCR commit at inspection |
-| This document | Created after `5724b36`; copy it separately unless subsequently committed |
+| Published branch | `codex/lat-doh-reporting-dashboard-20261016` |
+| Latest published implementation | `f87b465fd4e2bd24df6f4ee9407faa34f0a94bc2` (`f87b465`) |
+| Follow-up commit title | `fix(web): guard OCR components and recover frozen intake` |
+| Original OCR implementation | `5724b367ecb5fbf1928e8f99f74d5979a8b00850` (`5724b36`), 39 files |
+| Saved frontend parent before OCR | `df656f27087a20f72cf990ca6818d52e2e58d29e` — DOH dashboard work |
+| Source availability | Both OCR commits pushed; latest remote head verified as `f87b465` |
+| PR/deployment | No PR created; no retained API deployment/migration or readiness activation |
+| This document | First copy in `f87b465`; later documentation-only reconciliation published on the same branch. Fetch branch head for the updated copy |
 
-The branch name predates the OCR work; it does not mean the OCR changes are
-missing. The OCR commit sits on top of the saved frontend history. Do not
-replace this branch with an older main or cherry-pick the OCR commit onto an
-arbitrary old base and assume all earlier frontend work is present.
+The branch name predates OCR; it is the actual shared source branch. Fetching
+main alone will not provide these OCR changes. `f87b465` includes `5724b36`,
+the saved preceding layouts, guard/recovery tests, tooling, validation and
+teammate replies. Do not check out only the older commit when continuing the
+latest work. Do not reset a dirty checkout, replace saved layouts with older
+main, or assume another host's refs/runtime are identical.
 
 An unrelated, pre-existing untracked file remains on the original host:
 `docs/handoffs/BLOODLEDGER-COMPLETE-PROGRESS-REPORT-2026-10-16.md`.
-It was intentionally excluded from the OCR commit. Do not delete or silently
-include it in a different change.
+It was excluded from both OCR commits. Do not delete or silently include it.
 
 ## 3. Why this work started
 
@@ -176,6 +197,25 @@ idempotency/correlation, V2.1 vocabulary and command polling. A lost-response
 attempt freezes its body, key and event time for explicit retry. A 202 is queued,
 not ledger committed. Duplicate registration does not imply a new inventory
 unit. Existing mutation error handling refreshes time-window-rejected attempts.
+Both `bloodTypeEvidence.source` and `componentEvidence.source` are `OCR_LABEL`;
+never send BAG_TYPE or OPERATOR_CONFIRMED merely because the current API accepts
+those values. Never attach original OCR confidence to an edited field.
+
+After a lost response, the original body/key/time remains frozen. The new
+**Look up saved intake** button performs only actor-scoped
+`GET /api/v2/commands?idempotencyKey=...`. It validates capture resource type,
+ID grammar, correlation and status URL before accepting the command. Empty,
+failed or mismatched lookups leave the attempt frozen and send no mutation.
+An explicit retry keeps the original operator bound, even when multiple
+operators are eligible. Cancelling retry PIN verification does not discard an
+already ambiguous attempt; cancelling the first unsent verification remains
+safe to abandon.
+
+A fresh-key ALREADY_REGISTERED response means another request recorded that
+unit. An ambiguous own-key retry returning ALREADY_REGISTERED from an older
+API does not resolve the original command; the UI keeps it frozen for lookup.
+Jopia's J1 fix will make exact own-key replays return the original command, but
+it is not deployed on this host. Do not claim the frontend deployed that fix.
 
 ### Workflow availability
 
@@ -183,7 +223,7 @@ unit. Existing mutation error handling refreshes time-window-rejected attempts.
 | --- | --- | --- |
 | Bank inbound, strict unchanged synthetic OCR | Existing `/api/v2/inbound-captures` path with confirmation/PIN, frozen retries and polling | Actual live execution was not performed here |
 | Bank inbound, manual/corrected/new profile extraction | Editable draft and original recognition provenance | New accepted method/policy/API; do not send it as verified OCR |
-| Bank outbound | Select a scoped outgoing TRANSFER reservation; reuse existing prepare/verification/dispatch actions; valid strict OCR may seed verification | Existing outbound readiness flag and host prerequisites; new label/component matching decisions |
+| Bank outbound | Select a scoped outgoing TRANSFER reservation; reuse existing prepare/verification/dispatch actions; valid strict OCR may seed verification, and its component must match every reservation member before adding a scan | Client equality is usability only; existing readiness gate remains off and Jopia V2/server matching is pending |
 | Requester inbound | Same local OCR and editable preview; no outbound choice | Destination-scoped label-matched receipt contract; confirm remains disabled |
 
 A reservation receive capability alone is not permission to expose bank
@@ -267,6 +307,9 @@ Paths below are relative to the new repository root, not the old laptop.
 | `.../blood-unit-transactions-page.tsx` | Opens bank scanner; refreshes history on close |
 | `apps/web/src/features/transfers/outbound-verification.tsx` | Existing verified outbound flow, optional strict OCR seed |
 | `.../reservation-actions.tsx` | Existing reservation action lifecycle reused by scanner |
+| `.../outbound-component-guard.test.ts` | Tests same-donation sibling component, empty/mixed/unknown membership rejection |
+| `apps/web/src/auth/operator-verification.tsx` | Binds frozen intake retries to the original operator as well as existing actor-bound workflows |
+| `apps/web/src/services/api/v2.ts` | Existing `readCommandByKey` actor-scoped lookup parser reused by the scanner |
 | `apps/web/src/hooks/use-live-data.ts`, `use-validated-read.ts`, `use-paged-read.ts` | Existing safe read hooks, extended with optional V2.1 headers |
 | `apps/web/src/styles/global.css` | Preserved scanner header/scroll styling, review/preparation styles and PIN dialog stacking |
 | `apps/capture-pwa/src/capture-policy.ts` | Existing strict parser and capture policy; not relaxed by this work |
@@ -297,6 +340,22 @@ angled/curved, challenging lighting). Label split is 36 train / 12 validation /
 Writers 01–03 are training-only, 04 validation-only, 05 test-only, disjoint
 across banks. Every crop/photo/augmentation stays with its parent label.
 The earlier V1 uncollected plan is retained; V2 improves per-split coverage.
+Only 12 held-out labels per bank cannot establish support for all 40 product
+combinations. Do not infer unsupported cells from marginal group/component
+coverage. Any future labels sharing a donation relationship must remain in one
+split, including siblings/variants.
+
+Buno's latest reply says to regenerate this same plan; do not transfer a private
+archive or create a competing corpus. Regeneration was verified byte-identical
+on the original host. Expected planning-manifest SHA-256:
+
+```text
+d4df9d999aa8774eb5ad25cae8561c1140aadc2e2ac36364d4c1e8ce86cf72d4
+```
+
+This is the manifest checksum, not an archive checksum or photographed-dataset
+hash. The manifest contains no completed review evidence. Future actual photos
+and review records stay private under the agreed custody process.
 
 These are planning SVGs and annotation tasks, not 540 existing photographs.
 Handwritten sheets have blanks for people to write; a computer handwriting font
@@ -334,34 +393,76 @@ with the same locator/normalizer before full-pipeline selection. Fine-tune only
 after measured baseline errors justify it, training on training only and tuning
 on validation. Do not train from scratch or automatically ingest user edits.
 
+Buno prepared a fuller benchmark protocol, not measurements. Before running a
+collected corpus, align tooling with its condition/state confusion reporting,
+all-three-conditions-per-label success, raw and policy-rounded confidence,
+cold/warm timing and p50/p95. Those are not all implemented by the current
+summary scorer. The zero-identifier-character CER denominator now returns null
+and selection rejects absent identifier support. Do not fabricate absent
+metrics, reviewer records or a CSV result. The readiness note mentioned a CSV
+that was not supplied with the latest responses.
+
 Peak memory remains unmeasured/null. A JS heap snapshot is not peak memory.
 No browser resource acceptance or real-label accuracy is established.
 Detailed commands: [OCR experiment README](../../scripts/ocr/README.md).
 
-## 9. Required backend/policy work — Jopia
+## 9. Jopia's response: references, directions and backend findings
 
-See the existing concrete handoffs rather than changing backend policy silently:
+Jopia's published reply was read on branch
+`codex/jopia-label-contracts-inbound-replay`, head
+`81c67cd759b7237bea5e0a5036b29f9a6ff09882`:
+[accepted reference/direction review](https://github.com/luisantonioj/bloodledger/blob/81c67cd759b7237bea5e0a5036b29f9a6ff09882/docs/handoffs/JOPIA-TO-LAT-LABEL-EXTRACTION-CONTRACTS-2026-10-17.md).
+The original preview had not been available to him during that review; pushing
+it resolves availability, not review/acceptance of the preview itself.
 
-- [Original manual/corrected intake and requester receipt gaps](LAT-TO-JOPIA-OCR-MANUAL-AND-REQUESTER-RECEIPT-2026-10-16.md).
-- [Label semantics, dates and extraction contracts](LAT-TO-JOPIA-LABEL-EXTRACTION-CONTRACTS-2026-10-17.md).
+| Finding | Meaning | Current disposition |
+| --- | --- | --- |
+| F1 | Outbound V1 checks the Donation No. lookup without proving the OCR component; a sibling component can pass server lookup | Lat added client component equality; server V2/J2 still required. Not a security fix |
+| F2 | One OCR-matched bank receipt can mark a whole reservation received without comparing all scanned fields/members | Backend J3/receipt-verification dependency remains; no frontend claim this is fixed |
+| F3 | Inbound identity resolution happened before idempotency, losing original-result replay after projection | J1 fixed on backend branch (`7b32384`); not in fetched main or deployed here at this update |
+| F4 | Existing intake schema permits BAG_TYPE/OPERATOR_CONFIRMED without accepted semantics, and lacks component confidence | Client submits OCR_LABEL only. New-contract decision J5 still required |
 
-Required decisions/contracts include:
+Accepted **existing** references remain controlling: issuer comes from an
+enabled Donation No. grammar policy, not branding/receiving facility. Synthetic
+SYNMEDIX/SYNNLVILLA grammars are invented, not real hospital formats. Wire blood
+and component values are enums. `collectedAt`/`expiresAt` require exact UTC
+`YYYY-MM-DDTHH:mm:ss.sssZ`, with expiry after collection. ADR-010 does not approve
+interpreting printed local times as Asia/Manila. The current wire contract has
+no date-precision field; date-only expiry affects FEFO/expiry policy and needs
+an approved new version. Confidence is an engine score, policy-rounded for the
+strict existing path, not a probability or an editable value's evidence.
 
-1. Accepted versioned profiles per bank: issuer evidence, operational Donation
-   No., manufacturer exclusions, approved group/component aliases and conflicts.
-2. Short/date-only interpretation, century, timezone and precision. No default
-   midnight/end-of-day or inference of missing component/issuer is authorized.
-3. Verified manual entry and corrected OCR method/provenance/operator authority
-   through an explicit accepted contract, not fabricated confidence.
-4. Destination-scoped ROLE-03 label matching against incoming transfer units,
-   without unrelated registration or source inventory access.
-5. Outbound component identity where multiple components share a Donation No.,
-   reservation membership/count/version checks and safe errors without labels.
-6. Original-result replay, expected versions, capability mapping, command/history
-   vocabulary, compatibility, synthetic fixtures and runtime prerequisites.
+**Accepted direction is not an implemented contract.** Do not wire these yet:
 
-`RQ-02`, `RQ-03` and `RQ-19` remain applicable. Requirements/ADRs/OpenAPI are
-controlling. This handoff does not itself resolve them.
+- J2: additive OUTBOUND_LABEL_VERIFICATION_V2, each scanned entry carrying its
+  OCR-read component. Missing component cannot be verified; V1 stays unchanged.
+- J3: proposed ADR-049 and `receipt-verifications` for destination-scoped,
+  PIN-verified IN_TRANSIT reservation matching of every Donation No./component
+  pair with expectedVersion. Proposed RCV_ evidence would bind receive off-chain
+  and register no stock. Additive migration/contract still required.
+- J4: whether preparation must reference stored EVD_ evidence is a separate
+  enforcement decision; the client does not silently remove typed evidence.
+- J5: explicit new intake contract/policy to document/retire unsupported evidence
+  sources and authorize manual/corrected data. ADR-035 is not superseded here.
+- J6: coordinated synthetic fixtures, shapes, permissions, errors and additive
+  compatibility before connecting future APIs.
+
+Existing reservation-level ROLE-03 receive remains PIN-verified, whole-
+reservation and without label evidence. Leave it unchanged; RECEIVED is not
+usable stock under unresolved RQ-10. The scanner's requester confirm stays
+disabled, and inbound-captures remains a ROLE-01/02 bank route.
+
+New history methods wait for accepted writes and a negotiated
+UNIT_HISTORY_READ_V2; UNIT_HISTORY_READ_V1 remains strict (OCR, WEB_COMMAND or
+null). Do not invent enums or accept unknown versions. Mismatch messages must
+show counts only, never label values.
+
+Original handoffs:
+[manual/corrected intake and requester receipt](LAT-TO-JOPIA-OCR-MANUAL-AND-REQUESTER-RECEIPT-2026-10-16.md),
+[label extraction contracts](LAT-TO-JOPIA-LABEL-EXTRACTION-CONTRACTS-2026-10-17.md).
+`RQ-02`, `RQ-03`, `RQ-09`, `RQ-10` and `RQ-19` remain open where applicable.
+No backend merge, migration, deployment or live-write authority follows from
+this handoff. Jopia/institution owners still decide semantics and activation.
 
 ## 10. Buno and Lat follow-up
 
@@ -390,54 +491,57 @@ Release sequence:
 
 ## 11. Moving the actual source to another laptop
 
-**An MD file supplies context, not the source commit.** Do not assume a fresh
-clone of main includes `5724b36`. No OCR push was performed. This document was
-also created after that commit, so transfer it separately unless saved in a
-later commit. Never copy `node_modules`, runtime credentials or Docker volumes
-as a substitute for obtaining the source correctly.
+**The source is now pushed.** Fetch the OCR branch, not just main. Latest
+verified implementation is `f87b465fd4e2bd24df6f4ee9407faa34f0a94bc2`, which
+includes `5724b36`, prior layouts and the first committed laptop handoff.
+The documentation-only reconciliation follows that implementation commit on
+the same published branch. Fetch branch head for the updated MD. No additional
+source push or Git bundle is needed merely to obtain this published work.
 
-First inspect both checkouts and preserve unrelated changes. Verify source:
+In an existing repository on the new laptop:
 
 ```bash
 git status --short
-git show --no-patch --format=fuller 5724b367ecb5fbf1928e8f99f74d5979a8b00850
+git fetch origin codex/lat-doh-reporting-dashboard-20261016
+git show --no-patch --oneline f87b465fd4e2bd24df6f4ee9407faa34f0a94bc2
+git show f87b465fd4e2bd24df6f4ee9407faa34f0a94bc2:scripts/ocr/README.md
+git diff --name-only f87b465fd4e2bd24df6f4ee9407faa34f0a94bc2..origin/codex/lat-doh-reporting-dashboard-20261016
 ```
 
-Choose the appropriate source-transfer path; these are instructions, not
-operations performed while creating this handoff:
-
-**If the branch is subsequently pushed by the user:** fetch it normally on the
-new laptop and verify the exact commit, rather than assuming main contains it.
-
-**Offline Git bundle option:** from the original repository, export the branch
-and its reachable history to a new file outside the checkout:
+Inspect first; preserve unrelated/dirty work. For implementation, use a suitable
+separate checkout or an unused branch after the working tree is safe to switch:
 
 ```bash
-git bundle create /tmp/bloodledger-ocr-5724b36.bundle codex/lat-doh-reporting-dashboard-20261016
-git bundle verify /tmp/bloodledger-ocr-5724b36.bundle
+git switch -c codex/lat-ocr-laptop-continuation origin/codex/lat-doh-reporting-dashboard-20261016
 ```
 
-Transfer that bundle and this MD privately. In an existing repository on the
-new laptop, after confirming the working tree is safe to switch:
+Use an unused branch name, and review the diff from `f87b465` before choosing
+branch head; the current follow-up changes only this document. A new clone can
+fetch the same branch. Do not reset,
+force-push, or rebase away saved frontend history. If remote head has advanced,
+inspect those changes before choosing a newer baseline; this handoff does not
+automatically describe later source or runtime state.
+
+For an actually offline move, a bundle remains an alternative, not a missing
+prerequisite. From the original repository, export/verify the branch to a new
+file outside the checkout, then transfer it privately:
 
 ```bash
-git bundle verify /path/to/bloodledger-ocr-5724b36.bundle
-git fetch /path/to/bloodledger-ocr-5724b36.bundle refs/heads/codex/lat-doh-reporting-dashboard-20261016:refs/remotes/ocr-handoff/lat-ocr
-git show --no-patch --oneline 5724b367ecb5fbf1928e8f99f74d5979a8b00850
-git switch -c codex/lat-ocr-laptop-continuation 5724b367ecb5fbf1928e8f99f74d5979a8b00850
+git bundle create /tmp/bloodledger-ocr-f87b465.bundle codex/lat-doh-reporting-dashboard-20261016
+git bundle verify /tmp/bloodledger-ocr-f87b465.bundle
 ```
 
-Use the actual bundle path and an unused branch name. A new repository may
-instead be cloned from the bundle, then its origin configured to the normal
-repository if needed. Do not reset an existing checkout or force-push/rebase
-away saved frontend history. Integrating later main changes requires reviewing
-them against this baseline, not treating this older handoff as current truth.
+On the destination, verify the actual bundle and fetch its branch into a new
+remote-tracking ref before choosing a clean working branch. Confirm it contains
+`f87b465`; do not continue only from `5724b36` and miss the safety follow-up.
+These offline commands are optional instructions, not an archive already made.
 
-Git does not carry the private corpus, logs, credentials, identities, local
-volumes, language assets or the retained database. The pilot is currently only
-a plan, so it can be regenerated privately. Any future actual research photos
-or retained-state move needs separately agreed custody/transfer procedures.
-Do not move secrets through chat, Git, PR text or this document.
+Git does not carry the private pilot, photographs, logs, credentials, identities,
+volumes, local OCR assets or retained database. Regenerate the uncollected pilot
+using the commands/hash below; no private archive transfer is required. Do not
+copy `node_modules`, private `.env`, credentials or Docker volumes as a setup
+shortcut. Moving future collected research data or retained state requires its
+own agreed custody/authorization process.
 
 ## 12. New-laptop prerequisites and safe first checks
 
@@ -491,10 +595,17 @@ npm run test:inbound-ocr
 python3 scripts/ocr/test_experiment.py
 ```
 
-For the 20 affected normal browser tests, from `apps/web`:
+For the affected normal browser specs, from `apps/web`:
 
 ```bash
 npx playwright test --config playwright.config.ts blood-bank-pages.spec.ts blood-unit-receipt.spec.ts scanner-ocr-workflows.spec.ts --workers=1
+```
+
+The enabled-outbound fixture config turns on its flag **only in the isolated
+test build**; it does not enable the retained host. From `apps/web`:
+
+```bash
+npx playwright test --config playwright-outbound.config.ts --workers=1
 ```
 
 Capture policy checks used on the original laptop:
@@ -512,8 +623,9 @@ npx vitest run --configLoader runner --no-cache
 If you need a new private planning package, from the repository root:
 
 ```bash
-python3 scripts/ocr/experiment.py init --output build/ocr-private/laptop-pilot
-python3 scripts/ocr/experiment.py validate --manifest build/ocr-private/laptop-pilot/manifest.json
+python3 scripts/ocr/experiment.py init --output build/ocr-private/pilot-20261017-v2
+python3 scripts/ocr/experiment.py validate --manifest build/ocr-private/pilot-20261017-v2/manifest.json
+sha256sum build/ocr-private/pilot-20261017-v2/manifest.json
 ```
 
 Do not run inference as though this generated manifest contains photographs.
@@ -544,35 +656,47 @@ account creation permission.
 
 ## 13. Validation already completed on the original laptop
 
-Full evidence and limitations:
-[lat-label-extraction-2026-10-17/README.md](../validation/lat-label-extraction-2026-10-17/README.md).
-These are historical results; rerun appropriate checks after changes on the new
-laptop, and record its own outcomes.
+Latest source: `f87b465`. Detailed records:
+[original extraction validation](../validation/lat-label-extraction-2026-10-17/README.md)
+and [Jopia/Buno follow-up validation](../validation/lat-label-extraction-2026-10-17/JOPIA-BUNO-FOLLOWUP.md).
+These are historical local results; rerun appropriate checks after changes on
+the new laptop and record its own outcomes.
 
 | Check | Recorded result |
 | --- | --- |
-| Web types/production build | PASS; existing chunk-size warning |
-| Web unit/design-token suite | 434 passed, 49 files |
+| Latest web types/production build | PASS; existing chunk-size warning |
+| Latest web unit/design-token suite | 437 passed, 50 files (original OCR checkpoint was 434/49) |
 | Extraction-preview browser suite | 3 passed, one worker |
-| Affected normal browser suites | 20 passed, one worker |
-| Capture TypeScript direct check | PASS |
-| Capture unit tests via direct config runner | 23 passed, 5 files |
-| Inbound OCR contract/API/Fabric privacy boundary check | PASS |
-| Experiment-tooling unit tests | 4 passed |
-| Browser runner syntax/Python compilation | PASS; not actual model evaluation |
+| Full normal bank/requester suite before final cancellation case | 24 passed, one worker |
+| Final focused scanner/recovery suite after cancellation fix | 7 passed, one worker; overlaps scanner cases in preceding row, do not add counts as independent tests |
+| Enabled-outbound fixture suite | 2 passed, one worker; matching flow and sibling-component rejection |
+| Capture types/direct unit suite | Earlier unchanged-policy checkpoint: types PASS; 23 unit tests / 5 files PASS |
+| Inbound OCR contract/API/Fabric privacy boundary | PASS on follow-up |
+| Experiment-tooling unit tests | 4 passed, including null identifier CER and candidate freezing |
+| Runner syntax/Python compilation | PASS; not recognition-accuracy evaluation |
+| Secret scan | PASS: Git history, staged index and candidate content; no leaks found |
 | Private plan structural validation | PASS: 180 labels / 540 tasks / 0 collected |
-| Complete corpus validation | EXPECTED BLOCK: no photos/second reviews |
+| Deterministic plan regeneration | Byte-identical manifest; SHA-256 in section 8 |
+| Complete corpus validation | EXPECTED BLOCK: actual photos/independent reviews absent |
 
-Browser tests used actual local Tesseract on generated synthetic images plus
-mocked API fixtures. They exercised partial/date-only results, crop/mobile
-controls, retaining edits through recapture, authentication-context loss,
-requester restrictions, scoped outgoing selection, PIN cancellation, frozen
-retries and queued-to-committed responses. They are not real-label or physical
-camera evidence. No disposable API/database integration or live domain command
-was run in this OCR work.
+Browser tests used real local Tesseract on generated synthetic images and mocked
+API responses. Follow-up tests cover original-operator binding with multiple
+operators, immutable retry body/key, lookup with no POST, empty/mismatched lookup
+remaining frozen, old-API own-key duplicate responses, and cancellation of retry
+PIN verification preserving the original attempt. Sibling-component rejection
+uses the same Donation No. with a different OCR-read component and sends no
+outbound evidence. These tests do not secure the V1 backend vulnerability.
 
-Local logs are ignored under
-`build/lat-public-rollout-private/label-extraction-*.txt`; they are not in Git.
+Original coverage also includes partial/date-only results, crop/mobile controls,
+retaining edits through recapture, authentication-context loss, requester
+restrictions, scoped outgoing selection and queued-to-committed presentation.
+No actual-camera, real-label, disposable database/API integration or live domain
+command was run. No photo corpus or TrOCR benchmark has been evaluated.
+
+Ignored logs:
+`build/lat-public-rollout-private/label-extraction-*.txt` and
+`build/lat-public-rollout-private/ocr-jopia-followup-*.txt`. Logs/private artifacts
+are not in Git; do not claim they exist on a fresh laptop.
 
 ## 14. Known setup issues and what not to repeat
 
@@ -606,13 +730,17 @@ Local logs are ignored under
 
 ## 15. Immediate continuation checklist
 
-1. Obtain and verify `5724b36` and its parent history; inspect working tree and
+1. Fetch the published branch and verify `f87b465` plus its parent history; inspect working tree and
    read the repository instructions plus this handoff.
 2. Reproduce fixture-only web/OCR tests on the new laptop. No retained database
    or account copying is required for that step.
-3. Check for new Jopia/Buno replies or published contracts; do not assume this
-   handoff includes work they may have done later.
-4. Coordinate the missing label references and accepted profile semantics.
+3. Read the published Jopia/Buno follow-up. Buno may now regenerate and validate
+   the plan, but collection/model benchmarking is still blocked. Recheck J1/main
+   merge state and any later contracts without deploying or wiring directions
+   prematurely.
+4. Coordinate immutable accepted label references/profile versions with Jopia,
+   especially Medix/N.L. Villa. Preserve the client guard but remember it does
+   not close server F1, F2 or F4.
 5. Continue the reviewed synthetic physical corpus and fixed-ground-truth
    experiments; keep actual research artifacts private.
 6. Integrate accepted contracts without changing existing layout or treating
