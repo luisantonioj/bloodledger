@@ -173,11 +173,13 @@ try{
   check((await app.inject({method:'GET',url:'/api/v2/historical-snapshots',headers:{cookie:sessions.INST_SYNTH_MEDIX}})).statusCode,403);
   check((await app.inject({method:'GET',url:'/api/v2/alerts',headers:{cookie:sessions.INST_MEDIATRIX}})).json().alerts[0].acknowledged,true);
   const preserved=(await admin.query("SELECT expected_units,verified_units FROM app.synthetic_inventory_snapshots WHERE snapshot_id=$1",[snapshotId])).rows[0];check(preserved.expected_units,522);check(preserved.verified_units,522);
+  const {probePublicOnboarding}=await import('./public-onboarding-database-probe.mjs');
+  assertions+=await probePublicOnboarding({admin,app,sessions,pins:credentials.pins,origin});
   const beforeRollback=await domainFingerprints(admin);await rollbackAccountMigration(admin,target);assert.deepEqual(await domainFingerprints(admin),beforeRollback);assertions++;
   check((await app.inject({method:'GET',url:'/api/v1/auth/session',headers:{cookie:recipient}})).statusCode,401);
   check((await app.inject({method:'GET',url:'/api/v1/auth/session',headers:{cookie:cookie(restoredNewLogin)}})).statusCode,200);
   await rollbackAccountMigration(admin,target);
   check((await app.inject({method:'POST',url:'/api/v1/simulation/session',payload:{operatorId:config.operatorId,credential:config.operatorCredential}})).statusCode,403);
   check((await admin.query("SELECT account_kind,status FROM app.application_users WHERE user_id='USR_SYNTH_REVIEW_ROLE05'")).rows[0].account_kind,'INTERNAL');
-  console.log(`Institution-account integration passed ${assertions} assertions: FR-12/15/16, BR-SEC-04, retained migration, PIN/session authorization, onboarding, scoped reads, retention and rollback. Representative synthetic database; no live Fabric or Lat validation claim.`);
+  console.log(`Institution-account integration passed ${assertions} assertions: FR-12/15/16, BR-SEC-04, retained migration, PIN/session authorization, onboarding, public applications and sample reuse, scoped reads, retention and rollback. Representative synthetic database; no live Fabric or Lat validation claim.`);
 }finally{await app?.close();await runtime.end();await admin.end();}
