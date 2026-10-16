@@ -53,3 +53,41 @@ Apply for Access now uses separate Blood Bank and Requester category cards and f
 Expanded legal/contact/personnel/qualification fields, declarations and document attachment controls are visible but disabled. They are excluded from submission; no unsupported personal details or files are collected. The success message explicitly identifies a basic application submission and states that extended fields/documents were not sent.
 
 Profile now includes Facility Information, Official Contact, Facility Account, category-specific Licensing & Qualification, Credentials & Access, Application Record, and Security. Supported identity/status/session values remain real; missing data says Not available. View documents and Change password stay disabled pending supported services. Accounts / Staff retains actual operator statistics, filters and existing administrator/PIN/revocation actions.
+
+
+## Published public-application contract wiring — 2026-10-16
+
+The earlier October 10 basic-payload limitations above are historical. The
+PA-ACCOUNT-03 / ADR-048 backend branch now publishes strict nested
+PUBLIC_APPLICATION_V1 fields, synthetic fixture references, server-owned sample
+eligibility and application/profile linkage. Lat connected those reads/actions
+without changing the approved form layout. One synthetic applicant reference
+replaces Full name and Employee ID; role-holder references replace real names.
+Passwords/confirmation are generated locally, and all declarations stay manual.
+
+See [Lat validation](../validation/lat-public-applications-2026-10-16/README.md)
+and [rollout/consistency follow-up](../handoffs/LAT-TO-JOPIA-PUBLIC-APPLICATIONS-WIRING-AND-ROLLOUT-2026-10-16.md).
+The real retained API passed contract readiness at recovery target 1124d6a;
+API/web are running after both bank/requestor live Fill Up browser flows passed. Extended profile reads
+use facilityProfile only when returned; policy-defined/null/purged profiles,
+approver identity, last sign-in and security self-service remain unavailable.
+The web readiness flag was configured after step 6 passed; both live Fill Up
+flows subsequently passed under explicit continuation approval. Synthetic fixtures do not implement arbitrary uploads.
+
+
+## PR #68 integration and staged rollout — 2026-10-16
+
+Merged `d83509b` resolves the earlier contract questions: approval/rejection
+closes the application; activation after retained detail purge returns
+ONB_APPLICATION_DETAIL_PURGED (reapply, no retry). Capability declarations
+are excluded from the durable facility profile. Lat maps the error and retains
+declarations only in scoped application detail.
+
+Both authorized retained-host migrations applied in order with unchanged
+protected counts (34 applied / 0 pending). Authorized Option B repaired ownership
+(18 to 0), and the API built at 1124d6a and passed read-only step 6. The enabled
+web built from saved frontend 55f997b. The browser harness stopped on an ambiguous
+password selector on its first attempt. After explicit user authorization, both
+browser flows passed with the corrected selector; API/web and guarded UAT
+worker are running. The general sync-worker stays stopped.
+No live application, activation or deregistration occurred. See the [rollout evidence](../validation/lat-public-applications-2026-10-16/README.md).

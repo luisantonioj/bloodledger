@@ -22,5 +22,5 @@ export function usePagedRead<T>(endpoint:string|null,parse:(value:unknown)=>Read
  }
  useEffect(()=>{active.current=key;controller.current?.abort();locked.current=false;setResult(undefined);setError("");if(endpoint)void read(null,false);else setBusy(false);return()=>{controller.current?.abort();locked.current=false;};},[key]);
  const page=result?.key===key?result.page:undefined;
- return {rows:page?.rows??[],ready:Boolean(page),nextCursor:page?.nextCursor,busy,error,refresh:()=>setRevision(value=>value+1),loadMore:()=>{if(page?.nextCursor)void read(page.nextCursor,true);}};
+ return {readKey:key,rows:page?.rows??[],ready:Boolean(page),nextCursor:page?.nextCursor,busy,error,refresh:()=>setRevision(value=>value+1),loadMore:()=>{if(page?.nextCursor)void read(page.nextCursor,true);}};
 }

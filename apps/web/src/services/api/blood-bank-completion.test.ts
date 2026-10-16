@@ -1,0 +1,28 @@
+import {describe,it,expect} from "vitest";
+import {parseBankSummary,parseNetworkAvailability,historyChunks,parseRequestHistory,parseOutboundVerification} from "./blood-bank-completion";
+import {summarizeBankHistory} from "../../features/analytics/bank-observed-demand";
+import {emptyAnalyticsFilters} from "../../features/analytics/analytics-reporting-filters";
+import {outboundFailure} from "../../features/transfers/outbound-verification";
+import {ApiRequestError} from "./client";
+import {actionCapability} from "../../auth/operator-actions";
+const common={classification:"SIMULATION_ONLY",asOf:"2026-10-15T00:00:00.123Z"};
+const summary={...common,policyVersion:"BLOOD_BANK_SUMMARY_V1",scope:"INSTITUTION",inventory:{available:297,reserved:1,labelExpiredPendingEvaluation:224,lastProjectedAt:null},requests:{incomingAwaitingDecision:1,outgoingAwaitingDecision:0},expiringSoon:{availability:"POLICY_BLOCKED",count:null,blocker:"RQ-03"}};
+const historyRow={requestDate:"2026-10-15",direction:"INCOMING",bloodType:"A_POSITIVE",componentType:"WHOLE_BLOOD",urgency:"ROUTINE",requestCount:19,requestedUnits:124};
+const history={...common,policyVersion:"REQUEST_HISTORY_AGGREGATE_V1",scope:"INSTITUTION",range:{from:"2026-01-01",to:"2026-12-31",timeZone:"Asia/Manila"},departmentAvailability:"NOT_RECORDED",rows:[historyRow]};
+const networkRow={institutionId:"INST_TEST",institutionDisplayName:"Synthetic facility",bloodType:"A_POSITIVE",componentType:"WHOLE_BLOOD",availableUnits:2,lastProjectedAt:null};
+const network={...common,policyVersion:"NETWORK_AVAILABILITY_V1",scope:"CITY_AGGREGATE",rows:[networkRow]};
+const verification={...common,policyVersion:"OUTBOUND_LABEL_VERIFICATION_V1",reservationId:"RES_TEST",reservationVersion:2,ledger:{status:"NOT_APPLICABLE"},evidenceId:"EVD_"+"A".repeat(40),evidenceDigest:"b".repeat(64),componentIds:["COMP_TEST"],matchedUnits:1,verifiedAt:common.asOf,replayed:false};
+describe("blood-bank completion contracts",()=>{
+ it("keeps expired labels separate and retains full aggregate counts and nullable projection time",()=>{expect(parseBankSummary(summary).inventory).toEqual(summary.inventory);expect(parseBankSummary(summary).requests.incomingAwaitingDecision).toBe(1);});
+ it.each([ {...summary,scope:"CITY_AGGREGATE"},{...summary,inventory:{...summary.inventory,available:-1}},{...summary,expiringSoon:{availability:"AVAILABLE",count:5,blocker:null}} ])("rejects unsafe summary or invented expiry threshold",value=>expect(()=>parseBankSummary(value)).toThrow());
+ it("accepts an authorized empty network aggregate as zero recorded combinations",()=>expect(parseNetworkAvailability({...network,rows:[]}).rows).toEqual([]));
+ it.each([{...network,scope:"INSTITUTION"},{...network,rows:[networkRow,networkRow]},{...network,rows:[{...networkRow,availableUnits:0}]}])("rejects scoped or inconsistent network responses",value=>expect(()=>parseNetworkAvailability(value)).toThrow());
+ it("chunks inclusive leap-year ranges without gaps or repeated days",()=>expect(historyChunks("2024-01-01","2025-01-02")).toEqual([{from:"2024-01-01",to:"2024-12-31"},{from:"2025-01-01",to:"2025-01-02"}]));
+ it.each([["2026-02-30","2026-03-01"],["2026-10-15","2026-10-14"],["","2026-10-15"]])("rejects invalid history ranges",(from,to)=>expect(()=>historyChunks(from,to)).toThrow());
+ it("uses complete incoming counts and requested units rather than row count or procurement",()=>{const rows=parseRequestHistory({...history,rows:[historyRow,{...historyRow,direction:"OUTGOING",requestedUnits:500}]} ,history.range.from,history.range.to).rows;expect(summarizeBankHistory(rows,emptyAnalyticsFilters)).toEqual({requests:19,units:124,months:[{month:"2026-10",requests:19,units:124}]});});
+ it.each([{...history,rows:[{...historyRow,requestDate:"2027-01-01"}]},{...history,rows:[historyRow,historyRow]},{...history,rows:[{...historyRow,direction:"UNKNOWN"}]},{...history,rows:[{...historyRow,requestedUnits:1}]},{...history,departmentAvailability:"RECORDED"}])("rejects inconsistent history",value=>expect(()=>parseRequestHistory(value,history.range.from,history.range.to)).toThrow());
+ it("accepts synchronous replayed off-chain evidence and preserves milliseconds",()=>expect(parseOutboundVerification({...verification,replayed:true},"RES_TEST",2)).toMatchObject({replayed:true,verifiedAt:common.asOf,matchedUnits:1}));
+ it.each([{...verification,reservationVersion:3},{...verification,ledger:{status:"COMMITTED"}},{...verification,componentIds:["COMP_TEST","COMP_TEST"],matchedUnits:2},{...verification,matchedUnits:2}])("rejects wrong reservation evidence",value=>expect(()=>parseOutboundVerification(value,"RES_TEST",2)).toThrow());
+ it("never echoes arbitrary mismatch messages or label values",()=>{expect(outboundFailure(new ApiRequestError(409,"SECRET_LABEL", "OUTBOUND_LABELS_MISMATCH"))).not.toContain("SECRET_LABEL");expect(outboundFailure(new ApiRequestError(409,"Scanned labels do not match the reserved units: 1 of 2 matched, 1 unmatched, 1 missing.","OUTBOUND_LABELS_MISMATCH"))).toContain("1 of 2 matched; 1 unmatched; 1 missing");});
+ it("maps outbound verification to transfer preparation",()=>expect(actionCapability("POST /api/v2/reservations/RES_TEST/outbound-verifications")).toBe("transfer:prepare"));
+});

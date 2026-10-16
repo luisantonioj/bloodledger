@@ -1,9 +1,9 @@
 export class ApiRequestError extends Error {
-  constructor(public readonly status: number, message: string, public readonly code?: string) { super(message); }
+  constructor(public readonly status: number, message: string, public readonly code?: string, public readonly details?: Array<{field:string;rule:string}>, public readonly retryAfter?: number) { super(message); }
 }
 
 interface ApiErrorEnvelope {
-  error?: { message?: string; code?: string };
+  error?: { message?: string; code?: string; details?: Array<{field:string;rule:string}> };
 }
 
 export interface VerificationRequest { action: string; payload: unknown; idempotencyKey: string }
@@ -25,7 +25,7 @@ export async function retryAfterContextChange<T>(read: () => Promise<T>, active:
 export async function requestJson<T>(path: string, init: RequestInit = {}, fallback = "Request failed."): Promise<T> {
   const epoch = sessionEpoch;
   const headers = new Headers(init.headers);
-  if (verifier && init.method === "POST" && path.startsWith("/api/v2/") && path !== "/api/v2/auth/operator-verifications") {
+  if (verifier && init.method === "POST" && path.startsWith("/api/v2/") && path !== "/api/v2/auth/operator-verifications" && path !== "/api/v2/onboarding/public-applications") {
     const key = headers.get("Idempotency-Key");
     if (!key || typeof init.body !== "string") throw new Error("A bound command and idempotency key are required.");
     headers.set("Operator-Verification", await verifier({action: "POST " + path, payload: JSON.parse(init.body), idempotencyKey: key}));
@@ -50,7 +50,10 @@ export async function requestJson<T>(path: string, init: RequestInit = {}, fallb
   }
   if (!response.ok) {
     if (epoch === sessionEpoch && response.status === 401 && path !== "/api/v1/auth/session") window.dispatchEvent(new Event("bloodledger:session-ended"));
-    throw new ApiRequestError(response.status, body?.error?.message ?? fallback, body?.error?.code);
+    const details=Array.isArray(body?.error?.details)?body.error.details.filter(item=>item&&typeof item.field==="string"&&typeof item.rule==="string").slice(0,40).map(({field,rule})=>({field,rule})):undefined;
+    const header=response.headers?.get("Retry-After");
+    const retryAfter=header&&/^\d+$/.test(header)?Number(header):undefined;
+    throw new ApiRequestError(response.status, body?.error?.message ?? fallback, body?.error?.code, details, retryAfter);
   }
   return body as T;
 }

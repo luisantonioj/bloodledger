@@ -1,5 +1,5 @@
 import type { Principal } from "../../auth/permissions";
-import { requestJson } from "./client";
+import { requestJson, retryAfterContextChange } from "./client";
 export const CENSUS_ORDER = ["O_POSITIVE", "A_POSITIVE", "B_POSITIVE", "AB_POSITIVE", "O_NEGATIVE", "A_NEGATIVE", "B_NEGATIVE", "AB_NEGATIVE"] as const;
 export interface CensusSnapshot { snapshotId: string; institutionId: string; scheduledFor: string; capturedAt: string; reportPolicyVersion: string; triggerType: string }
 export interface CensusIndex { scope: string; snapshots: CensusSnapshot[]; nextCursor: string | null; displayBloodTypeOrder: readonly string[]; displayPolicyVersion: string; reportAvailability: string }
@@ -24,4 +24,18 @@ export function parseCensusIndex(value: unknown, principal: Principal): CensusIn
 export async function readCensusIndex(principal: Principal, signal: AbortSignal, cursor?: string): Promise<CensusIndex> {
   if (cursor && !/^CENSUS_[A-Z0-9_-]{1,56}$/.test(cursor)) throw new Error("Census cursor is invalid.");
   return parseCensusIndex(await requestJson("/api/v2/reports/doh-census?limit=20" + (cursor ? "&cursor=" + encodeURIComponent(cursor) : ""), {signal}, "Census snapshots are unavailable."), principal);
+}
+
+// Complete institution discovery for count cards. Never count only the first page.
+export async function readCompleteCensusIndex(principal:Principal,signal:AbortSignal):Promise<CensusIndex>{
+  const snapshots:CensusSnapshot[]=[],ids=new Set<string>(),cursors=new Set<string>();let cursor:string|undefined;
+  do{
+    signal.throwIfAborted();
+    const page=await retryAfterContextChange(()=>readCensusIndex(principal,signal,cursor),()=>!signal.aborted);
+    for(const snapshot of page.snapshots){if(ids.has(snapshot.snapshotId))throw Error("Report discovery repeated a record. Refresh to try again.");ids.add(snapshot.snapshotId);snapshots.push(snapshot);}
+    if(!page.nextCursor)return {...page,snapshots,nextCursor:null};
+    if(cursors.has(page.nextCursor))throw Error("Report discovery repeated a page. Refresh to try again.");
+    cursors.add(page.nextCursor);cursor=page.nextCursor;
+  }while(!signal.aborted);
+  throw Error("Report discovery cancelled.");
 }

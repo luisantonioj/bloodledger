@@ -22,3 +22,14 @@ describe("compliance stock presentation",()=>{
   }
  });
 });
+
+import {currentComplianceStock} from "./current-compliance-stock";
+const currentUnit={componentId:"COMP_CURRENT",donationId:"DON_SYNTH",issuerInstitutionId:"INST_SAMPLE",institutionId:"INST_SAMPLE",bloodType:"A_POSITIVE",componentType:"CRYOPRECIPITATE",collectedAt:"2026-10-01T00:00:00Z",expiresAt:"2026-10-20T00:00:00Z",inventoryStatus:"AVAILABLE",expiryState:"CURRENT",reservationId:null,reservationVersion:null,inventoryVersion:1,policyVersion:"SYNTHETIC_TEST",classification:"SIMULATION_ONLY"};
+const stock=(components:unknown[])=>({scope:"INSTITUTION",classification:"SIMULATION_ONLY",components});
+describe("current bank compliance stock",()=>{
+ const now=Date.parse("2026-10-16T00:00:00Z");
+ it("includes label-current available and reserved cryo without treating it as a saved report",()=>{const result=currentComplianceStock(stock([currentUnit,{...currentUnit,componentId:"COMP_RESERVED",inventoryStatus:"RESERVED",reservationId:"RES_TEST",reservationVersion:1}]),"INST_SAMPLE",now);expect(result.total).toBe(2);expect(result.groups.find(g=>g.componentType==="CRYOPRECIPITATE")!.bloodTypes.find(r=>r.bloodType==="A_POSITIVE")).toMatchObject({availableCount:1,reservedCount:1,reportableCount:2});});
+ it("excludes expired labels and stock already dispatched",()=>{const result=currentComplianceStock(stock([{...currentUnit,expiryState:"LABEL_EXPIRED_PENDING_EVALUATION"},{...currentUnit,componentId:"COMP_DISPATCHED",inventoryStatus:"DISPATCHED"},{...currentUnit,componentId:"COMP_TIME_EXPIRED",expiresAt:"2026-10-15T00:00:00Z"}]),"INST_SAMPLE",now);expect(result.total).toBe(0);expect(result.labelExpiredPendingEvaluation).toBe(1);});
+ it("returns all forty zero cells only for a valid empty inventory read",()=>{const result=currentComplianceStock(stock([]),"INST_SAMPLE",now);expect(result.groups.flatMap(g=>g.bloodTypes)).toHaveLength(40);expect(result.total).toBe(0);expect(()=>currentComplianceStock(undefined,"INST_SAMPLE",now)).toThrow();});
+ it("rejects duplicate components and foreign inventory",()=>{expect(()=>currentComplianceStock(stock([currentUnit,currentUnit]),"INST_SAMPLE",now)).toThrow();expect(()=>currentComplianceStock(stock([currentUnit]),"INST_OTHER",now)).toThrow();});
+});

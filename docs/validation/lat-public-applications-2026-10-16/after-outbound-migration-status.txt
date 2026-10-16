@@ -1,0 +1,50 @@
+
+> bloodledger@0.0.0 migrate:status
+> npm run migrate:status --workspace @bloodledger/database
+
+
+> @bloodledger/database@0.0.0 migrate:status
+> node scripts/migration-status.mjs
+
+APPLIED 20260715000000000_bootstrap-app-schema 2026-07-27T17:47:30.062Z
+APPLIED 20260812000000000_create-simulation-forecast-tables 2026-08-23T00:49:30.119Z
+APPLIED 20260814000000000_create-synthetic-coordination-tables 2026-08-23T00:49:30.136Z
+APPLIED 20260817000000000_create-synthetic-scan-sync-tables 2026-08-23T00:49:30.145Z
+APPLIED 20260820000000000_create-synthetic-web-access-tables 2026-08-23T00:49:30.159Z
+APPLIED 20260820010000000_create-transfer-alert-projections 2026-08-23T00:49:30.165Z
+APPLIED 20260820020000000_add-alert-acknowledgement-idempotency 2026-08-23T00:49:30.177Z
+APPLIED 20260823010000000_allow-shared-inventory-ledger-transactions 2026-08-23T01:59:30.749Z
+APPLIED 20260912000000000_create-interview-core-v2-tables 2026-09-17T02:28:38.304Z
+APPLIED 20260912010000000_add-inbound-ocr-capture-v2 2026-09-17T02:28:38.368Z
+APPLIED 20260917000000000_add-v4-runtime-and-v21-evidence 2026-10-07T06:21:16.581Z
+APPLIED 20260917010000000_allow-v21-reconciliation-hold-projection 2026-10-07T06:21:16.602Z
+APPLIED 20260917020000000_add-v4-scope-and-projection-receipts 2026-10-07T06:21:16.604Z
+APPLIED 20260917030000000_add-v21-transfer-projection 2026-10-07T06:21:16.609Z
+APPLIED 20260917040000000_create-internal-ml-snapshots 2026-10-07T06:21:16.615Z
+APPLIED 20260917050000000_add-surplus-provenance 2026-10-07T06:21:16.621Z
+APPLIED 20260917060000000_align-v21-ledger-projection-semantics 2026-10-07T06:21:16.625Z
+APPLIED 20260917070000000_fix-v21-hold-compromise-constraint 2026-10-07T06:21:16.627Z
+APPLIED 20260917080000000_widen-ml-snapshot-schema-version 2026-10-07T06:21:16.628Z
+APPLIED 20260917090000000_add-reservation-projection-timestamps 2026-10-07T06:21:16.630Z
+APPLIED 20260917100000000_bind-v4-forecast-institution-scope 2026-10-07T06:21:16.632Z
+APPLIED 20260930000000000_add-v5-forecast-runtime 2026-10-07T06:21:16.635Z
+APPLIED 20260930010000000_create-v5-surplus-evidence 2026-10-07T06:21:16.637Z
+APPLIED 20261007000000000_create-historical-synthetic-inventory 2026-10-07T06:21:16.641Z
+APPLIED 20261007010000000_add-development-evidence 2026-10-07T06:21:16.650Z
+APPLIED 20261007020000000_add-v2-alert-acknowledgement-evidence 2026-10-07T06:21:16.657Z
+APPLIED 20261008000000000_allow-retained-development-component-policy 2026-10-07T18:42:22.116Z
+APPLIED 20261008010000000_create-institution-accounts 2026-10-07T21:18:07.979Z
+APPLIED 20261008020000000_create-synthetic-onboarding 2026-10-07T21:18:08.069Z
+APPLIED 20261008030000000_allow-institution-component-policy 2026-10-07T21:18:08.083Z
+APPLIED 20261008040000000_add-operational-stock-journal 2026-10-08T17:27:37.251Z
+APPLIED 20261015000000000_create-prc-supply-requests 2026-10-15T03:01:28.127Z
+APPLIED 20261016000000000_create-outbound-verifications 2026-10-16T05:23:57.022Z
+PENDING 20261016010000000_create-public-onboarding.js
+Migration status: 33 applied, 1 pending
+npm error Lifecycle script `migrate:status` failed with error:
+npm error code 1
+npm error path /home/yuri/projects/bloodledger-current/database
+npm error workspace @bloodledger/database@0.0.0
+npm error location /home/yuri/projects/bloodledger-current/database
+npm error command failed
+npm error command sh -c node scripts/migration-status.mjs

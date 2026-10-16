@@ -365,7 +365,7 @@
 
 .alert-heading{flex-wrap:wrap}.alert-meta{flex-wrap:wrap}.alert-copy>p{overflow-wrap:anywhere}
 
-.activity-history-page>.page-head{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:18px}.blood-bank-audit .audit-summary{padding:0;margin:0 0 18px}.blood-bank-audit .audit-filter-controls{display:grid;grid-template-columns:minmax(180px,1fr) minmax(260px,2fr);gap:18px;align-items:end;padding:18px}.audit-filter-controls label{min-width:0;margin:0;gap:8px;color:var(--ink-secondary);font:500 11px var(--font-sans)}.audit-filter-controls input,.audit-filter-controls select{width:100%;min-width:0;min-height:38px;padding:9px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px var(--font-sans)}.audit-filter-controls .requester-select select{appearance:none;padding-right:36px}.audit-filter-controls .requester-select::after{right:12px}
+.activity-history-page>.page-head{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:18px}.blood-bank-audit .audit-summary{padding:0;margin:0 0 18px}.blood-bank-audit .audit-filter-controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.5fr);gap:18px;align-items:end;padding:18px}.audit-filter-controls label{min-width:0;margin:0;gap:8px;color:var(--ink-secondary);font:500 11px var(--font-sans)}.audit-filter-controls input,.audit-filter-controls select{width:100%;min-width:0;min-height:38px;padding:9px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px var(--font-sans)}.audit-filter-controls .requester-select select{appearance:none;padding-right:36px}.audit-filter-controls .requester-select::after{right:12px}
 @media(max-width:620px){.blood-bank-audit .audit-filter-controls{grid-template-columns:minmax(0,1fr);gap:14px;padding:16px}.activity-history-page>.page-head{gap:12px}}
 
 .bank-request-blood-type{color:var(--ink-black)}
@@ -396,7 +396,7 @@
 
 .aggregate-plain-text{color:var(--ink-plain-text)}
 
-.census-report-table{border:1px solid var(--line);border-radius:var(--radius-md)}.census-report-table table{min-width:560px}.census-report-empty{min-height:250px}.census-report-empty p{margin:0;max-width:480px;overflow-wrap:anywhere}.census-report-selector{display:flex;align-items:end;gap:18px;margin-bottom:18px;flex-wrap:wrap}.census-report-selector label{display:grid;gap:7px;font-size:12px}.census-report-selector select{appearance:none;padding:9px 32px 9px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);max-width:100%}.census-report-selector p{margin:0;font-size:11px;color:var(--ink-muted)}
+.census-report-table{border:0;border-radius:0}.census-report-without-data .inventory-page-records{display:none}.census-report-table table{min-width:560px}.census-report-empty{min-height:250px}.census-report-empty p{margin:0;max-width:480px;overflow-wrap:anywhere}.census-report-selector{display:flex;align-items:end;gap:18px;margin-bottom:18px;flex-wrap:wrap}.census-report-selector label{display:grid;gap:7px;font-size:12px}.census-report-selector select{appearance:none;padding:9px 32px 9px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);max-width:100%}.census-report-selector p{margin:0;font-size:11px;color:var(--ink-muted)}
 
 .census-report-table tbody tr:has(.census-report-empty):hover{background:transparent}
 
@@ -502,12 +502,11 @@
 
 .compliance-workspace {display:grid;gap:20px;min-width:0}
 .compliance-checkpoints {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:18px}
-.compliance-checkpoint {display:flex;flex-direction:column;align-items:flex-start;gap:7px;padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);color:var(--ink);text-align:left;cursor:pointer;transition:background 160ms}
-.compliance-checkpoint:hover {background:var(--surface-subtle)}
+.compliance-checkpoint {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);color:var(--ink);text-align:left;transition:background 160ms}
 .compliance-checkpoint.selected {border-color:var(--primary);background:var(--primary-container)}
-.compliance-checkpoint > span {font-size:18px;font-weight:600}
-.compliance-checkpoint > strong {font-size:13px;font-weight:500}
-.compliance-checkpoint > small {font-size:11px;color:var(--ink-muted)}
+.compliance-checkpoint-copy > span {font-size:18px;font-weight:600}
+.compliance-checkpoint-copy > strong {font-size:13px;font-weight:500}
+.compliance-checkpoint-copy > small {font-size:11px;color:var(--ink-muted)}
 .compliance-checkpoint-actions {display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 18px 18px;color:var(--ink-muted);font-size:12px}
 .compliance-record-columns {display:grid;grid-template-columns:minmax(0,1.8fr) minmax(260px,1fr);gap:20px;align-items:start}
 .compliance-record-columns > section {min-width:0}
@@ -522,7 +521,8 @@
 .compliance-detail dt {color:var(--ink-muted)}
 .compliance-detail dd {margin:0;overflow-wrap:anywhere;color:var(--ink)}
 .compliance-detail-actions {display:flex;justify-content:flex-end;gap:8px;padding:0 18px 18px}
-.compliance-stock-table {min-width:650px}
+.compliance-stock-table {width:100%;min-width:650px;table-layout:fixed}
+.compliance-stock-table th,.compliance-stock-table td {width:calc(100% / 7);padding:12px}
 .compliance-stock-table td:not(:first-child),.compliance-stock-table th:not(:first-child) {text-align:center}
 .compliance-stock-note {padding:14px 18px;margin:0;color:var(--ink-muted);font-size:12px}
 .compliance-load-more {display:flex;align-items:center;gap:12px;padding:14px 18px}.compliance-load-more small{font-size:11px;color:var(--ink-muted)}
@@ -1006,10 +1006,10 @@
 .analytics-simple-workspace .analytics-date-actions input { max-width: 155px; }
 .analytics-question-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
 .analytics-simple-workspace .analytics-question-grid > section { min-width: 0; padding: 0; background: var(--surface); }
-.analytics-simple-workspace .analytics-question-grid > section > header { background: var(--surface); border: 0; padding: 20px 20px 0; align-items: start; flex-wrap: wrap; gap: 14px; }
+.analytics-simple-workspace .analytics-question-grid > section > header { background: var(--surface); border: 0; padding: 20px 20px 0; align-items: center; flex-direction: row; flex-wrap: wrap; gap: 14px; }
 .analytics-simple-workspace .analytics-question-grid h2, .analytics-simple-workspace .analytics-question-grid h3 { padding: 0; border: 0; margin: 7px 0 0; background: transparent; font: 500 23px/1.25 var(--font-serif); }
 .analytics-simple-workspace .analytics-eyebrow { font-size: 9px; }
-.analytics-simple-workspace .analytics-question-grid .analytics-card-actions { margin-left: auto; gap: 8px; }
+.analytics-simple-workspace .analytics-question-grid .analytics-card-actions { flex: 0 0 auto; width: auto; margin-left: auto; justify-content: flex-end; gap: 8px; }
 .analytics-simple-workspace .analytics-card-actions .button { min-height: 28px; }
 .analytics-simple-workspace .analytics-question-grid .analytics-section-description { margin: 14px 20px 8px; font-size: 12px; min-height: 40px; }
 .analytics-product-chart { padding: 14px 20px 6px; }
@@ -1043,7 +1043,7 @@
 .analytics-default-details .analytics-forecast-card > header { padding-bottom: 12px; }
 .analytics-page-footnote { margin: 0; color: var(--ink-muted); font-size: 10px; line-height: 1.6; }
 @media (max-width: 1100px) { .analytics-question-grid { grid-template-columns: minmax(0, 1fr); } .analytics-simple-workspace .analytics-review-controls { flex-direction: column; align-items: start; } .analytics-simple-workspace .analytics-date-actions { width: 100%; flex-wrap: wrap; } }
-@media (max-width: 600px) { .analytics-simple-workspace .analytics-question-grid .analytics-card-actions { width: auto; justify-content: start; } .analytics-simple-workspace .analytics-date-actions label { min-width: 120px; } .analytics-simple-workspace .analytics-date-actions input { max-width: none; } .analytics-product-chart li { gap: 10px; } .analytics-product-amount strong { font-size: 18px; } }
+@media (max-width: 600px) { .analytics-simple-workspace .analytics-question-grid .analytics-card-actions { width: auto; justify-content: flex-end; } .analytics-simple-workspace .analytics-date-actions label { min-width: 120px; } .analytics-simple-workspace .analytics-date-actions input { max-width: none; } .analytics-product-chart li { gap: 10px; } .analytics-product-amount strong { font-size: 18px; } }
 .analytics-simple-workspace .analytics-question-grid > section { margin: 0; }
 .analytics-simple-workspace .analytics-date-actions label { margin: 0; }
 .analytics-simple-workspace .analytics-date-actions select, .analytics-simple-workspace .analytics-date-actions input { min-height: 38px; width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); font: 400 12px var(--font-sans); }
@@ -1076,3 +1076,61 @@
 .bank-request-approval .dashboard-redistribution-body > small { color: var(--ink-muted); font-size: 11px; line-height: 1.6; }
 
 .status.neutral { color: var(--ink-muted); background: var(--surface-subtle); }
+
+.compliance-checkpoint-copy {display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0}
+.compliance-checkpoint > .button {margin-left:auto;flex-shrink:0}
+.compliance-copy-status {flex-basis:100%;margin:0;font-size:12px;color:var(--ink-muted)}
+
+.compliance-copy-icon {display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0}
+.compliance-checkpoint > .unavailable-action {margin-left:auto}
+.compliance-demo-label {font-size:10px;color:var(--ink-muted)}
+.compliance-copy-feedback {padding:0 18px 16px}
+.compliance-date-filter {grid-template-columns:minmax(140px,220px)}
+.bank-stock-record-table {min-width:0;table-layout:fixed;width:100%}
+.bank-stock-record-table th:first-child {width:75%}
+.bank-stock-record-table td:last-child,.bank-stock-record-table th:last-child {text-align:right}
+.bank-stock-record-table td > small {display:block;margin-top:4px}
+
+.compliance-record-columns.bank-stock-record-columns {grid-template-columns:minmax(260px,1fr) minmax(0,1.8fr)}
+.compliance-detail-stock-table {min-width:480px}
+.compliance-detail-stock-table th,.compliance-detail-stock-table td {width:calc(100% / 7);padding:12px 10px;font-size:12px;line-height:1.5;vertical-align:middle}
+.bank-stock-record-table tbody tr {cursor:pointer}
+@media(max-width:1000px){.compliance-record-columns.bank-stock-record-columns{grid-template-columns:1fr}}
+
+.bank-stock-record-table td:first-child,.bank-stock-record-table .bank-review-link {font-size:14px;line-height:1.5}
+
+.bank-stock-record-table .bank-review-link,.bank-stock-record-table .bank-review-link:hover,.bank-stock-record-table .bank-review-link:focus {text-decoration:none}
+
+.application-footer-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.application-footer{gap:12px;align-items:center}.application-fill-notice{font-size:11px;color:var(--ink-secondary);line-height:1.6;overflow-wrap:anywhere}.application-document-name{max-width:100%;overflow-wrap:anywhere}.document-preview-grid>div{min-width:0}
+
+/* Apply for Access: consistent controls, related-field rows and document cards. */
+.access-application-workspace .application-section-heading{padding:18px 20px;background:var(--surface-subtle)}
+.access-application-workspace .application-section header.application-section-heading h3{font-size:14px;font-weight:600;line-height:1.4}
+.access-application-workspace .application-fields{padding:20px;gap:18px 20px;align-items:start}
+.access-application-workspace .application-fields>label{display:grid;align-content:start;gap:8px;min-width:0;font-size:11px;font-weight:600;line-height:1.5;color:var(--ink-secondary)}
+.access-application-workspace .application-fields input,.access-application-workspace .application-fields select,.access-application-workspace .application-fields textarea{min-width:0;width:100%;min-height:42px;padding:10px 12px;color:var(--ink);font:400 12px/1.5 var(--font-sans);border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface)}
+.access-application-workspace .application-fields .requester-select select{padding-right:34px}
+.access-application-workspace .application-fields textarea{resize:vertical;min-height:94px}
+.access-application-workspace .application-fields input:focus,.access-application-workspace .application-fields select:focus,.access-application-workspace .application-fields textarea:focus{border-color:var(--primary)}
+.access-application-workspace .application-fields-single{grid-template-columns:minmax(0,1fr)}
+.access-application-workspace .qualification-checklist{margin:0 20px 20px;padding:0;gap:0;overflow:hidden;border:1px solid var(--line-subtle);background:var(--surface)}
+.access-application-workspace .qualification-checklist>strong{padding:13px 16px;background:var(--surface-subtle);font-size:12px;font-weight:600;color:var(--ink-secondary)}
+.access-application-workspace .qualification-checklist label{padding:14px 16px;gap:12px;border-top:1px solid var(--line-subtle);font-size:12px;font-weight:400;line-height:1.6;cursor:pointer}
+.access-application-workspace .qualification-checklist input,.access-application-workspace .declaration-preview input{flex:0 0 16px;width:16px;height:16px;margin:3px 0 0;accent-color:var(--primary);cursor:pointer}
+.access-application-workspace .declaration-preview{margin:0 20px 20px;padding:14px 16px;gap:12px;border:1px solid var(--line-subtle);border-radius:var(--radius-sm);background:var(--surface-subtle);font-size:12px;font-weight:400;line-height:1.6;cursor:pointer}
+.access-application-workspace .document-preview-grid{padding:20px;gap:14px;align-items:stretch}
+.access-application-workspace .document-preview-grid>.application-document-card{display:flex;flex-direction:column;align-items:stretch;gap:14px;padding:16px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);text-align:left}
+.application-document-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.application-document-icon{width:36px;height:36px;display:grid;place-items:center;color:var(--primary);background:var(--primary-container);border-radius:var(--radius-sm)}
+.application-document-requirement{font-size:10px;color:var(--ink-muted);font-weight:500}
+.access-application-workspace .document-preview-grid strong{font-size:12px;font-weight:600;line-height:1.5;color:var(--ink-secondary)}
+.application-document-file{margin-top:auto;padding:10px;border-radius:var(--radius-sm);background:var(--surface-subtle);min-height:52px;display:flex;align-items:center}
+.access-application-workspace .application-document-file small{font-size:10px;line-height:1.6}
+.application-document-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.access-application-workspace .application-document-actions .button{padding:7px 10px;color:var(--ink-secondary);background:var(--surface);font-size:11px;cursor:pointer}
+.access-application-workspace .application-document-actions .application-document-remove{padding:4px 0;border:0;border-radius:0;background:transparent;color:var(--primary);font-size:11px;cursor:pointer}
+.access-application-workspace .application-footer{margin-top:20px;padding-top:18px;border-top:1px solid var(--line-subtle)}
+.access-application-workspace .application-fill-notice{margin:16px 0 0;font-size:11px;line-height:1.6}
+@media(max-width:650px){.access-application-workspace .application-fields,.access-application-workspace .document-preview-grid{padding:16px;gap:16px}.access-application-workspace .application-section-heading{padding:16px}.access-application-workspace .qualification-checklist,.access-application-workspace .declaration-preview{margin-left:16px;margin-right:16px}.access-application-workspace .application-footer{flex-wrap:wrap;justify-content:space-between}}
+.application-editable-fields{border:0;padding:0;margin:0;min-width:0}.application-fields [aria-invalid="true"]{border-color:var(--critical)}.application-editable-fields:disabled{opacity:.75}
+.application-read-details{padding:16px;min-width:0}.application-read-details .institution-field-grid{padding:16px;overflow-wrap:anywhere}.application-document-links{display:grid;gap:10px;padding:16px;font-size:12px;overflow-wrap:anywhere}.application-review-actions{display:flex;gap:8px;padding:16px;flex-wrap:wrap}

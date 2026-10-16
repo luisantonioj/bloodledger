@@ -1,0 +1,45 @@
+{
+  "classification": "SIMULATION_ONLY",
+  "mode": "READ_ONLY",
+  "host": "Lat",
+  "date": "2026-10-15",
+  "summary": {
+    "scope": "INSTITUTION",
+    "asOf": "2026-10-15T15:40:55.261Z",
+    "inventory": {
+      "available": 439,
+      "reserved": 1,
+      "labelExpiredPendingEvaluation": 86,
+      "lastProjectedAt": "2026-10-12T04:25:16.000Z"
+    },
+    "requests": {
+      "incomingAwaitingDecision": 6,
+      "outgoingAwaitingDecision": 0
+    },
+    "expiringSoon": {
+      "availability": "POLICY_BLOCKED",
+      "count": null,
+      "blocker": "RQ-03"
+    },
+    "policyVersion": "BLOOD_BANK_SUMMARY_V1",
+    "classification": "SIMULATION_ONLY"
+  },
+  "networkRows": 17,
+  "selectedNetworkAvailable": 16,
+  "demoCriticalOrLowSeries": 28,
+  "incomingRequestCount": 21,
+  "requestedUnits": 26,
+  "requestDecisionStates": {
+    "AWAITING_DECISION": 6,
+    "RESERVATION_RECORDED": 15
+  },
+  "forecastState": "CURRENT",
+  "forecastRows": 20,
+  "defaultV4State": "UNAVAILABLE",
+  "surplusState": "CURRENT",
+  "surplusRows": 20,
+  "surplusFormulaAndForecastIdentity": "20/20 matched using persisted fractional forecasts",
+  "mobileOverflow": false,
+  "liveDomainPosts": 0,
+  "screenshots": "build/lat-pr67-evidence/{dashboard,analytics,requests}.png"
+}

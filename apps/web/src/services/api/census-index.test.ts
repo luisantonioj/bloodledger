@@ -9,3 +9,12 @@ describe("FR-11/12 issue36 census discovery",()=>{
  it.each([{scope:"REGULATORY_AGGREGATE"},{snapshots:[{...snapshot,institutionId:"INST_OTHER"}]},{snapshots:[snapshot,snapshot]},{displayBloodTypeOrder:[...CENSUS_ORDER].reverse()},{nextCursor:"../outside"},{snapshots:[{...snapshot,capturedAt:"invalid"}]},{exportAvailable:true}])("rejects scope, identity, order and contract changes %j", patch=>expect(()=>parseCensusIndex({...index,...patch},principal)).toThrow());
  it("allows regulatory aggregate discovery without claiming custodian access",()=>expect(parseCensusIndex({...index,scope:"REGULATORY_AGGREGATE"},{...principal,roleId:"ROLE-04"}).scope).toBe("REGULATORY_AGGREGATE"));
 });
+
+import {afterEach,vi} from "vitest";
+import {readCompleteCensusIndex} from "./census-index";
+afterEach(()=>vi.unstubAllGlobals());
+describe("complete census discovery",()=>{
+ it("reads every cursor page so today's count is not a capped-list count",async()=>{const fetch=vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({...index,nextCursor:"CENSUS_SYNTH_A"}))).mockResolvedValueOnce(new Response(JSON.stringify({...index,snapshots:[{...snapshot,snapshotId:"CENSUS_SYNTH_B"}]})));vi.stubGlobal("fetch",fetch);const result=await readCompleteCensusIndex(principal,new AbortController().signal);expect(result.snapshots).toHaveLength(2);expect(result.nextCursor).toBeNull();expect(fetch.mock.calls[1][0]).toContain("cursor=CENSUS_SYNTH_A");});
+ it("rejects repeated pages rather than looping or counting twice",async()=>{vi.stubGlobal("fetch",vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({...index,nextCursor:"CENSUS_SYNTH_A"}))).mockResolvedValueOnce(new Response(JSON.stringify({...index,nextCursor:"CENSUS_SYNTH_A"}))));await expect(readCompleteCensusIndex(principal,new AbortController().signal)).rejects.toThrow("repeated");});
+ it("does not return a partial count when a later page is denied",async()=>{vi.stubGlobal("window",{dispatchEvent:vi.fn()});vi.stubGlobal("fetch",vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({...index,nextCursor:"CENSUS_SYNTH_A"}))).mockResolvedValueOnce(new Response(JSON.stringify({error:{code:"AUTH_SCOPE_FORBIDDEN"}}),{status:403})));await expect(readCompleteCensusIndex(principal,new AbortController().signal)).rejects.toThrow();});
+});

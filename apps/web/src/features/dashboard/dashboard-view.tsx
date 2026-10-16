@@ -1,3 +1,4 @@
+import { BankDashboardSummary } from "./bank-dashboard-summary";
 import { DashboardReadState } from "./dashboard-read-state";
 import { DohDashboardPlaceholder } from "./doh-dashboard-placeholder";
 import { PrcDashboardPlaceholder } from "./prc-dashboard-placeholder";
@@ -12,11 +13,11 @@ export function DashboardView({data,principal,refreshError,onRetry,requests,load
   if(data.composition==="ADMINISTRATIVE")return <div className="empty dashboard-empty"><img className="bloodledger-logo empty-logo" src="/bloodledger-logo-updated.png" alt=""/><strong>Non-clinical workspace</strong>This account has no inventory, custody, transfer, or regulatory dashboard authority.</div>;
   const hasProjection = data.lastSuccessfulProjectionAt !== null;
   return <>
-    <div className="stats dashboard-stats">
+    {principal.accountCategory==="BLOOD_BANK"?<BankDashboardSummary principal={principal}/>:<div className="stats dashboard-stats">
       {dashboardSummary(data, principal).map(card => <article key={card.label}>
         <span>{card.label}</span><strong aria-label={card.value === null ? "Unavailable" : undefined}>{card.value ?? "—"}</strong>
       </article>)}
-    </div>
+    </div>}
     {refreshError&&<DashboardReadState error={refreshError} retained={hasProjection} onRetry={onRetry}/>}
     {principal.accountCategory === "DOH" && <DohDashboardPlaceholder principal={principal}/>}
     {principal.accountCategory === "PRC" && <PrcDashboardPlaceholder data={data} loading={loading}/>}

@@ -10,6 +10,7 @@ const iconPaths: Record<string, string> = {
   "/transactions": "M3 7h4l2-3h6l2 3h4v13H3Z M16 13a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z",
   "/receipts": "M3 7h4l2-3h6l2 3h4v13H3Z M16 13a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z",
   "/transfers": "M7 7h13l-3-3m0 13H4l3 3",
+  "/prc-supply": "M9 4H5v17h14V4h-4M9 3h6v4H9V3Zm3 7v6m-3-3h6",
   "/alerts": "m12 3 9 16H3l9-16Zm0 6v4m0 3v.5",
   "/consortium": "M9 15l6-6m-3-3 1-1a4 4 0 1 1 5.6 5.6L17 12M7 12l-1.6 1.6A4 4 0 0 0 11 19.2L12 18",
   "/audit": "M5 4h11l3 3v13H5V4Zm3 4h5m-5 4h8m-8 4h6",
