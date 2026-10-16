@@ -13,9 +13,9 @@ identity_root="$(cd "$identity_root" && pwd -P)"
 for container in bloodledger-persistent-api bloodledger-persistent-web; do
   if docker inspect "$container" >/dev/null 2>&1; then echo 'LOCAL_CONTAINER_ALREADY_EXISTS: use docker start or restart for retained setup' >&2; exit 2; fi
 done
-docker run --rm -v "$repository_root:/workspace" -w /workspace node:24.17.0 npm run build --workspace @bloodledger/api >/dev/null
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$repository_root:/workspace" -w /workspace node:24.17.0 npm run build --workspace @bloodledger/api >/dev/null
 # The API serves the built capture PWA at /capture/; the web dev server proxies it on the same origin.
-docker run --rm -v "$repository_root:/workspace" -w /workspace node:24.17.0 npm run build --workspace @bloodledger/capture-pwa >/dev/null
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$repository_root:/workspace" -w /workspace node:24.17.0 npm run build --workspace @bloodledger/capture-pwa >/dev/null
 docker run -d --name bloodledger-persistent-api --network bloodledger_default \
   -p 127.0.0.1:3000:3000 -p 127.0.0.1:5174:5174 --env-file "$environment" -e CAPTURE_PWA_DIST=/workspace/apps/capture-pwa/dist \
   -v "$repository_root:/workspace" -v "$identity_root:/workspace/network/generated:ro" \

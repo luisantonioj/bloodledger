@@ -1991,7 +1991,7 @@
     "/onboarding/applications/{id}/activate": {
       "post": {
         "operationId": "postOnboardingApplicationsIdActivate",
-        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority. For PUBLIC_APPLICATION_V1 applications loginEmail must equal detail.primaryAccount.requestedLoginEmail (ONB_LOGIN_EMAIL_MISMATCH); activation retains the facility profile in app.institution_profiles and marks the sample REGISTERED. Username collisions return ACCOUNT_IDENTITY_CONFLICT.",
+        "description": "SIMULATION_ONLY. Institution onboarding does not assign custody or clinical authority. For PUBLIC_APPLICATION_V1 applications loginEmail must equal detail.primaryAccount.requestedLoginEmail (ONB_LOGIN_EMAIL_MISMATCH); activation retains the facility profile in app.institution_profiles and marks the sample REGISTERED. Username collisions return ACCOUNT_IDENTITY_CONFLICT. Approval closes the application (ADR-039): if its detail was purged 30 days after approval, activation returns 409 ONB_APPLICATION_DETAIL_PURGED and the facility must apply again. The retained facilityProfile excludes qualification.capabilityDeclarations.",
         "responses": {
           "200": {
             "description": "Simulation-only result. See handoff for safe result fields.",
@@ -8735,7 +8735,7 @@
           "REGISTERED",
           "INSTANCES_EXHAUSTED"
         ],
-        "description": "APPLICATION_IN_PROGRESS: SUBMITTED, UNDER_REVIEW or APPROVED but not activated. REGISTERED: activated institution not deregistered. Released by rejection, withdrawal or deregistration only."
+        "description": "APPLICATION_IN_PROGRESS: SUBMITTED, UNDER_REVIEW or APPROVED but not activated. REGISTERED: activated institution not deregistered. Released only by rejection, withdrawal, deregistration, or the retention purge of an approval that was never activated (APPROVAL_LAPSED)."
       },
       "SampleCatalog": {
         "type": "object",

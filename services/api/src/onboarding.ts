@@ -24,6 +24,8 @@ function reason(body: Row): string {
   if (body.reasonCode === "OTHER") safe(body.safeExplanation,96);
   return body.reasonCode as string;
 }
+/** Capability declarations are application-time attestations; they stay with the purgeable application detail. */
+function durableQualification(qualification:Row):Row{const {capabilityDeclarations:_declarations,...facts}=qualification;return facts;}
 export class PostgresOnboarding {
   constructor(readonly pool: Pool) {}
   private reviewer(principal: WebPrincipal): void {
@@ -138,6 +140,8 @@ export class PostgresOnboarding {
       if(action==="approve"&&!app.verification)fail("ONB_TRANSITION_INVALID");
       if(action==="reject")await releaseSampleClaim(client,{applicationId:id},"REJECTED",now);
       if(action==="activate"){
+        // ADR-039: approval starts the 30-day purge; activating after it needs a new application.
+        if(!app.institution_id&&!detail)fail("ONB_APPLICATION_DETAIL_PURGED");
         if(typeof body.operatorPin!=="string"||! /^[0-9]{8}$/.test(body.operatorPin)||app.institution_id||!detail||typeof body.loginEmail!=="string"||!/^(bloodbank|facility)@[a-z0-9.-]+[.]bloodledger$/.test(body.loginEmail)||typeof body.password!=="string"||body.password.length<12||body.password.length>128)fail("ONB_APPLICATION_INVALID",400);
         // PUBLIC_APPLICATION_V1: the provisioned login must be the identifier the applicant requested.
         const publicDetail=app.schema_version==="PUBLIC_APPLICATION_V1";
@@ -154,7 +158,7 @@ export class PostgresOnboarding {
         if(publicDetail){
           // Facility data outlives the 30-day applicant-detail purge; applicant and declaration fields do not.
           const approvedAt=(await client.query<Row>("SELECT closed_at FROM app.onboarding_applications WHERE application_id=$1",[id])).rows[0]!.closed_at;
-          await client.query("INSERT INTO app.institution_profiles(institution_id,application_id,schema_version,profile,submitted_at,approved_at,activated_at) VALUES($1,$2,'PUBLIC_APPLICATION_V1',$3,$4,$5,$6)",[inst,id,{facility:detail!.facility,qualification:detail!.qualification,documents:detail!.documents,loginEmail:body.loginEmail,sample:detail!.sample??null},app.created_at,approvedAt,now]);
+          await client.query("INSERT INTO app.institution_profiles(institution_id,application_id,schema_version,profile,submitted_at,approved_at,activated_at) VALUES($1,$2,'PUBLIC_APPLICATION_V1',$3,$4,$5,$6)",[inst,id,{facility:detail!.facility,qualification:durableQualification(detail!.qualification as Row),documents:detail!.documents,loginEmail:body.loginEmail,sample:detail!.sample??null},app.created_at,approvedAt,now]);
         }
       }
       const closed=["approve","reject"].includes(action);
