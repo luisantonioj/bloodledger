@@ -1,7 +1,7 @@
 {
   "classification": "SIMULATION_ONLY",
-  "apiTargetCommit": "d83509bf333d073061c3cb125ac4914798ee8ab0",
-  "frontendBuildCommit": "35d86f32418f8150588a9eee40b9f983670cf10b",
+  "apiTargetCommit": "1124d6a5e7f2f228f7bd713605017238c2f9f163",
+  "frontendBuildCommit": "55f997b85b32f99fec55b1220f565743b72ac309",
   "backupSha256": "2a47f8b66f93c7c189f7ff9bec123759c6e1aaac0ed95ca94312c886e725e263",
   "counts": {
     "before": {
@@ -30,6 +30,24 @@
       "v2_components": 532,
       "v2_reservations": 27,
       "v2_commands": 595
+    },
+    "after-step6": {
+      "institutions": 9,
+      "application_users": 22,
+      "onboarding_applications": 0,
+      "account_audit": 6,
+      "v2_components": 532,
+      "v2_reservations": 27,
+      "v2_commands": 595
+    },
+    "after-browser-stop": {
+      "institutions": 9,
+      "application_users": 22,
+      "onboarding_applications": 0,
+      "account_audit": 6,
+      "v2_components": 532,
+      "v2_reservations": 27,
+      "v2_commands": 595
     }
   },
   "newTables": {
@@ -47,17 +65,17 @@
     "backup": "PASS",
     "outboundMigration": "PASS",
     "publicMigration": "PASS",
-    "apiBuild": "FAILED_EACCES",
-    "apiReadiness": "NOT_RUN",
-    "enabledWebDeployment": "NOT_RUN",
-    "liveBrowserReadiness": "NOT_RUN"
+    "apiBuild": "PASS",
+    "apiReadiness": "PASS",
+    "enabledWebDeployment": "PASS",
+    "liveBrowserReadiness": "INCOMPLETE_BROWSER_HARNESS_SELECTOR_ERROR"
   },
   "servicesAtStop": {
     "api": "STOPPED",
     "web": "STOPPED",
     "workers": "STOPPED"
   },
-  "publicFlagEnabled": false,
+  "publicFlagEnabled": true,
   "livePublicSubmissions": 0,
   "liveActivations": 0,
   "liveDeregistrations": 0,
@@ -77,23 +95,99 @@
     },
     "generatedDirectoriesIgnored": true,
     "foreignOwnedBefore": 18,
-    "authorizedCommand": "sudo chown -R \"$(id -u):$(id -g)\" services/api/build services/coordination/build chaincode/build",
-    "commandExitCode": 1,
-    "failure": "sudo requires an interactive password; command did not execute chown",
-    "foreignOwnedAfter": "NOT_RUN: sudo gate failed",
-    "apiBuild": "NOT_RUN: stopped at first failed gate",
-    "step6": "NOT_RUN",
-    "step7": "NOT_RUN",
-    "publicFlagEnabled": false,
+    "authorizedCommand": "docker run --rm -v \"$PWD/services/api/build:/fix/api\" -v \"$PWD/services/coordination/build:/fix/coordination\" -v \"$PWD/chaincode/build:/fix/chaincode\" node:24.17.0 chown -R \"$(id -u):$(id -g)\" /fix/api /fix/coordination /fix/chaincode",
+    "commandExitCode": 0,
+    "failure": "Browser harness strict-mode selector error; stopped API/web at first failure. No alternate check executed.",
+    "foreignOwnedAfter": 0,
+    "apiBuild": "PASS: normal user, Node 24.17.0",
+    "step6": "PASS",
+    "step7": "INCOMPLETE: browser harness selector matched both wizard and existing-application password fields",
+    "publicFlagEnabled": true,
     "services": {
       "api": "STOPPED",
-      "web": "STOPPED"
+      "web": "STOPPED",
+      "uatWorker": "STOPPED",
+      "generalSyncWorker": "STOPPED"
     },
     "sourceRebased": true,
-    "secretScan": "PASS: history, index, candidate content; two path-scoped exact secret-regex allowlists",
+    "secretScan": "PASS: 482 commits, index and candidate content; no leaks; pinned Gitleaks 8.30.1",
     "liveSubmission": false,
     "liveActivation": false,
     "liveDeregistration": false,
-    "noMigrationRerunRollbackRestore": true
-  }
+    "noMigrationRerunRollbackRestore": true,
+    "priorSudoAttempt": {
+      "authorizedCommand": "sudo chown -R \"$(id -u):$(id -g)\" services/api/build services/coordination/build chaincode/build",
+      "commandExitCode": 1,
+      "failure": "sudo requires an interactive password; command did not execute chown"
+    },
+    "optionUsed": "B",
+    "apiReadiness": {
+      "apiSource": "1124d6a5e7f2f228f7bd713605017238c2f9f163",
+      "health": {
+        "status": "READY",
+        "api": "READY",
+        "database": "READY",
+        "workerFabric": "DISABLED",
+        "forecastReadiness": "UNAVAILABLE",
+        "v2CommandQueue": "CONFIGURED",
+        "v2EncryptionKeys": "CONFIGURED",
+        "v2ProjectionReconciliation": "CONFIGURED",
+        "censusWorkerFreshness": "CONFIGURED",
+        "classification": "SIMULATION_ONLY"
+      },
+      "catalog": {
+        "status": 200,
+        "count": 10,
+        "eligibleCount": 10
+      },
+      "selections": {
+        "BLOOD_BANK": {
+          "status": "SELECTED",
+          "sampleId": "SAMPLE_BANK_01",
+          "instance": 1
+        },
+        "REQUESTOR": {
+          "status": "SELECTED",
+          "sampleId": "SAMPLE_REQUESTOR_05",
+          "instance": 1
+        }
+      },
+      "prcApplications": {
+        "status": 200,
+        "count": 0
+      },
+      "domainWrites": 0
+    },
+    "afterCounts": {
+      "institutions": 9,
+      "application_users": 22,
+      "onboarding_applications": 0,
+      "account_audit": 6,
+      "v2_components": 532,
+      "v2_reservations": 27,
+      "v2_commands": 595
+    },
+    "browser": {
+      "status": "INCOMPLETE",
+      "bloodBankFacilityStep": "PASS",
+      "bloodBankQualificationFields": "PASS",
+      "declarationsInitiallyUnchecked": true,
+      "bloodBankPrimaryAccountFields": "PASS",
+      "passwordConfirmationCheck": "NOT_COMPLETED: ambiguous locator",
+      "documentsStep": "NOT_RUN",
+      "requestorFlow": "NOT_RUN",
+      "submitClicked": false,
+      "unexpectedWriteProtection": "Non-read API requests intercepted and blocked by the browser harness",
+      "selectorCorrection": "Scoped password selectors to .application-form in private harness; not rerun under the stop instruction"
+    },
+    "webDeployment": {
+      "build": "PASS",
+      "sourceReference": "55f997b85b32f99fec55b1220f565743b72ac309",
+      "flagConfigured": true,
+      "servingAfterFailure": false,
+      "previousStoppedContainerPreserved": "bloodledger-persistent-web-before-public-rollout-20261016"
+    },
+    "updatedAt": "2026-10-16T14:18:02.629359+00:00"
+  },
+  "publicFlagServing": false
 }

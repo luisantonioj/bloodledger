@@ -66,7 +66,7 @@ Jopia's backend handoff reports 196 API tests and 310 disposable integration ass
 Return the [rollout and consistency follow-up](../../handoffs/LAT-TO-JOPIA-PUBLIC-APPLICATIONS-WIRING-AND-ROLLOUT-2026-10-16.md). Obtain scoped retained-host rollout authorization only after confirming the backend merge and resolving the two-migration plan. Do not infer authority for live registration/deletion from this successful fixture run.
 
 
-## Authorized PR #68 retained-host rollout — stopped at API build gate
+## Authorized PR #68 retained-host rollout — historical API build stop
 
 The user relayed Jopia's D1–D5 authorization on 2026-10-16. PR #68 is merged at
 **`d83509bf333d073061c3cb125ac4914798ee8ab0`**, including fix `fcacc2b`.
@@ -155,5 +155,61 @@ saved rebased work. No force-push is used. Delivery uses
 `codex/lat-public-application-integration-20261016`, preserving the saved work
 and icon commit. Draft PR: [#69 — public application wiring and staged rollout](https://github.com/luisantonioj/bloodledger/pull/69). The user directly confirmed publication after the initial automatic-review rejection.
 
-The PR remains draft while the retained-host API build gate is unresolved.
-Opening it does not restart services or authorize recovery.
+The PR remains draft. The later recovery below resolves the API build gate;
+the live browser gate is incomplete.
+
+
+## Authorized ownership recovery and step 6 — 2026-10-16
+
+Current outcome: **ownership repair, API build and step 6 PASS; step 7 incomplete**.
+API, web and the guarded UAT worker are stopped at the first failed browser
+check. PR #69 remains draft. This supersedes the earlier build blocker.
+
+- API built at exact `1124d6a5e7f2f228f7bd713605017238c2f9f163`.
+  `git diff --quiet d83509b 1124d6a -- services apps database chaincode/src contracts`
+  passed. The application source matches the previously accepted target.
+- All three generated directories were confirmed Git-ignored. Option B ran
+  successfully once, mounting only those directories. Foreign-owned entries
+  changed **18 → 0**. The exact command was:
+
+```bash
+docker run --rm -v "$PWD/services/api/build:/fix/api" -v "$PWD/services/coordination/build:/fix/coordination" -v "$PWD/chaincode/build:/fix/chaincode" node:24.17.0 chown -R "$(id -u):$(id -g)" /fix/api /fix/coordination /fix/chaincode
+```
+
+- The previously validated private backup is unchanged. No migration was
+  rerun, rolled back or restored: status remains **34 applied / 0 pending**.
+- `npm run build --workspace @bloodledger/api` passed as the normal host user
+  with Node 24.17.0. The existing retained API configuration was used.
+- Step 6 passed against the real API: health READY; sample catalog 200 with
+  ten ELIGIBLE samples; both categories SELECTED; authenticated PRC application
+  list 200 with zero applications. All seven protected counts matched the
+  accepted baseline, both after step 6 and after the browser stop.
+- The guarded UAT worker was restored only after V1/V2 queues and the writer
+  lock were all zero. The general sync-worker stayed stopped. The UAT worker
+  was stopped gracefully with API/web after the browser check failed.
+- Web built from saved frontend `55f997b` with the public-applications flag on.
+  The replacement web container ran as the host UID/GID; the previous stopped
+  web container was preserved. API artifacts remained the successful target build.
+- The live browser used real API reads and blocked non-read API requests.
+  Blood-bank Facility and Qualification fields were populated; all three
+  capability checkboxes were initially unchecked. Manual local selections
+  allowed navigation to Primary account, whose fields were populated.
+- The harness then failed because its exact Applicant password locator matched
+  the wizard field and the separate existing-application status field. It did
+  not complete password comparison, Documents, refill-clearing or the Requestor
+  flow. This is **incomplete live browser evidence**, not a step 7 pass.
+- The private harness selector is now scoped to `.application-form`; it was
+  **not rerun**. Following Jopia’s stop instruction, API/web remain stopped.
+  The flag is configured in the stopped web container; no web is serving it.
+
+**No live application, activation or deregistration was performed.** No reset,
+population, account creation, census/forecast rerun or Fabric change occurred.
+Protected counts remain 9 institutions, 22 application users, 0 applications,
+6 account-audit rows, 532 components, 27 reservations and 595 commands. The
+three new tables remain empty. See [machine-readable evidence](RETAINED-ROLLOUT.json).
+
+Continuation needed: authorize resuming step 7 using the corrected private
+selector; do not repeat ownership repair or migrations. Mark #69 ready only
+after both complete browser flows pass. No new handoff document or PR was created.
+
+Recovery evidence checks: `git diff --check` PASS; full `bash scripts/scan-secrets.sh` PASS (482 commits, index and candidate content, no leaks; pinned Gitleaks 8.30.1). No application source changed in this continuation.

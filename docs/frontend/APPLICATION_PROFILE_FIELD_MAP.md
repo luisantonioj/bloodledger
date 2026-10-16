@@ -67,11 +67,12 @@ Passwords/confirmation are generated locally, and all declarations stay manual.
 
 See [Lat validation](../validation/lat-public-applications-2026-10-16/README.md)
 and [rollout/consistency follow-up](../handoffs/LAT-TO-JOPIA-PUBLIC-APPLICATIONS-WIRING-AND-ROLLOUT-2026-10-16.md).
-These contracts are not yet live on Lat's retained host. Extended profile reads
+The real retained API passed contract readiness at recovery target 1124d6a;
+API/web are currently stopped after an incomplete browser gate. Extended profile reads
 use facilityProfile only when returned; policy-defined/null/purged profiles,
 approver identity, last sign-in and security self-service remain unavailable.
-Public submission stays disabled until backend merge and authorized migration/
-deployment are verified. Synthetic fixtures do not implement arbitrary uploads.
+The web readiness flag was configured after step 6 passed; full browser
+validation remains incomplete and the web container is stopped. Synthetic fixtures do not implement arbitrary uploads.
 
 
 ## PR #68 integration and staged rollout — 2026-10-16
@@ -83,7 +84,8 @@ are excluded from the durable facility profile. Lat maps the error and retains
 declarations only in scoped application detail.
 
 Both authorized retained-host migrations applied in order with unchanged
-protected counts (34 applied / 0 pending). API deployment stopped at the first
-failed gate: TS5033/EACCES writing root-owned generated API build files.
-No services were restored, no public flag was enabled, and no live application,
-activation or deregistration occurred. See the [rollout evidence](../validation/lat-public-applications-2026-10-16/README.md).
+protected counts (34 applied / 0 pending). Authorized Option B repaired ownership
+(18 to 0), and the API built at 1124d6a and passed read-only step 6. The enabled
+web built from saved frontend 55f997b. The browser harness stopped on an ambiguous
+password selector before step 7 completed; API/web and UAT worker are stopped.
+No live application, activation or deregistration occurred. See the [rollout evidence](../validation/lat-public-applications-2026-10-16/README.md).
