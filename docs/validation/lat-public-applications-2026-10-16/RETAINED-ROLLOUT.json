@@ -48,6 +48,15 @@
       "v2_components": 532,
       "v2_reservations": 27,
       "v2_commands": 595
+    },
+    "after-step7": {
+      "institutions": 9,
+      "application_users": 22,
+      "onboarding_applications": 0,
+      "account_audit": 6,
+      "v2_components": 532,
+      "v2_reservations": 27,
+      "v2_commands": 595
     }
   },
   "newTables": {
@@ -68,7 +77,7 @@
     "apiBuild": "PASS",
     "apiReadiness": "PASS",
     "enabledWebDeployment": "PASS",
-    "liveBrowserReadiness": "INCOMPLETE_BROWSER_HARNESS_SELECTOR_ERROR"
+    "liveBrowserReadiness": "PASS"
   },
   "servicesAtStop": {
     "api": "STOPPED",
@@ -82,8 +91,9 @@
   "delivery": {
     "branch": "codex/lat-public-application-integration-20261016",
     "prUrl": "https://github.com/luisantonioj/bloodledger/pull/69",
-    "draft": true,
-    "sourceAndEvidencePushed": true
+    "draft": false,
+    "sourceAndEvidencePushed": true,
+    "readyForReview": true
   },
   "recovery": {
     "previousApiTarget": "d83509bf333d073061c3cb125ac4914798ee8ab0",
@@ -97,20 +107,20 @@
     "foreignOwnedBefore": 18,
     "authorizedCommand": "docker run --rm -v \"$PWD/services/api/build:/fix/api\" -v \"$PWD/services/coordination/build:/fix/coordination\" -v \"$PWD/chaincode/build:/fix/chaincode\" node:24.17.0 chown -R \"$(id -u):$(id -g)\" /fix/api /fix/coordination /fix/chaincode",
     "commandExitCode": 0,
-    "failure": "Browser harness strict-mode selector error; stopped API/web at first failure. No alternate check executed.",
+    "failure": null,
     "foreignOwnedAfter": 0,
     "apiBuild": "PASS: normal user, Node 24.17.0",
     "step6": "PASS",
-    "step7": "INCOMPLETE: browser harness selector matched both wizard and existing-application password fields",
+    "step7": "PASS",
     "publicFlagEnabled": true,
     "services": {
-      "api": "STOPPED",
-      "web": "STOPPED",
-      "uatWorker": "STOPPED",
+      "api": "RUNNING",
+      "web": "RUNNING",
+      "uatWorker": "RUNNING",
       "generalSyncWorker": "STOPPED"
     },
     "sourceRebased": true,
-    "secretScan": "PASS: 482 commits, index and candidate content; no leaks; pinned Gitleaks 8.30.1",
+    "secretScan": "PASS: 483 commits, index and candidate content; no leaks; pinned Gitleaks 8.30.1",
     "liveSubmission": false,
     "liveActivation": false,
     "liveDeregistration": false,
@@ -168,26 +178,75 @@
       "v2_commands": 595
     },
     "browser": {
-      "status": "INCOMPLETE",
-      "bloodBankFacilityStep": "PASS",
-      "bloodBankQualificationFields": "PASS",
-      "declarationsInitiallyUnchecked": true,
-      "bloodBankPrimaryAccountFields": "PASS",
-      "passwordConfirmationCheck": "NOT_COMPLETED: ambiguous locator",
-      "documentsStep": "NOT_RUN",
-      "requestorFlow": "NOT_RUN",
-      "submitClicked": false,
-      "unexpectedWriteProtection": "Non-read API requests intercepted and blocked by the browser harness",
-      "selectorCorrection": "Scoped password selectors to .application-form in private harness; not rerun under the stop instruction"
+      "url": "http://127.0.0.1:5174/",
+      "realApiReads": true,
+      "fixtureRoutes": false,
+      "flows": [
+        {
+          "category": "BLOOD_BANK",
+          "allFourStepsPopulated": true,
+          "threeSyntheticDocumentFixtures": true,
+          "passwordConfirmationMatches": true,
+          "fillUpChecksNoBoxes": true,
+          "refillClearsManualDeclarations": true,
+          "submissionGateReady": true,
+          "submitClicked": false
+        },
+        {
+          "category": "REQUESTOR",
+          "allFourStepsPopulated": true,
+          "threeSyntheticDocumentFixtures": true,
+          "passwordConfirmationMatches": true,
+          "fillUpChecksNoBoxes": true,
+          "refillClearsManualDeclarations": true,
+          "submissionGateReady": true,
+          "submitClicked": false
+        }
+      ],
+      "writeRequests": [],
+      "pageErrors": [],
+      "status": "PASS",
+      "note": "Qualification checkboxes were manually selected only to inspect later steps; subsequent Fill Up cleared them. No Submit was clicked."
     },
     "webDeployment": {
       "build": "PASS",
       "sourceReference": "55f997b85b32f99fec55b1220f565743b72ac309",
       "flagConfigured": true,
-      "servingAfterFailure": false,
-      "previousStoppedContainerPreserved": "bloodledger-persistent-web-before-public-rollout-20261016"
+      "servingAfterFailure": true,
+      "previousStoppedContainerPreserved": "bloodledger-persistent-web-before-public-rollout-20261016",
+      "servingAfterFailureNote": "Resumed under explicit user authorization; both browser flows passed."
     },
-    "updatedAt": "2026-10-16T14:18:02.629359+00:00"
+    "updatedAt": "2026-10-16T14:21:06.586382+00:00",
+    "priorBrowserAttempt": {
+      "failure": "Browser harness strict-mode selector error; stopped API/web at first failure. No alternate check executed.",
+      "browser": {
+        "status": "INCOMPLETE",
+        "bloodBankFacilityStep": "PASS",
+        "bloodBankQualificationFields": "PASS",
+        "declarationsInitiallyUnchecked": true,
+        "bloodBankPrimaryAccountFields": "PASS",
+        "passwordConfirmationCheck": "NOT_COMPLETED: ambiguous locator",
+        "documentsStep": "NOT_RUN",
+        "requestorFlow": "NOT_RUN",
+        "submitClicked": false,
+        "unexpectedWriteProtection": "Non-read API requests intercepted and blocked by the browser harness",
+        "selectorCorrection": "Scoped password selectors to .application-form in private harness; not rerun under the stop instruction"
+      },
+      "services": {
+        "api": "STOPPED",
+        "web": "STOPPED",
+        "uatWorker": "STOPPED",
+        "generalSyncWorker": "STOPPED"
+      }
+    },
+    "resumeAuthorization": "User explicitly approved restarting API/web and repeating only step 7 with the corrected selector; no ownership repair or migrations repeated."
   },
-  "publicFlagServing": false
+  "publicFlagServing": true,
+  "currentServices": {
+    "api": "RUNNING",
+    "web": "RUNNING",
+    "uatWorker": "RUNNING",
+    "generalSyncWorker": "STOPPED"
+  },
+  "servicesAtStopNote": "Historical service state at the first browser harness failure; currentServices records the approved continuation."
 }

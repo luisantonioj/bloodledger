@@ -155,13 +155,14 @@ saved rebased work. No force-push is used. Delivery uses
 `codex/lat-public-application-integration-20261016`, preserving the saved work
 and icon commit. Draft PR: [#69 — public application wiring and staged rollout](https://github.com/luisantonioj/bloodledger/pull/69). The user directly confirmed publication after the initial automatic-review rejection.
 
-The PR remains draft. The later recovery below resolves the API build gate;
-the live browser gate is incomplete.
+The later recovery below resolves the API build gate. The first browser
+stop and the subsequently authorized successful continuation are recorded below.
 
 
 ## Authorized ownership recovery and step 6 — 2026-10-16
 
-Current outcome: **ownership repair, API build and step 6 PASS; step 7 incomplete**.
+Outcome at the first browser stop (historical): **ownership repair, API build
+and step 6 PASS; step 7 incomplete**.
 API, web and the guarded UAT worker are stopped at the first failed browser
 check. PR #69 remains draft. This supersedes the earlier build blocker.
 
@@ -208,8 +209,42 @@ Protected counts remain 9 institutions, 22 application users, 0 applications,
 6 account-audit rows, 532 components, 27 reservations and 595 commands. The
 three new tables remain empty. See [machine-readable evidence](RETAINED-ROLLOUT.json).
 
-Continuation needed: authorize resuming step 7 using the corrected private
-selector; do not repeat ownership repair or migrations. Mark #69 ready only
-after both complete browser flows pass. No new handoff document or PR was created.
+At that stop, continuation required explicit authorization to resume step 7
+with the corrected selector. That authorization and its completed result are
+recorded below. Ownership repair and migrations were not repeated. No new handoff document or PR was created.
 
 Recovery evidence checks: `git diff --check` PASS; full `bash scripts/scan-secrets.sh` PASS (482 commits, index and candidate content, no leaks; pinned Gitleaks 8.30.1). No application source changed in this continuation.
+
+
+## Approved step 7 continuation — PASS
+
+The user explicitly authorized restarting API/web and repeating only the
+browser gate with the corrected selector. **Both BLOOD_BANK and REQUESTOR
+flows passed against the real retained API at http://127.0.0.1:5174/.**
+
+- Fill Up populated Facility, Qualification, Primary account and Documents.
+- Applicant password and confirmation matched without saving their values.
+- All three synthetic document fixture references were present.
+- Fill Up selected no declaration checkbox. Qualification checkboxes were
+  selected manually only to inspect later steps; a subsequent Fill Up cleared
+  them again. Final attestation remained unchecked and Submit remained disabled.
+- The submission service gate was ready. No Submit button was pressed.
+- Browser requests: **zero API write requests**; page errors: **zero**.
+  API reads were real; no response fixtures replaced them. The harness blocked
+  non-read API requests defensively, and none occurred.
+- All seven protected counts remained identical to the accepted baseline:
+  9 institutions, 22 application users, 0 applications, 6 account audit rows,
+  532 components, 27 reservations and 595 commands. The three new tables
+  remain empty.
+- API and web are running. The guarded UAT worker was restored after checking
+  V1/V2 queues and writer lock all zero; the general sync-worker remains stopped.
+- The API target remains 1124d6a; the web application source remains the saved
+  55f997b build. This continuation changes evidence only. Ownership repair,
+  migrations, backup, census and forecasts were not repeated.
+
+**No live application, activation or deregistration was performed.** No account
+creation, reset, population or Fabric change occurred. SIMULATION_ONLY remains
+in force. Existing PR #69 is now ready for review; no new PR or
+handoff document is needed.
+
+Final continuation checks: `git diff --check` PASS; `bash scripts/scan-secrets.sh` PASS for 483 commits, index and candidate content (Gitleaks 8.30.1). PR #69 was verified non-draft via GitHub after both browser flows passed.

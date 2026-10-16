@@ -68,11 +68,11 @@ Passwords/confirmation are generated locally, and all declarations stay manual.
 See [Lat validation](../validation/lat-public-applications-2026-10-16/README.md)
 and [rollout/consistency follow-up](../handoffs/LAT-TO-JOPIA-PUBLIC-APPLICATIONS-WIRING-AND-ROLLOUT-2026-10-16.md).
 The real retained API passed contract readiness at recovery target 1124d6a;
-API/web are currently stopped after an incomplete browser gate. Extended profile reads
+API/web are running after both bank/requestor live Fill Up browser flows passed. Extended profile reads
 use facilityProfile only when returned; policy-defined/null/purged profiles,
 approver identity, last sign-in and security self-service remain unavailable.
-The web readiness flag was configured after step 6 passed; full browser
-validation remains incomplete and the web container is stopped. Synthetic fixtures do not implement arbitrary uploads.
+The web readiness flag was configured after step 6 passed; both live Fill Up
+flows subsequently passed under explicit continuation approval. Synthetic fixtures do not implement arbitrary uploads.
 
 
 ## PR #68 integration and staged rollout — 2026-10-16
@@ -87,5 +87,7 @@ Both authorized retained-host migrations applied in order with unchanged
 protected counts (34 applied / 0 pending). Authorized Option B repaired ownership
 (18 to 0), and the API built at 1124d6a and passed read-only step 6. The enabled
 web built from saved frontend 55f997b. The browser harness stopped on an ambiguous
-password selector before step 7 completed; API/web and UAT worker are stopped.
+password selector on its first attempt. After explicit user authorization, both
+browser flows passed with the corrected selector; API/web and guarded UAT
+worker are running. The general sync-worker stays stopped.
 No live application, activation or deregistration occurred. See the [rollout evidence](../validation/lat-public-applications-2026-10-16/README.md).
