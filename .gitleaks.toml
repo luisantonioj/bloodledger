@@ -43,7 +43,7 @@ description = "Reviewed API deployment target commit; not a credential"
 condition = "AND"
 paths = ['''(^|/)docs/validation/lat\-public\-applications\-2026\-10\-16/RETAINED\-ROLLOUT\.json$''']
 regexTarget = "secret"
-regexes = ['''^d83509bf333d073061c3cb125ac4914798ee8ab0$''']
+regexes = ['''^d83509bf333d073061c3cb125ac4914798ee8ab0$''', '''^1124d6a5e7f2f228f7bd713605017238c2f9f163$''']
 
 [[allowlists]]
 description = "Reviewed retained forecast run identifier; not a credential"
