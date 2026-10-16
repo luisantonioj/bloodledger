@@ -135,6 +135,13 @@ validate this UI behavior; backend tests do not establish it.
 
 ## Synthetic onboarding
 
+Since 2026-10-16, new synthetic applications use the public, invitation-free
+entry in [PA-ACCOUNT-03](REQUIREMENTS.md#pa-account-03--public-synthetic-applications-and-sample-facilities-2026-10-16)
+and ADR-048, with the Fill Up sample catalog, linked facility profile and
+non-destructive deregistration. The Lat contract and evidence are in
+[the public-applications handoff](handoffs/JOPIA-TO-LAT-PUBLIC-APPLICATIONS-2026-10-16.md).
+The invitation flow below is retained for existing records and is deprecated.
+
 PRC verifies its reviewer PIN for invitations, review, approve/reject, separate
 activation, suspension/reactivation and account administration. A one-day
 invitation exposes its opaque secret only on initial issuance; an identical

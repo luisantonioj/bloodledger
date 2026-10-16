@@ -5,6 +5,7 @@ import { ApiFailure } from "./errors.js";
 import { sha256 } from "./hash.js";
 import { deriveVerifier,type WebPrincipal } from "./session.js";
 import { identityTransaction, lockActiveOperator } from "./operator-verification.js";
+import { isoTimestamp, nullableIsoTimestamp } from "./time.js";
 
 type Row=Record<string,unknown>;
 export function registerAccountAdministration(app:FastifyInstance,pool:Pool,restore:(r:FastifyRequest)=>Promise<{principal:WebPrincipal}>,clock:()=>Date):void{
@@ -20,7 +21,10 @@ export function registerAccountAdministration(app:FastifyInstance,pool:Pool,rest
     const rows=await pool.query("SELECT institution_id,display_name,account_category,status,version FROM app.institutions WHERE institution_id=$1 AND account_model='INSTITUTION_V1'",[r.params.id]);
     if(!rows.rows[0])throw new ApiFailure(404,"ONB_NOT_FOUND","Institution profile not found.");
     const operators=await pool.query("SELECT operator_id,role_id,capability_profile,status,version FROM app.institution_operators WHERE institution_id=$1 ORDER BY operator_id",[r.params.id]);
-    return {institution:rows.rows[0],operators:operators.rows,scope:"INSTITUTION",classification:"SIMULATION_ONLY"};
+    // PUBLIC_APPLICATION_V1 linkage: retained facility profile and application record timestamps only.
+    const linked=(await pool.query<Row>("SELECT p.application_id,p.schema_version,CASE WHEN p.purge_after<=CURRENT_TIMESTAMP THEN NULL ELSE p.profile END profile,p.submitted_at,p.approved_at,p.activated_at,p.deregistered_at FROM app.institution_profiles p WHERE p.institution_id=$1",[r.params.id])).rows[0];
+    const application=linked?{applicationId:linked.application_id,schemaVersion:linked.schema_version,submittedAt:isoTimestamp(linked.submitted_at),approvedAt:isoTimestamp(linked.approved_at),activatedAt:isoTimestamp(linked.activated_at),deregisteredAt:nullableIsoTimestamp(linked.deregistered_at)}:null;
+    return {institution:rows.rows[0],operators:operators.rows,facilityProfile:linked?.profile??null,application,scope:"INSTITUTION",classification:"SIMULATION_ONLY"};
   });
   app.post<{Params:{id:string}}>("/api/v2/onboarding/institutions/:id/profile",async r=>{
     const {principal}=await restore(r),body=r.body as Row,id=r.params.id;
@@ -36,6 +40,7 @@ export function registerAccountAdministration(app:FastifyInstance,pool:Pool,rest
       if(prior.rows[0]){if(prior.rows[0].payload_sha256!==digest)throw new ApiFailure(409,"ONB_APPLICATION_CONFLICT","Profile replay conflicts.");return prior.rows[0].result;}
       const rows=await client.query<Row>("SELECT status,version FROM app.institutions WHERE institution_id=$1 FOR UPDATE",[id]);
       if(!rows.rows[0]||Number(rows.rows[0].version)!==body.expectedVersion)throw new ApiFailure(409,"ONB_VERSION_CONFLICT","Institution version is stale.");
+      if(rows.rows[0].status==="DEREGISTERED")throw new ApiFailure(409,"ONB_TRANSITION_INVALID","A deregistered institution profile cannot be changed.");
       await client.query("UPDATE app.institutions SET display_name=$2,version=version+1 WHERE institution_id=$1",[id,body.displayName]);
       const result={institutionId:id,status:rows.rows[0].status,version:Number(body.expectedVersion)+1,classification:"SIMULATION_ONLY"};
       await client.query("INSERT INTO app.account_audit(audit_id,actor_id,actor_institution_id,subject_id,action,correlation_id,idempotency_key,payload_sha256,result,created_at) VALUES($1,$2,$3,$4,'UPDATE_PROFILE',$5,$6,$7,$8,$9)",["AUD_"+randomBytes(20).toString("hex").toUpperCase(),principal.userId,principal.institutionId,id,body.correlationId,key,digest,result,clock()]);return result;

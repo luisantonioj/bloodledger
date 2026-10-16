@@ -363,12 +363,18 @@ Acceptance:
 
 - **BR-ONB-01:** Institutional application is invitation-only in the prototype;
   a single-use invitation authorizes submission but not approval or access.
+  *Superseded for new synthetic applications on 2026-10-16 by
+  [PA-ACCOUNT-03](#pa-account-03--public-synthetic-applications-and-sample-facilities-2026-10-16):
+  any prospective synthetic Blood Bank or Requestor facility may apply without an
+  invitation. Submission still authorizes neither approval nor access.*
 - **BR-ONB-02:** Application IDs and institution IDs are stable opaque values;
   display names never serve as authorization scope.
 - **BR-ONB-03:** Duplicate detection uses normalized institution name, category,
   locality, and institutional reference without disclosing a matching record.
 - **BR-ONB-04:** Verification documents are not stored initially. The system
   records evidence type, result, reviewer, UTC review time, and a safe reference.
+  PA-ACCOUNT-03 adds only references to generated synthetic document fixtures,
+  always `NOT_VERIFIED`; no user file is uploaded or stored.
 - **BR-ONB-05:** An applicant, affiliated administrator, or institution account
   administrator cannot approve or activate its own application.
 - **BR-ONB-06:** Approval and activation are separate version-checked mutations.
@@ -426,6 +432,9 @@ The stable onboarding error vocabulary is:
 | `ONB_ACTIVE_TRANSFER_BLOCKS_SUSPENSION` | Normal suspension is unsafe while a transfer is active |
 | `ONB_REASON_REQUIRED` | A required rejection, withdrawal, suspension, or reactivation reason is absent |
 | `ONB_NOT_FOUND` | Requested record is absent or invisible in the actor's scope |
+
+PA-ACCOUNT-03 adds public-application, sample and deregistration codes. Their
+exact meaning lives with the routes in `services/api/openapi-v2.json`.
 
 ## 5. State models
 
@@ -577,6 +586,7 @@ withdrawal creates a new `SUBMITTED` application linked to the prior record.
 | PA-DEF-04 | Accepted prototype assumption | `TRANSFER_SUMMARY_READ_V1` | Jopia / 2026-10-15 | The Transfers table reads one row per reservation in the existing reservation scope, including local releases flagged `LOCAL_RELEASE` with destination `NOT_APPLICABLE`. Product and requested units come from the linked request (or the local-release reserve command); allocated units come from the committed selection snapshot; current unit-status counts are shown separately. Priority is the recorded request urgency (`ROUTINE`, `URGENT`, `CRITICAL`). Missing linkage is `UNAVAILABLE`. | Approved transfer-table semantics and reporting rules |
 | PA-DEF-05 | Accepted prototype assumption | `ACTIVITY_HISTORY_READ_V1` | Jopia / 2026-10-15 | ROLE-02 Activity History lists every V2 command and off-chain acknowledgement its institution recorded, newest first and paged. Request, Transfer, Scan and Blockchain IDs come only from recorded command fields and foreign-key projections. The actor is shown by kind, opaque reference, the DB-constrained synthetic display name and current role (not proof of role at the event); unknown actors stay `UNKNOWN`. Off-chain events are `OFF_CHAIN_RECORDED` with ledger `NOT_APPLICABLE`. | Privacy review of operator display identity and an approved audit retention policy |
 | PA-DEF-06 | Accepted prototype assumption | `SYNTHETIC_PRC_SUPPLY_V1` | Jopia / 2026-10-15 | Resolves `RQ-17` for simulation only. A blood-bank ROLE-02 operator records one off-chain PRC supply request per product line. The synthetic PRC account acknowledges it in-system with a PRC-entered reference, then fulfils or declines it; the requester may cancel before acknowledgement. Requests never change inventory; supplied units enter only through confirmed inbound OCR capture. See [the decision](#pa-def-06--synthetic-prc-supply-requests-2026-10-15). Not PRC or Mediatrix policy. | Approved PRC supply procedure, reference format, deadlines and visibility, or a real PRC integration |
+| PA-ACCOUNT-03 | Accepted prototype assumption | `SYNTHETIC_PUBLIC_APPLICATION_V1` | User via Lat handoff; implemented by Jopia / 2026-10-16 | Public synthetic Blood Bank and Requestor applications without an invitation; complete four-step synthetic form; ten-facility synthetic Fill Up catalog `SYNTHETIC_FACILITY_CATALOG_V1` with server-side claims; non-destructive deregistration releases a sample. PRC review, approval and separate activation remain. See [the decision](#pa-account-03--public-synthetic-applications-and-sample-facilities-2026-10-16). Resolves `RQ-13` for simulation only. | Approved applicant verification, abuse-prevention and recovery controls, real document handling and `RQ-14` retention |
 
 Prototype-assumption versions are immutable. A replacement adds a new version,
 marks the earlier one superseded for new operations, preserves historical
@@ -616,6 +626,7 @@ blocked or implemented behind an explicitly approved prototype assumption.
 |---|---|---|---|
 | RQ-11 | Mobile OCR is primary for the Sprint 4 synthetic PWA, with mandatory per-field confidence of at least 90, exact validation, authenticated confirmation, volatile-only image/raw-text handling, and Code 128/Data Matrix/synthetic QR fallback under `PA-S4-01`. | 2026-08-17 / Jopia | `RQ-02` and approved institutional fixtures/privacy evidence before real-label or ISBT claims |
 | RQ-17 | Resolved for simulation by `PA-DEF-06` (`SYNTHETIC_PRC_SUPPLY_V1`): off-chain PRC supply requests recorded by blood-bank ROLE-02 operators, one product line each, with a required-by deadline, PRC in-system acknowledgement and reference, and a five-state lifecycle. No free-text note, external PRC connection or inventory effect. | 2026-10-15 / Jopia | Approved PRC procedure, reference format, deadline and visibility rules, or a real PRC integration |
+| RQ-13 | Resolved for simulation by `PA-ACCOUNT-03` (`SYNTHETIC_PUBLIC_APPLICATION_V1`): public synthetic entry with same-origin checks, a 16 KiB body limit, persistent per-client and global rate limits, strict field allowlists, idempotency, scrypt applicant passwords, scoped applicant sessions and PRC review before any access. Recovery is limited to the existing applicant status session; no self-service credential recovery exists. | 2026-10-16 / user decision; Jopia | Approved real applicant verification, abuse prevention, recovery and data-collection authorization before any real institution applies |
 
 ## PA-ACCOUNT-01 — Approved synthetic institution accounts (2026-10-08)
 
@@ -649,6 +660,35 @@ purged 30 days after closure; minimal non-secret decisions/references remain.
 Only authorized PRC reviewers and scoped applicants can access the records.
 No documents/messages or real institutional evidence are collected; RQ-14
 remains open for real data. Replacement requires a superseding policy.
+
+## PA-ACCOUNT-03 — Public synthetic applications and sample facilities (2026-10-16)
+
+**Accepted; SIMULATION_ONLY.** The user selected public application entry for
+both Blood Bank and Requestor facilities and a reusable Fill Up sample pool
+(Lat handoff, 2026-10-16). Jopia implemented it under
+`SYNTHETIC_PUBLIC_APPLICATION_V1` and [ADR-048](ARCHITECTURE.md#15-architecture-decision-register).
+It supersedes BR-ONB-01 for new applications and resolves `RQ-13` for
+simulation only. It changes who may apply, not who may approve: PRC review,
+approval, separate activation, the `ROLE-06`-only initial grant, operator PIN
+authorization and account-category boundaries are unchanged. Submission creates
+no institution, login, operator, role, Fabric identity, peer or stock ownership.
+It is not a real-institution onboarding or data-collection authorization.
+
+| Rule | Decision |
+|---|---|
+| Entry | `POST /api/v2/onboarding/public-applications`, unauthenticated and same-origin, `BLOOD_BANK` or `REQUESTOR` only. The invitation route remains for existing invitation-based records and is deprecated. |
+| Form | Facility, Qualification, Primary account and Documents/declaration fields from the field map, each with a strict pattern or enum. Unknown fields are rejected with field-path details, never dropped. Category-specific qualification keys may not be mixed. |
+| Personal data | Not collected. Full name and employee ID are replaced by a `SYNTH-PERSON-…` role-holder reference; professional-license numbers by `SYNTH-PRCLIC-NNNNNN`; phones by `SYN-NNN-NNNN`; emails are generic `.bloodledger` addresses. |
+| Documents | Each slot accepts only its generated synthetic fixture ID (kind `SYNTHETIC_FIXTURE`, `NOT_VERIFIED`). No upload or user file storage. Fixtures download as labelled text. |
+| Credentials | The applicant password (12–128, scrypt) opens only the applicant session. The requested login email must share the official email domain; activation must provision exactly that login, with the institution password and PIN still entered by PRC. |
+| Sample catalog | `SYNTHETIC_FACILITY_CATALOG_V1`: `SAMPLE_BANK_01`–`05` and `SAMPLE_REQUESTOR_01`–`05`, invented facilities. IDs are catalog references, not institution IDs, approvals or credentials. |
+| Sample reuse | Selection is not consumption. A successful submission claims the sample (`APPLICATION_IN_PROGRESS`); activation makes it `REGISTERED`. Rejection, withdrawal, deregistration, or the purge of an approval never activated (`APPROVAL_LAPSED`) releases it; suspension, logout, failed requests and failed deregistration do not. Claims are database rows enforced by a partial unique index and advisory locks, so all browsers and hosts sharing the database agree. A later registration is a new instance (`-i<n>` login domain), application, institution and credentials. Exhaustion is explicit; manual application remains possible, but catalog identity values are reserved. |
+| Deletion | `POST /onboarding/institutions/{id}/deregister`: PRC, PIN-verified, only for onboarded, already suspended institutions without non-terminal custody, open PRC supply requests, or pending commands, transfers or reservations. `DEREGISTERED` is terminal. It retires the account and operators and keeps all domain, ledger and audit history. |
+| Retention | Applicant detail keeps the PA-ACCOUNT-02/ADR-039 30-day purge, anchored on closure by approval or rejection (not activation). Activation after that purge is refused with `ONB_APPLICATION_DETAIL_PURGED`; the facility applies again. The facility profile (facility facts, qualification without capability declarations, document references, login email) is copied at activation and purged 30 days after deregistration. Claims, decisions and references remain as minimal linkage. |
+
+`RQ-14` (real retention) remains open. Approved real applicant verification,
+abuse controls, credential recovery and real institutional evidence are still
+required before any real facility applies.
 
 ## PA-DEF-06 — Synthetic PRC supply requests (2026-10-15)
 
