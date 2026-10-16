@@ -296,7 +296,10 @@ export class PublicOnboarding {
       const prior = (await client.query<Row>("SELECT * FROM app.onboarding_applications WHERE idempotency_key=$1", [idem])).rows[0];
       if (prior) {
         if (prior.payload_sha256 !== digest || !await verifyPassword(input.password, { saltHex: String(prior.password_salt), verifierHex: String(prior.password_verifier) } as Parameters<typeof verifyPassword>[1])) throw failure(409, "ONB_IDEMPOTENCY_CONFLICT", "This idempotency key was used for a different application.");
-        return { ...submissionResult(prior), replayed: true };
+        // Replay returns the original submission result recorded with it, not the application's later state.
+        const original = (await client.query<Row>("SELECT result FROM app.account_audit WHERE actor_id=$1 AND idempotency_key=$2 AND action='SUBMIT_PUBLIC_APPLICATION'", [prior.applicant_id, idem])).rows[0];
+        if (!original) throw failure(409, "ONB_IDEMPOTENCY_CONFLICT", "This idempotency key was used for a different application.");
+        return { ...(original.result as Row), replayed: true };
       }
       // Fixed lock order (facility name, then sample) serializes concurrent applicants.
       await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`onboarding-match:${matchDigest}`]);
