@@ -33,9 +33,9 @@ if [[ "$entrypoint" == scripts/development-data/stock-cli.mjs && ( "${1:-}" == c
   mapfile -t backup_evidence <<< "$backup_result"
   backup_sha="${backup_evidence[0]}"; backup_instance="${backup_evidence[1]:-}"
 fi
-docker run --rm -v "$repository_root:/workspace" -w /workspace node:24.17.0 npm run build --workspace @bloodledger/api >/dev/null
-docker run --rm -v "$repository_root:/workspace" -w /workspace node:24.17.0 npm run build --workspace @bloodledger/inventory-contract >/dev/null
-docker run --rm -v "$repository_root:/workspace" -w /workspace node:24.17.0 npm run prepare:ocr --workspace @bloodledger/capture-pwa >/dev/null
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$repository_root:/workspace" -w /workspace node:24.17.0 npm run build --workspace @bloodledger/api >/dev/null
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$repository_root:/workspace" -w /workspace node:24.17.0 npm run build --workspace @bloodledger/inventory-contract >/dev/null
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$repository_root:/workspace" -w /workspace node:24.17.0 npm run prepare:ocr --workspace @bloodledger/capture-pwa >/dev/null
 docker build -q -t bloodledger-development-tools:local -f scripts/development-data/Dockerfile scripts/development-data >/dev/null
 # The private configuration contains existing synthetic account credentials.
 # No accounts, schema, services or volumes are reset/created by this command.
