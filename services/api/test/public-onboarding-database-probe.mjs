@@ -107,6 +107,10 @@ export async function probePublicOnboarding({ admin, app, sessions, pins, origin
   check((await decide(applicationId, 'review', { expectedVersion: 1, verificationReference: 'SYNTHETIC_MANUAL_REVIEW', verificationOutcome: 'CONFIRMED' })).statusCode, 200);
   check((await decide(applicationId, 'approve', { expectedVersion: 2, reasonCode: 'REVIEW_COMPLETE' })).statusCode, 200);
   check((await availability('BLOOD_BANK')).SAMPLE_BANK_01, 'APPLICATION_IN_PROGRESS', 'approval alone is not registration');
+  // An ambiguous retry after PRC acted still replays the original submission result.
+  const lateReplay = await submit(bankBody, bankKey);
+  check(lateReplay.statusCode, 200); check(lateReplay.json().replayed, true); check(lateReplay.json().applicationId, applicationId);
+  check(lateReplay.json().status, 'SUBMITTED', 'replay returns the original status'); check(lateReplay.json().version, 1);
   const wrong = await decide(applicationId, 'activate', { expectedVersion: 3, reasonCode: 'REVIEW_COMPLETE', loginEmail: 'bloodbank@elsewhere.bloodledger', password: password(), operatorPin: '12345678' });
   check(wrong.json().error.code, 'ONB_LOGIN_EMAIL_MISMATCH');
   const credentials = { loginEmail: bankBody.primaryAccount.requestedLoginEmail, password: password(), operatorPin: String(randomInt(0, 100000000)).padStart(8, '0') };
