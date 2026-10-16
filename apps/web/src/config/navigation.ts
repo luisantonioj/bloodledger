@@ -28,6 +28,6 @@ export const navigation: NavigationItem[] = [
 ];
 
 export const visibleNavigation = (principal: Principal) =>
-  navigation.filter((item) => (!item.permission || can(principal, item.permission)) && (!item.roles || item.roles.includes(principal.roleId)) && (!item.when || item.when(principal))).map(item => item.href === "/reporting" && ["BLOOD_BANK","DOH"].includes(principal.accountCategory ?? "") ? {...item,label:"Compliance Reports"} : item);
+  navigation.filter((item) => (principal.accountCategory !== "DOH" || ["/", "/profile"].includes(item.href)) && (!item.permission || can(principal, item.permission)) && (!item.roles || item.roles.includes(principal.roleId)) && (!item.when || item.when(principal))).map(item => item.href === "/reporting" && ["BLOOD_BANK","DOH"].includes(principal.accountCategory ?? "") ? {...item,label:"Compliance Reports"} : item);
 
-export const canonicalPagePath = (principal:Principal,path:string) => (principal.accountCategory === "PRC" && path === "/consortium") || (path === "/redistribution" && (principal.accountCategory === "BLOOD_BANK" || !principal.accountCategory && ["ROLE-01","ROLE-02"].includes(principal.roleId))) ? "/" : path;
+export const canonicalPagePath = (principal:Principal,path:string) => principal.accountCategory === "DOH" && ["/transfers","/alerts","/audit","/analytics","/consortium","/reporting"].includes(path) ? "/" : (principal.accountCategory === "PRC" && path === "/consortium") || (path === "/redistribution" && (principal.accountCategory === "BLOOD_BANK" || !principal.accountCategory && ["ROLE-01","ROLE-02"].includes(principal.roleId))) ? "/" : path;

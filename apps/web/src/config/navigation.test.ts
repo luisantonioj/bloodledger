@@ -39,3 +39,11 @@ describe("permission-filtered navigation", () => {
 it("keeps redistribution out of requester and regulatory navigation",()=>{for(const role of ["ROLE-03","ROLE-04","ROLE-05","ROLE-06"] as const)expect(visibleNavigation(principal([],role)).some(item=>item.href==="/redistribution")).toBe(false);});
 
 it("moves the supplier redistribution deep link to Dashboard",()=>{expect(canonicalPagePath(principal([],"ROLE-02"),"/redistribution")).toBe("/");expect(canonicalPagePath(principal([],"ROLE-03"),"/redistribution")).toBe("/redistribution");});
+
+
+it("limits the DOH workspace to Dashboard and Profile and folds former tabs into Dashboard",()=>{
+ const doh={...principal(["dashboard:regulatory","reports:read","consortium:read","transfers:read","alerts:read","audit:read","profile:read"]),accountId:"ACC_DOH",accountCategory:"DOH" as const};
+ expect(visibleNavigation(doh).map(item=>item.href)).toEqual(["/","/profile"]);
+ for(const path of ["/reporting","/transfers","/alerts","/audit","/analytics","/consortium"])expect(canonicalPagePath(doh,path)).toBe("/");
+ expect(canonicalPagePath(doh,"/profile")).toBe("/profile");
+});
