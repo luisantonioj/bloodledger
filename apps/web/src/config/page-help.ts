@@ -3,7 +3,7 @@ import type { Principal } from "../auth/permissions";
 const bloodBankDashboard = "Review your blood stock, facility requests and available network supply. Open Inventory or Blood Unit Transactions to review stock and recorded unit activity, or request blood from another facility where permitted.";
 const requesterDashboard = "Check network blood availability and review your facility’s requests. Use Request Blood to start a request, then follow its updates in Requests & Transfers.";
 const prcDashboard = "Review consortium blood availability, reporting and replenishment requests in one place. Choose All or a specific blood component, compare the network total or individual blood banks, and review the availability matrix. Available stock does not establish approved redistributable supply.";
-const dohDashboard = "An overview for DOH to review facility reporting and compliance alerts. Use the shortcuts to open reports and alerts for follow-up.";
+const dohDashboard = "Choose a reporting date to review the three configured blood banks’ saved morning and afternoon stock reports. Select a hospital to inspect its recorded stock. No report recorded means no matching saved capture was found; it does not establish noncompliance or an official submission outcome.";
 
 export function pageHelp(path: string, principal: Principal): string | undefined {
   const requester = principal.accountCategory ? principal.accountCategory === "REQUESTOR" : principal.roleId === "ROLE-03";

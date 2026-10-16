@@ -15,8 +15,8 @@ describe("compliance stock presentation",()=>{
  it("rejects inconsistent or negative reportable quantities",()=>{
   expect(()=>parseComplianceStock({...detail,groups:[{...detail.groups[0],bloodTypes:detail.groups[0].bloodTypes.map(row=>({...row,reportableCount:5}))}]},selected)).toThrow();
  });
- it("shows Compliance Reports to banks and DOH, Reports to PRC, none to requesters",()=>{
-  for(const [category,label] of [["BLOOD_BANK","Compliance Reports"],["DOH","Compliance Reports"],["PRC","Reports"],["REQUESTOR",undefined]] as const){
+ it("keeps standalone reports for banks and PRC while DOH reports live on Dashboard",()=>{
+  for(const [category,label] of [["BLOOD_BANK","Compliance Reports"],["DOH",undefined],["PRC","Reports"],["REQUESTOR",undefined]] as const){
    const principal={accountCategory:category,roleId:category==='PRC'||category==='DOH'?'ROLE-04':'ROLE-02',permissions:category==='PRC'||category==='DOH'?['reports:read']:[]} as Principal;
    expect(visibleNavigation(principal).find(item=>item.href==='/reporting')?.label).toBe(label);
   }
