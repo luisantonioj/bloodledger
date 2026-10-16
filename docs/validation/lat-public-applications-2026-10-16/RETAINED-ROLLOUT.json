@@ -60,5 +60,11 @@
   "publicFlagEnabled": false,
   "livePublicSubmissions": 0,
   "liveActivations": 0,
-  "liveDeregistrations": 0
+  "liveDeregistrations": 0,
+  "delivery": {
+    "branch": "codex/lat-public-application-integration-20261016",
+    "prUrl": "https://github.com/luisantonioj/bloodledger/pull/69",
+    "draft": true,
+    "sourceAndEvidencePushed": true
+  }
 }

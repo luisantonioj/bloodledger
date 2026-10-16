@@ -64,3 +64,24 @@ before/after counts and the machine-readable stopped-gate result are in
 
 The frontend PR is prepared on `codex/lat-public-application-integration-20261016`
 to preserve saved work without force-pushing the diverged older remote branch.
+
+
+## Published delivery
+
+Draft PR [#69](https://github.com/luisantonioj/bloodledger/pull/69) is open
+against main on `codex/lat-public-application-integration-20261016`. The user
+directly confirmed publication. No teammate message was sent. The draft status
+keeps the stopped rollout visible; approval to publish does not authorize
+resuming the failed build gate.
+
+Copyable next decision for Jopia:
+
+> PR #69 contains the frontend wiring and passed checks. Both authorized
+> migrations are applied (34 applied / 0 pending), new tables empty, all seven
+> protected counts unchanged. Rollout stopped at step 6: the exact d83509b API
+> build failed TS5033/EACCES on root-owned generated services/api/build files.
+> API/web remain stopped and the public flag disabled. Please authorize a
+> scoped generated-build recovery using the pinned Node container (or ownership
+> repair limited to generated API build files), then continuation of read-only
+> step 6 and conditional D5 web deployment. No migration rerun, rollback, reset,
+> live application/activation/deregistration or Fabric change is needed.

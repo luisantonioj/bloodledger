@@ -153,4 +153,7 @@ web build remains **NOT_DEPLOYED**.
 The existing remote `codex/lat-analytics-activity-layouts` diverges from Lat's
 saved rebased work. No force-push is used. Delivery uses
 `codex/lat-public-application-integration-20261016`, preserving the saved work
-and icon commit. PR reference is recorded after creation.
+and icon commit. Draft PR: [#69 — public application wiring and staged rollout](https://github.com/luisantonioj/bloodledger/pull/69). The user directly confirmed publication after the initial automatic-review rejection.
+
+The PR remains draft while the retained-host API build gate is unresolved.
+Opening it does not restart services or authorize recovery.
