@@ -53,3 +53,22 @@ Apply for Access now uses separate Blood Bank and Requester category cards and f
 Expanded legal/contact/personnel/qualification fields, declarations and document attachment controls are visible but disabled. They are excluded from submission; no unsupported personal details or files are collected. The success message explicitly identifies a basic application submission and states that extended fields/documents were not sent.
 
 Profile now includes Facility Information, Official Contact, Facility Account, category-specific Licensing & Qualification, Credentials & Access, Application Record, and Security. Supported identity/status/session values remain real; missing data says Not available. View documents and Change password stay disabled pending supported services. Accounts / Staff retains actual operator statistics, filters and existing administrator/PIN/revocation actions.
+
+
+## Published public-application contract wiring — 2026-10-16
+
+The earlier October 10 basic-payload limitations above are historical. The
+PA-ACCOUNT-03 / ADR-048 backend branch now publishes strict nested
+PUBLIC_APPLICATION_V1 fields, synthetic fixture references, server-owned sample
+eligibility and application/profile linkage. Lat connected those reads/actions
+without changing the approved form layout. One synthetic applicant reference
+replaces Full name and Employee ID; role-holder references replace real names.
+Passwords/confirmation are generated locally, and all declarations stay manual.
+
+See [Lat validation](../validation/lat-public-applications-2026-10-16/README.md)
+and [rollout/consistency follow-up](../handoffs/LAT-TO-JOPIA-PUBLIC-APPLICATIONS-WIRING-AND-ROLLOUT-2026-10-16.md).
+These contracts are not yet live on Lat's retained host. Extended profile reads
+use facilityProfile only when returned; policy-defined/null/purged profiles,
+approver identity, last sign-in and security self-service remain unavailable.
+Public submission stays disabled until backend merge and authorized migration/
+deployment are verified. Synthetic fixtures do not implement arbitrary uploads.

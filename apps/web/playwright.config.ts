@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: "**/outbound-verification-enabled.spec.ts",
+  testIgnore: ["**/outbound-verification-enabled.spec.ts", "**/public-application-enabled.spec.ts"],
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
