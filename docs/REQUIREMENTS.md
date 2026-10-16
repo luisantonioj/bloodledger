@@ -682,3 +682,28 @@ ROLE-02) and `prc-supply:respond` (PRC reviewer). The additive migration
 `20261015000000000_create-prc-supply-requests.js` and
 `services/api/openapi-v2.json` are authoritative for the exact shape and error
 codes.
+
+
+## Public application entry follow-up — 2026-10-16
+
+The user's explicit Lat instruction selects public application entry for the
+SIMULATION_ONLY prototype: prospective Blood Bank and Requestor facilities may
+apply without a preliminary PRC credential. This supersedes invitation-only
+entry in BR-ONB-01 and the earlier synthetic onboarding decision for this
+selected follow-up. Review, approval, separate activation, least privilege and
+restricted applicant status remain required; applying is not account activation.
+Public entry is selected, but its backend implementation and validation are
+pending. RQ-13's real-world abuse/recovery controls and all real institutional
+privacy/acceptance boundaries remain unresolved.
+
+The same instruction selects a reusable synthetic sample pool for Fill Up.
+Registration excludes the corresponding sample from future selections; actual
+supported deletion restores eligibility. Selection alone does not consume a
+sample, and suspension is not deletion. Duplicate pending applications and
+concurrent registration must be handled explicitly by the backend. Extended
+fields and synthetic attachment handling need a published contract before Lat
+enables submission; no real personal identifiers or unrestricted documents are
+authorized by this decision.
+
+Implementation scope and handoff:
+[Public applications and sample fill](handoffs/LAT-TO-JOPIA-PUBLIC-APPLICATIONS-AND-SAMPLE-FILL-2026-10-16.md).

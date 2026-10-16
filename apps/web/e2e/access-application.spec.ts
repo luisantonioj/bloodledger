@@ -1,5 +1,85 @@
-// FR-15 / FR-12: reference fields, supported payload only, category scope and stable retry keys.
+// FR-15 / FR-12: editable synthetic drafts, all-step Fill Up, and no live submission.
 import {test,expect,type Page} from "@playwright/test";
-async function setup(page:Page,posts:Array<{body:Record<string,unknown>;key:string}>){await page.route("**/api/**",async route=>{const request=route.request(),path=new URL(request.url()).pathname;if(path==="/api/v1/auth/session")return route.fulfill({status:401,contentType:"application/json",body:JSON.stringify({error:{message:"No session"}})});if(path==="/api/v2/onboarding/applications"&&request.method()==="POST"){posts.push({body:request.postDataJSON(),key:request.headers()["idempotency-key"]});return route.fulfill({status:posts.length===1?503:200,contentType:"application/json",body:JSON.stringify(posts.length===1?{error:{message:"Synthetic service retry"}}:{applicationId:"APP_SYNTHETIC_TEST",status:"SUBMITTED",version:1,classification:"SIMULATION_ONLY"})});}return route.fulfill({status:404,contentType:"application/json",body:"{}"});});}
-for(const category of ["BLOOD_BANK","REQUESTOR"] as const)test(`${category} application matches steps without sending unsupported fields`,async({page})=>{const posts:Array<{body:Record<string,unknown>;key:string}>=[];await setup(page,posts);await page.goto("/");await page.getByRole("tab",{name:"Apply for access",exact:true}).click();await page.getByRole("button",{name:category==="BLOOD_BANK"?/Apply as a Blood Bank/:/Apply as a Requestor/}).click();await expect(page.getByRole("heading",{name:"Facility information",exact:true})).toBeVisible();await expect(page.getByLabel("Registered legal name",{exact:true})).toBeDisabled();await page.getByRole("button",{name:"Continue",exact:true}).click();await expect(page.getByRole("heading",{name:"Facility information",exact:true})).toBeVisible();await page.getByLabel("Facility name",{exact:true}).fill("Synthetic Facility Test");await page.getByLabel("City / Municipality",{exact:true}).fill("Synthetic City");await page.getByLabel("Official facility email",{exact:true}).fill("facility@test.bloodledger");await page.getByLabel("Private invitation secret",{exact:true}).fill("a".repeat(64));await page.getByRole("button",{name:"Continue",exact:true}).click();await expect(page.getByRole("heading",{name:category==="BLOOD_BANK"?"Blood Service Facility qualification":"Requestor receiving capability",exact:true})).toBeVisible();if(category==="BLOOD_BANK"){await expect(page.getByLabel("Head of Blood Service Facility",{exact:true})).toBeDisabled();await expect(page.getByLabel("Referral blood bank / supplying BSF",{exact:true})).toHaveCount(0);}else{await expect(page.getByLabel("Referral blood bank / supplying BSF",{exact:true})).toBeDisabled();await expect(page.getByLabel("Head of Blood Service Facility",{exact:true})).toHaveCount(0);}await page.getByLabel(category==="BLOOD_BANK"?"DOH BSF LTO number":"Blood Station ATO / authorization number",{exact:true}).fill("SYNTH_LICENSE");await page.getByLabel("Application reason",{exact:true}).fill("SYNTHETIC_APPLICATION");await page.getByRole("button",{name:"Continue",exact:true}).click();await expect(page.getByLabel("Full name",{exact:true})).toBeDisabled();const password="synthetic-only-passphrase";await page.locator('.application-form').getByLabel("Applicant password",{exact:true}).fill(password);await page.getByLabel("Confirm password",{exact:true}).fill("synthetic-mismatch");await page.getByRole("button",{name:"Continue",exact:true}).click();await expect(page.getByRole("alert")).toContainText("Passwords do not match");await page.getByLabel("Confirm password",{exact:true}).fill(password);await page.getByRole("button",{name:"Continue",exact:true}).click();await expect(page.getByRole("heading",{name:"Supporting documents & declaration",exact:true})).toBeVisible();await expect(page.locator('input[type="file"]')).toHaveCount(0);await expect(page.getByRole("button",{name:"Attach document unavailable",exact:true})).toHaveCount(3);await expect(page.getByRole("button",{name:"Submit for PRC review",exact:true})).toBeDisabled();await page.getByRole("checkbox",{name:/I confirm these application details/}).check();await page.getByRole("button",{name:"Submit for PRC review",exact:true}).click();await expect(page.getByRole("alert")).toContainText("Synthetic service retry");await page.getByRole("button",{name:"Submit for PRC review",exact:true}).click();await expect(page.getByRole("status")).toContainText("Basic application submitted");expect(posts).toHaveLength(2);expect(posts[0]).toEqual(posts[1]);expect(posts[0].body.category).toBe(category);expect(Object.keys(posts[0].body).sort()).toEqual(["invitationSecret","institutionDisplayName","locality","genericContact","licenseReference","applicationReason","password","category","attested","correlationId"].sort());await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);});
-test("changing application category clears credentials and shows the other flow",async({page})=>{await setup(page,[]);await page.goto("/");await page.getByRole("tab",{name:"Apply for access",exact:true}).click();await page.getByRole("button",{name:/Apply as a Blood Bank/}).click();await page.getByLabel("Private invitation secret",{exact:true}).fill("a".repeat(64));await page.getByRole("button",{name:"← Change application",exact:true}).click();await page.getByRole("button",{name:/Apply as a Requestor/}).click();await expect(page.getByLabel("Private invitation secret",{exact:true})).toHaveValue("");await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);});
+async function setup(page:Page,posts:string[]){
+ await page.route("**/api/**",route=>{
+  const request=route.request(),path=new URL(request.url()).pathname;
+  if(request.method()==="POST")posts.push(path);
+  return route.fulfill({status:path==="/api/v1/auth/session"?401:404,contentType:"application/json",body:JSON.stringify({error:{message:"Synthetic unavailable fixture"}})});
+ });
+ await page.goto("/");await page.getByRole("tab",{name:"Apply for access",exact:true}).click();
+}
+async function selectCategory(page:Page,bank:boolean){await page.getByRole("button",{name:bank?/Apply as a Blood Bank/:/Apply as a Requestor/}).click();}
+async function checkCapabilities(page:Page){for(const checkbox of await page.locator('.qualification-checklist input[type="checkbox"]').all())await checkbox.check();}
+for(const bank of [true,false])test(`${bank?"BLOOD_BANK":"REQUESTOR"} one Fill Up fills every step while editable declarations stay deliberate`,async({page})=>{
+ const posts:string[]=[];await setup(page,posts);await selectCategory(page,bank);
+ await expect(page.getByLabel("Private invitation secret",{exact:true})).toHaveCount(0);
+ await page.getByRole("button",{name:"Continue",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Facility information",exact:true})).toBeVisible();
+ await page.getByRole("button",{name:"Fill Up",exact:true}).click();
+ const name=await page.getByLabel("Facility name",{exact:true}).inputValue();
+ expect(name).toContain("Synthetic");expect(name).toContain(bank?"Blood Bank":"Requestor Facility");
+ for(const input of await page.locator('.application-fields input,.application-fields select').all()){
+  await expect(input).toBeEnabled();expect(await input.inputValue()).not.toBe("");
+ }
+ await page.getByLabel("Registered legal name",{exact:true}).fill("Synthetic Edited Legal Name");
+ const fill=await page.getByRole("button",{name:"Fill Up",exact:true}).boundingBox(),next=await page.getByRole("button",{name:"Continue",exact:true}).boundingBox();
+ expect(fill!.x+fill!.width).toBeLessThanOrEqual(next!.x);
+ await page.getByRole("button",{name:"Continue",exact:true}).click();
+ await expect(page.getByRole("heading",{name:bank?"Blood Service Facility qualification":"Requestor receiving capability",exact:true})).toBeVisible();
+ for(const input of await page.locator('.application-fields input,.application-fields select').all()){
+  await expect(input).toBeEnabled();expect(await input.inputValue()).not.toBe("");
+ }
+ for(const checkbox of await page.locator('.qualification-checklist input').all())await expect(checkbox).not.toBeChecked();
+ await page.getByRole("button",{name:"Continue",exact:true}).click();
+ await expect(page.getByRole("heading",{name:bank?"Blood Service Facility qualification":"Requestor receiving capability",exact:true})).toBeVisible();
+ await checkCapabilities(page);await page.getByRole("button",{name:"Continue",exact:true}).click();
+ await expect(page.getByLabel("Full name",{exact:true})).toBeEnabled();
+ const password=await page.locator('.application-form').getByLabel("Applicant password",{exact:true}).inputValue();
+ expect(password.length).toBeGreaterThanOrEqual(12);await expect(page.getByLabel("Confirm password",{exact:true})).toHaveValue(password);
+ await page.getByLabel("Confirm password",{exact:true}).fill("synthetic-mismatch");
+ await page.getByRole("button",{name:"Continue",exact:true}).click();await expect(page.getByRole("alert")).toContainText("Passwords do not match");
+ await page.getByLabel("Confirm password",{exact:true}).fill(password);await page.getByRole("button",{name:"Continue",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Supporting documents & declaration",exact:true})).toBeVisible();
+ await expect(page.locator('.application-document-name')).toHaveCount(3);
+ await expect(page.getByRole("checkbox",{name:/I confirm these application details/})).not.toBeChecked();
+ const firstRemove=page.getByRole("button",{name:/Remove sample:/}).first();await firstRemove.click();
+ await expect(page.locator('.application-document-name')).toHaveCount(2);
+ await page.getByRole("button",{name:/Attach sample:/}).click();await expect(page.locator('.application-document-name')).toHaveCount(3);
+ await page.getByRole("checkbox",{name:/I confirm these application details/}).check();
+ await expect(page.getByRole("button",{name:"Submit for PRC review",exact:true})).toBeDisabled();
+ await page.locator('.application-form').evaluate(form=>(form as HTMLFormElement).requestSubmit());
+ await expect(page.getByRole("alert")).toContainText("Public application submission is not connected yet");
+ // A fill on a later step replaces the entire draft without navigating away.
+ await page.getByRole("button",{name:"Fill Up",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Supporting documents & declaration",exact:true})).toBeVisible();
+ await expect(page.getByRole("checkbox",{name:/I confirm these application details/})).not.toBeChecked();
+ for(let i=0;i<3;i++)await page.getByRole("button",{name:"Previous",exact:true}).click();
+ expect(await page.getByLabel("Facility name",{exact:true}).inputValue()).not.toBe(name);
+ await page.setViewportSize({width:390,height:844});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ expect(posts).toEqual([]);
+});
+for(const bank of [true,false])test(`${bank?"BLOOD_BANK":"REQUESTOR"} preview cycle uses five different facilities and never consumes an account`,async({page})=>{
+ const posts:string[]=[];await setup(page,posts);await selectCategory(page,bank);
+ const names:string[]=[];
+ for(let i=0;i<5;i++){
+  await page.getByRole("button",{name:"Fill Up",exact:true}).click();
+  const name=await page.getByLabel("Facility name",{exact:true}).inputValue();expect(names).not.toContain(name);names.push(name);
+ }
+ await page.getByRole("button",{name:"Fill Up",exact:true}).click();
+ const next=await page.getByLabel("Facility name",{exact:true}).inputValue();expect(names).toContain(next);expect(next).not.toBe(names[4]);
+ expect(posts).toEqual([]);
+});
+test("changing category clears draft documents and values",async({page})=>{
+ await setup(page,[]);await selectCategory(page,true);
+ await page.getByRole("button",{name:"Fill Up",exact:true}).click();
+ await page.getByRole("button",{name:"← Change application",exact:true}).click();await selectCategory(page,false);
+ await expect(page.getByLabel("Facility name",{exact:true})).toHaveValue("");
+ await page.getByRole("button",{name:"Fill Up",exact:true}).click();
+ await expect(page.getByLabel("Facility name",{exact:true})).toHaveValue(/Requestor Facility/);
+ await page.getByRole("button",{name:"Continue",exact:true}).click();await checkCapabilities(page);
+ await page.getByRole("button",{name:"Continue",exact:true}).click();
+ await page.getByRole("button",{name:"Continue",exact:true}).click();
+ await expect(page.getByText("DOH Blood Service Facility LTO",{exact:true})).toHaveCount(0);
+ await expect(page.getByText("Blood Station ATO or transfusion-service authorization",{exact:true})).toBeVisible();
+});

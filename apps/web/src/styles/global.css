@@ -1100,3 +1100,35 @@
 .bank-stock-record-table td:first-child,.bank-stock-record-table .bank-review-link {font-size:14px;line-height:1.5}
 
 .bank-stock-record-table .bank-review-link,.bank-stock-record-table .bank-review-link:hover,.bank-stock-record-table .bank-review-link:focus {text-decoration:none}
+
+.application-footer-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.application-footer{gap:12px;align-items:center}.application-fill-notice{font-size:11px;color:var(--ink-secondary);line-height:1.6;overflow-wrap:anywhere}.application-document-name{max-width:100%;overflow-wrap:anywhere}.document-preview-grid>div{min-width:0}
+
+/* Apply for Access: consistent controls, related-field rows and document cards. */
+.access-application-workspace .application-section-heading{padding:18px 20px;background:var(--surface-subtle)}
+.access-application-workspace .application-section header.application-section-heading h3{font-size:14px;font-weight:600;line-height:1.4}
+.access-application-workspace .application-fields{padding:20px;gap:18px 20px;align-items:start}
+.access-application-workspace .application-fields>label{display:grid;align-content:start;gap:8px;min-width:0;font-size:11px;font-weight:600;line-height:1.5;color:var(--ink-secondary)}
+.access-application-workspace .application-fields input,.access-application-workspace .application-fields select,.access-application-workspace .application-fields textarea{min-width:0;width:100%;min-height:42px;padding:10px 12px;color:var(--ink);font:400 12px/1.5 var(--font-sans);border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface)}
+.access-application-workspace .application-fields .requester-select select{padding-right:34px}
+.access-application-workspace .application-fields textarea{resize:vertical;min-height:94px}
+.access-application-workspace .application-fields input:focus,.access-application-workspace .application-fields select:focus,.access-application-workspace .application-fields textarea:focus{border-color:var(--primary)}
+.access-application-workspace .application-fields-single{grid-template-columns:minmax(0,1fr)}
+.access-application-workspace .qualification-checklist{margin:0 20px 20px;padding:0;gap:0;overflow:hidden;border:1px solid var(--line-subtle);background:var(--surface)}
+.access-application-workspace .qualification-checklist>strong{padding:13px 16px;background:var(--surface-subtle);font-size:12px;font-weight:600;color:var(--ink-secondary)}
+.access-application-workspace .qualification-checklist label{padding:14px 16px;gap:12px;border-top:1px solid var(--line-subtle);font-size:12px;font-weight:400;line-height:1.6;cursor:pointer}
+.access-application-workspace .qualification-checklist input,.access-application-workspace .declaration-preview input{flex:0 0 16px;width:16px;height:16px;margin:3px 0 0;accent-color:var(--primary);cursor:pointer}
+.access-application-workspace .declaration-preview{margin:0 20px 20px;padding:14px 16px;gap:12px;border:1px solid var(--line-subtle);border-radius:var(--radius-sm);background:var(--surface-subtle);font-size:12px;font-weight:400;line-height:1.6;cursor:pointer}
+.access-application-workspace .document-preview-grid{padding:20px;gap:14px;align-items:stretch}
+.access-application-workspace .document-preview-grid>.application-document-card{display:flex;flex-direction:column;align-items:stretch;gap:14px;padding:16px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);text-align:left}
+.application-document-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.application-document-icon{width:36px;height:36px;display:grid;place-items:center;color:var(--primary);background:var(--primary-container);border-radius:var(--radius-sm)}
+.application-document-requirement{font-size:10px;color:var(--ink-muted);font-weight:500}
+.access-application-workspace .document-preview-grid strong{font-size:12px;font-weight:600;line-height:1.5;color:var(--ink-secondary)}
+.application-document-file{margin-top:auto;padding:10px;border-radius:var(--radius-sm);background:var(--surface-subtle);min-height:52px;display:flex;align-items:center}
+.access-application-workspace .application-document-file small{font-size:10px;line-height:1.6}
+.application-document-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.access-application-workspace .application-document-actions .button{padding:7px 10px;color:var(--ink-secondary);background:var(--surface);font-size:11px;cursor:pointer}
+.access-application-workspace .application-document-actions .application-document-remove{padding:4px 0;border:0;border-radius:0;background:transparent;color:var(--primary);font-size:11px;cursor:pointer}
+.access-application-workspace .application-footer{margin-top:20px;padding-top:18px;border-top:1px solid var(--line-subtle)}
+.access-application-workspace .application-fill-notice{margin:16px 0 0;font-size:11px;line-height:1.6}
+@media(max-width:650px){.access-application-workspace .application-fields,.access-application-workspace .document-preview-grid{padding:16px;gap:16px}.access-application-workspace .application-section-heading{padding:16px}.access-application-workspace .qualification-checklist,.access-application-workspace .declaration-preview{margin-left:16px;margin-right:16px}.access-application-workspace .application-footer{flex-wrap:wrap;justify-content:space-between}}
