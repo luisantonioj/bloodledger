@@ -10,6 +10,25 @@ and ADR-048. Exact shapes and error codes: [`openapi-v2.json`](../../services/ap
 Catalog and limits: [`synthetic-public-application-v1.json`](../../services/api/policy/synthetic-public-application-v1.json).
 Migration: [`20261016010000000_create-public-onboarding.js`](../../database/migrations/20261016010000000_create-public-onboarding.js).
 
+## Follow-up to Lat's wiring report (2026-10-16)
+
+Lat confirmed the wiring and reported two discrepancies and a rollout gap. All
+three are resolved on the same branch (PR #68):
+
+1. **Retention anchor.** The code was right and this handoff was wrong:
+   approval or rejection closes the application (ADR-039). See
+   [Retention](#retention), which adds `ONB_APPLICATION_DETAIL_PURGED` and the
+   `APPROVAL_LAPSED` sample release that this exposed.
+2. **Declarations in the profile.** This handoff was right and the code was
+   wrong. Activation now stores `qualification` without
+   `capabilityDeclarations`; the probe asserts it.
+3. **Rollout.** Two migrations are pending, and a public-only rollout is not
+   possible. See [Host prerequisites](#host-prerequisites).
+
+PR #68 is not merged yet. Its merge commit is the reference to deploy. Keep
+`VITE_BLOODLEDGER_PUBLIC_APPLICATIONS_READY` off until step 5 of the host
+prerequisites passes.
+
 ## When to connect, and when to remove `publicApplicationsReady=false`
 
 Wire against this branch now, using fixtures and the disposable suite. Flip the
@@ -209,39 +228,74 @@ credentials are never reused.
 `GET /onboarding/institutions/{id}` now returns:
 
 - `facilityProfile`: `{facility, qualification, documents, loginEmail, sample}`
-  from activation, or `null` (policy-defined institutions, or 30 days after
+  from activation, where `qualification` excludes `capabilityDeclarations`, or `null` (policy-defined institutions, or 30 days after
   deregistration).
 - `application`: `{applicationId, schemaVersion, submittedAt, approvedAt,
   activatedAt, deregisteredAt}` or `null`. `approvedAt` is the approval
   decision time.
 
-Applicant reference, declarations and the applicant password are not in the
-profile. Passwords and PINs are never readable. Profile display-name editing
+Applicant reference, capability and final declarations and the applicant
+password are not in the profile; declarations stay in the scoped application
+detail until its purge. Passwords and PINs are never readable. Profile display-name editing
 is unchanged; editing the other facility fields remains unsupported.
 
 ## Retention
 
-Application detail keeps the 30-day post-closure purge (ADR-039). Activation
-closes the application, so the applicant view disappears 30 days later. The
-facility data lives on in `facilityProfile` until 30 days after deregistration.
-Claims and decision references remain as minimal linkage.
+Application detail keeps the 30-day post-closure purge (ADR-039). **Approval or
+rejection closes the application; activation does not.** The applicant view,
+application detail and verification therefore disappear 30 days after the
+approval decision, however late activation happens. *(Corrected 2026-10-16: an
+earlier version of this handoff wrongly said activation closes it.)*
+
+- Activation within 30 days of approval copies the facility data into
+  `facilityProfile`, which lives until 30 days after deregistration.
+- Activation after the purge returns 409 `ONB_APPLICATION_DETAIL_PURGED`. Tell
+  PRC the facility must apply again; do not retry.
+- The same purge releases the sample of an approval that was never activated
+  (claim `release_reason` `APPROVAL_LAPSED`), so it becomes `ELIGIBLE` again.
+
+Claims and decision references remain as minimal linkage. Show the dates the
+API returns; do not compute or reset retention in the client.
 
 ## Host prerequisites
 
-Not executed by this delivery. On a retained host, in a separately authorized
-rollout:
+*(Corrected 2026-10-16 after Lat's host observation.)* Not executed by this
+delivery, and not authorized by it.
 
-1. Take and validate a custom-format PostgreSQL backup (`pg_restore --list`).
-2. Record unchanged-state counts: institutions, application users, onboarding
-   applications, account audit and V2 components.
-3. Apply `npm run migrate:up` (one additive migration, `20261016010000000`).
-4. Deploy the API build and confirm `GET /api/v2/onboarding/sample-facilities` returns 200
-   with ten `ELIGIBLE` samples on a host that has not used them.
-5. Re-check the counts: only the new tables (empty) and columns (defaults)
-   should differ. No population, account creation or Fabric change is needed.
-   The API reads `request.ip` without a trusted proxy, so behind a shared
-   proxy the per-client limit acts as a shared limit (the global limit still
-   applies).
+**Two migrations are pending, not one.** A retained host on `1d6e4a9` has not
+applied `20261016000000000_create-outbound-verifications` (ADR-047, from PR #67,
+already on `main`). Migrations apply strictly in filename order, so the public
+migration `20261016010000000` cannot run without the outbound one before it.
+The API build on `main` also already serves the outbound routes. A public-only
+rollout is therefore not possible. The rollout is *the merged `main` API plus
+both additive migrations*, and its authorization must name both: the outbound
+migration and routes are not covered by the public-application decision.
+
+Staged path, once the host owner authorizes it in writing:
+
+1. Quiesce writers and take a custom-format PostgreSQL backup; validate it with
+   `pg_restore --list` and record its SHA-256.
+2. Record counts: institutions, application users, onboarding applications,
+   account audit, V2 components, V2 reservations and `npm run migrate:status`.
+3. `BLOODLEDGER_MIGRATION_COUNT=1 npm run migrate:up` applies only
+   `20261016000000000` (new empty `app.v2_outbound_verifications`). Re-check
+   the counts and `migrate:status`.
+4. `BLOODLEDGER_MIGRATION_COUNT=1 npm run migrate:up` applies only
+   `20261016010000000`: new empty `app.onboarding_sample_claims` and
+   `app.institution_profiles`, new nullable columns with defaults on
+   `app.onboarding_applications`, `DEREGISTERED` added to the institution
+   status check, and a replaced purge function. Re-check the counts: they must
+   be unchanged.
+5. Deploy the merged API. Confirm `GET /api/v2/onboarding/sample-facilities`
+   returns 200 with ten `ELIGIBLE` samples on a host that has not used them.
+   Only then build the web app with `VITE_BLOODLEDGER_PUBLIC_APPLICATIONS_READY`
+   enabled and run Lat's read-only readiness checks.
+
+No population, account creation, reset or Fabric change is part of this. Live
+submission, activation or deregistration needs its own bounded plan; fixture
+success is not that authorization. The API reads `request.ip` without a
+trusted proxy, so behind a shared proxy the per-client limit acts as a shared
+limit (the global limit still applies).
 
 ## Evidence (Jopia self-validation, isolated WSL checkout)
 
@@ -249,7 +303,7 @@ rollout:
 |---|---|---|
 | API type check | `npm run check --workspace @bloodledger/api` | PASS |
 | API unit (Node 24.17.0) | `npm run test:api` | 196 passed, 0 failed (7 new in `public-onboarding.test.ts`) |
-| Disposable PostgreSQL 17.10 + Playwright 1.61.1 image | `bash tests/accounts/postgres-integration.sh` | PASS: 310 assertions, of which 160 are the new public-onboarding probe; all earlier probes still pass |
+| Disposable PostgreSQL 17.10 + Playwright 1.61.1 image | `bash tests/accounts/postgres-integration.sh` | PASS: 325 assertions, of which 175 are the new public-onboarding probe; all earlier probes still pass |
 | Database / API static boundary | `npm run check:database`; `bash tests/api/static-boundary.sh` (Codex `rg` on PATH) | PASS |
 | JSON format / diff hygiene | `npm run check:format`; `git diff --check` | PASS |
 | Secret scan | `bash scripts/scan-secrets.sh` | Gitleaks: no leaks |

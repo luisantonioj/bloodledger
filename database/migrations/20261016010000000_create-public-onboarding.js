@@ -27,7 +27,7 @@ exports.up = (pgm) => {
       application_id varchar(64) NOT NULL UNIQUE REFERENCES app.onboarding_applications(application_id),
       status varchar(16) NOT NULL CHECK (status IN ('ACTIVE','RELEASED')),
       claimed_at timestamptz NOT NULL, released_at timestamptz,
-      release_reason varchar(24) CHECK (release_reason IN ('REJECTED','WITHDRAWN','DEREGISTERED')),
+      release_reason varchar(24) CHECK (release_reason IN ('REJECTED','WITHDRAWN','DEREGISTERED','APPROVAL_LAPSED')),
       classification varchar(32) NOT NULL DEFAULT 'SIMULATION_ONLY' CHECK (classification='SIMULATION_ONLY'),
       CHECK ((status='ACTIVE' AND released_at IS NULL AND release_reason IS NULL) OR (status='RELEASED' AND released_at IS NOT NULL AND release_reason IS NOT NULL)),
       UNIQUE (catalog_version,sample_id,instance)
@@ -58,6 +58,10 @@ exports.up = (pgm) => {
       GET DIAGNOSTICS changed=ROW_COUNT;
       UPDATE app.onboarding_applicant_sessions s SET revoked_at=COALESCE(s.revoked_at,at_time)
         FROM app.onboarding_applications a WHERE a.application_id=s.application_id AND a.purge_after<=at_time;
+      -- An approved application purged before activation can never be activated: free its sample.
+      UPDATE app.onboarding_sample_claims c SET status='RELEASED',released_at=at_time,release_reason='APPROVAL_LAPSED'
+        FROM app.onboarding_applications a WHERE a.application_id=c.application_id AND c.status='ACTIVE'
+          AND a.status='APPROVED' AND a.institution_id IS NULL AND a.purge_after<=at_time;
       UPDATE app.institution_profiles SET profile=NULL
         WHERE classification='SIMULATION_ONLY' AND purge_after<=at_time AND profile IS NOT NULL;
       RETURN changed;

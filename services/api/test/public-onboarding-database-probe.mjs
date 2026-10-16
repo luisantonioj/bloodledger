@@ -120,6 +120,8 @@ export async function probePublicOnboarding({ admin, app, sessions, pins, origin
   check(profile.json().application.applicationId, applicationId); check(profile.json().application.deregisteredAt, null);
   check(profile.body.includes(credentials.password) || profile.body.includes(credentials.operatorPin) || profile.body.includes(applicantPassword), false);
   check('applicantReference' in profile.json().facilityProfile, false);
+  check('capabilityDeclarations' in profile.json().facilityProfile.qualification, false, 'declarations are not retained in the durable profile');
+  check(profile.json().facilityProfile.qualification.authorityReference, bankBody.qualification.authorityReference);
 
   // Suspension is not deletion; deregistration requires suspension and no retained custody.
   check((await institutionAction(institutionId, 'deregister', 1)).json().error.code, 'ONB_TRANSITION_INVALID');
@@ -169,6 +171,21 @@ export async function probePublicOnboarding({ admin, app, sessions, pins, origin
   check((await decide(rejected.id, 'review', { expectedVersion: 1, verificationReference: 'SYNTHETIC_MANUAL_REVIEW', verificationOutcome: 'CONFIRMED' })).statusCode, 200);
   check((await decide(rejected.id, 'reject', { expectedVersion: 2, reasonCode: 'INCOMPLETE_EVIDENCE' })).statusCode, 200);
   const afterReject = (await select('REQUESTOR')).json(); check(afterReject.status, 'SELECTED'); check(afterReject.sample.sampleId, rejected.selection.sample.sampleId);
+
+  // ADR-039 anchor: approval (not activation) closes the application and starts the 30-day purge.
+  const lateSelection = (await select('BLOOD_BANK')).json(), late = await submit(body(lateSelection)); check(late.statusCode, 200, late.body);
+  const lateId = late.json().applicationId;
+  check((await decide(lateId, 'review', { expectedVersion: 1, verificationReference: 'SYNTHETIC_MANUAL_REVIEW', verificationOutcome: 'CONFIRMED' })).statusCode, 200);
+  check((await decide(lateId, 'approve', { expectedVersion: 2, reasonCode: 'REVIEW_COMPLETE' })).statusCode, 200);
+  const anchor = (await admin.query('SELECT closed_at,purge_after,purge_after-closed_at=interval \'30 days\' thirty FROM app.onboarding_applications WHERE application_id=$1', [lateId])).rows[0];
+  check(anchor.closed_at !== null, true, 'approval sets closed_at'); check(anchor.thirty, true);
+  await admin.query("UPDATE app.onboarding_applications SET closed_at=CURRENT_TIMESTAMP-interval '31 days',purge_after=CURRENT_TIMESTAMP-interval '1 day' WHERE application_id=$1", [lateId]);
+  await admin.query('SELECT app.purge_closed_synthetic_onboarding(CURRENT_TIMESTAMP)');
+  const purgedActivation = await decide(lateId, 'activate', { expectedVersion: 3, reasonCode: 'REVIEW_COMPLETE', loginEmail: lateSelection.fill.primaryAccount.requestedLoginEmail, password: password(), operatorPin: String(randomInt(0, 100000000)).padStart(8, '0') });
+  check(purgedActivation.json().error.code, 'ONB_APPLICATION_DETAIL_PURGED');
+  check((await availability('BLOOD_BANK'))[lateSelection.sample.sampleId], 'ELIGIBLE', 'an approval that lapsed before activation releases its sample');
+  check((await admin.query('SELECT release_reason FROM app.onboarding_sample_claims WHERE application_id=$1', [lateId])).rows[0].release_reason, 'APPROVAL_LAPSED');
+  check((await decide(lateId, 'activate', { expectedVersion: 3, reasonCode: 'REVIEW_COMPLETE', loginEmail: 'x', password: 'y', operatorPin: 'z' })).json().error.code, 'ONB_APPLICATION_DETAIL_PURGED');
 
   // Retention: applicant detail purges 30 days after closure; deregistered profiles 30 days after deregistration.
   await admin.query("UPDATE app.onboarding_applications SET closed_at=CURRENT_TIMESTAMP-interval '31 days',purge_after=CURRENT_TIMESTAMP-interval '1 day' WHERE application_id=$1", [applicationId]);
