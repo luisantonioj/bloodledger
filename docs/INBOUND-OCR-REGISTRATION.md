@@ -38,6 +38,10 @@ shelf-life rule or near-expiry alert is enabled.
 - A matching in-transit component can be resolved by the receiving custody
   workflow; a match held by another institution is a conflict; a match already
   held by the same institution is idempotent.
+- Since 2026-10-17, a retry with the same Idempotency-Key returns the command
+  that key created, even after the unit was registered or received. The same
+  key with a different capture is `V2_IDEMPOTENCY_CONFLICT`
+  ([OpenAPI](../services/api/openapi-v2.json)).
 - New components enter `AVAILABLE` at the receiving institution and are
   eligible for the existing atomic FEFO reservation ordering by label expiry
   then opaque component ID.

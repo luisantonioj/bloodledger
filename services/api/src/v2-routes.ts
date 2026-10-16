@@ -345,28 +345,40 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     const capture = validateInboundOcrInput(request.body, dependencies.enabledIssuerInstitutionIds ?? ["INST_MEDIATRIX"], version);
     if (!dependencies.projection) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Inbound identity reconciliation is not available.");
     const encrypted = encryptDonationNumber(capture.donationNumber, dependencies.keyring);
-    const existing = await dependencies.projection.findComponentByIdentity(capture.issuerInstitutionId, encrypted.lookupHmac, capture.componentType);
     const captureId = generatedId("INCAP_", idempotencyKey);
+    const componentId = generatedId("COMP_", idempotencyKey);
+    const donationId = `DON_${hash(`${capture.issuerInstitutionId}:${encrypted.lookupHmac}`).slice(0, 40)}`;
+    const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
+    const registrationSha256 = digest({ capture, captureId, componentId, donationId, custodyInstitutionId: principal.institutionId });
+    const receiptRequestSha256 = digest({ operation: "RECEIVE_INBOUND_COMPONENT", capture, captureId, custodyInstitutionId: principal.institutionId });
+    // A retry returns the command its key created, before identity resolution can report the unit's later state.
+    const previous = await dependencies.store.get(generatedId("CMD_", idempotencyKey), principal.institutionId, principal.userId);
+    if (previous) {
+      const sameCapture = previous.operation === "REGISTER_INBOUND_COMPONENT" ? previous.payloadSha256 === registrationSha256
+        : previous.operation === "RECEIVE_INBOUND_COMPONENT" && (typeof previous.payload.captureRequestSha256 === "string" ? previous.payload.captureRequestSha256 === receiptRequestSha256
+          // Receipts accepted before captureRequestSha256 existed can only be compared on the fields they recorded.
+          : previous.payload.captureEvidenceDigest === encrypted.lookupHmac && previous.payload.eventTime === capture.eventTime && previous.payload.correlationId === capture.correlationId);
+      if (!sameCapture) throw new ApiFailure(409, "V2_IDEMPOTENCY_CONFLICT", "Idempotency key was used for a different command.");
+      return enqueue(request, reply, "INBOUND_CAPTURE", captureId, previous.operation, previous.payload, principal, previous.payloadSha256);
+    }
+    const existing = await dependencies.projection.findComponentByIdentity(capture.issuerInstitutionId, encrypted.lookupHmac, capture.componentType);
     if (existing) {
       if (existing.institutionId !== principal.institutionId) {
         const receiptReservation=existing.reservationId&&dependencies.projection.getReservation ? await dependencies.projection.getReservation(existing.reservationId,principal.institutionId,principal.roleId) : null;
         if(existing.inventoryStatus!=="IN_TRANSIT"||receiptReservation?.destinationInstitutionId!==principal.institutionId)throw new ApiFailure(409,"INBOUND_COMPONENT_CONFLICT","The component is outside authorized receipt custody.");
       }
       if (existing.inventoryStatus === "IN_TRANSIT" && existing.reservationId && existing.reservationVersion) {
-        const payload = { reservationId: existing.reservationId, expectedVersion: existing.reservationVersion, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: capture.eventTime, correlationId: capture.correlationId, captureId, captureEvidenceDigest: encrypted.lookupHmac };
+        const payload = { reservationId: existing.reservationId, expectedVersion: existing.reservationVersion, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: capture.eventTime, correlationId: capture.correlationId, captureId, captureEvidenceDigest: encrypted.lookupHmac, captureRequestSha256: receiptRequestSha256 };
         return enqueue(request, reply, "INBOUND_CAPTURE", captureId, "RECEIVE_INBOUND_COMPONENT", payload, principal);
       }
       if (existing.inventoryStatus === "IN_TRANSIT") throw new ApiFailure(409, "INBOUND_RECEIPT_REQUIRED", "The matching in-transit component requires its transfer receipt workflow before intake can continue.");
       return reply.status(200).send({ captureId, resolution: "ALREADY_REGISTERED", componentId: existing.componentId, status: existing.inventoryStatus, classification: "SIMULATION_ONLY" as const });
     }
-    const componentId = generatedId("COMP_", idempotencyKey);
-    const donationId = `DON_${hash(`${capture.issuerInstitutionId}:${encrypted.lookupHmac}`).slice(0, 40)}`;
     const captureEvidenceDigest = createHash("sha256").update(JSON.stringify({ captureId, donationDigest: encrypted.lookupHmac, ocrEvidence: capture.ocrEvidence, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt }), "utf8").digest("hex");
     const payload = { captureMethod: "OCR", captureEvidenceDigest, captureId, componentId, donationId, issuerInstitutionId: capture.issuerInstitutionId, donationNoCiphertext: encrypted.ciphertext, donationNoNonce: encrypted.nonce, donationNoAuthTag: encrypted.authTag, donationNoEncryptionKeyVersion: encrypted.encryptionKeyVersion, donationNoLookupHmac: encrypted.lookupHmac, componentType: capture.componentType, bloodType: capture.bloodType, collectedAt: capture.collectedAt, expiresAt: capture.expiresAt, custodyInstitutionId: principal.institutionId, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: capture.eventTime, correlationId: capture.correlationId, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt, bloodTypeEvidenceSource: capture.bloodTypeEvidence.source, componentEvidenceSource: capture.componentEvidence.source, ocrEngine: capture.ocrEvidence.engine, ocrEngineVersion: capture.ocrEvidence.engineVersion, donationNumberConfidence: capture.ocrEvidence.fieldConfidence.donationNumber, bloodTypeConfidence: capture.ocrEvidence.fieldConfidence.bloodType, policyVersion: selectCorePolicy(principal, version) };
     await assertCommandTimes(request, principal, [capture.eventTime]);
     await dependencies.projection.recordInboundCapture?.(captureId, payload, dependencies.clock().toISOString());
-    const payloadSha256 = createHash("sha256").update(JSON.stringify({ capture, captureId, componentId, donationId, custodyInstitutionId: principal.institutionId }), "utf8").digest("hex");
-    return enqueue(request, reply, "INBOUND_CAPTURE", captureId, "REGISTER_INBOUND_COMPONENT", payload, principal, payloadSha256);
+    return enqueue(request, reply, "INBOUND_CAPTURE", captureId, "REGISTER_INBOUND_COMPONENT", payload, principal, registrationSha256);
   });
 
   app.get("/api/v2/reports/inbound-intake", async (request) => {

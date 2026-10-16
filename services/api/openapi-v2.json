@@ -218,7 +218,7 @@
     "/inbound-captures": {
       "post": {
         "operationId": "acceptInboundOcrCapture",
-        "description": "Accept a confirmed OCR capture. The receiving custody institution is derived from the authenticated session; raw OCR text and images are not accepted.",
+        "description": "Accept a confirmed OCR capture. The receiving custody institution is derived from the authenticated session; raw OCR text and images are not accepted. A retry with the same Idempotency-Key and capture returns the command that key created (202, replayed true), even after the unit was registered or received; the same key with a different capture returns 409 V2_IDEMPOTENCY_CONFLICT.",
         "parameters": [
           {
             "$ref": "#/components/parameters/ContractVersion"
@@ -238,7 +238,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Already registered in the same custody scope"
+            "description": "A new Idempotency-Key captured a unit already registered in the same custody scope (resolution ALREADY_REGISTERED); never returned for a retry of the key that registered it"
           },
           "202": {
             "$ref": "#/components/responses/Command"
