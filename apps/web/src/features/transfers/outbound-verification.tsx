@@ -5,6 +5,10 @@ import {parseOutboundVerification} from "../../services/api/blood-bank-completio
 import type {ReservationDetail} from "../../services/api/v2-navigation";
 import type {ReceiptRecognition} from "../receipts/receipt-ocr";
 
+// F1 usability guard only: V1 still needs Jopia's additive server-side V2 fix.
+export function outboundComponentMatches(recognition:ReceiptRecognition|undefined,reservation:Pick<ReservationDetail,"components">){
+ return Boolean(recognition&&reservation.components.length&&reservation.components.every(member=>member.componentType===recognition.label.componentType));
+}
 export function outboundFailure(reason:unknown){
   if(reason instanceof ApiRequestError){
     if(reason.code==="OUTBOUND_LABELS_MISMATCH"){
@@ -26,6 +30,7 @@ export function OutboundVerification({reservation,onVerified,onLockChange,scanne
   const active=useRef(true),controller=useRef<AbortController|null>(null),attempt=useRef<{keys:ReturnType<typeof newMutationKeys>;body:{expectedVersion:number;correlationId:string;scannedLabels:string[]}}|null>(null);
   useEffect(()=>{active.current=true;return()=>{active.current=false;controller.current?.abort();};},[]);
   const locked=busy||ambiguous;
+  const componentMatches=outboundComponentMatches(recognition,reservation);
   useEffect(()=>{if(!locked&&!done){controller.current?.abort();setRecognition(scannedRecognition);setConfirmed(false);setError("");}},[scannedRecognition]);
   useEffect(()=>{onLockChange(locked);},[locked,onLockChange]);
   async function ocr(){
@@ -34,7 +39,7 @@ export function OutboundVerification({reservation,onVerified,onLockChange,scanne
     catch{if(active.current&&!abort.signal.aborted)setError("The label could not be read confidently. Use a clear image of the supported five-field label.");}
     finally{if(active.current)setReading(false);}
   }
-  function add(){if(!recognition||!confirmed||locked)return;const label=recognition.label.donationNumber;if(labels.includes(label)){setError("This label has already been added.");return;}setLabels([...labels,label]);setRecognition(undefined);setImage(undefined);setConfirmed(false);setError("");}
+  function add(){if(!recognition||!confirmed||locked||!outboundComponentMatches(recognition,reservation))return;const label=recognition.label.donationNumber;if(labels.includes(label)){setError("This label has already been added.");return;}setLabels([...labels,label]);setRecognition(undefined);setImage(undefined);setConfirmed(false);setError("");}
   async function verify(){
     if(!enabled||busy||done||(!ambiguous&&labels.length!==reservation.components.length))return;
     if(!attempt.current){const keys=newMutationKeys();attempt.current={keys,body:{expectedVersion:reservation.version,correlationId:keys.correlationId,scannedLabels:[...labels]}};}
@@ -53,7 +58,8 @@ export function OutboundVerification({reservation,onVerified,onLockChange,scanne
     <fieldset disabled={!enabled||locked||done}>
       <label>Reserved-unit label image<input type="file" accept="image/png,image/jpeg" capture="environment" disabled={reading} onChange={event=>{const file=event.target.files?.[0];controller.current?.abort();setRecognition(undefined);setConfirmed(false);setError("");setImage(undefined);if(file&&["image/png","image/jpeg"].includes(file.type)&&file.size<=10*1024*1024)setImage(file);else if(file)setError("Choose a JPG or PNG image up to 10 MB.");event.target.value="";}}/></label>
       <button className="button compact" type="button" disabled={!image||reading} onClick={()=>void ocr()}>{reading?"Reading…":"Run OCR"}</button>
-      {recognition&&<><p>Five label fields passed OCR checks. The label value is not displayed or persisted.</p><label><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)}/>I checked the recognized label against this reserved unit.</label><button className="button compact" type="button" disabled={!confirmed||labels.length>=Math.min(50,reservation.components.length)} onClick={add}>Add scanned unit</button></>}
+      {recognition&&!componentMatches&&<p role="alert">The OCR-read component does not match this reservation. Rescan the correct component; this unit has not been added.</p>}
+      {recognition&&componentMatches&&<><p>Five label fields passed OCR checks. The label value is not displayed or persisted.</p><label><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)}/>I checked the recognized label against this reserved unit.</label><button className="button compact" type="button" disabled={!confirmed||labels.length>=Math.min(50,reservation.components.length)} onClick={add}>Add scanned unit</button></>}
       <p>{done?"All reserved units verified · Off-chain evidence returned":`${labels.length} of ${reservation.components.length} reserved units scanned`}</p>
       {!!labels.length&&<button className="button compact" type="button" onClick={()=>{setLabels([]);setError("");}}>Clear scans</button>}
     </fieldset>

@@ -193,7 +193,7 @@ def score(manifest, predictions, split, candidate, base):
             "images": len(selected), "missingPredictions": len(selected)-len(by_id), "metrics": metrics,
             "perBank": {bank: dict(values) for bank, values in whole.items()}, "perBankStyle": {key: {**dict(value), "distinctLabels": len({image["labelId"] for image in selected if labels[image["labelId"]]["bank"]+"/"+labels[image["labelId"]]["style"]==key}), "writers": len({labels[image["labelId"]].get("writerId") for image in selected if labels[image["labelId"]]["bank"]+"/"+labels[image["labelId"]]["style"]==key and labels[image["labelId"]].get("writerId")})} for key,value in by_style.items()},
             "macroCompleteLabelExact": sum(rates)/len(rates) if len(rates) == len(BANKS) else None,
-            "identifierCER": sum(row.get("edits", 0) for row in donation)/max(1, sum(row.get("characters", 0) for row in donation)),
+            "identifierCER": sum(row.get("edits", 0) for row in donation)/sum(row.get("characters", 0) for row in donation) if sum(row.get("characters", 0) for row in donation) else None,
             "meanLatencyMs": sum(latencies)/len(latencies) if latencies else None,
             "latencyCoverage": len(latencies), "downloadBytes": prediction_metric(predictions, "downloadBytes"), "peakMemoryBytes": prediction_metric(predictions, "peakMemoryBytes"),
             "heldOutEvaluated": split == "test", "realLabelValidated": False}
@@ -218,7 +218,7 @@ def main():
         result = {"valid": True, "completeEvidenceRequired": args.complete, "status": manifest["status"], "labels": len(manifest["labels"]), "photos": sum(bool(row.get("captured")) for row in manifest["images"])}
     elif args.command == "select":
         reports = [json.loads(Path(path).read_text()) for path in args.reports]
-        if not reports or len({row["datasetHash"] for row in reports}) != 1 or any(not row.get("candidateFingerprint") or row.get("candidateBoundary") != "END_TO_END_EXTRACTION" or row.get("missingPredictions") != 0 or row["split"] != "validation" or row["macroCompleteLabelExact"] is None or row["meanLatencyMs"] is None or row.get("latencyCoverage") != row["images"] for row in reports):
+        if not reports or len({row["datasetHash"] for row in reports}) != 1 or any(row.get("identifierCER") is None or not row.get("candidateFingerprint") or row.get("candidateBoundary") != "END_TO_END_EXTRACTION" or row.get("missingPredictions") != 0 or row["split"] != "validation" or row["macroCompleteLabelExact"] is None or row["meanLatencyMs"] is None or row.get("latencyCoverage") != row["images"] for row in reports):
             raise ValueError("Selection needs comparable three-bank validation reports with complete latency evidence")
         ranked = sorted(reports, key=lambda row: (-row["macroCompleteLabelExact"], row["identifierCER"], row["meanLatencyMs"], row["candidateId"]))
         result = {"candidateId": ranked[0]["candidateId"], "candidateFingerprint": ranked[0]["candidateFingerprint"], "datasetHash": ranked[0]["datasetHash"], "selectionRule": "macro complete-label exact descending, identifier CER ascending, latency ascending, stable ID", "validationReports": [digest(row) for row in reports]}
