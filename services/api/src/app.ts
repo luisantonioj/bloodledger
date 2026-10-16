@@ -153,11 +153,13 @@ export async function buildApp(
     const correlationId = `CORR_API_${request.id.replaceAll("-", "").toUpperCase()}`;
     if (error instanceof ApiFailure) {
       if(error.statusCode===401)reply.header("set-cookie",clearSessionCookie(config.webCookieSecure ?? true));
-      void reply.status(error.statusCode).send({ error: { code: error.code, message: error.message, correlationId } });
+      if(error.retryAfterSeconds)reply.header("retry-after",String(error.retryAfterSeconds));
+      void reply.status(error.statusCode).send({ error: { code: error.code, message: error.message, correlationId, ...(error.details?{details:error.details}:{}) } });
       return;
     }
     const frameworkError = error as { statusCode?: number; code?: string; constraint?: string };
     if(frameworkError.code==='23505'){
+      if(frameworkError.constraint==='onboarding_sample_active_claim'){void reply.status(409).send({error:{code:'ONB_SAMPLE_UNAVAILABLE',message:'The selected sample facility is no longer available.',correlationId}});return;}
       const code=frameworkError.constraint==='one_active_primary_institution_account'?'ACCOUNT_PRIMARY_EXISTS':'ACCOUNT_IDENTITY_CONFLICT';
       void reply.status(409).send({error:{code,message:'The account identity conflicts with an existing record.',correlationId}});return;
     }
@@ -231,7 +233,7 @@ export async function buildApp(
         if (!["POST","PUT","PATCH","DELETE"].includes(request.method) || !request.url.startsWith("/api/")) return;
         const path=request.url.split("?")[0];
         if (["/api/v1/auth/session","/api/v1/simulation/session","/api/v2/auth/operator-verifications"].includes(path!)) return;
-        if (path === "/api/v2/onboarding/applications" || /^\/api\/v2\/onboarding\/applicant\//.test(path!)) return;
+        if (path === "/api/v2/onboarding/applications" || path === "/api/v2/onboarding/public-applications" || /^\/api\/v2\/onboarding\/applicant\//.test(path!)) return;
         const active=await restore(request);
         if (!active.principal.accountId) return;
         requireSameOrigin(request,webOrigin);

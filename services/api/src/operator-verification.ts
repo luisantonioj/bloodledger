@@ -12,7 +12,7 @@ export function allowedOperatorAction(principal: WebPrincipal, operator: Operato
   if (/^POST \/api\/v2\/prc-supply-requests\/PRCSR_[A-Z0-9]{40}\/(acknowledge|fulfil|decline)$/.test(action)) return principal.accountCategory === "PRC" && operator.capabilityProfile === "PRC_REVIEWER";
   if (operator.capabilityProfile === "PRC_REVIEWER" && action === "POST /api/v2/onboarding/operators") return principal.accountCategory === "PRC";
   if (operator.capabilityProfile === "INSTITUTION_ADMIN" && (action === "POST /api/v2/onboarding/operators" || /^POST \/api\/v2\/onboarding\/institutions\/[A-Z0-9_-]+\/profile$/.test(action))) return true;
-  if (operator.capabilityProfile === "PRC_REVIEWER") return principal.accountCategory === "PRC" && /^POST \/api\/v2\/onboarding\/(invitations|applications\/[A-Z0-9_-]+\/(review|approve|reject|activate)|institutions\/[A-Z0-9_-]+\/(suspend|reactivate|profile|account)|operators\/[A-Z0-9_-]+\/(reset-pin|revoke))$/.test(action);
+  if (operator.capabilityProfile === "PRC_REVIEWER") return principal.accountCategory === "PRC" && /^POST \/api\/v2\/onboarding\/(invitations|applications\/[A-Z0-9_-]+\/(review|approve|reject|activate)|institutions\/[A-Z0-9_-]+\/(suspend|reactivate|deregister|profile|account)|operators\/[A-Z0-9_-]+\/(reset-pin|revoke))$/.test(action);
   if (operator.capabilityProfile === "INSTITUTION_ADMIN") return /^POST \/api\/v2\/onboarding\/operators\/[A-Z0-9_-]+\/(reset-pin|revoke)$/.test(action);
   if (operator.roleId === "ROLE-03") return action === "POST /api/v2/transfers" || /^POST \/api\/v2\/(transfers\/[A-Z0-9_-]+\/(cancellation|receipt|compromise)|reservations\/[A-Z0-9_-]+\/(receive|compromise|cancel))$/.test(action);
   if (operator.roleId !== "ROLE-01" && operator.roleId !== "ROLE-02") return false;

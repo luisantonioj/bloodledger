@@ -1,0 +1,384 @@
+{
+  "policyVersion": "SYNTHETIC_PUBLIC_APPLICATION_V1",
+  "schemaVersion": "PUBLIC_APPLICATION_V1",
+  "catalogVersion": "SYNTHETIC_FACILITY_CATALOG_V1",
+  "classification": "SIMULATION_ONLY",
+  "note": "Invented facilities for simulation only. These are catalog references, not institution IDs, license approvals or login credentials. Not Mediatrix, PRC, DOH or clinical policy.",
+  "categories": [
+    "BLOOD_BANK",
+    "REQUESTOR"
+  ],
+  "rateLimits": {
+    "windowSeconds": 900,
+    "submissionsPerClient": 20,
+    "submissionsGlobal": 200,
+    "samplesPerClient": 120,
+    "applicantLoginsPerClient": 30
+  },
+  "maxInstancesPerSample": 99,
+  "documentSlots": {
+    "BLOOD_BANK": [
+      {
+        "slot": "HEALTH_FACILITY_LTO",
+        "required": true,
+        "fixtureId": "SYNTH_DOC_HEALTH_FACILITY_LTO_V1"
+      },
+      {
+        "slot": "BSF_LTO",
+        "required": true,
+        "fixtureId": "SYNTH_DOC_BSF_LTO_V1"
+      },
+      {
+        "slot": "BSF_ASSESSMENT_PACKAGE",
+        "required": true,
+        "fixtureId": "SYNTH_DOC_BSF_ASSESSMENT_PACKAGE_V1"
+      }
+    ],
+    "REQUESTOR": [
+      {
+        "slot": "HEALTH_FACILITY_LTO",
+        "required": true,
+        "fixtureId": "SYNTH_DOC_HEALTH_FACILITY_LTO_V1"
+      },
+      {
+        "slot": "BLOOD_STATION_AUTHORIZATION",
+        "required": true,
+        "fixtureId": "SYNTH_DOC_BLOOD_STATION_AUTHORIZATION_V1"
+      },
+      {
+        "slot": "REFERRAL_AGREEMENT",
+        "required": false,
+        "fixtureId": "SYNTH_DOC_REFERRAL_AGREEMENT_V1"
+      }
+    ]
+  },
+  "documentFixtures": {
+    "SYNTH_DOC_HEALTH_FACILITY_LTO_V1": "Synthetic hospital or health-facility license to operate",
+    "SYNTH_DOC_BSF_LTO_V1": "Synthetic DOH blood service facility license to operate",
+    "SYNTH_DOC_BSF_ASSESSMENT_PACKAGE_V1": "Synthetic BSF assessment, personnel and equipment package",
+    "SYNTH_DOC_BLOOD_STATION_AUTHORIZATION_V1": "Synthetic blood station authority to operate or transfusion-service authorization",
+    "SYNTH_DOC_REFERRAL_AGREEMENT_V1": "Synthetic referral agreement or facility capability document"
+  },
+  "samples": [
+    {
+      "sampleId": "SAMPLE_BANK_01",
+      "category": "BLOOD_BANK",
+      "facility": {
+        "displayName": "Synthetic Northgate Blood Center",
+        "legalName": "Synthetic Northgate Blood Center Foundation Inc",
+        "ownership": "PRIVATE",
+        "facilityClassification": "LEVEL_3_HOSPITAL",
+        "streetAddress": "101 Synthetic Avenue",
+        "city": "Synthetic North City",
+        "province": "Synthetic Province A",
+        "officialPhone": "SYN-201-0110",
+        "officialEmail": "office@sbank01.bloodledger",
+        "facilityLicenseReference": "SYNTH-HF-LTO-B01",
+        "facilityLicenseValidityDays": 540
+      },
+      "qualification": {
+        "authorityReference": "SYNTH-BSF-LTO-B01",
+        "authorityValidityDays": 365,
+        "bsfCategory": "BLOOD_CENTER",
+        "headOfFacilityReference": "SYNTH-PERSON-B01H",
+        "headOfFacilityLicenseReference": "SYNTH-PRCLIC-201001",
+        "medicalTechnologistReference": "SYNTH-PERSON-B01M",
+        "medicalTechnologistLicenseReference": "SYNTH-PRCLIC-201002",
+        "applicationReason": "Synthetic participation in the BloodLedger redistribution simulation"
+      },
+      "primaryAccount": {
+        "applicantPosition": "BLOOD_BANK_HEAD",
+        "applicantReference": "SYNTH-PERSON-B01A",
+        "loginLocalPart": "bloodbank",
+        "loginDomainBase": "sbank01"
+      }
+    },
+    {
+      "sampleId": "SAMPLE_BANK_02",
+      "category": "BLOOD_BANK",
+      "facility": {
+        "displayName": "Synthetic Riverside Regional Blood Bank",
+        "legalName": "Synthetic Riverside Regional Hospital Corporation",
+        "ownership": "GOVERNMENT",
+        "facilityClassification": "LEVEL_3_HOSPITAL",
+        "streetAddress": "22 Synthetic Riverside Road",
+        "city": "Synthetic River City",
+        "province": "Synthetic Province A",
+        "officialPhone": "SYN-202-0210",
+        "officialEmail": "office@sbank02.bloodledger",
+        "facilityLicenseReference": "SYNTH-HF-LTO-B02",
+        "facilityLicenseValidityDays": 570
+      },
+      "qualification": {
+        "authorityReference": "SYNTH-BSF-LTO-B02",
+        "authorityValidityDays": 395,
+        "bsfCategory": "BLOOD_BANK_WITH_ADDITIONAL_FUNCTIONS",
+        "headOfFacilityReference": "SYNTH-PERSON-B02H",
+        "headOfFacilityLicenseReference": "SYNTH-PRCLIC-202001",
+        "medicalTechnologistReference": "SYNTH-PERSON-B02M",
+        "medicalTechnologistLicenseReference": "SYNTH-PRCLIC-202002",
+        "applicationReason": "Synthetic participation in the BloodLedger redistribution simulation"
+      },
+      "primaryAccount": {
+        "applicantPosition": "BLOOD_BANK_HEAD",
+        "applicantReference": "SYNTH-PERSON-B02A",
+        "loginLocalPart": "bloodbank",
+        "loginDomainBase": "sbank02"
+      }
+    },
+    {
+      "sampleId": "SAMPLE_BANK_03",
+      "category": "BLOOD_BANK",
+      "facility": {
+        "displayName": "Synthetic Hillcrest Medical Blood Bank",
+        "legalName": "Synthetic Hillcrest Medical Center Inc",
+        "ownership": "PRIVATE",
+        "facilityClassification": "LEVEL_2_HOSPITAL",
+        "streetAddress": "303 Synthetic Hill Street",
+        "city": "Synthetic Hill Town",
+        "province": "Synthetic Province B",
+        "officialPhone": "SYN-203-0310",
+        "officialEmail": "office@sbank03.bloodledger",
+        "facilityLicenseReference": "SYNTH-HF-LTO-B03",
+        "facilityLicenseValidityDays": 600
+      },
+      "qualification": {
+        "authorityReference": "SYNTH-BSF-LTO-B03",
+        "authorityValidityDays": 425,
+        "bsfCategory": "BLOOD_BANK",
+        "headOfFacilityReference": "SYNTH-PERSON-B03H",
+        "headOfFacilityLicenseReference": "SYNTH-PRCLIC-203001",
+        "medicalTechnologistReference": "SYNTH-PERSON-B03M",
+        "medicalTechnologistLicenseReference": "SYNTH-PRCLIC-203002",
+        "applicationReason": "Synthetic participation in the BloodLedger redistribution simulation"
+      },
+      "primaryAccount": {
+        "applicantPosition": "BLOOD_BANK_HEAD",
+        "applicantReference": "SYNTH-PERSON-B03A",
+        "loginLocalPart": "bloodbank",
+        "loginDomainBase": "sbank03"
+      }
+    },
+    {
+      "sampleId": "SAMPLE_BANK_04",
+      "category": "BLOOD_BANK",
+      "facility": {
+        "displayName": "Synthetic Eastport General Blood Bank",
+        "legalName": "Synthetic Eastport General Hospital",
+        "ownership": "GOVERNMENT",
+        "facilityClassification": "LEVEL_2_HOSPITAL",
+        "streetAddress": "44 Synthetic Port Boulevard",
+        "city": "Synthetic East Port",
+        "province": "Synthetic Province B",
+        "officialPhone": "SYN-204-0410",
+        "officialEmail": "office@sbank04.bloodledger",
+        "facilityLicenseReference": "SYNTH-HF-LTO-B04",
+        "facilityLicenseValidityDays": 630
+      },
+      "qualification": {
+        "authorityReference": "SYNTH-BSF-LTO-B04",
+        "authorityValidityDays": 455,
+        "bsfCategory": "BLOOD_BANK",
+        "headOfFacilityReference": "SYNTH-PERSON-B04H",
+        "headOfFacilityLicenseReference": "SYNTH-PRCLIC-204001",
+        "medicalTechnologistReference": "SYNTH-PERSON-B04M",
+        "medicalTechnologistLicenseReference": "SYNTH-PRCLIC-204002",
+        "applicationReason": "Synthetic participation in the BloodLedger redistribution simulation"
+      },
+      "primaryAccount": {
+        "applicantPosition": "BLOOD_BANK_HEAD",
+        "applicantReference": "SYNTH-PERSON-B04A",
+        "loginLocalPart": "bloodbank",
+        "loginDomainBase": "sbank04"
+      }
+    },
+    {
+      "sampleId": "SAMPLE_BANK_05",
+      "category": "BLOOD_BANK",
+      "facility": {
+        "displayName": "Synthetic Lakeview Blood Service Facility",
+        "legalName": "Synthetic Lakeview Health Services Cooperative",
+        "ownership": "PRIVATE",
+        "facilityClassification": "OTHER_LICENSED_HEALTH_FACILITY",
+        "streetAddress": "505 Synthetic Lakeshore Drive",
+        "city": "Synthetic Lake City",
+        "province": "Synthetic Province C",
+        "officialPhone": "SYN-205-0510",
+        "officialEmail": "office@sbank05.bloodledger",
+        "facilityLicenseReference": "SYNTH-HF-LTO-B05",
+        "facilityLicenseValidityDays": 660
+      },
+      "qualification": {
+        "authorityReference": "SYNTH-BSF-LTO-B05",
+        "authorityValidityDays": 485,
+        "bsfCategory": "BLOOD_BANK_WITH_ADDITIONAL_FUNCTIONS",
+        "headOfFacilityReference": "SYNTH-PERSON-B05H",
+        "headOfFacilityLicenseReference": "SYNTH-PRCLIC-205001",
+        "medicalTechnologistReference": "SYNTH-PERSON-B05M",
+        "medicalTechnologistLicenseReference": "SYNTH-PRCLIC-205002",
+        "applicationReason": "Synthetic participation in the BloodLedger redistribution simulation"
+      },
+      "primaryAccount": {
+        "applicantPosition": "BLOOD_BANK_HEAD",
+        "applicantReference": "SYNTH-PERSON-B05A",
+        "loginLocalPart": "bloodbank",
+        "loginDomainBase": "sbank05"
+      }
+    },
+    {
+      "sampleId": "SAMPLE_REQUESTOR_01",
+      "category": "REQUESTOR",
+      "facility": {
+        "displayName": "Synthetic Westfield Community Hospital",
+        "legalName": "Synthetic Westfield Community Hospital Inc",
+        "ownership": "PRIVATE",
+        "facilityClassification": "LEVEL_1_HOSPITAL",
+        "streetAddress": "11 Synthetic Field Lane",
+        "city": "Synthetic West Field",
+        "province": "Synthetic Province A",
+        "officialPhone": "SYN-301-0120",
+        "officialEmail": "office@sreq01.bloodledger",
+        "facilityLicenseReference": "SYNTH-HF-LTO-R01",
+        "facilityLicenseValidityDays": 540
+      },
+      "qualification": {
+        "authorityReference": "SYNTH-BS-ATO-R01",
+        "authorityValidityDays": 365,
+        "medicalTechnologistReference": "SYNTH-PERSON-R01M",
+        "medicalTechnologistLicenseReference": "SYNTH-PRCLIC-301002",
+        "referralFacilityName": "Synthetic Northgate Blood Center",
+        "applicationReason": "Synthetic participation as a receiving facility in the BloodLedger simulation"
+      },
+      "primaryAccount": {
+        "applicantPosition": "FACILITY_ADMINISTRATOR",
+        "applicantReference": "SYNTH-PERSON-R01A",
+        "loginLocalPart": "facility",
+        "loginDomainBase": "sreq01"
+      }
+    },
+    {
+      "sampleId": "SAMPLE_REQUESTOR_02",
+      "category": "REQUESTOR",
+      "facility": {
+        "displayName": "Synthetic Southbay District Hospital",
+        "legalName": "Synthetic Southbay District Hospital",
+        "ownership": "GOVERNMENT",
+        "facilityClassification": "LEVEL_1_HOSPITAL",
+        "streetAddress": "62 Synthetic Bay Road",
+        "city": "Synthetic South Bay",
+        "province": "Synthetic Province A",
+        "officialPhone": "SYN-302-0220",
+        "officialEmail": "office@sreq02.bloodledger",
+        "facilityLicenseReference": "SYNTH-HF-LTO-R02",
+        "facilityLicenseValidityDays": 570
+      },
+      "qualification": {
+        "authorityReference": "SYNTH-BS-ATO-R02",
+        "authorityValidityDays": 395,
+        "medicalTechnologistReference": "SYNTH-PERSON-R02M",
+        "medicalTechnologistLicenseReference": "SYNTH-PRCLIC-302002",
+        "referralFacilityName": "Synthetic Riverside Regional Blood Bank",
+        "applicationReason": "Synthetic participation as a receiving facility in the BloodLedger simulation"
+      },
+      "primaryAccount": {
+        "applicantPosition": "FACILITY_ADMINISTRATOR",
+        "applicantReference": "SYNTH-PERSON-R02A",
+        "loginLocalPart": "facility",
+        "loginDomainBase": "sreq02"
+      }
+    },
+    {
+      "sampleId": "SAMPLE_REQUESTOR_03",
+      "category": "REQUESTOR",
+      "facility": {
+        "displayName": "Synthetic Pinecrest Family Hospital",
+        "legalName": "Synthetic Pinecrest Family Hospital Corporation",
+        "ownership": "PRIVATE",
+        "facilityClassification": "LEVEL_2_HOSPITAL",
+        "streetAddress": "73 Synthetic Pine Avenue",
+        "city": "Synthetic Pine Town",
+        "province": "Synthetic Province B",
+        "officialPhone": "SYN-303-0320",
+        "officialEmail": "office@sreq03.bloodledger",
+        "facilityLicenseReference": "SYNTH-HF-LTO-R03",
+        "facilityLicenseValidityDays": 600
+      },
+      "qualification": {
+        "authorityReference": "SYNTH-BS-ATO-R03",
+        "authorityValidityDays": 425,
+        "medicalTechnologistReference": "SYNTH-PERSON-R03M",
+        "medicalTechnologistLicenseReference": "SYNTH-PRCLIC-303002",
+        "referralFacilityName": "Synthetic Hillcrest Medical Blood Bank",
+        "applicationReason": "Synthetic participation as a receiving facility in the BloodLedger simulation"
+      },
+      "primaryAccount": {
+        "applicantPosition": "FACILITY_ADMINISTRATOR",
+        "applicantReference": "SYNTH-PERSON-R03A",
+        "loginLocalPart": "facility",
+        "loginDomainBase": "sreq03"
+      }
+    },
+    {
+      "sampleId": "SAMPLE_REQUESTOR_04",
+      "category": "REQUESTOR",
+      "facility": {
+        "displayName": "Synthetic Meadowbrook Municipal Infirmary",
+        "legalName": "Synthetic Meadowbrook Municipal Infirmary",
+        "ownership": "GOVERNMENT",
+        "facilityClassification": "OTHER_LICENSED_HEALTH_FACILITY",
+        "streetAddress": "84 Synthetic Meadow Street",
+        "city": "Synthetic Meadow City",
+        "province": "Synthetic Province B",
+        "officialPhone": "SYN-304-0420",
+        "officialEmail": "office@sreq04.bloodledger",
+        "facilityLicenseReference": "SYNTH-HF-LTO-R04",
+        "facilityLicenseValidityDays": 630
+      },
+      "qualification": {
+        "authorityReference": "SYNTH-BS-ATO-R04",
+        "authorityValidityDays": 455,
+        "medicalTechnologistReference": "SYNTH-PERSON-R04M",
+        "medicalTechnologistLicenseReference": "SYNTH-PRCLIC-304002",
+        "referralFacilityName": "Synthetic Eastport General Blood Bank",
+        "applicationReason": "Synthetic participation as a receiving facility in the BloodLedger simulation"
+      },
+      "primaryAccount": {
+        "applicantPosition": "FACILITY_ADMINISTRATOR",
+        "applicantReference": "SYNTH-PERSON-R04A",
+        "loginLocalPart": "facility",
+        "loginDomainBase": "sreq04"
+      }
+    },
+    {
+      "sampleId": "SAMPLE_REQUESTOR_05",
+      "category": "REQUESTOR",
+      "facility": {
+        "displayName": "Synthetic Harborview Specialty Hospital",
+        "legalName": "Synthetic Harborview Specialty Hospital Inc",
+        "ownership": "PRIVATE",
+        "facilityClassification": "LEVEL_2_HOSPITAL",
+        "streetAddress": "95 Synthetic Harbor Drive",
+        "city": "Synthetic Harbor City",
+        "province": "Synthetic Province C",
+        "officialPhone": "SYN-305-0520",
+        "officialEmail": "office@sreq05.bloodledger",
+        "facilityLicenseReference": "SYNTH-HF-LTO-R05",
+        "facilityLicenseValidityDays": 660
+      },
+      "qualification": {
+        "authorityReference": "SYNTH-BS-ATO-R05",
+        "authorityValidityDays": 485,
+        "medicalTechnologistReference": "SYNTH-PERSON-R05M",
+        "medicalTechnologistLicenseReference": "SYNTH-PRCLIC-305002",
+        "referralFacilityName": "Synthetic Lakeview Blood Service Facility",
+        "applicationReason": "Synthetic participation as a receiving facility in the BloodLedger simulation"
+      },
+      "primaryAccount": {
+        "applicantPosition": "FACILITY_ADMINISTRATOR",
+        "applicantReference": "SYNTH-PERSON-R05A",
+        "loginLocalPart": "facility",
+        "loginDomainBase": "sreq05"
+      }
+    }
+  ]
+}

@@ -3,6 +3,9 @@ export class ApiFailure extends Error {
     readonly statusCode: number,
     readonly code: string,
     message: string,
+    /** Safe field paths and rule names only; never echoes submitted values. */
+    readonly details?: { field: string; rule: string }[],
+    readonly retryAfterSeconds?: number,
   ) {
     super(message);
     this.name = "ApiFailure";
