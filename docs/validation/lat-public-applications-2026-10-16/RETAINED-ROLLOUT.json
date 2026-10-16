@@ -66,5 +66,34 @@
     "prUrl": "https://github.com/luisantonioj/bloodledger/pull/69",
     "draft": true,
     "sourceAndEvidencePushed": true
+  },
+  "recovery": {
+    "previousApiTarget": "d83509bf333d073061c3cb125ac4914798ee8ab0",
+    "newApiTarget": "1124d6a5e7f2f228f7bd713605017238c2f9f163",
+    "applicationSourceEquivalent": true,
+    "migrationStatus": {
+      "applied": 34,
+      "pending": 0
+    },
+    "generatedDirectoriesIgnored": true,
+    "foreignOwnedBefore": 18,
+    "authorizedCommand": "sudo chown -R \"$(id -u):$(id -g)\" services/api/build services/coordination/build chaincode/build",
+    "commandExitCode": 1,
+    "failure": "sudo requires an interactive password; command did not execute chown",
+    "foreignOwnedAfter": "NOT_RUN: sudo gate failed",
+    "apiBuild": "NOT_RUN: stopped at first failed gate",
+    "step6": "NOT_RUN",
+    "step7": "NOT_RUN",
+    "publicFlagEnabled": false,
+    "services": {
+      "api": "STOPPED",
+      "web": "STOPPED"
+    },
+    "sourceRebased": true,
+    "secretScan": "PASS: history, index, candidate content; two path-scoped exact secret-regex allowlists",
+    "liveSubmission": false,
+    "liveActivation": false,
+    "liveDeregistration": false,
+    "noMigrationRerunRollbackRestore": true
   }
 }

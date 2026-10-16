@@ -37,3 +37,17 @@ condition = "AND"
 paths = ['''(^|/)services/api/test/v2-contract-boundary\.test\.ts$''']
 regexTarget = "secret"
 regexes = ['''^(v2-census-test-secret-that-is-long-enough|v2-reconciliation-test-secret-long-enough|v2-reservation-test-secret-that-is-long-enough|IDEM_RECONCILIATION_001|IDEM_RESERVATION_CANCEL_001)$''']
+
+[[allowlists]]
+description = "Reviewed API deployment target commit; not a credential"
+condition = "AND"
+paths = ['''(^|/)docs/validation/lat\-public\-applications\-2026\-10\-16/RETAINED\-ROLLOUT\.json$''']
+regexTarget = "secret"
+regexes = ['''^d83509bf333d073061c3cb125ac4914798ee8ab0$''']
+
+[[allowlists]]
+description = "Reviewed retained forecast run identifier; not a credential"
+condition = "AND"
+paths = ['''(^|/)docs/validation/lat\-blood\-bank\-completion\-2026\-10\-15/FORECAST\-HOST\-READ\.json$''']
+regexTarget = "secret"
+regexes = ['''^RUNKEY_2D04AD0EE64FBB64CA940C298126C77C$''']
