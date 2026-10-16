@@ -19,13 +19,14 @@ export function outboundFailure(reason:unknown){
   }
   return "Verification could not be confirmed. Retry the saved attempt explicitly; do not prepare until evidence is returned.";
 }
-export function OutboundVerification({reservation,onVerified,onLockChange}:{reservation:ReservationDetail;onVerified:(result:ReturnType<typeof parseOutboundVerification>)=>void;onLockChange:(locked:boolean)=>void}){
+export function OutboundVerification({reservation,onVerified,onLockChange,scannedRecognition}:{scannedRecognition?:ReceiptRecognition;reservation:ReservationDetail;onVerified:(result:ReturnType<typeof parseOutboundVerification>)=>void;onLockChange:(locked:boolean)=>void}){
   // Operations must explicitly enable this after the separately approved host migration.
   const enabled=import.meta.env.VITE_BLOODLEDGER_OUTBOUND_VERIFICATION_READY==="true";
   const [image,setImage]=useState<File>(),[recognition,setRecognition]=useState<ReceiptRecognition>(),[labels,setLabels]=useState<string[]>([]),[confirmed,setConfirmed]=useState(false),[reading,setReading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[done,setDone]=useState(false),[ambiguous,setAmbiguous]=useState(false);
   const active=useRef(true),controller=useRef<AbortController|null>(null),attempt=useRef<{keys:ReturnType<typeof newMutationKeys>;body:{expectedVersion:number;correlationId:string;scannedLabels:string[]}}|null>(null);
   useEffect(()=>{active.current=true;return()=>{active.current=false;controller.current?.abort();};},[]);
   const locked=busy||ambiguous;
+  useEffect(()=>{if(!locked&&!done){controller.current?.abort();setRecognition(scannedRecognition);setConfirmed(false);setError("");}},[scannedRecognition]);
   useEffect(()=>{onLockChange(locked);},[locked,onLockChange]);
   async function ocr(){
     if(!image||locked||reading)return;const abort=new AbortController();controller.current=abort;setReading(true);setError("");setRecognition(undefined);setConfirmed(false);
@@ -48,7 +49,7 @@ export function OutboundVerification({reservation,onVerified,onLockChange}:{rese
   return <section className="bank-record-card" aria-label="Outbound label verification">
     <h4>Scan reserved units</h4>
     {reservation.components.length>50&&<p role="status">This reservation exceeds the contract’s 50-label verification limit. Ask Jopia to review the supported workflow; labels cannot be split into partial verification attempts.</p>}
-    {!enabled&&<p role="status">Outbound verification is unavailable until Jopia approves and applies this host’s migration. Existing reviewed preparation evidence remains supported.</p>}
+    {!enabled&&<p role="status">Outbound verification is disabled for this host. Migration and runtime readiness must be confirmed before enabling it. Existing reviewed preparation evidence remains supported.</p>}
     <fieldset disabled={!enabled||locked||done}>
       <label>Reserved-unit label image<input type="file" accept="image/png,image/jpeg" capture="environment" disabled={reading} onChange={event=>{const file=event.target.files?.[0];controller.current?.abort();setRecognition(undefined);setConfirmed(false);setError("");setImage(undefined);if(file&&["image/png","image/jpeg"].includes(file.type)&&file.size<=10*1024*1024)setImage(file);else if(file)setError("Choose a JPG or PNG image up to 10 MB.");event.target.value="";}}/></label>
       <button className="button compact" type="button" disabled={!image||reading} onClick={()=>void ocr()}>{reading?"Reading…":"Run OCR"}</button>

@@ -1,0 +1,2 @@
+import {defineConfig,devices} from "@playwright/test";
+export default defineConfig({testDir:"./e2e",testMatch:"**/label-extraction-preview.spec.ts",fullyParallel:false,retries:0,timeout:120000,expect:{timeout:10000},reporter:"line",use:{baseURL:"http://127.0.0.1:4185",trace:"retain-on-failure",...devices["Desktop Chrome"]},webServer:{command:"BLOODLEDGER_VITE_CACHE_DIR=node_modules/.vite-ocr-preview VITE_BLOODLEDGER_LABEL_EXTRACTION_PREVIEW=true vite --host 127.0.0.1 --port 4185 --strictPort",url:"http://127.0.0.1:4185",reuseExistingServer:false,timeout:60000}});
