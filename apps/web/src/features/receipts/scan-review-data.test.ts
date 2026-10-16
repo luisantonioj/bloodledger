@@ -1,0 +1,13 @@
+import {describe,it,expect} from "vitest";
+import {reviewOcrLines,unchangedVerifiedDraft,validLabel} from "./scan-review-data";
+const lines=["DONATION NO: MM26-01-0001","BLOOD TYPE: A_POSITIVE","COMPONENT: WHOLE_BLOOD","COLLECTED AT: 2026-09-17T00:00:00.000Z","EXPIRES AT: 2026-10-17T00:00:00.000Z"].map(text=>({text,confidence:99}));
+describe("FR-01/08 editable capture review preserves evidence",()=>{
+ it("accepts unchanged strict OCR and keeps a separate editable draft",()=>{const read=reviewOcrLines(lines);expect(unchangedVerifiedDraft(read.draft,read)).toBe(true);const draft={...read.draft,donationNumber:"MM26-01-0002"};expect(unchangedVerifiedDraft(draft,read)).toBe(false);expect(read.verified?.label.donationNumber).toBe("MM26-01-0001");});
+ it("keeps low confidence for review without upgrading evidence",()=>{const read=reviewOcrLines(lines.map(line=>({...line,confidence:65})));expect(read.draft.donationNumber).toBe("MM26-01-0001");expect(read.confidences.donationNumber).toBe(65);expect(read.verified).toBeUndefined();expect(unchangedVerifiedDraft(read.draft,read)).toBe(false);});
+ it("leaves missing fields blank instead of guessing",()=>{const read=reviewOcrLines(lines.slice(0,2));expect(read.draft.componentType).toBe("");expect(read.confidences.componentType).toBeUndefined();expect(read.verified).toBeUndefined();});
+ it("never promotes a corrected malformed label to OCR",()=>{const read=reviewOcrLines(lines.map((row,i)=>i===0?{...row,text:"DONATION NO: unreadable"}:row));const corrected={...read.draft,donationNumber:"MM26-01-0001"};expect(validLabel(corrected)).toBeDefined();expect(unchangedVerifiedDraft(corrected,read)).toBe(false);});
+ it("rejects duplicate fields rather than selecting one",()=>expect(()=>reviewOcrLines([...lines,lines[0]])).toThrow("CAPTURE_DUPLICATE_FIELD"));
+ it("discards prohibited personal data",()=>expect(()=>reviewOcrLines([...lines,{text:"PATIENT: example",confidence:99}])).toThrow("CAPTURE_PROHIBITED_TEXT"));
+ it("does not store arbitrary OCR lines and does not verify extra-field captures",()=>{const read=reviewOcrLines([...lines,{text:"Extra untrusted text",confidence:99}]);expect(Object.keys(read.draft)).toHaveLength(5);expect(JSON.stringify(read)).not.toContain("Extra untrusted");expect(read.verified).toBeUndefined();});
+ it("rejects invalid date order without fabricating timestamps",()=>{const read=reviewOcrLines(lines);expect(validLabel({...read.draft,expiresAt:read.draft.collectedAt})).toBeUndefined();expect(validLabel({...read.draft,collectedAt:"2026-09-17"})).toBeUndefined();});
+});

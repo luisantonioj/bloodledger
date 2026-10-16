@@ -1189,3 +1189,44 @@
  .doh-report-slots {display:flex;width:100%;box-sizing:border-box}
  .doh-report-slots .button {flex:1;padding:6px 10px}
 }
+
+
+.bank-scanner-phone .receipt-input-card>.bank-scanner-input-heading {display:grid;grid-template-columns:32px minmax(0,1fr) 32px;align-items:center;gap:8px;padding:0 16px}
+.bank-scanner-phone .bank-scanner-input-heading h3 {margin:0;min-width:0;text-align:center;font-size:14px;line-height:1.4}
+.bank-scanner-phone .bank-scanner-input-heading>.request-form-help {justify-self:end}
+.bank-scanner-phone .bank-scanner-back {display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-height:32px;margin:0;padding:0;border-color:transparent;background:transparent;color:var(--ink)}
+.bank-scanner-phone .bank-scanner-back:hover {background:var(--surface-subtle);border-color:var(--line)}
+
+
+/* Keep scrolling while removing native arrow buttons in the scanner. */
+html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
+.bank-scanner-phone::-webkit-scrollbar-button,
+.bank-scanner-phone *::-webkit-scrollbar-button {display:none;width:0;height:0}
+
+.scan-review-fields {display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-width:0;margin:0;padding:16px;border:0}
+.scan-review-fields legend {padding:0;font-size:0}
+.scan-review-fields label,.scanner-transfer-controls>label {display:grid;gap:6px;min-width:0;font:500 11px/1.5 var(--font-sans);color:var(--ink-secondary)}
+.scan-review-fields input,.scan-review-fields select,.scanner-transfer-controls select {box-sizing:border-box;width:100%;min-width:0;min-height:38px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px/1.5 var(--font-sans)}
+.scan-review-fields select,.scanner-transfer-controls select {appearance:none;padding-right:30px}
+.scan-field-confidence {font:400 10px/1.5 var(--font-sans);color:var(--ink-muted)}
+.scanner-transfer-controls {padding:16px;display:grid;gap:12px}
+.scanner-transfer-actions .v2-operation-card {padding:16px;min-width:0}
+.scanner-transfer-actions .v2-operation-card fieldset {min-width:0}
+.scanner-transfer-actions .v2-operation-card input:not([type=checkbox]),.scanner-transfer-actions .v2-operation-card select {box-sizing:border-box;width:100%;min-width:0}
+.scanner-transfer-actions .bank-detail-action-buttons {flex-wrap:wrap;gap:8px}
+.receipt-review-card .receipt-confirm-footer>label {display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.5}
+/* Operator confirmation must remain above the mobile scanner and local toolbar. */
+.preview-modal-backdrop:has(>.operator-verification-modal) {z-index:10020}
+
+.label-image-controls {margin:12px 16px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:12px}
+.label-image-controls>summary {padding:12px;cursor:pointer;color:var(--ink-secondary);font-weight:500}
+.label-image-controls fieldset {min-width:0;margin:0;padding:12px;border:0;display:grid;gap:14px}
+.label-image-controls label {display:grid;gap:6px;color:var(--ink-secondary);font:400 11px/1.5 var(--font-sans);min-width:0}
+.label-image-controls input:not([type=range]),.label-image-controls select {box-sizing:border-box;width:100%;min-width:0;padding:8px;border:1px solid var(--line);border-radius:var(--radius-sm);font:400 12px var(--font-sans);background:var(--surface);color:var(--ink)}
+.label-crop-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.label-adjustment-actions {display:flex;gap:6px;flex-wrap:wrap}
+.label-prepared-preview {display:block;max-width:100%;max-height:260px;object-fit:contain}
+.label-extraction-notice {display:grid;gap:6px;padding:14px 16px;border-top:1px solid var(--line-subtle);font:400 11px/1.5 var(--font-sans);color:var(--ink-muted)}
+.field-extraction-evidence {display:grid;gap:5px;font:400 10px/1.6 var(--font-sans);color:var(--ink-muted);overflow-wrap:anywhere}
+.field-extraction-evidence summary {cursor:pointer;color:var(--information)}
+.field-extraction-evidence img {display:block;max-width:100%;margin-top:6px;border:1px solid var(--line);background:var(--surface)}

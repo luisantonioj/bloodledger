@@ -26,7 +26,7 @@ export function pageHelp(path: string, principal: Principal): string | undefined
   if (path === "/profile") return "Review your institution’s details, participation status and account information. Authorized administrators can edit supported profile details.";
   if (path === "/accounts") return "Manage authorized operators and institution access. Review roles and status, add administrators, or reset PINs and revoke access where permitted.";
   if (path === "/alerts") return "Review alerts available to your facility. Choose All, Critical, Warnings or Information to filter by severity, then check each alert’s details and status.";
-  if (path === "/receipts") return "Review blood received by your facility and open the inbound-only scanner to capture a label. Photo capture is a preview; matching labels and confirming receipt are not connected yet.";
+  if (path === "/receipts") return "Review blood received by your facility and open the inbound-only scanner to capture a label. Run OCR to review and edit the five supported fields, or prepare a Manual draft. Label-matched ROLE-03 receipt confirmation and submitting manual/corrected values await the published backend contract.";
   if (path === "/transfers") return requester
     ? "Create blood requests for your facility and follow their recorded status. Switch between Blood Requests and Transfers, then select a record to view its details."
     : "Review the blood requests and transfer records available to your facility. Select a record to view its details and follow recorded updates.";
