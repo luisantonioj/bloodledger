@@ -7,6 +7,7 @@ import hashlib
 import html
 import json
 import os
+from reporting import aligned_metrics, finite
 from pathlib import Path
 
 FIELDS = ("donationNumber", "bloodType", "componentType", "collectedAt", "expiresAt")
@@ -72,13 +73,27 @@ def create_plan(output):
 def validate_manifest(manifest, base, require_complete=False):
     if manifest.get("schemaVersion") != "SYNTHETIC_LABEL_CORPUS_V1" or manifest.get("classification") != "SIMULATION_ONLY":
         raise ValueError("Unsupported corpus")
+    if manifest.get("datasetVersion") in ("OCR_PILOT_PLAN_V3", "OCR_PILOT_PLAN_V4"):
+        from plan_v3 import validate_profiles
+        validate_profiles(manifest)
     labels = {row["labelId"]: row for row in manifest["labels"]}
     if len(labels) != len(manifest["labels"]):
         raise ValueError("Duplicate labels")
-    writers, images, hashes = {}, set(), set()
+    writers, images, hashes, donations = {}, set(), set(), {}
     for label in labels.values():
         if label["bank"] not in BANKS or label["split"] not in ("train", "validation", "test"):
             raise ValueError("Unknown bank/split")
+        number = label.get("values", {}).get("donationNumber")
+        if number:
+            identity = (label["bank"], number)
+            if identity in donations and donations[identity] != label["split"]:
+                raise ValueError("Donation identity leakage across splits")
+            donations[identity] = label["split"]
+        relationship = label.get("donationRelationshipId")
+        if relationship:
+            if relationship in donations and donations[relationship] != label["split"]:
+                raise ValueError("Donation relationship leakage across splits")
+            donations[relationship] = label["split"]
         if label["style"] == "handwritten":
             writer = label.get("writerId")
             if not writer or (writer in writers and writers[writer] != label["split"]):
@@ -111,7 +126,7 @@ def validate_manifest(manifest, base, require_complete=False):
     return labels
 
 def valid_box(box):
-    return isinstance(box, list) and len(box) == 4 and all(isinstance(x, (float, int)) and x >= 0 for x in box) and box[2] > box[0] and box[3] > box[1]
+    return isinstance(box, list) and len(box) == 4 and all(finite(x) and x >= 0 for x in box) and box[2] > box[0] and box[3] > box[1]
 
 def edit_distance(a, b):
     previous = list(range(len(b)+1))
@@ -143,6 +158,21 @@ def score(manifest, predictions, split, candidate, base):
         by_id[prediction["imageId"]] = prediction
     if set(by_id) - {row["imageId"] for row in selected}:
         raise ValueError("Unknown/out-of-split predictions")
+    if boundary == "GROUND_TRUTH_FIELD_CROPS_NOT_END_TO_END_EXTRACTION":
+        for image in selected:
+            for evidence in image["fields"].values():
+                if evidence["state"] == "present" and not evidence.get("rawText"):
+                    raise ValueError("Raw crop scoring requires independently reviewed rawText")
+    negative_images = [image for image in selected if labels[image["labelId"]].get("negativeClass")]
+    positive_images = [image for image in selected if not labels[image["labelId"]].get("negativeClass")]
+    negative_report = {}
+    for image in negative_images:
+        kind = labels[image["labelId"]]["negativeClass"]
+        row = negative_report.setdefault(kind, {"images": 0, "missingOrFailed": 0, "incorrectEligibleLabels": 0})
+        prediction = by_id.get(image["imageId"], {})
+        row["images"] += 1
+        row["missingOrFailed"] += not prediction or bool(prediction.get("safeErrorCode"))
+        row["incorrectEligibleLabels"] += any(field.get("eligibleForSubmission") for field in prediction.get("fields", {}).values())
     groups = {}
     for bank in BANKS:
         for style in ("printed", "handwritten"):
@@ -151,35 +181,37 @@ def score(manifest, predictions, split, candidate, base):
     whole = {bank: collections.Counter() for bank in BANKS}
     by_style = {bank+"/"+style: collections.Counter() for bank in BANKS for style in ("printed","handwritten")}
     latencies = []
-    for image in selected:
+    for image in positive_images:
         label = labels[image["labelId"]]
         prediction = by_id.get(image["imageId"], {})
-        complete = True
+        failed = not prediction or bool(prediction.get("safeErrorCode"))
+        complete = not failed
         for field in FIELDS:
             truth = image["fields"][field]
-            predicted = prediction.get("fields", {}).get(field, {})
+            predicted = {} if failed else prediction.get("fields", {}).get(field, {})
             value = predicted.get("candidate")
             counter = groups[(label["bank"], label["style"], field)]
             if truth["state"] == "present":
-                correct = value == truth["value"]
+                expected = truth["rawText"] if boundary == "GROUND_TRUTH_FIELD_CROPS_NOT_END_TO_END_EXTRACTION" else truth["value"]
+                correct = not failed and value == expected
                 counter["present"] += 1
                 counter["exact"] += correct
-                counter["characters"] += len(truth["value"])
-                counter["edits"] += edit_distance(truth["value"], value or "")
+                counter["characters"] += len(expected)
+                counter["edits"] += edit_distance(expected, value or "")
                 complete &= correct
             else:
                 correct = value is None and predicted.get("reviewState") in ("missing", "needs review")
                 counter["unresolved"] += 1
                 counter["unresolvedDetected"] += correct
                 complete = False
-            if predicted.get("eligibleForSubmission") and (not correct or predicted.get("source") in ("MANUAL", "CORRECTED") or truth["state"] != "present" or truth.get("precision") in ("DATE_ONLY", "AMBIGUOUS")):
+            if predicted.get("eligibleForSubmission") and (not correct or predicted.get("source") in ("MANUAL", "CORRECTED") or truth["state"] != "present" or truth.get("precision") in ("DATE", "DATE_ONLY", "AMBIGUOUS")):
                 counter["incorrectEligible"] += 1
         by_style[label["bank"]+"/"+label["style"]]["images"] += 1
         by_style[label["bank"]+"/"+label["style"]]["completeExact"] += complete
         whole[label["bank"]]["images"] += 1
         whole[label["bank"]]["completeExact"] += complete
         latency = prediction.get("latencyMs")
-        if isinstance(latency, (int, float)) and latency >= 0:
+        if finite(latency) and latency >= 0:
             latencies.append(latency)
     metrics = []
     for (bank, style, field), values in groups.items():
@@ -188,40 +220,47 @@ def score(manifest, predictions, split, candidate, base):
                         "characterErrorRate": values["edits"]/values["characters"] if values["characters"] else None})
     rates = [values["completeExact"]/values["images"] for values in whole.values() if values["images"]]
     donation = [row for row in metrics if row["field"] == "donationNumber"]
-    return {"classification": "SIMULATION_ONLY", "candidateBoundary": boundary, "candidateFingerprint": fingerprint, "datasetHash": digest(manifest), "datasetVersion": manifest["datasetVersion"], "candidateId": candidate, "split": split,
-            "distinctLabels": len({row["labelId"] for row in selected}), "writers": len({labels[row["labelId"]].get("writerId") for row in selected if labels[row["labelId"]].get("writerId")}),
-            "images": len(selected), "missingPredictions": len(selected)-len(by_id), "metrics": metrics,
-            "perBank": {bank: dict(values) for bank, values in whole.items()}, "perBankStyle": {key: {**dict(value), "distinctLabels": len({image["labelId"] for image in selected if labels[image["labelId"]]["bank"]+"/"+labels[image["labelId"]]["style"]==key}), "writers": len({labels[image["labelId"]].get("writerId") for image in selected if labels[image["labelId"]]["bank"]+"/"+labels[image["labelId"]]["style"]==key and labels[image["labelId"]].get("writerId")})} for key,value in by_style.items()},
+    return {"classification": "SIMULATION_ONLY", "candidateBoundary": boundary, "candidateFingerprint": fingerprint, "scoringProtocolVersion": "OCR_SCORE_V2", "scorerSha256": hashlib.sha256(Path(__file__).read_bytes() + Path(__file__).with_name("reporting.py").read_bytes()).hexdigest(), "datasetHash": digest(manifest), "datasetVersion": manifest["datasetVersion"], "candidateId": candidate, "split": split,
+            "distinctLabels": len({row["labelId"] for row in selected}), "positiveDistinctLabels": len({row["labelId"] for row in positive_images}), "negativeDistinctLabels": len({row["labelId"] for row in negative_images}), "writers": len({labels[row["labelId"]].get("writerId") for row in selected if labels[row["labelId"]].get("writerId")}),
+            "images": len(positive_images), "totalImages": len(selected), "failedPredictions": sum(bool(row.get("safeErrorCode")) for row in predictions), "missingPredictions": len(selected)-len(by_id), "metrics": metrics,
+            "perBank": {bank: dict(values) for bank, values in whole.items()}, "perBankStyle": {key: {**dict(value), "distinctLabels": len({image["labelId"] for image in positive_images if labels[image["labelId"]]["bank"]+"/"+labels[image["labelId"]]["style"]==key}), "writers": len({labels[image["labelId"]].get("writerId") for image in positive_images if labels[image["labelId"]]["bank"]+"/"+labels[image["labelId"]]["style"]==key and labels[image["labelId"]].get("writerId")})} for key,value in by_style.items()},
             "macroCompleteLabelExact": sum(rates)/len(rates) if len(rates) == len(BANKS) else None,
             "identifierCER": sum(row.get("edits", 0) for row in donation)/sum(row.get("characters", 0) for row in donation) if sum(row.get("characters", 0) for row in donation) else None,
             "meanLatencyMs": sum(latencies)/len(latencies) if latencies else None,
-            "latencyCoverage": len(latencies), "downloadBytes": prediction_metric(predictions, "downloadBytes"), "peakMemoryBytes": prediction_metric(predictions, "peakMemoryBytes"),
-            "heldOutEvaluated": split == "test", "realLabelValidated": False}
+            "latencyCoverage": len(latencies), "downloadBytes": prediction_metric(predictions, "downloadBytes"), "peakMemoryBytes": None,
+            "heldOutEvaluated": split == "test", "realLabelValidated": False,
+            "negativeCases": negative_report,
+            **aligned_metrics(positive_images, labels, by_id, FIELDS, boundary == "GROUND_TRUTH_FIELD_CROPS_NOT_END_TO_END_EXTRACTION"),
+            "negativeMetrics": aligned_metrics(negative_images, labels, by_id, FIELDS, boundary == "GROUND_TRUTH_FIELD_CROPS_NOT_END_TO_END_EXTRACTION")}
 
 def prediction_metric(predictions, key):
-    values = [row[key] for row in predictions if isinstance(row.get(key), (int, float)) and row[key] >= 0]
+    values = [row[key] for row in predictions if finite(row.get(key)) and row[key] >= 0]
     return max(values) if values else None
 
 def main():
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    init = commands.add_parser("init"); init.add_argument("--output", required=True)
+    init = commands.add_parser("init"); init.add_argument("--output", required=True); init.add_argument("--version", choices=("v2", "v3", "v4"), default="v2")
     validate = commands.add_parser("validate"); validate.add_argument("--manifest", required=True); validate.add_argument("--complete", action="store_true")
     evaluate = commands.add_parser("score"); evaluate.add_argument("--manifest", required=True); evaluate.add_argument("--predictions", required=True); evaluate.add_argument("--split", choices=("validation", "test"), required=True); evaluate.add_argument("--candidate", required=True); evaluate.add_argument("--selection"); evaluate.add_argument("--output", required=True)
     select = commands.add_parser("select"); select.add_argument("--reports", nargs="+", required=True); select.add_argument("--output", required=True)
     args = parser.parse_args()
     if args.command == "init":
-        result = create_plan(args.output)
+        if args.version in ("v3", "v4"):
+            from plan_v3 import create_plan_v3
+            result = create_plan_v3(args.output, private_output, write_new, version=args.version)
+        else:
+            result = create_plan(args.output)
     elif args.command == "validate":
         path = Path(args.manifest); manifest = json.loads(path.read_text()); validate_manifest(manifest, path.parent, args.complete)
         result = {"valid": True, "completeEvidenceRequired": args.complete, "status": manifest["status"], "labels": len(manifest["labels"]), "photos": sum(bool(row.get("captured")) for row in manifest["images"])}
     elif args.command == "select":
         reports = [json.loads(Path(path).read_text()) for path in args.reports]
-        if not reports or len({row["datasetHash"] for row in reports}) != 1 or any(row.get("identifierCER") is None or not row.get("candidateFingerprint") or row.get("candidateBoundary") != "END_TO_END_EXTRACTION" or row.get("missingPredictions") != 0 or row["split"] != "validation" or row["macroCompleteLabelExact"] is None or row["meanLatencyMs"] is None or row.get("latencyCoverage") != row["images"] for row in reports):
+        if not reports or len({row["datasetHash"] for row in reports}) != 1 or len({row.get("scorerSha256") for row in reports}) != 1 or any(row.get("scoringProtocolVersion") != "OCR_SCORE_V2" or not row.get("scorerSha256") or not finite(row.get("identifierCER")) or not finite(row.get("macroCompleteLabelExact")) or not finite(row.get("meanLatencyMs")) or not row.get("candidateFingerprint") or row.get("candidateBoundary") != "END_TO_END_EXTRACTION" or row.get("missingPredictions") != 0 or row["split"] != "validation" or row["macroCompleteLabelExact"] is None or row["meanLatencyMs"] is None or row.get("latencyCoverage") != row["images"] for row in reports):
             raise ValueError("Selection needs comparable three-bank validation reports with complete latency evidence")
         ranked = sorted(reports, key=lambda row: (-row["macroCompleteLabelExact"], row["identifierCER"], row["meanLatencyMs"], row["candidateId"]))
-        result = {"candidateId": ranked[0]["candidateId"], "candidateFingerprint": ranked[0]["candidateFingerprint"], "datasetHash": ranked[0]["datasetHash"], "selectionRule": "macro complete-label exact descending, identifier CER ascending, latency ascending, stable ID", "validationReports": [digest(row) for row in reports]}
+        result = {"scorerSha256": ranked[0]["scorerSha256"], "scoringProtocolVersion": "OCR_SCORE_V2", "candidateId": ranked[0]["candidateId"], "candidateFingerprint": ranked[0]["candidateFingerprint"], "datasetHash": ranked[0]["datasetHash"], "selectionRule": "macro complete-label exact descending, identifier CER ascending, latency ascending, stable ID", "validationReports": [digest(row) for row in reports]}
         write_new(private_output(args.output), result)
     else:
         path = Path(args.manifest); manifest = json.loads(path.read_text()); predictions = [json.loads(line) for line in Path(args.predictions).read_text().splitlines() if line.strip()]
@@ -235,7 +274,7 @@ def main():
             lock = path.parent / ("heldout-" + digest(selection)[:16] + ".json")
             write_new(lock, {"selectionHash": digest(selection), "startedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(), "status": "ATTEMPT_RECORDED_NO_AUTOMATIC_RETRY"})
         result = score(manifest, predictions, args.split, args.candidate, path.parent)
-        if args.split == "test" and result.get("candidateFingerprint") != selection.get("candidateFingerprint"):
+        if args.split == "test" and (result.get("candidateFingerprint") != selection.get("candidateFingerprint") or result["scorerSha256"] != selection.get("scorerSha256")):
             raise ValueError("Held-out code/assets/configuration differ from validation selection")
         write_new(output, result)
     print(json.dumps(result if args.command != "score" else {key: result[key] for key in ("candidateId", "split", "images", "distinctLabels", "missingPredictions", "realLabelValidated")}))
