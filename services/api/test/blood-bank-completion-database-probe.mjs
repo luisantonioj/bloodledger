@@ -68,9 +68,27 @@ export async function probeBloodBankCompletion({ admin, runtime, app, sessions }
   const replay = await service.verify(operator, reservationId, successBody, successKey, new Date(Date.now() + 60_000));
   check(replay.replayed, true); check(replay.evidenceId, evidence.evidenceId); check(replay.evidenceDigest, evidence.evidenceDigest);
   await rejects(service.verify(operator, reservationId, body([labels[0], 'MM26-10-9999']), successKey, new Date()), 'OUTBOUND_VERIFICATION_IDEMPOTENCY_CONFLICT');
+  // V1 matched the PLATELETS members above on Donation No. alone. V2 (J2, F1) also needs the OCR-read component,
+  // so the same Donation No. values read as a sibling component no longer match.
+  const v2Body = (scannedLabels, expectedVersion = 1) => ({ ...body(scannedLabels, expectedVersion), policyVersion: 'OUTBOUND_LABEL_VERIFICATION_V2' });
+  const pairs = (componentType, values = labels) => values.map((donationNumber) => ({ donationNumber, componentType }));
+  await rejects(service.verify(operator, reservationId, v2Body(pairs('FRESH_FROZEN_PLASMA')), key(), new Date()), 'OUTBOUND_LABELS_MISMATCH');
+  await rejects(service.verify(operator, reservationId, v2Body([...pairs('PLATELETS', [labels[0]]), ...pairs('FRESH_FROZEN_PLASMA', [labels[1]])]), key(), new Date()), 'OUTBOUND_LABELS_MISMATCH');
+  await rejects(service.verify(operator, reservationId, v2Body([{ donationNumber: labels[0] }, ...pairs('PLATELETS', [labels[1]])]), key(), new Date()), 'OUTBOUND_VERIFICATION_INPUT_INVALID');
+  await rejects(service.verify(operator, reservationId, v2Body(pairs('PLATELETS'), 2), key(), new Date()), 'RESERVATION_VERSION_CONFLICT');
+  const v2Key = key(), v2Success = v2Body(pairs('PLATELETS').reverse());
+  const v2Evidence = await service.verify(operator, reservationId, v2Success, v2Key, new Date());
+  check(v2Evidence.policyVersion, 'OUTBOUND_LABEL_VERIFICATION_V2'); check(v2Evidence.replayed, false); check(v2Evidence.matchedUnits, 2);
+  assert.deepEqual(v2Evidence.componentIds, ['COMP_OUTBOUND_PROBE_0', 'COMP_OUTBOUND_PROBE_1']); assertions++;
+  const v2Replay = await service.verify(operator, reservationId, v2Success, v2Key, new Date(Date.now() + 60_000));
+  check(v2Replay.replayed, true); check(v2Replay.evidenceId, v2Evidence.evidenceId); check(v2Replay.policyVersion, 'OUTBOUND_LABEL_VERIFICATION_V2');
+  check(replay.policyVersion, 'OUTBOUND_LABEL_VERIFICATION_V1');
+  await rejects(service.verify(operator, reservationId, body(labels), v2Key, new Date()), 'OUTBOUND_VERIFICATION_IDEMPOTENCY_CONFLICT');
+  await rejects(service.verify(operator, reservationId, v2Body(pairs('PLATELETS')), successKey, new Date()), 'OUTBOUND_VERIFICATION_IDEMPOTENCY_CONFLICT');
   const stored = JSON.stringify((await admin.query('SELECT * FROM app.v2_outbound_verifications')).rows);
   assert.ok(!labels.some((label) => stored.includes(label)), 'label values must never be stored'); assertions++;
-  check(await scalar('SELECT count(*) FROM app.v2_outbound_verifications'), 1);
+  check(await scalar('SELECT count(*) FROM app.v2_outbound_verifications'), 2);
+  check(await scalar("SELECT count(*) FROM app.v2_outbound_verifications WHERE policy_version='OUTBOUND_LABEL_VERIFICATION_V2'"), 1);
   // Remove the disposable reservation so later preservation fingerprints in this harness stay exact.
   await admin.query("DELETE FROM app.v2_outbound_verifications WHERE reservation_id=$1", [reservationId]);
   await admin.query("DELETE FROM app.v2_components WHERE reservation_id=$1", [reservationId]);
