@@ -69,6 +69,8 @@ try{
   await probePrcSupply({admin,runtime,app,sessions,pins:credentials.pins,origin});
   const {probeBloodBankCompletion}=await import('./blood-bank-completion-database-probe.mjs');
   await probeBloodBankCompletion({admin,runtime,app,sessions});
+  const {probeReceiptVerification}=await import('./receipt-verification-database-probe.mjs');
+  await probeReceiptVerification({admin,runtime});
   if(process.env.BLOODLEDGER_ACCOUNTS_BROWSER==='1'){
     const {chromium}=await import('@playwright/test');
     await app.listen({host:'127.0.0.1',port:5174});

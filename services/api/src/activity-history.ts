@@ -81,7 +81,8 @@ function eventStatus(record: ActivityRecord): string {
 function assembleV1Row(record: ActivityRecord) {
     const offChain = record.eventSource === "OFF_CHAIN_ACKNOWLEDGEMENT";
     const committed = !offChain && record.processingStatus !== null && LEDGER_COMMITTED.has(record.processingStatus) && record.ledgerTransactionId !== null;
-    // Inbound capture commands are created only by the confirmed-OCR route; older payloads omit captureMethod.
+    // Commands with a captureId came from the confirmed-OCR route; older payloads omit captureMethod.
+    // ADR-049 bank receipts through `receive` carry no captureId, so they are not shown as scans.
     const scanned = record.captureId !== null && (record.captureMethod === "OCR" || OCR_OPERATIONS.has(record.activityCode));
     return {
       eventId: record.eventId,

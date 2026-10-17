@@ -76,16 +76,17 @@ async function prepare(step, reservationId) {
   return act('coordinator', step, reservationId, 'prepare', { preparedAt: time, preparedEvidenceDigest: createHash('sha256').update(`J5 synthetic preparation ${reservationId}`).digest('hex'), preparedEvidenceId: `EVD_J5_${args.run}_${reservationId.slice(-1)}` });
 }
 
-async function receive(step, componentId) {
-  const label = labels.get(componentId);
-  if (!label) throw new Error('REHEARSAL_RECEIPT_LABEL_UNAVAILABLE');
-  const captured = now();
-  return command('recipient', step, '/api/v2/inbound-captures', {
-    captureMethod: 'OCR', capturePolicyVersion: 'INBOUND_OCR_V1', issuerInstitutionId: label.issuerInstitutionId, donationNumber: label.donationNumber,
-    bloodType: label.bloodType, bloodTypeEvidence: { source: 'OCR_LABEL', confirmed: true }, componentType: label.componentType, componentEvidence: { source: 'OCR_LABEL', confirmed: true },
-    collectedAt: label.collectedAt, expiresAt: label.expiresAt, capturedAt: captured, confirmedAt: captured, eventTime: captured, correlationId: corr(),
-    ocrEvidence: { engine: label.engine, engineVersion: label.engineVersion, fieldConfidence: { donationNumber: label.ocr.donationNumber, bloodType: label.ocr.bloodType, collectedAt: label.ocr.collectedAt, expiresAt: label.ocr.expiresAt } },
+// ADR-049: the destination verifies every unit by Donation No. and component, then receives with that evidence.
+async function receive(step, reservationId) {
+  const current = await reservation(reservationId);
+  const scannedLabels = current.components.map(({ componentId }) => {
+    const label = labels.get(componentId);
+    if (!label) throw new Error('REHEARSAL_RECEIPT_LABEL_UNAVAILABLE');
+    return { donationNumber: label.donationNumber, componentType: label.componentType };
   });
+  const { result: evidence } = await command('recipient', `${step}V`, `/api/v2/reservations/${reservationId}/receipt-verifications`, { correlationId: corr(), expectedVersion: current.version, scannedLabels });
+  if (typeof evidence.evidenceId !== 'string') throw new Error('REHEARSAL_RECEIPT_EVIDENCE_UNAVAILABLE');
+  return command('recipient', step, `/api/v2/reservations/${reservationId}/receive`, { correlationId: corr(), eventTime: now(), expectedVersion: current.version, receiptEvidenceId: evidence.evidenceId, receiptEvidenceDigest: evidence.evidenceDigest });
 }
 
 // --scenarios selects F,A,B,C,D,E (default all). A6 alone re-receives the existing scenario A
@@ -94,7 +95,7 @@ const selected = new Set((args.scenarios ?? 'F,A,B,C,D,E').split(','));
 const receiptStep = `A6${args['receipt-attempt'] ? `R${args['receipt-attempt']}` : ''}`;
 const summary = { classification: 'SIMULATION_ONLY', validation: 'JOPIA_SELF_VALIDATION', run: args.run, apiUrl, startedAt: now(), selected: [...selected], scenarios: {} };
 try {
-  // Pick a combination whose FEFO-first unit has a known synthetic label, so the destination can OCR-capture it on receipt.
+  // Pick a combination whose FEFO-first unit has a known synthetic label, so the destination can verify its label on receipt.
   const { components } = await client.read('coordinator', '/api/v2/components');
   const combinations = [...new Set(components.filter(c => c.inventoryStatus === 'AVAILABLE' && c.institutionId === SOURCE).map(c => `${c.bloodType}|${c.componentType}`))];
   let combination;
@@ -128,7 +129,7 @@ try {
       if (existing.status !== 'IN_TRANSIT') throw new Error(`REHEARSAL_RECEIPT_NOT_IN_TRANSIT: ${existing.status}`);
       componentA = existing.components[0].componentId;
     }
-    await receive(receiptStep, componentA);
+    await receive(receiptStep, id('RES', 'A'));
     const received = await client.read('recipient', `/api/v2/components/${componentA}`).catch(() => null);
     summary.scenarios.A = { result: received?.institutionId === DESTINATION ? 'PASS' : 'FAIL', componentId: componentA, destinationView: received && { institutionId: received.institutionId, inventoryStatus: received.inventoryStatus, expiryState: received.expiryState }, reservation: await reservation(id('RES', 'A')).then(r => ({ status: r.status, version: r.version })).catch(() => ({ status: 'OUTSIDE_SOURCE_SCOPE' })) };
   }

@@ -38,6 +38,11 @@ shelf-life rule or near-expiry alert is enabled.
 - A matching in-transit component can be resolved by the receiving custody
   workflow; a match held by another institution is a conflict; a match already
   held by the same institution is idempotent.
+- Since ADR-049 (2026-10-17), a capture of an in-transit unit no longer
+  receives its reservation: one label cannot prove a whole shipment. It returns
+  `409 INBOUND_RECEIPT_REQUIRED`. The destination verifies every unit through
+  `POST /api/v2/reservations/{id}/receipt-verifications`, then calls `receive`
+  with that evidence. Receipts accepted here earlier still replay with their key.
 - Since 2026-10-17, a retry with the same Idempotency-Key returns the command
   that key created, even after the unit was registered or received. The same
   key with a different capture is `V2_IDEMPOTENCY_CONFLICT`

@@ -27,6 +27,7 @@ import type { TransferSummaryReader } from "./transfer-summary.js";
 import type { ActivityHistoryReader } from "./activity-history.js";
 import type { BloodBankReader } from "./blood-bank-reads.js";
 import type { PostgresOutboundVerification } from "./outbound-verification.js";
+import type { PostgresReceiptVerification } from "./receipt-verification.js";
 import type { CoordinationReader } from "./coordination-views.js";
 import type { DonationKeyring } from "./donation-crypto.js";
 import type { V2CommandStore } from "./v2-command.js";
@@ -132,7 +133,7 @@ export async function buildApp(
   sessions?: SessionRepository,
   applicationReads?: ApplicationReadRepository,
   applicationWrites?: ApplicationWriteRepository,
-  v2?: { store: V2CommandStore; developmentRead?: DevelopmentReader; keyring?: DonationKeyring; census?: CensusStore; mlInventory?: MlInventoryEvidenceReader; projection?: V2ProjectionReader; coordination?: CoordinationReader; unitHistory?: UnitHistoryReader; transferSummaries?: TransferSummaryReader; activityHistory?: ActivityHistoryReader; bloodBank?: BloodBankReader; outboundVerification?: Pick<PostgresOutboundVerification, "verify">; enabledIssuerInstitutionIds?: readonly string[] },
+  v2?: { store: V2CommandStore; developmentRead?: DevelopmentReader; keyring?: DonationKeyring; census?: CensusStore; mlInventory?: MlInventoryEvidenceReader; projection?: V2ProjectionReader; coordination?: CoordinationReader; unitHistory?: UnitHistoryReader; transferSummaries?: TransferSummaryReader; activityHistory?: ActivityHistoryReader; bloodBank?: BloodBankReader; outboundVerification?: Pick<PostgresOutboundVerification, "verify">; receiptVerification?: Pick<PostgresReceiptVerification, "verify" | "findEvidence">; enabledIssuerInstitutionIds?: readonly string[] },
   accountAccess?: PostgresOperatorVerification,
 ): Promise<FastifyInstance> {
   const app = Fastify({

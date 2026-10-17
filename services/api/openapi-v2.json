@@ -218,7 +218,7 @@
     "/inbound-captures": {
       "post": {
         "operationId": "acceptInboundOcrCapture",
-        "description": "Accept a confirmed OCR capture. The receiving custody institution is derived from the authenticated session; raw OCR text and images are not accepted. A retry with the same Idempotency-Key and capture returns the command that key created (202, replayed true), even after the unit was registered or received; the same key with a different capture returns 409 V2_IDEMPOTENCY_CONFLICT.",
+        "description": "Accept a confirmed OCR capture. The receiving custody institution is derived from the authenticated session; raw OCR text and images are not accepted. A retry with the same Idempotency-Key and capture returns the command that key created (202, replayed true), even after the unit was registered or received; the same key with a different capture returns 409 V2_IDEMPOTENCY_CONFLICT. ADR-049: a capture that matches an in-transit unit no longer receives its reservation; it returns 409 INBOUND_RECEIPT_REQUIRED. Verify every unit with POST /reservations/{reservationId}/receipt-verifications, then receive the reservation. Receipts accepted here before ADR-049 still replay with their original key.",
         "parameters": [
           {
             "$ref": "#/components/parameters/ContractVersion"
@@ -859,7 +859,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Queue a reservation transition. receive (ADR-049): only the destination institution receives. A requester (ROLE-03) may receive without evidence, as before, which records no label evidence. A blood-bank (ROLE-01/02) destination must reference receipt evidence and is recorded through the inbound receipt ledger operation; a source bank gets 403 AUTH_SCOPE_FORBIDDEN."
       }
     },
     "/analytics/inventory-evidence": {
@@ -3520,6 +3521,69 @@
         }
       }
     },
+    "/reservations/{reservationId}/receipt-verifications": {
+      "post": {
+        "operationId": "verifyReceiptLabels",
+        "description": "INBOUND_RECEIPT_LABEL_VERIFICATION_V1 (ADR-049). The destination institution (ROLE-01/02/03 with a PIN-verified operator) scans every unit of an IN_TRANSIT transfer reservation at expectedVersion. Each scanned Donation No. and OCR-read componentType must match one in-transit unit, and the set must be exact, so one label never covers a reservation. Errors: 400 RECEIPT_VERIFICATION_INPUT_INVALID (including a label without a readable component) / RECEIPT_LABEL_DUPLICATE; 403 AUTH_SCOPE_FORBIDDEN (other roles); 404 V2_RESERVATION_NOT_FOUND (any institution other than the destination, including the source); 409 RESERVATION_VERSION_CONFLICT, RESERVATION_TRANSITION_INVALID, RECEIPT_LABELS_MISMATCH (counts only, never label values), RECEIPT_VERIFICATION_IDEMPOTENCY_CONFLICT; 503 V2_KEYS_UNAVAILABLE. Synchronous off-chain write that registers no stock; the same actor, Idempotency-Key and labels replay the original evidence (replayed true).",
+        "parameters": [
+          {
+            "name": "reservationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^RES_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for institution accounts."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptVerificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Evidence issued or replayed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptVerification"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
+    },
     "/onboarding/public-applications": {
       "post": {
         "operationId": "submitPublicApplication",
@@ -4402,7 +4466,7 @@
       },
       "ReservationActionRequest": {
         "type": "object",
-        "description": "The endpoint enforces an exact body by action: prepare requires preparedAt, preparedEvidenceDigest and preparedEvidenceId; compromise requires reasonCode; all other actions accept only the base fields.",
+        "description": "The endpoint enforces an exact body by action: prepare requires preparedAt, preparedEvidenceDigest and preparedEvidenceId; compromise requires reasonCode; receive accepts the base fields, or the base fields plus receiptEvidenceId and receiptEvidenceDigest together (ADR-049); all other actions accept only the base fields.",
         "required": [
           "correlationId",
           "eventTime",
@@ -4442,6 +4506,16 @@
               "HANDLING_OR_CUSTODY_DEVIATION_REPORTED"
             ],
             "description": "compromise only; SYNTHETIC_COMPROMISE_REASONS_V1. Unlisted codes return 400 COMPROMISE_REASON_INVALID before queuing."
+          },
+          "receiptEvidenceId": {
+            "type": "string",
+            "pattern": "^RCV_[A-F0-9]{40}$",
+            "description": "receive only (ADR-049). evidenceId from POST /reservations/{reservationId}/receipt-verifications for the same reservation, expectedVersion and receiving institution; otherwise 409 RECEIPT_EVIDENCE_INVALID. Required for a blood-bank (ROLE-01/02) destination, which otherwise gets 409 RECEIPT_VERIFICATION_REQUIRED; optional for a requester (ROLE-03). Bound off-chain; never sent to the ledger."
+          },
+          "receiptEvidenceDigest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "receive only (ADR-049). evidenceDigest returned with receiptEvidenceId."
           }
         },
         "additionalProperties": false
@@ -8286,6 +8360,120 @@
           },
           "policyVersion": {
             "const": "OUTBOUND_LABEL_VERIFICATION_V1"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "ReceiptVerificationRequest": {
+        "type": "object",
+        "description": "INBOUND_RECEIPT_LABEL_VERIFICATION_V1 exact body. Each scanned label pairs the confirmed printed Donation No. with the component read from the same label; both are matched by keyed lookup and never stored or returned.",
+        "required": [
+          "expectedVersion",
+          "correlationId",
+          "scannedLabels"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "scannedLabels": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "required": [
+                "donationNumber",
+                "componentType"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "donationNumber": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "componentType": {
+                  "$ref": "#/components/schemas/ComponentTypeV21"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ReceiptVerification": {
+        "type": "object",
+        "description": "INBOUND_RECEIPT_LABEL_VERIFICATION_V1 (ADR-049) server-issued receipt evidence. Pass evidenceId and evidenceDigest as receiptEvidenceId/receiptEvidenceDigest to POST /reservations/{reservationId}/receive for the same reservationVersion. Off-chain record; ledger NOT_APPLICABLE until receive commits. No stock is registered.",
+        "required": [
+          "evidenceId",
+          "evidenceDigest",
+          "reservationId",
+          "reservationVersion",
+          "componentIds",
+          "matchedUnits",
+          "verifiedAt",
+          "replayed",
+          "ledger",
+          "policyVersion",
+          "classification"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "evidenceId": {
+            "type": "string",
+            "pattern": "^RCV_[A-F0-9]{40}$"
+          },
+          "evidenceDigest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "reservationId": {
+            "type": "string"
+          },
+          "reservationVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "componentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "matchedUnits": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "verifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
+          "ledger": {
+            "type": "object",
+            "required": [
+              "status"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "status": {
+                "const": "NOT_APPLICABLE"
+              }
+            }
+          },
+          "policyVersion": {
+            "const": "INBOUND_RECEIPT_LABEL_VERIFICATION_V1"
           },
           "classification": {
             "const": "SIMULATION_ONLY"

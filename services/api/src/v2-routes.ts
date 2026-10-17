@@ -17,6 +17,7 @@ import { assembleTransferSummaries, decodeSummaryCursor, type TransferSummaryRea
 import { activityContract, assembleActivityHistory, decodeActivityCursor, type ActivityHistoryReader } from "./activity-history.js";
 import { assembleNetworkAvailability, assembleRequestHistory, assembleSummary, bloodBankRoutes, parseHistoryRange, type BloodBankReader } from "./blood-bank-reads.js";
 import type { PostgresOutboundVerification } from "./outbound-verification.js";
+import { assertReceiptEvidence, RECEIPT_EVIDENCE_ID_PATTERN, type PostgresReceiptVerification } from "./receipt-verification.js";
 import { isReconciliationReasonCode, RECONCILIATION_POLICY_VERSION, RECONCILIATION_REASONS } from "./reconciliation-policy.js";
 import { COMPROMISE_POLICY_VERSION, COMPROMISE_REASONS, isCompromiseReasonCode } from "./compromise-policy.js";
 import { DOH_CENSUS_DISPLAY_ORDER, DOH_CENSUS_DISPLAY_POLICY_VERSION } from "./report-policy.js";
@@ -52,6 +53,7 @@ export interface V2RouteDependencies {
   activityHistory?: ActivityHistoryReader;
   bloodBank?: BloodBankReader;
   outboundVerification?: Pick<PostgresOutboundVerification, "verify">;
+  receiptVerification?: Pick<PostgresReceiptVerification, "verify" | "findEvidence">;
   webOrigin: string;
   clock: () => Date;
   enabledIssuerInstitutionIds?: readonly string[];
@@ -232,6 +234,12 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!dependencies.outboundVerification) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Outbound verification is not available.");
     return dependencies.outboundVerification.verify(principal, request.params.reservationId, request.body, String(request.headers["idempotency-key"] ?? ""), dependencies.clock());
   });
+  // ADR-049: destination scan of every in-transit unit → server-issued receipt evidence; off-chain, synchronous, idempotent.
+  app.post<{ Params: { reservationId: string } }>("/api/v2/reservations/:reservationId/receipt-verifications", async (request) => {
+    sameOrigin(request); const { principal } = await restore(request);
+    if (!dependencies.receiptVerification) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Receipt verification is not available.");
+    return dependencies.receiptVerification.verify(principal, request.params.reservationId, request.body, String(request.headers["idempotency-key"] ?? ""), dependencies.clock());
+  });
 
   app.get<{ Querystring: { limit?: string; cursor?: string; contract?: string } }>("/api/v2/activity-history", async (request) => {
     const { principal } = await restore(request);
@@ -367,11 +375,9 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
         const receiptReservation=existing.reservationId&&dependencies.projection.getReservation ? await dependencies.projection.getReservation(existing.reservationId,principal.institutionId,principal.roleId) : null;
         if(existing.inventoryStatus!=="IN_TRANSIT"||receiptReservation?.destinationInstitutionId!==principal.institutionId)throw new ApiFailure(409,"INBOUND_COMPONENT_CONFLICT","The component is outside authorized receipt custody.");
       }
-      if (existing.inventoryStatus === "IN_TRANSIT" && existing.reservationId && existing.reservationVersion) {
-        const payload = { reservationId: existing.reservationId, expectedVersion: existing.reservationVersion, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: capture.eventTime, correlationId: capture.correlationId, captureId, captureEvidenceDigest: encrypted.lookupHmac, captureRequestSha256: receiptRequestSha256 };
-        return enqueue(request, reply, "INBOUND_CAPTURE", captureId, "RECEIVE_INBOUND_COMPONENT", payload, principal);
-      }
-      if (existing.inventoryStatus === "IN_TRANSIT") throw new ApiFailure(409, "INBOUND_RECEIPT_REQUIRED", "The matching in-transit component requires its transfer receipt workflow before intake can continue.");
+      // ADR-049 (F2): one scanned label no longer receives a whole reservation. Receipts accepted here before then
+      // still replay through the key lookup above; new receipts verify every unit, then use `receive`.
+      if (existing.inventoryStatus === "IN_TRANSIT") throw new ApiFailure(409, "INBOUND_RECEIPT_REQUIRED", "The matching in-transit component requires its transfer receipt workflow: verify every unit, then receive the reservation.");
       return reply.status(200).send({ captureId, resolution: "ALREADY_REGISTERED", componentId: existing.componentId, status: existing.inventoryStatus, classification: "SIMULATION_ONLY" as const });
     }
     const captureEvidenceDigest = createHash("sha256").update(JSON.stringify({ captureId, donationDigest: encrypted.lookupHmac, ocrEvidence: capture.ocrEvidence, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt }), "utf8").digest("hex");
@@ -567,11 +573,14 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
       receive: ["correlationId", "eventTime", "expectedVersion"],
       "local-release-complete": ["correlationId", "eventTime", "expectedVersion"],
     };
-    if (!hasKeys(body, allowedActionKeys[action] ?? [])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Reservation action input is invalid.");
+    // ADR-049: receive may also reference receipt evidence; both evidence fields travel together.
+    const receiptEvidenceKeys = ["correlationId", "eventTime", "expectedVersion", "receiptEvidenceDigest", "receiptEvidenceId"];
+    const withReceiptEvidence = action === "receive" && hasKeys(body, receiptEvidenceKeys);
+    if (!withReceiptEvidence && !hasKeys(body, allowedActionKeys[action] ?? [])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Reservation action input is invalid.");
     if (!Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1) throw new ApiFailure(400, "V2_VERSION_INVALID", "Expected version is invalid.");
     // BL-DEC-S6-2026-09-23-01: enforced here before queuing; the independent chaincode check is deferred until after UAT.
     if (action === "compromise" && !isCompromiseReasonCode(body.reasonCode)) throw new ApiFailure(400, "COMPROMISE_REASON_INVALID", "The incident reason is not supported by the active synthetic policy.");
-    const roleMap: Record<string, readonly WebPrincipal["roleId"][]> = { prepare: ["ROLE-01", "ROLE-02"], dispatch: ["ROLE-01", "ROLE-02"], transit: ["ROLE-01", "ROLE-02"], receive: ["ROLE-03"], cancel: ["ROLE-01", "ROLE-02", "ROLE-03"], "local-release-complete": ["ROLE-01", "ROLE-02"], compromise: ["ROLE-01", "ROLE-02", "ROLE-03"] };
+    const roleMap: Record<string, readonly WebPrincipal["roleId"][]> = { prepare: ["ROLE-01", "ROLE-02"], dispatch: ["ROLE-01", "ROLE-02"], transit: ["ROLE-01", "ROLE-02"], receive: ["ROLE-01", "ROLE-02", "ROLE-03"], cancel: ["ROLE-01", "ROLE-02", "ROLE-03"], "local-release-complete": ["ROLE-01", "ROLE-02"], compromise: ["ROLE-01", "ROLE-02", "ROLE-03"] };
     const roles = roleMap[action]; if (!roles) throw new ApiFailure(404, "V2_ACTION_NOT_FOUND", "Reservation action is not supported."); authorized(principal, roles);
     if (!dependencies.projection?.getReservation) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "The reservation projection is not available.");
     const scopedReservation = await dependencies.projection.getReservation(request.params.reservationId, principal.institutionId, principal.roleId);
@@ -580,6 +589,25 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     requireReservationContract(version, [scopedReservation]);
     const operationByAction: Record<string, string> = { prepare: "PREPARE_RESERVATION", dispatch: "DISPATCH_RESERVATION", transit: "START_RESERVATION_TRANSIT", receive: "RECEIVE_RESERVATION", cancel: "CANCEL_RESERVATION", compromise: "COMPROMISE_RESERVATION", "local-release-complete": "COMPLETE_LOCAL_RELEASE" };
     const payload: Record<string, unknown> = { reservationId: request.params.reservationId, expectedVersion: Number(body.expectedVersion), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: selectCorePolicy(principal, version) };
+    if (action === "receive") {
+      const bank = principal.roleId !== "ROLE-03";
+      // Only the destination receives; a source bank sees its reservation but cannot receive it.
+      if (bank && scopedReservation.destinationInstitutionId !== principal.institutionId) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Only the destination institution receives a reservation.");
+      // A bank receipt always proves every unit. Requester receipt without evidence works as before and records none.
+      if (bank && !withReceiptEvidence) throw new ApiFailure(409, "RECEIPT_VERIFICATION_REQUIRED", "Verify every in-transit unit before a blood bank receives the reservation.");
+      if (withReceiptEvidence) {
+        const evidenceId = requiredBodyString(body, "receiptEvidenceId", RECEIPT_EVIDENCE_ID_PATTERN), evidenceDigest = requiredBodyString(body, "receiptEvidenceDigest", /^[0-9a-f]{64}$/);
+        if (!dependencies.receiptVerification) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Receipt verification is not available.");
+        assertReceiptEvidence(await dependencies.receiptVerification.findEvidence(evidenceId), { evidenceDigest, reservationId: request.params.reservationId, expectedVersion: Number(body.expectedVersion), institutionId: principal.institutionId });
+        // The evidence binds off-chain in the command payload; the ledger payload drops it (chaincode unchanged).
+        if (bank) {
+          // RecordInboundReceipt is the chaincode receipt for blood-bank destinations; its capture digest is the receipt evidence digest.
+          const { reservationId, expectedVersion, actorUserId, eventTime, correlationId, policyVersion } = payload;
+          return enqueue(request, reply, "TRANSFER", request.params.reservationId, "RECEIVE_INBOUND_COMPONENT", { reservationId, expectedVersion, actorUserId, actorInstitutionId: principal.institutionId, eventTime, correlationId, policyVersion, captureEvidenceDigest: evidenceDigest, receiptEvidenceId: evidenceId }, principal);
+        }
+        payload.receiptEvidenceId = evidenceId; payload.receiptEvidenceDigest = evidenceDigest;
+      }
+    }
     for (const key of ["preparedEvidenceDigest", "preparedEvidenceId", "preparedAt", "reasonCode"] as const) if (body[key] !== undefined) payload[key] = body[key];
     if (action === "compromise") payload.compromisePolicyVersion = COMPROMISE_POLICY_VERSION;
     return enqueue(request, reply, "TRANSFER", request.params.reservationId, operationByAction[action], payload, principal);
