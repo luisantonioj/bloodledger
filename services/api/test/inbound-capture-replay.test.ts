@@ -4,6 +4,7 @@ import test from "node:test";
 import { buildApp } from "../src/app.js";
 import { donationLookupHmac } from "../src/donation-crypto.js";
 import { interviewCorePayload } from "../src/fabric.js";
+import { validateInboundOcrInput } from "../src/inbound-ocr-policy.js";
 import { InMemoryV2CommandStore } from "../src/v2-command.js";
 import type { CredentialRecord } from "../src/session.js";
 import { MemoryRepository } from "./test-support.js";
@@ -89,24 +90,38 @@ test("FR-01 a new key for an already registered unit still reports ALREADY_REGIS
   } finally { await app.close(); }
 });
 
-test("FR-10/FR-13 an OCR-matched receipt retry returns the original command and rejects a different capture", async () => {
+test("ADR-049 F2: a new key on an in-transit unit no longer receives the reservation from one label", async () => {
   const { app, store, state, post } = await harness();
   try {
     state.existing = { componentId: "COMP_SYNTH_TRANSIT", donationId: "DON_SYNTH_TRANSIT", institutionId: "INST_SYNTH_MEDIX", inventoryStatus: "IN_TRANSIT", reservationId: "RES_SYNTH_REPLAY", reservationVersion: 4, inventoryVersion: 3 };
-    const first = await post("IDEM_REPLAY_RECEIPT", capture());
-    assert.equal(first.statusCode, 202, first.body);
-    const command = await store.get(first.json().commandId, operator.institutionId, operator.userId);
-    assert.equal(command?.operation, "RECEIVE_INBOUND_COMPONENT");
-    assert.equal(typeof command?.payload.captureRequestSha256, "string");
-    assert.equal(interviewCorePayload(command!).captureRequestSha256, undefined, "replay evidence never reaches the ledger");
-    state.existing = { ...state.existing, institutionId: operator.institutionId, inventoryStatus: "RECEIVED", inventoryVersion: 4 };
+    const response = await post("IDEM_REPLAY_RECEIPT_NEW", capture());
+    assert.equal(response.statusCode, 409, response.body);
+    assert.equal(response.json().error.code, "INBOUND_RECEIPT_REQUIRED");
+    assert.doesNotMatch(response.body, /MM26-08-404/, "the refusal never echoes a label");
+    assert.equal((await store.list(operator.institutionId, operator.userId, 10)).commands.length, 0, "nothing is queued");
+    assert.equal(state.provisionalCaptures, 0, "no provisional capture is recorded");
+  } finally { await app.close(); }
+});
 
-    const retry = await post("IDEM_REPLAY_RECEIPT", capture());
+test("FR-10/FR-13 an OCR-matched receipt accepted before ADR-049 still replays and rejects a different capture", async () => {
+  const { app, store, state, post } = await harness();
+  try {
+    // Recreate a receipt exactly as the J1 route stored it, with its body-bound captureRequestSha256.
+    const key = "IDEM_REPLAY_RECEIPT";
+    const keyDigest = createHash("sha256").update(key, "utf8").digest("hex").toUpperCase().slice(0, 40);
+    const commandId = `CMD_${keyDigest}`, captureId = `INCAP_${keyDigest}`;
+    const captureRequestSha256 = createHash("sha256").update(JSON.stringify({ operation: "RECEIVE_INBOUND_COMPONENT", capture: validateInboundOcrInput(capture()), captureId, custodyInstitutionId: operator.institutionId }), "utf8").digest("hex");
+    await store.enqueue({ commandId, idempotencyKey: key, resourceType: "INBOUND_CAPTURE", resourceId: captureId, operation: "RECEIVE_INBOUND_COMPONENT", payload: { reservationId: "RES_SYNTH_REPLAY", expectedVersion: 4, actorUserId: operator.userId, actorInstitutionId: operator.institutionId, eventTime: now, correlationId: "CORR_00000000000000000000000000000017", captureId, captureEvidenceDigest: donationLookupHmac("MM26-08-4046", keyring), captureRequestSha256 }, correlationId: "CORR_00000000000000000000000000000017", actorUserId: operator.userId, actorInstitutionId: operator.institutionId, acceptedAt: now });
+    const stored = await store.get(commandId, operator.institutionId, operator.userId);
+    assert.equal(interviewCorePayload(stored!).captureRequestSha256, undefined, "replay evidence never reaches the ledger");
+    state.existing = { componentId: "COMP_SYNTH_TRANSIT", donationId: "DON_SYNTH_TRANSIT", institutionId: operator.institutionId, inventoryStatus: "RECEIVED", reservationId: "RES_SYNTH_REPLAY", reservationVersion: 5, inventoryVersion: 4 };
+
+    const retry = await post(key, capture());
     assert.equal(retry.statusCode, 202, retry.body);
-    assert.equal(retry.json().commandId, first.json().commandId);
+    assert.equal(retry.json().commandId, commandId);
     assert.equal(retry.json().replayed, true);
 
-    const reused = await post("IDEM_REPLAY_RECEIPT", capture({ bloodType: "A_POSITIVE" }));
+    const reused = await post(key, capture({ bloodType: "A_POSITIVE" }));
     assert.equal(reused.statusCode, 409, reused.body);
     assert.equal(reused.json().error.code, "V2_IDEMPOTENCY_CONFLICT");
   } finally { await app.close(); }

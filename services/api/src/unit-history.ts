@@ -112,7 +112,8 @@ export function assembleUnitHistory(institutionId: string, evidence: UnitHistory
     const isReservationEvent = RESERVATION_OPERATIONS.has(command.operation);
     const memberIds = isReservationEvent ? (command.reservationId ? evidence.members.get(command.reservationId) : undefined) : command.componentId ? [command.componentId] : undefined;
     const committed = LEDGER_COMMITTED.has(command.status);
-    // RECEIVE_INBOUND_COMPONENT is only created by the confirmed-OCR intake route; its payload has no captureMethod key.
+    // A RECEIVE_INBOUND_COMPONENT with a captureId came from the confirmed-OCR intake route (no captureMethod key).
+    // ADR-049 bank receipts through `receive` carry no captureId, so they are not shown as scans.
     const scanned = command.captureId !== null && (command.captureMethod === "OCR" || command.operation === "RECEIVE_INBOUND_COMPONENT");
     const shared: Omit<UnitHistoryRow, "rowId" | "unitMembership" | "componentId" | "labelIdentity" | "bloodType" | "componentType" | "unitAttributesSource"> = {
       eventType: mapping.eventType,
