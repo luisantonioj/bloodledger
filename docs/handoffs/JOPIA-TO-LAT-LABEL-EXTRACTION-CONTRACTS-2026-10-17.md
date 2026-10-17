@@ -69,7 +69,11 @@ nothing becomes submittable or activated.
 | --- | --- |
 | Lat | Define and freeze the three profiles (ID, version, SHA-256) under `PA-OCR-01`. Keep `MEDIATRIX_BAG_PREVIEW` and the `*_REFERENCE_PENDING` entries separate. |
 | Buno | Produce the fictional labels from the frozen profiles, then photograph and double-review them. Record each profile version in the manifest. Finish the scorer work you listed before any benchmark. |
-| Jopia | No backend change. J2–J6 still need explicit implementation authorization. |
+| Jopia | No backend change for the corpus. J2, J3 and J5 are now authorized for implementation; see the implementation decisions below. |
+
+Two independent reviewers means two different people. If one person also covers
+Buno's role, the second reviewer must still be someone else, and the record
+discloses who did which role.
 
 ## Backend findings from this review
 
@@ -144,6 +148,27 @@ pass with the J1 fix.
 Before you wire J2, J3 or J6, we agree on schema, permissions, paging (none
 is needed for a single reservation of at most 50 units), error codes,
 compatibility (additive only; V1 shapes frozen) and the fixture pack.
+
+### Implementation decisions (2026-10-17)
+
+Jopia decided J2–J6 on 2026-10-17. Here "authorized" covers code, tests,
+OpenAPI and documentation on a branch. Validation runs on the Jopia host, with
+a disposable database for any migration. No retained-host deployment, migration
+rollout, flag change or live write is authorized; each still needs its own
+approval. Branch each item from `main` after PR #73 merges, because J3 and J5
+change the same intake route as J1.
+
+| # | Decision | Conditions |
+| --- | --- | --- |
+| J2 | **Authorized, first.** It closes F1 with the smallest change. | Additive `OUTBOUND_LABEL_VERIFICATION_V2`. V1 request and response shapes stay frozen. A label with no readable component is rejected, not matched. A mismatch reports counts only. |
+| J3 | **Authorized, second.** Write ADR-049 as Proposed; it becomes Accepted when its tests pass. | Closes item 4 and F2. Receipt label evidence must match every member's `{donationNumber, componentType}`, so one label can no longer receive a whole reservation. The bank path through `inbound-captures` stops doing so, and ADR-049 sets its replacement route. On `receive`, the `RCV_` evidence is optional in this version. With it, receipt binds to the verified set. Without it, receipt works as today and is recorded as having no label evidence. Making it mandatory is a later decision, like J4. Additive migration only; chaincode unchanged. `RECEIVED` is still not usable stock (`RQ-10`), and signature rules stay open (`RQ-09`). |
+| J4 | **Deferred.** Typed preparation evidence stays accepted. | Requiring stored `EVD_` evidence for `prepare` would block preparation wherever outbound verification is disabled, which is every host today. Decide when a host enables `VITE_BLOODLEDGER_OUTBOUND_VERIFICATION_READY` with J2 wired. |
+| J5 | **Authorized, third: retire the values.** | The API rejects `BAG_TYPE` and `OPERATOR_CONFIRMED` for new captures. The intake schemas and OpenAPI narrow to `OCR_LABEL`. This corrects the implementation to the accepted `PA-S6-02` assumption, which never defined those values, and no client sends them. Chaincode and the database constraint keep the wider set, so any earlier record still replays and no migration or chaincode change is needed. Operator-confirmed values return only in a new contract version under `RQ-19`. |
+| J6 | **Authorized as part of J2 and J3.** | Each item ships its own synthetic fixtures for success, duplicate, stale, conflict, authorization and lost-response cases, using only `MM26-08-NNNN` and `SYN*` values. There is no separate pack. |
+
+The same person may work the Jopia and Lat roles on this host. The agreement
+step above still applies: J2 and J3 shapes land in OpenAPI before the frontend
+wires them, and any self-validation is disclosed in the evidence.
 
 ## Unchanged boundaries
 
