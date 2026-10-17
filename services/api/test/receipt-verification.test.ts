@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildApp } from "../src/app.js";
 import { interviewCorePayload } from "../src/fabric.js";
+import { operatorActions } from "../src/institution-access.js";
 import { allowedOperatorAction } from "../src/operator-verification.js";
 import { assertReceiptEvidence, compareReceiptLabels, parseReceiptInput, receiptIdentity, type ReceiptEvidence } from "../src/receipt-verification.js";
 import { InMemoryV2CommandStore } from "../src/v2-command.js";
@@ -55,6 +56,8 @@ test("receipt verification is an operator-bound action for receiving hospitals o
   assert.equal(allowedOperatorAction({ accountCategory: "REQUESTOR" } as WebPrincipal, operator("ROLE-03"), action), true);
   for (const roleId of ["ROLE-01", "ROLE-02"] as const) assert.equal(allowedOperatorAction({ accountCategory: "BLOOD_BANK" } as WebPrincipal, operator(roleId), action), true);
   assert.equal(allowedOperatorAction({ accountCategory: "DOH" } as WebPrincipal, operator("ROLE-04"), action), false);
+  // The web app lists eligible operators by these capabilities; bank and requester operators can receive.
+  for (const roleId of ["ROLE-01", "ROLE-02", "ROLE-03"] as const) assert.ok(operatorActions(operator(roleId)).includes("transfer:receive"), roleId);
 });
 
 function credential(roleId: CredentialRecord["roleId"], institutionId: string): CredentialRecord {
