@@ -1,0 +1,87 @@
+{
+  "classification": "SIMULATION_ONLY",
+  "date": "2026-10-18",
+  "role": "Lat (self-validation, Jopia host)",
+  "host": "Jopia laptop retained stack",
+  "target": "26fdbfb",
+  "previousDeployed": "c1898a0",
+  "authorization": {
+    "runbook": "JOPIA-TO-LAT-OCR-RECEIPT-ROLLOUT-2026-10-18",
+    "accepted": [
+      "R1",
+      "R2",
+      "R3",
+      "R4"
+    ],
+    "deviations": [
+      "three migrations incl. 20261016010000000",
+      "scoped build-dir ownership repair",
+      "web flag via apps/web/.env.local on dev-server container"
+    ]
+  },
+  "backup": {
+    "bytes": 14618186,
+    "tableDataEntries": 59,
+    "sha256": "4159b328e002543b4dbafe49930d9a7be72066d13959f4824489908a6e728e55"
+  },
+  "migrations": {
+    "applied": [
+      "20261016010000000_create-public-onboarding",
+      "20261017000000000_allow-outbound-verification-v2",
+      "20261017010000000_create-receipt-verifications"
+    ],
+    "statusAfter": "36 applied / 0 pending"
+  },
+  "countsBeforeEqualsAfter": {
+    "institutions": 7,
+    "application_users": 20,
+    "onboarding_applications": 0,
+    "account_audit": 6,
+    "v2_components": 531,
+    "v2_reservations": 30,
+    "v2_commands": 606,
+    "v2_outbound_verifications": 0
+  },
+  "newTablesEmpty": {
+    "v2_receipt_verifications": 0,
+    "onboarding_sample_claims": 0,
+    "institution_profiles": 0
+  },
+  "api": {
+    "healthz": "READY",
+    "workerFabric": "DISABLED",
+    "reservationsReadBanks": {
+      "coordinator": 200,
+      "recipient": 200
+    },
+    "requesterRead": "NOT_RUN_NO_ACCOUNT"
+  },
+  "web": {
+    "flags": {
+      "VITE_BLOODLEDGER_RECEIPT_VERIFICATION_READY": "true",
+      "VITE_BLOODLEDGER_OUTBOUND_VERIFICATION_READY": "unset",
+      "VITE_BLOODLEDGER_LABEL_EXTRACTION_PREVIEW": "unset",
+      "VITE_BLOODLEDGER_PUBLIC_APPLICATIONS_READY": "unset"
+    },
+    "browser": {
+      "incomingCardVisible": true,
+      "incomingOptions": 0,
+      "outgoingCardVisible": true,
+      "writeRequests": 0,
+      "pageErrors": 0,
+      "requesterView": "NOT_RUN_NO_ACCOUNT"
+    }
+  },
+  "notPerformed": [
+    "receipt verification",
+    "receive",
+    "intake",
+    "outbound verification",
+    "prepare/dispatch",
+    "reset",
+    "population",
+    "account creation",
+    "census/forecast",
+    "Fabric change"
+  ]
+}
