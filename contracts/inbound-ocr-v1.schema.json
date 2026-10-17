@@ -48,15 +48,15 @@
       "properties": {
         "source": {
           "enum": [
-            "OCR_LABEL",
-            "OPERATOR_CONFIRMED"
+            "OCR_LABEL"
           ]
         },
         "confirmed": {
           "const": true
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "OCR_LABEL only for new captures since 2026-10-17 (J5): BAG_TYPE and OPERATOR_CONFIRMED were never defined by INBOUND_OCR_V1 and are refused with 400 INBOUND_OCR_EVIDENCE_REQUIRED. A retry of a capture accepted earlier with them still replays. Chaincode and the database keep the wider set for those records."
     },
     "componentType": {
       "$ref": "core-v2.schema.json#/properties/componentType"
@@ -70,16 +70,15 @@
       "properties": {
         "source": {
           "enum": [
-            "OCR_LABEL",
-            "BAG_TYPE",
-            "OPERATOR_CONFIRMED"
+            "OCR_LABEL"
           ]
         },
         "confirmed": {
           "const": true
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "OCR_LABEL only for new captures since 2026-10-17 (J5): BAG_TYPE and OPERATOR_CONFIRMED were never defined by INBOUND_OCR_V1 and are refused with 400 INBOUND_OCR_EVIDENCE_REQUIRED. A retry of a capture accepted earlier with them still replays. Chaincode and the database keep the wider set for those records."
     },
     "collectedAt": {
       "type": "string",

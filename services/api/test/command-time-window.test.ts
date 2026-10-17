@@ -109,7 +109,7 @@ test("FR-01 rejects a stale OCR intake before recording a provisional capture", 
   const { app, send, recorded } = await fixture(source);
   const capture = (eventTime: string) => ({
     captureMethod: "OCR", capturePolicyVersion: "INBOUND_OCR_V1", issuerInstitutionId: "INST_MEDIATRIX", donationNumber: "MM26-08-4046",
-    bloodType: "O_POSITIVE", bloodTypeEvidence: { source: "OCR_LABEL", confirmed: true }, componentType: "PACKED_RED_BLOOD_CELLS", componentEvidence: { source: "BAG_TYPE", confirmed: true },
+    bloodType: "O_POSITIVE", bloodTypeEvidence: { source: "OCR_LABEL", confirmed: true }, componentType: "PACKED_RED_BLOOD_CELLS", componentEvidence: { source: "OCR_LABEL", confirmed: true },
     collectedAt: "2026-10-01T01:00:00.000Z", expiresAt: "2026-11-01T01:00:00.000Z", capturedAt: eventTime, confirmedAt: eventTime, eventTime, correlationId: "CORR_00000000000000000000000000000001",
     ocrEvidence: { engine: "synthetic-ocr", engineVersion: "1", fieldConfidence: { donationNumber: 99, bloodType: 95, collectedAt: 98, expiresAt: 99 } },
   });

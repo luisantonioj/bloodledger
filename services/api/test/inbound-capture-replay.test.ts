@@ -127,6 +127,46 @@ test("FR-10/FR-13 an OCR-matched receipt accepted before ADR-049 still replays a
   } finally { await app.close(); }
 });
 
+test("J5/F4 a new capture with a retired evidence source is refused before anything is recorded", async () => {
+  const { app, store, state, post } = await harness();
+  try {
+    const cases: [string, Record<string, unknown>][] = [
+      ["IDEM_RETIRED_BAG", { componentEvidence: { source: "BAG_TYPE", confirmed: true } }],
+      ["IDEM_RETIRED_COMPONENT", { componentEvidence: { source: "OPERATOR_CONFIRMED", confirmed: true } }],
+      ["IDEM_RETIRED_BLOOD", { bloodTypeEvidence: { source: "OPERATOR_CONFIRMED", confirmed: true } }],
+    ];
+    for (const [key, overrides] of cases) {
+      const response = await post(key, capture(overrides));
+      assert.equal(response.statusCode, 400, response.body);
+      assert.equal(response.json().error.code, "INBOUND_OCR_EVIDENCE_REQUIRED");
+    }
+    // A retired source is refused even when the label matches a unit already registered.
+    state.existing = registered("COMP_SYNTH_EXISTING");
+    const duplicate = await post("IDEM_RETIRED_DUPLICATE", capture({ componentEvidence: { source: "BAG_TYPE", confirmed: true } }));
+    assert.equal(duplicate.statusCode, 400, duplicate.body);
+    assert.equal((await store.list(operator.institutionId, operator.userId, 10)).commands.length, 0, "nothing is queued");
+    assert.equal(state.provisionalCaptures, 0, "no provisional capture is recorded");
+  } finally { await app.close(); }
+});
+
+test("J5/F4 a registration accepted earlier with a retired evidence source still replays", async () => {
+  const { app, store, post } = await harness();
+  try {
+    // Recreate a registration exactly as the route stored it before 2026-10-17, from a BAG_TYPE capture.
+    const key = "IDEM_RETIRED_REPLAY", body = capture({ componentEvidence: { source: "BAG_TYPE", confirmed: true } });
+    const upper = (value: string) => createHash("sha256").update(value, "utf8").digest("hex").toUpperCase();
+    const keyDigest = upper(key).slice(0, 40), lookupHmac = donationLookupHmac(String(body.donationNumber), keyring);
+    const captureId = `INCAP_${keyDigest}`, componentId = `COMP_${keyDigest}`, donationId = `DON_${upper(`INST_MEDIATRIX:${lookupHmac}`).slice(0, 40)}`;
+    const payloadSha256 = createHash("sha256").update(JSON.stringify({ capture: validateInboundOcrInput(body), captureId, componentId, donationId, custodyInstitutionId: operator.institutionId }), "utf8").digest("hex");
+    await store.enqueue({ commandId: `CMD_${keyDigest}`, idempotencyKey: key, resourceType: "INBOUND_CAPTURE", resourceId: captureId, operation: "REGISTER_INBOUND_COMPONENT", payload: { captureId, componentId, componentEvidenceSource: "BAG_TYPE", correlationId: body.correlationId }, payloadSha256, correlationId: String(body.correlationId), actorUserId: operator.userId, actorInstitutionId: operator.institutionId, acceptedAt: now });
+
+    const retry = await post(key, body);
+    assert.equal(retry.statusCode, 202, retry.body);
+    assert.equal(retry.json().commandId, `CMD_${keyDigest}`);
+    assert.equal(retry.json().replayed, true);
+  } finally { await app.close(); }
+});
+
 test("FR-13 a receipt accepted before replay evidence existed replays on its recorded fields only", async () => {
   const { app, store, post } = await harness();
   try {
