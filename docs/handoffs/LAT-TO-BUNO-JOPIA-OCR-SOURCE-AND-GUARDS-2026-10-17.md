@@ -124,8 +124,8 @@ current generated plan, and no competing replacement corpus is being created.
 
 Current results are recorded in
 [the follow-up validation](../validation/lat-label-extraction-2026-10-17/JOPIA-BUNO-FOLLOWUP.md).
-The complete prior context is in
-[the laptop handoff](LAT-OCR-CONTEXT-AND-LAPTOP-CONTINUATION-2026-10-17.md).
+The complete prior context is in Lat's local laptop handoff, which is kept
+out of Git.
 
 Only source, synthetic fixtures, tooling and documentation are published.
 Private corpus packages/logs, accounts, passwords, PINs, identities, retained
