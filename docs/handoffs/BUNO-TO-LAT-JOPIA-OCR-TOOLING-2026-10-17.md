@@ -140,3 +140,36 @@ compare raw crops fairly and full pipelines separately, preserve failed attempts
 then recommend fine-tuning only if measured baseline errors justify it. Freeze the
 selected candidate before untouched held-out evaluation. No accuracy percentage
 or model-change recommendation exists yet.
+
+## PR80 review corrections — V4 collection plan
+
+Jopia/Lat feedback was disclosed as Jopia reviewing both roles on one laptop;
+it is not two independent corpus transcription reviews.
+
+Fixed `reporting.py`: all-three-photo correctness now permits matching absent,
+obscured, ambiguous and unreadable states. Missing/failed attempts still fail.
+Added regressions for state mismatch, failed and missing predictions. Present-field
+exact matching and submission safety checks remain unchanged.
+
+`plan_v3.py` now accepts explicit V4 generation through `experiment.py init --version v4`.
+V3's output hash remains byte-identical. V4 has one date-only positive per
+bank/style/split (18 total; six test), varied collection dates/times and expiry
+intervals, unchanged splits/writers/relationships, 180 positives, 63 negatives,
+729 tasks and zero photographs/reviews. README explicitly lists Pillow 11.3.0.
+
+New manifest SHA-256:
+`4c01e74b6b125954d173e522066b12d6d375ba6d52d6a987cb30976eac66ed60`.
+
+Self-validation commands/results for this correction:
+- `python3 scripts/ocr/test_experiment.py`: PASS 4.
+- `python3 scripts/ocr/test_alignment.py`: PASS 9 (including V3 hash preservation,
+  V4 reproducibility/coverage/date validation and non-present-state regressions).
+- `python3 scripts/ocr/experiment.py init --version v4 --output build/ocr-private/pilot-20261017-v4`: PASS.
+- `python3 scripts/ocr/experiment.py validate --manifest build/ocr-private/pilot-20261017-v4/manifest.json`: PASS, zero photos.
+
+Crop/browser runners were unchanged by this correction; earlier pixel/syntax/bundle
+checks remain the disclosed evidence. No recognition benchmark or training ran.
+Lat/Jopia: review these corrections before benchmarking. People should collect from
+the new V4 package, retaining V3 privately as historical planning evidence. All prior
+physical collection, independent review, privacy and SIMULATION_ONLY boundaries remain.
+- Correction `git diff --check` and `npm run scan:secrets`: PASS.

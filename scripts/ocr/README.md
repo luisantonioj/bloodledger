@@ -255,3 +255,24 @@ asset/model bytes are separately reported. Original Tesseract confidence is
 recorded; TrOCR does not manufacture a comparable confidence score. TrOCR weights
 were not downloaded, loaded or trained. The generated-pixel crop tests are software
 checks only. Actual camera/handwriting/resource evidence remains pending.
+
+### V4 review correction (PR80)
+
+Use `python3 scripts/ocr/experiment.py init --version v4 --output build/ocr-private/pilot-20261017-v4`
+for new collection planning. V2 and V3 remain reproducible and are not overwritten.
+V4 retains 180 positives and 63 negatives (729 photo tasks). Each bank/style/split
+has one date-only positive (18 total, six in test), alongside instant positives.
+The deterministic arithmetic date schedule varies collection days, times and expiry
+intervals; these are fictional examples, not component shelf-life policy.
+Manifest SHA-256: `4c01e74b6b125954d173e522066b12d6d375ba6d52d6a987cb30976eac66ed60`.
+
+**Prerequisite:** Pillow **11.3.0** is required for shared field-crop export,
+Tesseract/TrOCR crop comparison and `test_field_crops.py` (`python -m pip install Pillow==11.3.0`).
+Planning/scorer stdlib tests do not require Pillow. No model download is needed.
+
+All-three-photo correctness now accepts a non-present field only when its predicted
+state matches the annotated state. Present fields still require exact values (raw
+text for crop scoring). Missing/failed predictions remain failures. This metric is
+annotation correctness, not submission eligibility. The separate complete-readable
+label metric remains limited to labels with all fields present. Changed scorer hashes
+invalidate old selection evidence; do not combine reports from different scorer hashes.

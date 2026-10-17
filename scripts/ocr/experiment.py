@@ -73,7 +73,7 @@ def create_plan(output):
 def validate_manifest(manifest, base, require_complete=False):
     if manifest.get("schemaVersion") != "SYNTHETIC_LABEL_CORPUS_V1" or manifest.get("classification") != "SIMULATION_ONLY":
         raise ValueError("Unsupported corpus")
-    if manifest.get("datasetVersion") == "OCR_PILOT_PLAN_V3":
+    if manifest.get("datasetVersion") in ("OCR_PILOT_PLAN_V3", "OCR_PILOT_PLAN_V4"):
         from plan_v3 import validate_profiles
         validate_profiles(manifest)
     labels = {row["labelId"]: row for row in manifest["labels"]}
@@ -241,15 +241,15 @@ def main():
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    init = commands.add_parser("init"); init.add_argument("--output", required=True); init.add_argument("--version", choices=("v2", "v3"), default="v2")
+    init = commands.add_parser("init"); init.add_argument("--output", required=True); init.add_argument("--version", choices=("v2", "v3", "v4"), default="v2")
     validate = commands.add_parser("validate"); validate.add_argument("--manifest", required=True); validate.add_argument("--complete", action="store_true")
     evaluate = commands.add_parser("score"); evaluate.add_argument("--manifest", required=True); evaluate.add_argument("--predictions", required=True); evaluate.add_argument("--split", choices=("validation", "test"), required=True); evaluate.add_argument("--candidate", required=True); evaluate.add_argument("--selection"); evaluate.add_argument("--output", required=True)
     select = commands.add_parser("select"); select.add_argument("--reports", nargs="+", required=True); select.add_argument("--output", required=True)
     args = parser.parse_args()
     if args.command == "init":
-        if args.version == "v3":
+        if args.version in ("v3", "v4"):
             from plan_v3 import create_plan_v3
-            result = create_plan_v3(args.output, private_output, write_new)
+            result = create_plan_v3(args.output, private_output, write_new, version=args.version)
         else:
             result = create_plan(args.output)
     elif args.command == "validate":

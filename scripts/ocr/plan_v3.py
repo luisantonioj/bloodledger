@@ -47,6 +47,15 @@ def validate_profiles(manifest):
         tasks.setdefault(image["labelId"], []).append(image["condition"])
     if any(sorted(tasks.get(label["labelId"], [])) != sorted(CONDITIONS) for label in labels):
         raise ValueError("V3 requires exactly three distinct conditions per label")
+    if manifest.get("datasetVersion") == "OCR_PILOT_PLAN_V4":
+        for bank in (p["bankCode"] for p in profiles.values()):
+            for split in ("train", "validation", "test"):
+                for style in ("printed", "handwritten"):
+                    rows = [l for l in labels if l["bank"] == bank and l["split"] == split and l["style"] == style and not l.get("negativeClass")]
+                    if {l["datePrecision"] for l in rows} != {"DATE", "INSTANT"}:
+                        raise ValueError("V4 requires both date precisions in every bank/style/split")
+                    if len({l["printedValues"]["collectedAt"].split()[0] for l in rows}) < 2:
+                        raise ValueError("V4 requires varied dates in every bank/style/split")
     for label in manifest["labels"]:
         profile = profiles.get(label.get("profileId"))
         unknown = label.get("negativeClass") == "unknown_layout"
@@ -110,7 +119,9 @@ def render(contract, profile, label):
     return ''.join(parts)
 
 
-def create_plan_v3(output, private_output, write_new):
+def create_plan_v3(output, private_output, write_new, version="v3"):
+    if version not in ("v3", "v4"):
+        raise ValueError("Unsupported plan version")
     contract = frozen_contract()
     output = private_output(output)
     output.mkdir(parents=True, mode=0o700, exist_ok=False)
@@ -124,10 +135,16 @@ def create_plan_v3(output, private_output, write_new):
         split = split_override or ("train" if ordinal < 18 else "validation" if ordinal < 24 else "test")
         style = "printed" if negative or index < 30 else "handwritten"
         code = f"MM26-10-{8000+index}" if bank == "MEDIATRIX" else f"{'SYNMEDIX' if bank == 'MEDIX' else 'SYNNLVILLA'}-2026-{8000+index}"
-        label_id = f"SYN_V3_{bank}_{index+1:03}" if not negative else f"SYN_V3_{bank}_NEG_{split}_{negative}"
-        date_only = index % 10 == 0 and not negative
+        label_id = f"SYN_{version.upper()}_{bank}_{index+1:03}" if not negative else f"SYN_{version.upper()}_{bank}_NEG_{split}_{negative}"
+        date_only = (ordinal in (0, 18, 24) if version == "v4" else index % 10 == 0) and not negative
         forms = {"donationNumber": code, "bloodType": bloods[index % 8], "componentType": products[index % 5],
                  "collectedAt": "2026-10-01" + ("" if date_only else " 08:00"), "expiresAt": "2026-11-01" + ("" if date_only else " 08:00")}
+        if version == "v4":
+            # Fixed arithmetic schedule: varied research dates, not shelf-life policy.
+            collected = datetime.datetime(2026, 10, 1) + datetime.timedelta(days=index % 28, hours=(index * 7) % 24, minutes=(index * 13) % 60)
+            expires = collected + datetime.timedelta(days=7 + index % 25)
+            fmt = "%Y-%m-%d" if date_only else "%Y-%m-%d %H:%M"
+            forms.update(collectedAt=collected.strftime(fmt), expiresAt=expires.strftime(fmt))
         values = {**forms, "bloodType": contract["bloodTypeForms"][forms["bloodType"]], "componentType": contract["componentForms"][forms["componentType"]]}
         if not date_only:
             for field in ("collectedAt", "expiresAt"):
@@ -173,7 +190,7 @@ def create_plan_v3(output, private_output, write_new):
         for split, index in (("train", 0), ("validation", 18), ("test", 24)):
             for n, negative in enumerate(NEGATIVES):
                 add(profile, index if negative == "duplicate_identifier" else {"train": 100, "validation": 200, "test": 300}[split] + n, negative, split)
-    manifest = {"schemaVersion": "SYNTHETIC_LABEL_CORPUS_V1", "classification": "SIMULATION_ONLY", "datasetVersion": "OCR_PILOT_PLAN_V3",
+    manifest = {"schemaVersion": "SYNTHETIC_LABEL_CORPUS_V1", "classification": "SIMULATION_ONLY", "datasetVersion": "OCR_PILOT_PLAN_" + version.upper(),
                 "seed": 20261017, "status": "PLANNED_NOT_COLLECTED", "assumptionId": "PA-OCR-01",
                 "positiveLabels": 180, "negativeLabels": 63, "positivePhotoTasks": 540, "negativePhotoTasks": 189,
                 "negativeCasesRequired": list(NEGATIVES), "labels": labels, "images": images}

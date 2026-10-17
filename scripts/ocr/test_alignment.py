@@ -43,6 +43,46 @@ class AlignmentTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'profile stamp'):
                 e.validate_manifest(m, base/'v3a')
 
+    def test_v4_coverage_varied_dates_and_v3_hash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            create_plan_v3(base/'v3', e.private_output, e.write_new)
+            self.assertEqual(hashlib.sha256((base/'v3/manifest.json').read_bytes()).hexdigest(), '6cb42444456c5e39a938682b7b85715ff9bdaffaa6461786d1d8a62b842a839f')
+            for name in ('v4a', 'v4b'):
+                create_plan_v3(base/name, e.private_output, e.write_new, version='v4')
+            self.assertEqual((base/'v4a/manifest.json').read_bytes(), (base/'v4b/manifest.json').read_bytes())
+            m = json.loads((base/'v4a/manifest.json').read_text())
+            e.validate_manifest(m, base/'v4a')
+            self.assertEqual(m['datasetVersion'], 'OCR_PILOT_PLAN_V4')
+            for bank in e.BANKS:
+                for split in ('train', 'validation', 'test'):
+                    for style in ('printed', 'handwritten'):
+                        rows = [l for l in m['labels'] if l['bank']==bank and l['split']==split and l['style']==style and not l['negativeClass']]
+                        self.assertEqual(sum(l['datePrecision']=='DATE' for l in rows), 1)
+                        self.assertGreater(len({l['values']['expiresAt'] for l in rows}), 1)
+            target = next(l for l in m['labels'] if l['split']=='test' and l['datePrecision']=='DATE')
+            target['datePrecision']='INSTANT'
+            with self.assertRaisesRegex(ValueError, 'both date precisions'):
+                e.validate_manifest(m, base/'v4a')
+
+    def test_whole_label_nonpresent_states_and_failed_attempts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for state in ('absent', 'obscured', 'unreadable', 'ambiguous'):
+                m,p = self.fixture(Path(tmp))
+                for image, prediction in zip(m['images'], p):
+                    image['fields']['componentType'].update(state=state, value=None, rawText=None)
+                    prediction['fields']['componentType']={'state':state, 'candidate':None}
+                def result():
+                    return aligned_metrics(m['images'], {l['labelId']:l for l in m['labels']}, {r['imageId']:r for r in p}, e.FIELDS)['allThreePhotosPerLabel']['MEDIATRIX/printed']['allThreeExact']
+                self.assertEqual(result(), 1)
+                p[0]['fields']['componentType']['state']='present'
+                self.assertEqual(result(), 0)
+                p[0]['fields']['componentType']['state']=state
+                p[0]['safeErrorCode']='TEST_FAILED'
+                self.assertEqual(result(), 0)
+                p.pop(0)
+                self.assertEqual(result(), 0)
+
     def test_profiles_render_headings_order_placement_and_closed_values(self):
         contract=frozen_contract()
         self.assertEqual({p['id']:profile_hash(contract,p) for p in contract['profiles']}, PINNED)

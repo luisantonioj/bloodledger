@@ -57,7 +57,7 @@ def aligned_metrics(selected, labels, predictions, fields, raw_crops=False):
             if actual == "present":
                 group["present"] += 1
                 group["exact"] += correct
-            whole &= correct
+            whole &= correct if actual == "present" else (not failed and predicted_state == actual)
             score = value.get("originalConfidence")
             if not failed and finite(score) and 0 <= score <= 100:
                 # JS Math.round for nonnegative scores: existing INBOUND_OCR_V1 semantics.
