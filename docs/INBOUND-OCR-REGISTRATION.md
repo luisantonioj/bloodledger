@@ -38,6 +38,14 @@ shelf-life rule or near-expiry alert is enabled.
 - A matching in-transit component can be resolved by the receiving custody
   workflow; a match held by another institution is a conflict; a match already
   held by the same institution is idempotent.
+- Since 2026-10-17 (J5), a new capture must read both blood type and
+  component from the OCR label: `bloodTypeEvidence.source` and
+  `componentEvidence.source` are `OCR_LABEL`. `BAG_TYPE` and
+  `OPERATOR_CONFIRMED` were never defined by `INBOUND_OCR_V1` and are refused
+  with `400 INBOUND_OCR_EVIDENCE_REQUIRED`. A retry of a capture accepted
+  earlier with them still replays; chaincode and the database keep the wider
+  set for those records. Operator-confirmed values need a new contract version
+  under `RQ-19`.
 - Since ADR-049 (2026-10-17), a capture of an in-transit unit no longer
   receives its reservation: one label cannot prove a whole shipment. It returns
   `409 INBOUND_RECEIPT_REQUIRED`. The destination verifies every unit through

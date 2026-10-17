@@ -176,7 +176,7 @@ wires them, and any self-validation is disclosed in the evidence.
 | --- | --- |
 | J2 | Implemented in PR #74 (`OUTBOUND_LABEL_VERIFICATION_V2`, ADR-047 amendment). Not merged or deployed. |
 | J3 | Implemented on `codex/jopia-receipt-label-verification` (ADR-049, `INBOUND_RECEIPT_LABEL_VERIFICATION_V1`). Not merged or deployed. For the frontend: a bank scan of an in-transit unit now returns `409 INBOUND_RECEIPT_REQUIRED`, so the bank and requester receipt flows both become scan every unit, then `receipt-verifications`, then `receive` with the evidence. A blood-bank `receive` without evidence is `409 RECEIPT_VERIFICATION_REQUIRED`. |
-| J5 | Not started. |
+| J5 | Implemented on `codex/jopia-retire-intake-evidence-sources` (ADR-035 amendment). New captures need `OCR_LABEL` for both evidence sources; earlier captures still replay. No migration or chaincode change. Not merged or deployed. |
 
 Merge PR #74 before J3: its migration (`20261017000000000`) precedes J3's
 (`20261017010000000`), and migrations apply in order.

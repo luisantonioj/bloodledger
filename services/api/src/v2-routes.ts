@@ -10,7 +10,7 @@ import type { WebPrincipal } from "./session.js";
 import type { V2CommandStore, V2ResourceType } from "./v2-command.js";
 import type { CensusStore } from "./census-worker.js";
 import type { V2ProjectionReader } from "./database-v2.js";
-import { validateInboundOcrInput } from "./inbound-ocr-policy.js";
+import { requireOcrLabelEvidence, validateInboundOcrInput } from "./inbound-ocr-policy.js";
 import { resolveLabelIdentity, type LabelIdentity, type SealedDonationNumber } from "./label-identity.js";
 import { assembleUnitHistory, decodeHistoryCursor, type UnitHistoryReader } from "./unit-history.js";
 import { assembleTransferSummaries, decodeSummaryCursor, type TransferSummaryReader } from "./transfer-summary.js";
@@ -369,6 +369,8 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
       if (!sameCapture) throw new ApiFailure(409, "V2_IDEMPOTENCY_CONFLICT", "Idempotency key was used for a different command.");
       return enqueue(request, reply, "INBOUND_CAPTURE", captureId, previous.operation, previous.payload, principal, previous.payloadSha256);
     }
+    // J5: only new captures are held to OCR_LABEL evidence; the replay above keeps earlier captures retryable.
+    requireOcrLabelEvidence(capture);
     const existing = await dependencies.projection.findComponentByIdentity(capture.issuerInstitutionId, encrypted.lookupHmac, capture.componentType);
     if (existing) {
       if (existing.institutionId !== principal.institutionId) {

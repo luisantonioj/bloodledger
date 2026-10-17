@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { validateInboundOcrInput } from "../src/inbound-ocr-policy.js";
+import { requireOcrLabelEvidence, validateInboundOcrInput } from "../src/inbound-ocr-policy.js";
 
 const valid = {
   captureMethod: "OCR", capturePolicyVersion: "INBOUND_OCR_V1", issuerInstitutionId: "INST_MEDIATRIX", donationNumber: "MM26-08-4046",
@@ -8,6 +8,17 @@ const valid = {
   collectedAt: "2026-08-12T01:00:00.000Z", expiresAt: "2026-09-12T01:00:00.000Z", capturedAt: "2026-09-12T02:00:00.000Z", confirmedAt: "2026-09-12T02:01:00.000Z", eventTime: "2026-09-12T02:01:00.000Z", correlationId: "CORR_00000000000000000000000000000001",
   ocrEvidence: { engine: "synthetic-ocr", engineVersion: "1", fieldConfidence: { donationNumber: 99, bloodType: 95, collectedAt: 98, expiresAt: 99 } },
 };
+
+test("J5/F4 new captures need OCR_LABEL evidence; the parser still reads retired sources so earlier captures can replay", () => {
+  const ocr = { source: "OCR_LABEL", confirmed: true } as const;
+  assert.doesNotThrow(() => requireOcrLabelEvidence({ bloodTypeEvidence: ocr, componentEvidence: ocr }));
+  for (const capture of [
+    { bloodTypeEvidence: ocr, componentEvidence: { source: "BAG_TYPE", confirmed: true } },
+    { bloodTypeEvidence: ocr, componentEvidence: { source: "OPERATOR_CONFIRMED", confirmed: true } },
+    { bloodTypeEvidence: { source: "OPERATOR_CONFIRMED", confirmed: true }, componentEvidence: ocr },
+  ] as const) assert.throws(() => requireOcrLabelEvidence(capture), (error: { code?: string }) => error.code === "INBOUND_OCR_EVIDENCE_REQUIRED");
+  assert.equal(validateInboundOcrInput(valid).componentEvidence.source, "BAG_TYPE");
+});
 
 test("accepts confirmed OCR-only Mediatrix intake without shelf-life inference", () => {
   const capture = validateInboundOcrInput(valid);

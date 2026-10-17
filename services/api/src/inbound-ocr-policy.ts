@@ -47,6 +47,18 @@ function evidence(value: unknown, sources: readonly string[]): { source: string;
   return { source: record.source, confirmed: true };
 }
 
+/**
+ * J5 (finding F4): BAG_TYPE and OPERATOR_CONFIRMED were never defined by INBOUND_OCR_V1 (PA-S6-02) and no client
+ * sends them, so a new capture must read both blood type and component from the OCR label. validateInboundOcrInput
+ * still parses them so a retry of a capture accepted before 2026-10-17 can match its original command and replay.
+ * Operator-confirmed values return only in a new contract version under RQ-19.
+ */
+export function requireOcrLabelEvidence(capture: Pick<InboundOcrInput, "bloodTypeEvidence" | "componentEvidence">): void {
+  if (capture.bloodTypeEvidence.source !== "OCR_LABEL" || capture.componentEvidence.source !== "OCR_LABEL") {
+    throw new ApiFailure(400, "INBOUND_OCR_EVIDENCE_REQUIRED", "Blood type and component evidence must come from the OCR label.");
+  }
+}
+
 /** Validate the only supported intake path. Raw OCR text/images are intentionally not accepted. */
 export function validateInboundOcrInput(value: unknown, enabledIssuerIds: readonly string[] = ["INST_MEDIATRIX"], contractVersion: "V2" | "V2.1" = "V2"): InboundOcrInput {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new ApiFailure(400, "INBOUND_OCR_INPUT_INVALID", "The OCR inbound capture is invalid.");
