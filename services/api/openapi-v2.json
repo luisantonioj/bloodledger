@@ -3460,7 +3460,7 @@
     "/reservations/{reservationId}/outbound-verifications": {
       "post": {
         "operationId": "verifyOutboundLabels",
-        "description": "OUTBOUND_LABEL_VERIFICATION_V1. Source-custody ROLE-01/02 with a PIN-verified operator (capability transfer:prepare) on an ACTIVE, unprepared reservation at expectedVersion. The scanned set must equal the reserved units exactly. Errors: 400 OUTBOUND_VERIFICATION_INPUT_INVALID / OUTBOUND_LABEL_DUPLICATE; 404 V2_RESERVATION_NOT_FOUND (also for another institution); 409 RESERVATION_VERSION_CONFLICT, RESERVATION_TRANSITION_INVALID, OUTBOUND_LABELS_MISMATCH (counts only, never label values), OUTBOUND_VERIFICATION_IDEMPOTENCY_CONFLICT; 503 V2_KEYS_UNAVAILABLE. Synchronous off-chain write; the same actor, Idempotency-Key and labels replay the original evidence (replayed true).",
+        "description": "OUTBOUND_LABEL_VERIFICATION_V1, or V2 when the body names policyVersion OUTBOUND_LABEL_VERIFICATION_V2 (ADR-047 amendment, 2026-10-17). V1 matches each scanned Donation No. by keyed lookup only, so a sibling component of the same donation passes. V2 also requires each label's OCR-read componentType to equal the reserved unit's component; a label without a readable component is rejected. Source-custody ROLE-01/02 with a PIN-verified operator (capability transfer:prepare) on an ACTIVE, unprepared reservation at expectedVersion. The scanned set must equal the reserved units exactly. Errors: 400 OUTBOUND_VERIFICATION_INPUT_INVALID / OUTBOUND_LABEL_DUPLICATE; 404 V2_RESERVATION_NOT_FOUND (also for another institution); 409 RESERVATION_VERSION_CONFLICT, RESERVATION_TRANSITION_INVALID, OUTBOUND_LABELS_MISMATCH (counts only, never label values), OUTBOUND_VERIFICATION_IDEMPOTENCY_CONFLICT; 503 V2_KEYS_UNAVAILABLE. Synchronous off-chain write; the same actor, Idempotency-Key, policy and labels replay the original evidence (replayed true); reusing a key across V1 and V2 is OUTBOUND_VERIFICATION_IDEMPOTENCY_CONFLICT.",
         "parameters": [
           {
             "name": "reservationId",
@@ -3489,7 +3489,14 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/OutboundVerificationRequest"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/OutboundVerificationRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/OutboundVerificationRequestV2"
+                  }
+                ]
               }
             }
           }
@@ -8193,7 +8200,7 @@
       },
       "OutboundVerificationRequest": {
         "type": "object",
-        "description": "Exact body. scannedLabels are the confirmed printed Donation No. values of every unit being prepared, each once. They are matched by keyed lookup and never stored or returned.",
+        "description": "OUTBOUND_LABEL_VERIFICATION_V1 exact body, frozen. Exact body. scannedLabels are the confirmed printed Donation No. values of every unit being prepared, each once. They are matched by keyed lookup and never stored or returned.",
         "required": [
           "expectedVersion",
           "correlationId",
@@ -8222,9 +8229,57 @@
           }
         }
       },
+      "OutboundVerificationRequestV2": {
+        "type": "object",
+        "description": "OUTBOUND_LABEL_VERIFICATION_V2 exact body (J2). Each scanned label pairs the confirmed printed Donation No. with the component read from the same label. Both must match one reserved unit; a pair is never stored or returned.",
+        "required": [
+          "policyVersion",
+          "expectedVersion",
+          "correlationId",
+          "scannedLabels"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "policyVersion": {
+            "const": "OUTBOUND_LABEL_VERIFICATION_V2"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "scannedLabels": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "required": [
+                "donationNumber",
+                "componentType"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "donationNumber": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "componentType": {
+                  "$ref": "#/components/schemas/ComponentTypeV21"
+                }
+              }
+            }
+          }
+        }
+      },
       "OutboundVerification": {
         "type": "object",
-        "description": "OUTBOUND_LABEL_VERIFICATION_V1 (ADR-047) server-issued preparation evidence. Pass evidenceId and evidenceDigest as preparedEvidenceId/preparedEvidenceDigest to POST /reservations/{reservationId}/prepare for the same reservationVersion. Off-chain record; ledger NOT_APPLICABLE until prepare commits.",
+        "description": "OUTBOUND_LABEL_VERIFICATION_V1 or V2 (ADR-047) server-issued preparation evidence. Pass evidenceId and evidenceDigest as preparedEvidenceId/preparedEvidenceDigest to POST /reservations/{reservationId}/prepare for the same reservationVersion. Off-chain record; ledger NOT_APPLICABLE until prepare commits. policyVersion echoes the request's version.",
         "required": [
           "evidenceId",
           "evidenceDigest",
@@ -8285,7 +8340,10 @@
             }
           },
           "policyVersion": {
-            "const": "OUTBOUND_LABEL_VERIFICATION_V1"
+            "enum": [
+              "OUTBOUND_LABEL_VERIFICATION_V1",
+              "OUTBOUND_LABEL_VERIFICATION_V2"
+            ]
           },
           "classification": {
             "const": "SIMULATION_ONLY"

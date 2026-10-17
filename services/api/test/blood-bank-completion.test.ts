@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildApp } from "../src/app.js";
 import { assembleNetworkAvailability, assembleRequestHistory, assembleSummary, parseHistoryRange } from "../src/blood-bank-reads.js";
-import { compareLabels, parseOutboundInput } from "../src/outbound-verification.js";
+import { createHash } from "node:crypto";
+import { compareLabels, labelIdentity, outboundRequestSha256, parseOutboundInput } from "../src/outbound-verification.js";
 import { allowedOperatorAction } from "../src/operator-verification.js";
 import { InMemoryV2CommandStore } from "../src/v2-command.js";
 import type { CredentialRecord, WebPrincipal } from "../src/session.js";
@@ -51,6 +52,43 @@ test("OUTBOUND_LABEL_VERIFICATION_V1 takes exact bodies and reports only match c
   const members = new Map([["COMP_A", "h1"], ["COMP_B", "h2"]]);
   assert.deepEqual(compareLabels(members, ["h2", "h1"]), { expectedUnits: 2, matchedUnits: 2, unmatchedLabels: 0, missingUnits: 0 });
   assert.deepEqual(compareLabels(members, ["h1", "hX"]), { expectedUnits: 2, matchedUnits: 1, unmatchedLabels: 1, missingUnits: 1 });
+});
+
+test("OUTBOUND_LABEL_VERIFICATION_V2 requires the OCR-read component on every scanned label (J2, F1)", () => {
+  const v1 = "OUTBOUND_LABEL_VERIFICATION_V1", v2 = "OUTBOUND_LABEL_VERIFICATION_V2";
+  const base = { policyVersion: v2, expectedVersion: 1, correlationId: "CORR_0123456789ABCDEF0123456789ABCDEF" };
+  const label = (donationNumber: string, componentType: unknown = "PLATELETS") => ({ donationNumber, componentType });
+  const parsed = parseOutboundInput({ ...base, scannedLabels: [label("MM26-10-0001"), label("MM26-10-0002", "CRYOPRECIPITATE")] });
+  assert.equal(parsed.policyVersion, v2);
+  assert.deepEqual(parsed.scannedLabels, [{ donationNumber: "MM26-10-0001", componentType: "PLATELETS" }, { donationNumber: "MM26-10-0002", componentType: "CRYOPRECIPITATE" }]);
+  // A body without policyVersion stays V1; V1 is never named explicitly and never takes objects.
+  assert.equal(parseOutboundInput({ expectedVersion: 1, correlationId: base.correlationId, scannedLabels: ["MM26-10-0001"] }).policyVersion, v1);
+  const missingComponent = { donationNumber: "MM26-10-0001" };
+  for (const invalid of [
+    { ...base, scannedLabels: [missingComponent] }, { ...base, scannedLabels: [label("MM26-10-0001", null)] },
+    { ...base, scannedLabels: [label("MM26-10-0001", "UNKNOWN")] }, { ...base, scannedLabels: [label("MM26-10-0001", "platelets")] },
+    { ...base, scannedLabels: [{ ...label("MM26-10-0001"), bloodType: "A_POSITIVE" }] }, { ...base, scannedLabels: ["MM26-10-0001"] },
+    { ...base, scannedLabels: [[ "MM26-10-0001", "PLATELETS" ]] }, { ...base, scannedLabels: [label("MM26-10-0001"), null] },
+    { ...base, policyVersion: v1, scannedLabels: [label("MM26-10-0001")] }, { ...base, policyVersion: "OUTBOUND_LABEL_VERIFICATION_V3", scannedLabels: [label("MM26-10-0001")] },
+    { expectedVersion: 1, correlationId: base.correlationId, scannedLabels: [label("MM26-10-0001")] },
+  ]) assert.throws(() => parseOutboundInput(invalid), (error: { code?: string }) => error.code === "OUTBOUND_VERIFICATION_INPUT_INVALID");
+  assert.throws(() => parseOutboundInput({ ...base, scannedLabels: [label("MM26-10-0001"), label("MM26-10-0001")] }), (error: { code?: string }) => error.code === "OUTBOUND_LABEL_DUPLICATE");
+  // A sibling bag (same Donation No., another component) parses, then fails matching on its component.
+  const siblings = parseOutboundInput({ ...base, scannedLabels: [label("MM26-10-0001"), label("MM26-10-0001", "FRESH_FROZEN_PLASMA")] });
+  assert.equal(siblings.scannedLabels.length, 2);
+  const members = new Map([["COMP_A", labelIdentity(v2, "h1", "PLATELETS")]]);
+  assert.deepEqual(compareLabels(members, [labelIdentity(v2, "h1", "FRESH_FROZEN_PLASMA")]), { expectedUnits: 1, matchedUnits: 0, unmatchedLabels: 1, missingUnits: 1 });
+  assert.deepEqual(compareLabels(members, [labelIdentity(v2, "h1", "PLATELETS")]), { expectedUnits: 1, matchedUnits: 1, unmatchedLabels: 0, missingUnits: 0 });
+  // V1 identity is the Donation No. lookup alone, which is exactly the F1 gap V2 closes.
+  assert.equal(labelIdentity(v1, "h1", "FRESH_FROZEN_PLASMA"), labelIdentity(v1, "h1", "PLATELETS"));
+});
+
+test("OUTBOUND_LABEL_VERIFICATION_V1 keeps its original request digest so earlier evidence still replays", () => {
+  const sha = (value: unknown) => createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
+  const v1 = outboundRequestSha256({ policyVersion: "OUTBOUND_LABEL_VERIFICATION_V1", expectedVersion: 3 }, "RES_SYNTH_1", ["h2", "h1"]);
+  assert.equal(v1, sha({ reservationId: "RES_SYNTH_1", expectedVersion: 3, labels: ["h1", "h2"] }));
+  // The same key cannot be replayed across versions: V2 digests differ even for identical identities.
+  assert.notEqual(outboundRequestSha256({ policyVersion: "OUTBOUND_LABEL_VERIFICATION_V2", expectedVersion: 3 }, "RES_SYNTH_1", ["h2", "h1"]), v1);
 });
 
 test("the outbound verification action is bound to blood-bank ROLE-01/02 operators", () => {
