@@ -3,7 +3,7 @@ import type { Principal } from "../auth/permissions";
 const bloodBankDashboard = "Review your blood stock, facility requests and available network supply. Open Inventory or Blood Unit Transactions to review stock and recorded unit activity, or request blood from another facility where permitted.";
 const requesterDashboard = "Check network blood availability and review your facility’s requests. Use Request Blood to start a request, then follow its updates in Requests & Transfers.";
 const prcDashboard = "Review consortium blood availability, reporting and replenishment requests in one place. Choose All or a specific blood component, compare the network total or individual blood banks, and review the availability matrix. Available stock does not establish approved redistributable supply.";
-const dohDashboard = "An overview for DOH to review facility reporting and compliance alerts. Use the shortcuts to open reports and alerts for follow-up.";
+const dohDashboard = "Choose a reporting date to review the three configured blood banks’ saved morning and afternoon stock reports. Select a hospital to inspect its recorded stock. No report recorded means no matching saved capture was found; it does not establish noncompliance or an official submission outcome.";
 
 export function pageHelp(path: string, principal: Principal): string | undefined {
   const requester = principal.accountCategory ? principal.accountCategory === "REQUESTOR" : principal.roleId === "ROLE-03";
@@ -26,7 +26,7 @@ export function pageHelp(path: string, principal: Principal): string | undefined
   if (path === "/profile") return "Review your institution’s details, participation status and account information. Authorized administrators can edit supported profile details.";
   if (path === "/accounts") return "Manage authorized operators and institution access. Review roles and status, add administrators, or reset PINs and revoke access where permitted.";
   if (path === "/alerts") return "Review alerts available to your facility. Choose All, Critical, Warnings or Information to filter by severity, then check each alert’s details and status.";
-  if (path === "/receipts") return "Review blood received by your facility and open the inbound-only scanner to capture a label. Photo capture is a preview; matching labels and confirming receipt are not connected yet.";
+  if (path === "/receipts") return "Review blood received by your facility and open the inbound-only scanner to capture a label. Run OCR to review and edit the five supported fields, or prepare a Manual draft. Label-matched ROLE-03 receipt confirmation and submitting manual/corrected values await the published backend contract.";
   if (path === "/transfers") return requester
     ? "Create blood requests for your facility and follow their recorded status. Switch between Blood Requests and Transfers, then select a record to view its details."
     : "Review the blood requests and transfer records available to your facility. Select a record to view its details and follow recorded updates.";

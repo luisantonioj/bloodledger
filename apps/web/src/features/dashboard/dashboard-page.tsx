@@ -1,3 +1,4 @@
+import { DohReportingDashboard } from "./doh-reporting-dashboard";
 import { RefreshIcon } from "../../components/ui/refresh-button";
 import { can } from "../../auth/permissions";
 import { isRequester, type RequesterRequests } from "./requester-dashboard-data";
@@ -8,6 +9,10 @@ import { DashboardView } from "./dashboard-view";
 import { formatManilaDateTime } from "../../components/ui/display";
 
 export function DashboardPage({ principal }: { principal: Principal }) {
+  return principal.accountCategory === "DOH" ? <div className="page"><DohReportingDashboard principal={principal}/></div> : <StandardDashboardPage principal={principal}/>;
+}
+
+function StandardDashboardPage({ principal }: { principal: Principal }) {
   const endpoint = principal.accountId || ["ROLE-01", "ROLE-02", "ROLE-03"].includes(principal.roleId)
     ? "/api/v2/dashboard" : "/api/v1/dashboard";
   const state = useLiveData<Dashboard>(endpoint);

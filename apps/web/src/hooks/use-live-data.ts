@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiRequestError, requestJson, retryAfterContextChange } from "../services/api/client";
 import { pollingDelay } from "./polling";
 
-export function useLiveData<T>(endpoint:string|null) {
+export function useLiveData<T>(endpoint:string|null,headers?:Record<string,string>) {
+  const headersKey=JSON.stringify(headers??{});
   const [data,setData] = useState<T>();
   const [error,setError] = useState("");
   const [busy,setBusy] = useState(Boolean(endpoint));
@@ -23,7 +24,7 @@ export function useLiveData<T>(endpoint:string|null) {
       const current=++attempt;
       controller?.abort(); controller=new AbortController(); const signal=controller.signal; setBusy(true);
       try {
-        const next=await retryAfterContextChange(() => requestJson<T>(endpoint,{signal},"The data service is unavailable."), () => !closed && !signal.aborted && current === attempt);
+        const next=await retryAfterContextChange(() => requestJson<T>(endpoint,{signal,headers},"The data service is unavailable."), () => !closed && !signal.aborted && current === attempt);
         if(closed||signal.aborted||current!==attempt)return;
         hasData.current=true;setData(next); setError(""); failures=0;
       }
@@ -40,6 +41,6 @@ export function useLiveData<T>(endpoint:string|null) {
     const visible=()=>{ globalThis.clearTimeout(timer); if(!document.hidden)void run(); };
     document.addEventListener("visibilitychange",visible); void run();
     return()=>{ closed=true; controller?.abort(); globalThis.clearTimeout(timer); document.removeEventListener("visibilitychange",visible); };
-  },[endpoint,retry]);
+  },[endpoint,retry,headersKey]);
   return { data,error,busy,manual };
 }

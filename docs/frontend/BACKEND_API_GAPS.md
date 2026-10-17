@@ -210,3 +210,67 @@ Checks: check:web PASS; 399 web unit tests PASS (including design tokens); 4 foc
 User replaced manual capture with requested automatic 09:00/16:00 Manila records and right-aligned per-checkpoint Copy buttons. Frontend now copies all forty saved values only from complete, unambiguous, reached, own-institution snapshots with enabled report format. It never copies current stock as a past checkpoint or fills missing cryo/blood types with zero. Capture button/date-time footer removed; metadata read polling added without POSTs. A running backend scheduler/readiness contract is absent; `CensusWorker` is a class, not an active schedule. Policy version, five-component count semantics, immutable retry, missed/late capture and rollout remain Jopia dependencies. See [the concrete handoff](../handoffs/LAT-TO-JOPIA-AUTOMATIC-STOCK-CHECKPOINTS-2026-10-16.md). No scheduler or report-policy flag was activated by Lat.
 
 2026-10-16 checkpoint-copy follow-up: bank cards retain the latest reached record per slot across midnight; missing slots have explicit frontend-only Demo examples for UI review. Both demo icons can copy all forty values without report-policy activation, since they copy fixed synthetic frontend data, not disabled census exports. Real-record copying still honors reportAvailability. The bank table is Time Recorded / Copy, with no search field; it lists published reached records and missing-slot demo rows. Real 09:00/16:00 scheduler persistence and authoritative active-policy selection remain Jopia dependencies for the later consolidated handoff. No live capture, seeding or backend write was performed; retained census rows remain zero. check:web, 406 unit tests and 7 focused browser tests passed; actual host copying/mobile checks passed with zero V2 domain POSTs. The earlier handoff file has intentionally not been revised in this iteration, per the user's request to consolidate it later.
+
+
+## Editable OCR and manual review — frontend continuation
+
+Blood-bank inbound/outbound and requester inbound now share camera/file selection,
+explicit on-device Run OCR, five-field editable review and Manual drafts. Immutable
+original confidence is kept separate; incomplete/low-confidence/corrected drafts
+never become verified OCR merely because a user edits them. Supported unchanged
+bank intake uses operator verification, frozen idempotent attempts and command
+polling. Closing the bank scanner refreshes transaction history. Outbound selects
+scoped TRANSFER reservations and reuses their existing preparation and dispatch
+actions; reads explicitly request V2.1 for all five components.
+
+**GAP-19 / RQ-19 remain open for actual manual/corrected writes and requester
+label-matched receipt.** The existing bank intake endpoint authorizes ROLE-01/02,
+not ROLE-03. Requesters do not gain a registration bypass. Their confirmation is
+disabled pending a server-side label-to-incoming-reservation contract. The existing
+outbound readiness flag is preserved, not enabled here. No live domain command,
+API redeploy, migration or retained-data change was performed by this continuation.
+See [the concrete Jopia handoff](../handoffs/LAT-TO-JOPIA-OCR-MANUAL-AND-REQUESTER-RECEIPT-2026-10-16.md).
+
+### Synthetic label extraction preview — 2026-10-17
+
+A separate default-off `VITE_BLOODLEDGER_LABEL_EXTRACTION_PREVIEW` flag adds
+in-memory crop/rotation/straightening/contrast, draft layout anchors, bounded
+field-region OCR, guided field crops and partial editable suggestions to the
+shared bank inbound/outbound/requester inbound workspace. Original values,
+engine scores, date precision and crops remain separate from corrections.
+A recaptured field preserves the others; changing values clears confirmation.
+New extraction, unsupported profiles, date-only/ambiguous and edited results
+never gain verified intake authority. The strict synthetic path is preserved.
+
+Mediatrix has a draft reference profile only. Medix and N.L. Villa references
+and all three hospital-held-out reports remain pending. No three-bank or
+handwriting reliability claim is established. The private pilot contains 180
+label plans / 540 photo tasks, **zero collected/reviewed photos**. No model was
+trained/downloaded or activated; forecasting is untouched. Retained services
+were not redeployed and this flag remains off there.
+
+GAP-19/RQ-19, RQ-02 and applicable date/expiry decisions stay open. See the
+[Jopia contract handoff](../handoffs/LAT-TO-JOPIA-LABEL-EXTRACTION-CONTRACTS-2026-10-17.md),
+[Buno evaluation handoff](../handoffs/LAT-TO-BUNO-OCR-DATASET-AND-BENCHMARK-2026-10-17.md)
+and [validation](../validation/lat-label-extraction-2026-10-17/README.md).
+
+### Jopia/Buno OCR review follow-up — 2026-10-17
+
+Original preview/tools commit `5724b36` is now published on
+`codex/lat-doh-reporting-dashboard-20261016`. Buno regenerates the private
+planning package; no private data is put in Git. Actual photos and independent
+reviews remain absent; no model change or three-bank support claim is warranted.
+
+Jopia's accepted directions are not new wire contracts. His J1 replay fix is
+on `codex/jopia-label-contracts-inbound-replay` (`7b32384`); no backend merge or
+retained deployment was performed by Lat. Client follow-up adds the outbound
+OCR component equality guard (usability only), binds strict-intake retries to
+the original operator and adds explicit actor-scoped command lookup. Frozen
+retry cancellation and legacy ALREADY_REGISTERED cannot discard an unknown
+original outcome. Strict intake sends OCR_LABEL only. Requester scanner receive
+stays disabled, existing reservation receive stays unchanged, both readiness
+flags stay default-off, and future receipt/outbound/history contracts are not
+wired. Server F1/F2/F4 and RQ-02/03/09/10/19 remain open dependencies.
+
+See [the response](../handoffs/LAT-TO-BUNO-JOPIA-OCR-SOURCE-AND-GUARDS-2026-10-17.md)
+and [follow-up evidence](../validation/lat-label-extraction-2026-10-17/JOPIA-BUNO-FOLLOWUP.md).
