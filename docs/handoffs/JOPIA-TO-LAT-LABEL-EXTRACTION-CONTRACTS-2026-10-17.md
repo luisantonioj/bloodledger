@@ -15,12 +15,43 @@ and `RQ-19` stay open.
 
 ## Review basis
 
-This reply was checked against `main` at `25bddeb`. Your preview sources
-(`label-profiles.ts`, `label-extraction.ts`, `field-regions.ts`, the updated
-`unit-capture-workspace.tsx`) and
-`LAT-TO-JOPIA-OCR-MANUAL-AND-REQUESTER-RECEIPT-2026-10-16.md` are not on any
-local or remote branch. Please push the branch or open a draft PR. The
-preview code has not been reviewed, so nothing here validates it.
+This reply was first checked against `main` at `25bddeb`, before your preview
+was published. You have since published it on
+`codex/lat-doh-reporting-dashboard-20261016`: OCR commit `5724b36` and client
+follow-up `f87b465`. Later commits on that branch change only documentation.
+From `25bddeb` to `f87b465`, the changes are limited to `apps/web`, `docs` and
+`scripts/ocr`. No API, contract, capture-policy, migration or chaincode file
+changed.
+
+### Contract check of the published client (`f87b465`)
+
+Jopia read the client paths that call existing contracts. This was a code
+read. No test or browser check was rerun here. Your recorded results (437 web
+tests and the browser suites) are disclosed teammate evidence.
+
+| Path | Result |
+| --- | --- |
+| Intake body | Built only from the unchanged strict recognition. It sends exactly the 15 keys `INBOUND_OCR_V1` allows, `OCR_LABEL` for both evidence sources, and four engine scores with no component score. The issuer comes from the Donation No. grammar. Edited, manual and preview drafts cannot submit. Conforms to items 1–3 and follow-ups 2–3. |
+| Frozen retry | Reuses the same key, body and event time. The retry stays bound to the original operator, and it must: the server finds a key's command only for the same operator (`V2CommandStore.get`), so another operator's retry would miss the replay. Conforms to item 6. |
+| Lost-response lookup | Uses the actor-scoped `GET /api/v2/commands?idempotencyKey=` and sends no POST. It checks the resource type, the `INCAP_` ID, the correlation ID and the status URL against the server's command shape. The retained `1124d6a` API also supports this lookup. |
+| `ALREADY_REGISTERED` | On a fresh key, it is shown as recorded by another request. On your own key's retry, the attempt stays frozen for lookup. This is correct on both pre-J1 and J1 APIs. |
+| Outbound | The V1 body is unchanged. The guard adds a scan only when the OCR-read component equals every reserved member's component. This is a usability guard only; F1 stays open until J2. The ready flag stays off. |
+| Requester | `ROLE-03` and requester accounts cannot reach `inbound-captures`. Confirmation is disabled and the reservation `receive` action is untouched. Conforms to item 4 and follow-up 4. |
+
+No new finding. This check covers only contract conformance. It does not
+accept the preview's extraction, profiles or recognition quality, and it
+does not authorize enabling either flag.
+
+### Buno's plan verification
+
+On 2026-10-17, Buno independently regenerated the planning package from
+`f87b465`. She reported a matching manifest SHA-256 (`d4df9d99…cf72d4`),
+180 label plans, 540 photo tasks and 0 photographs. She also reported 4/4
+tooling tests passing and the complete-evidence gate correctly blocked. This
+is planning evidence only. No recognition, training or held-out result exists.
+Her next prerequisites include accepted profile versions and field semantics,
+which item 1 owns: they remain `RQ-02`/`RQ-03` decisions. Jopia cannot accept
+a Medix or N.L. Villa profile without institution label references.
 
 ## Backend findings from this review
 
