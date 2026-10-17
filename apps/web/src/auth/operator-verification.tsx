@@ -11,11 +11,12 @@ export function OperatorVerification({principal, children}: {principal: Principa
   const [busy, setBusy] = useState(false);
   const awaiting = useRef<{resolve: (id: string) => void; reject: (error: Error) => void} | undefined>(undefined);
   const generation = useRef(0);
-  // PRC and outbound evidence replay are actor-scoped: retain the operator who verified each key.
+  // Intake, PRC and outbound evidence replay are actor-scoped: retain the operator who verified each key.
   const boundOperators = useRef(new Map<string, string>());
   const isPrc = (action: string) => action.startsWith("POST /api/v2/prc-supply-requests");
   const isOnboarding = (action:string) => /^POST \/api\/v2\/onboarding\/(applications\/[^/]+\/(review|approve|reject|activate)|institutions\/[^/]+\/deregister)$/.test(action);
-  const actorBound = (action:string) => isPrc(action)||isOnboarding(action)||/^POST \/api\/v2\/reservations\/[^/]+\/outbound-verifications$/.test(action);
+  const actorBound = (action:string) => isPrc(action)||isOnboarding(action)||action==="POST /api/v2/inbound-captures"||/^POST \/api\/v2\/reservations\/[^/]+\/outbound-verifications$/.test(action);
+  const pendingActionMessage=(action:string)=>action==="POST /api/v2/inbound-captures"?"The original intake operator is no longer authorized. Keep this attempt frozen and ask for review.":"The original operator is no longer authorized. Review the reservation before continuing.";
   // Bind the account epoch before descendants start protected reads on a deep link.
   useLayoutEffect(() => {
     if (!principal.verificationRequired) return;
@@ -27,7 +28,7 @@ export function OperatorVerification({principal, children}: {principal: Principa
       const boundOperator = actorBound(request.action) ? boundOperators.current.get(request.idempotencyKey) : undefined;
       if (boundOperator && !operators.some(operator => operator.operatorId === boundOperator)) {
         awaiting.current = undefined;
-        return reject(new Error(isPrc(request.action)?"The original PRC operator is no longer authorized. Review the request before continuing.":isOnboarding(request.action)?"The original operator is no longer authorized. Review this application or institution action before continuing.":"The original operator is no longer authorized. Review the reservation before continuing."));
+        return reject(new Error(isPrc(request.action)?"The original PRC operator is no longer authorized. Review the request before continuing.":isOnboarding(request.action)?"The original operator is no longer authorized. Review this application or institution action before continuing.":pendingActionMessage(request.action)));
       }
       setOperatorId(boundOperator ?? operators[0].operatorId); setPin(""); setError(""); setPending(request);
     }));

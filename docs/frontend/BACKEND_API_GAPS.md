@@ -253,3 +253,24 @@ GAP-19/RQ-19, RQ-02 and applicable date/expiry decisions stay open. See the
 [Jopia contract handoff](../handoffs/LAT-TO-JOPIA-LABEL-EXTRACTION-CONTRACTS-2026-10-17.md),
 [Buno evaluation handoff](../handoffs/LAT-TO-BUNO-OCR-DATASET-AND-BENCHMARK-2026-10-17.md)
 and [validation](../validation/lat-label-extraction-2026-10-17/README.md).
+
+### Jopia/Buno OCR review follow-up — 2026-10-17
+
+Original preview/tools commit `5724b36` is now published on
+`codex/lat-doh-reporting-dashboard-20261016`. Buno regenerates the private
+planning package; no private data is put in Git. Actual photos and independent
+reviews remain absent; no model change or three-bank support claim is warranted.
+
+Jopia's accepted directions are not new wire contracts. His J1 replay fix is
+on `codex/jopia-label-contracts-inbound-replay` (`7b32384`); no backend merge or
+retained deployment was performed by Lat. Client follow-up adds the outbound
+OCR component equality guard (usability only), binds strict-intake retries to
+the original operator and adds explicit actor-scoped command lookup. Frozen
+retry cancellation and legacy ALREADY_REGISTERED cannot discard an unknown
+original outcome. Strict intake sends OCR_LABEL only. Requester scanner receive
+stays disabled, existing reservation receive stays unchanged, both readiness
+flags stay default-off, and future receipt/outbound/history contracts are not
+wired. Server F1/F2/F4 and RQ-02/03/09/10/19 remain open dependencies.
+
+See [the response](../handoffs/LAT-TO-BUNO-JOPIA-OCR-SOURCE-AND-GUARDS-2026-10-17.md)
+and [follow-up evidence](../validation/lat-label-extraction-2026-10-17/JOPIA-BUNO-FOLLOWUP.md).

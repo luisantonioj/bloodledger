@@ -54,6 +54,9 @@ class OcrExperimentTests(unittest.TestCase):
             predictions[0]["codeArtifactHash"]="CHANGED_UNIT_TEST_CODE"
             with self.assertRaisesRegex(ValueError,"changed within a run"):experiment.score(manifest,predictions,"validation","UNIT_TEST_ONLY",base)
             predictions[0]["codeArtifactHash"]="UNIT_TEST_CODE"
+            for image in images:image["fields"]["donationNumber"]={"value":None,"state":"unreadable","precision":"UNKNOWN","bbox":None}
+            empty_identifiers=experiment.score(manifest,predictions,"validation","UNIT_TEST_ONLY",base)
+            self.assertIsNone(empty_identifiers["identifierCER"])
             predictions.append(predictions[0])
             with self.assertRaisesRegex(ValueError,"Duplicate prediction"):experiment.score(manifest,predictions,"validation","UNIT_TEST_ONLY",base)
 

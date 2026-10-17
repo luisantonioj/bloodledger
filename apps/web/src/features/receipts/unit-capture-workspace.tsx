@@ -4,10 +4,10 @@ import {labelExtractionPreviewEnabled} from "./label-profiles";
 import {useEffect,useRef,useState} from "react";
 import {canAct,type Principal} from "../../auth/permissions";
 import {InformationHelp} from "../../components/ui/information-help";
-import {ApiRequestError,requestJson} from "../../services/api/client";
+import {ApiRequestError,requestJson,retryAfterContextChange} from "../../services/api/client";
 import {newMutationKeys} from "../../services/api/mutation-keys";
 import {mutationError} from "../../services/api/mutation-error";
-import {parseV2Command} from "../../services/api/v2";
+import {parseV2Command,readCommandByKey} from "../../services/api/v2";
 import {issuerForDonationNumber} from "../../../../capture-pwa/src/capture-policy";
 import {CommandStatusCard} from "../commands/command-status-card";
 import {useCommandStatus} from "../commands/use-command-status";
@@ -44,6 +44,7 @@ export function UnitCaptureWorkspace({principal,direction,onBack,onLockChange}:{
    const saved=attempt.current;const result=await requestJson<unknown>("/api/v2/inbound-captures",{method:"POST",headers:{"Idempotency-Key":saved.keys.idempotencyKey,"X-BloodLedger-Contract-Version":"V2.1"},body:JSON.stringify(saved.payload)});
    const row=result as Record<string,unknown>|null;
    if(row?.resolution==="ALREADY_REGISTERED"){
+    if(frozen)throw Error("Original command outcome is still unverified; look up the saved intake.");
     if(row.classification!=="SIMULATION_ONLY"||typeof row.componentId!=="string"||!/^COMP_[A-Z0-9_-]+$/.test(row.componentId)||typeof row.captureId!=="string"||!/^INCAP_[A-Z0-9_-]+$/.test(row.captureId)||typeof row.status!=="string")throw Error("Duplicate response is invalid");
     if(active.current){setDuplicate(true);setConfirmed(false);setReview(undefined);setDraft(emptyLabel());}
    }else{const command=parseV2Command(result);if(command.resourceType!=="INBOUND_CAPTURE"||!/^INCAP_[A-Z0-9_-]+$/.test(command.resourceId)||command.correlationId!==saved.keys.correlationId||command.statusUrl!=="/api/v2/commands/"+command.commandId)throw Error("Command identity mismatch");if(active.current){status.accept(command);setReview(undefined);setDraft(emptyLabel());setImage(undefined);setImageUrl(undefined);setConfirmed(false);}}
@@ -51,9 +52,21 @@ export function UnitCaptureWorkspace({principal,direction,onBack,onLockChange}:{
   }catch(reason){if(!active.current)return;const failure=mutationError(reason,timeRejects.current);if(failure.timeRejected)timeRejects.current++;
    const cancelled=reason instanceof Error&&reason.message==="Operator verification cancelled. The command was not sent.";
    const definitive=reason instanceof ApiRequestError&&reason.status>=400&&reason.status<500&&reason.code!=="AUTH_CONTEXT_CHANGED";
-   if(failure.discardAttempt||definitive||cancelled)attempt.current=undefined;
-   setFrozen(Boolean(attempt.current));setConfirmed(false);setError(cancelled?"Operator verification cancelled. No intake was sent.":failure.timeRejected?failure.message:definitive?"Intake was not accepted. Review the label and current account before trying again.":"The intake outcome is unknown. Retry the same frozen attempt explicitly; no second unit is assumed.");
+   if(failure.discardAttempt||definitive||(cancelled&&!frozen))attempt.current=undefined;
+   setFrozen(Boolean(attempt.current));setConfirmed(false);setError(cancelled?(frozen?"Operator verification cancelled. The original attempt stays frozen; no retry was sent.":"Operator verification cancelled. No intake was sent."):failure.timeRejected?failure.message:definitive?"Intake was not accepted. Review the label and current account before trying again.":"The intake outcome is unknown. Retry the same frozen attempt explicitly; no second unit is assumed.");
   }finally{if(active.current)setBusy(false);}
+ }
+ async function recover(){
+  const saved=attempt.current;if(!saved||!frozen||busy||status.command)return;setBusy(true);setError("");
+  const current=()=>active.current&&attempt.current===saved;
+  try{
+   const command=await retryAfterContextChange(()=>readCommandByKey(saved.keys.idempotencyKey),current);
+   if(!current())return;
+   if(!command){setError("No accepted command was found in the current actor scope. The attempt stays frozen; nothing was resubmitted.");return;}
+   if(command.resourceType!=="INBOUND_CAPTURE"||!/^INCAP_[A-Z0-9_-]+$/.test(command.resourceId)||command.correlationId!==saved.keys.correlationId||command.statusUrl!=="/api/v2/commands/"+command.commandId)throw Error("Command identity mismatch");
+   status.accept(command);attempt.current=undefined;setFrozen(false);setReview(undefined);setDraft(emptyLabel());setImage(undefined);setImageUrl(undefined);setConfirmed(false);
+  }catch{if(current())setError("The original intake could not be verified in the current actor scope. The attempt stays frozen; nothing was resubmitted.");}
+  finally{if(active.current)setBusy(false);}
  }
  return <>
  <section className="receipt-input-card"><header className={onBack?"bank-scanner-input-heading":undefined}>{onBack&&<button className="button compact bank-scanner-back" type="button" aria-label="Change direction" title="Back to direction selection" disabled={locked} onClick={onBack}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>}<h3>{direction} Blood Unit Input</h3><InformationHelp label={direction+" blood unit input"}>Scan a supported synthetic label or enter a manual review draft. OCR runs on this device. Corrections remain separate from original confidence evidence; manual/corrected submission awaits Jopia’s contract. Outbound follows an authorized transfer.</InformationHelp></header>
@@ -72,7 +85,8 @@ export function UnitCaptureWorkspace({principal,direction,onBack,onLockChange}:{
  {canIntake&&verified&&<div className="receipt-confirm-footer"><label><input type="checkbox" checked={confirmed} disabled={locked} onChange={event=>setConfirmed(event.target.checked)}/>I checked all five fields against the label.</label></div>}
  </>:<div className="requester-records-empty"><strong>Scan a label or enter unit details</strong><span>Your editable review will appear here.</span></div>}
  {direction==="Inbound"&&<div className="receipt-confirm-footer"><button className="button primary compact" type="button" disabled={busy||Boolean(status.command)||(!frozen&&(!canIntake||!verified||!confirmed||!label))} onClick={()=>void submit()}>{busy?"Submitting…":frozen?"Retry same intake":requester?"Confirm inbound receipt":"Confirm inbound transaction"}</button>{requester&&<span>Receipt confirmation needs server-side incoming-transfer label matching for ROLE-03; this account cannot register new stock.</span>}{!requester&&!canIntake&&<span>An operator with inventory:capture capability is required.</span>}</div>}
- {duplicate&&<p className="receipt-preview-note" role="status">Already registered. No duplicate unit was created.</p>}{error&&<p className="receipt-image-error" role="alert">{error}</p>}
+ {frozen&&<div className="receipt-confirm-footer"><button className="button compact" type="button" disabled={busy||Boolean(status.command)} onClick={()=>void recover()}>Look up saved intake</button></div>}
+ {duplicate&&<p className="receipt-preview-note" role="status">Already registered by another request. No duplicate unit was created.</p>}{error&&<p className="receipt-image-error" role="alert">{error}</p>}
  </section>
  {direction==="Outbound"&&<ScannerTransferActions principal={principal} review={verified?review:undefined} onLockChange={setTransferLocked}/>}
  {status.command&&<CommandStatusCard command={status.command} pollError={status.pollError} onClear={()=>{status.clear();reset();}}/>}
