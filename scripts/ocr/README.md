@@ -160,3 +160,98 @@ from this experiment.
 Sources: [Tesseract quality guidance](https://tesseract-ocr.github.io/tessdoc/ImproveQuality.html),
 [Tesseract training guidance](https://tesseract-ocr.github.io/tessdoc/tess5/TrainingTesseract-5.html),
 [TrOCR model card](https://huggingface.co/microsoft/trocr-small-handwritten).
+
+## Buno V3 tooling — 2026-10-17
+
+V2 stays byte-identical and remains the default `init` version for reproducibility.
+For the separate PA-OCR-01 package, use a **new** directory:
+
+```bash
+python3 scripts/ocr/experiment.py init --version v3 --output build/ocr-private/pilot-20261017-v3
+python3 scripts/ocr/experiment.py validate --manifest build/ocr-private/pilot-20261017-v3/manifest.json
+python3 scripts/ocr/test_experiment.py
+python3 scripts/ocr/test_alignment.py
+```
+
+V3 manifest SHA-256:
+`6cb42444456c5e39a938682b7b85715ff9bdaffaa6461786d1d8a62b842a839f`.
+It contains **180 positive labels / 540 photo tasks**, plus **63 negative labels /
+189 photo tasks** (one per class/bank/split; seven classes including ambiguous short
+dates). Total: 243 label plans, 729 photo tasks, **zero photographs or reviews**.
+The fixed enumeration uses seed identifier 20261017; no randomness depends on the
+clock or host. Positive splits/writers are preserved. Same-donation negatives
+reference a donation in their own split; both relationship and identifier leakage
+are rejected. Profile stamps use the frozen rule above. Unknown-layout negatives
+have their own version/hash and `layoutReferenceAccepted:false`; they are not an
+accepted fourth layout. Their hashes document the deliberately unsupported design.
+
+SVGs print the marker, bank line, UTC+08:00 caption and frozen heading positions.
+Closed printed forms and intended canonical values are separate. Handwritten
+values are blank; `print-sheets.html` supports local landscape printing.
+`COLLECTION.txt` explains the human steps. Observed annotations start null, never
+as planned truth. The seven negative classes are marked separately in the manifest.
+`validate --complete` intentionally fails until collection and two real independent
+reviews are recorded. Do not invent reviewer identities or photograph issued units.
+
+### Aligned scoring
+
+Reports are versioned `OCR_SCORE_V2`, pin the scorer bytes, and preserve the
+candidate, dataset, code/assets/configuration boundaries. Selection requires the
+same scorer version/hash; held-out scoring checks it again. Existing selection
+artifacts must not silently acquire the changed scoring protocol.
+
+- Positive condition/field reports are grouped by bank, style and condition.
+  State confusion records all observed ground-truth states against predicted
+  states, plus FAILED, MISSING_PREDICTION and UNKNOWN. `recognized`, `missing`
+  and `needs review` map explicitly to present, absent and ambiguous; the current
+  recognizer does not distinguish every unreadability state.
+- Complete-label counts remain photo-level; `allThreePhotosPerLabel` separately
+  requires exactly one clear, angled/curved and challenging-lighting photo, with
+  every field exact in all three. Missing/failed predictions stay failures.
+- Negatives are excluded from positive selection accuracy and reported separately,
+  including incorrect eligibility. Date precision DATE remains non-submittable.
+- Latency has cold/warm/unspecified sample counts and p50/p95 (linear interpolation
+  at `(n-1)*p`), also by bank/style/condition. Measured failed attempts count toward
+  time; absent times stay absent. The whole-label browser path starts a new worker
+  for every image, so all those times are cold and warm remains empty. The shared
+  crop baseline reuses a worker: first photo cold, subsequent photos warm.
+- Raw original confidence and the existing policy's nonnegative `Math.round`
+  score are separate, with sample counts and the number crossing 90 on rounding.
+  Original scores are not reconstructed from rounded values. Scores remain engine
+  evidence, not correctness probabilities; preview policy is unchanged.
+- `peakMemoryBytes` is always null until a reviewed peak-memory probe is added.
+  Supplied heap or unproven memory values do not become a peak-memory result.
+
+The experiment-only `browser-baseline.ts` uses the same strict parser and local
+engine settings but retains raw line confidence privately. No application file or
+readiness flag changes. The browser runner freezes its own code, helper, layout
+contract, package lock, extraction sources, engine assets, Node and browser version.
+
+### Matching raw field crops (prepared, not a corpus benchmark)
+
+Use Python with **Pillow 11.3.0** in a separate OCR environment, Node 24.17.0 and
+lockfile Tesseract.js 7.0.0. No model download is part of these commands. The local
+English asset must already exist and match its pinned hash. Do not run recognition
+before reviewed photographs exist.
+
+```bash
+python3 scripts/ocr/field_crops.py --manifest build/ocr-private/pilot-20261017-v3/manifest.json --split validation --output build/ocr-private/v3-validation-crops
+node scripts/ocr/run-field-crops.mjs --crops build/ocr-private/v3-validation-crops/crops.json --lang-path apps/capture-pwa/public/ocr-assets/lang --output build/ocr-private/tesseract-crops-validation.jsonl
+python3 scripts/ocr/experiment.py score --manifest build/ocr-private/pilot-20261017-v3/manifest.json --predictions build/ocr-private/tesseract-crops-validation.jsonl --split validation --candidate TESSERACT_SHARED_FIELD_CROPS_V1 --output build/ocr-private/tesseract-crops-report.json
+python3 scripts/ocr/test_field_crops.py
+```
+
+Both engines now use `field_crops.crop_field`: identical Pillow cropping/rounding,
+RGB conversion, source coordinates and no implicit EXIF rotation. Exported crop
+files and pixels have hashes; boxes outside the source are rejected. Reviewers
+must provide actual `rawText` for present fields. Raw crop scoring compares that
+text, not a normalized enum or UTC value. The TrOCR lock must also pin Pillow
+11.3.0. Crop reports retain `GROUND_TRUTH_FIELD_CROPS_NOT_END_TO_END_EXTRACTION`
+and cannot enter end-to-end selection. Region localization is oracle evidence;
+this does not demonstrate whole-label recognition or missing-field detection.
+
+Crop adapters load local assets: network download bytes are zero and local
+asset/model bytes are separately reported. Original Tesseract confidence is
+recorded; TrOCR does not manufacture a comparable confidence score. TrOCR weights
+were not downloaded, loaded or trained. The generated-pixel crop tests are software
+checks only. Actual camera/handwriting/resource evidence remains pending.
