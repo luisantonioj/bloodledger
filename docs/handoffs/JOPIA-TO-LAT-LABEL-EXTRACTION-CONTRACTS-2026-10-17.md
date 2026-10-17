@@ -49,9 +49,27 @@ On 2026-10-17, Buno independently regenerated the planning package from
 180 label plans, 540 photo tasks and 0 photographs. She also reported 4/4
 tooling tests passing and the complete-evidence gate correctly blocked. This
 is planning evidence only. No recognition, training or held-out result exists.
-Her next prerequisites include accepted profile versions and field semantics,
-which item 1 owns: they remain `RQ-02`/`RQ-03` decisions. Jopia cannot accept
-a Medix or N.L. Villa profile without institution label references.
+Her next prerequisites include accepted profile versions and field semantics.
+For real labels, these remain `RQ-02`/`RQ-03` decisions under item 1, and Jopia
+cannot accept a Medix or N.L. Villa profile without institution label
+references. For the synthetic corpus, see the decision below.
+
+### Decision for corpus collection (2026-10-17)
+
+Jopia accepted
+[`PA-OCR-01` (`SYNTHETIC_LABEL_LAYOUT_V1`)](../REQUIREMENTS.md#pa-ocr-01--synthetic-label-layouts-for-the-ocr-corpus-2026-10-17).
+It defines three fictional layouts (`MEDIATRIX`, `MEDIX`, `NLVILLA`) that copy
+no real hospital label, plus field semantics for annotation: blood type and
+component codes, date format and precision, states, negative cases and
+writer privacy. Collection no longer waits for institution references. It is
+for the corpus and benchmarks only. Items 1–3 stay open for real labels, and
+nothing becomes submittable or activated.
+
+| Owner | Next step |
+| --- | --- |
+| Lat | Define and freeze the three profiles (ID, version, SHA-256) under `PA-OCR-01`. Keep `MEDIATRIX_BAG_PREVIEW` and the `*_REFERENCE_PENDING` entries separate. |
+| Buno | Produce the fictional labels from the frozen profiles, then photograph and double-review them. Record each profile version in the manifest. Finish the scorer work you listed before any benchmark. |
+| Jopia | No backend change. J2–J6 still need explicit implementation authorization. |
 
 ## Backend findings from this review
 
