@@ -16,6 +16,7 @@ const files = [
   "contracts/source-surplus-evidence-v2.schema.json",
   "contracts/inbound-ocr-v1.schema.json",
   "contracts/doh-census-v2.schema.json",
+  "contracts/synthetic-label-layout-v1.json",
 ];
 
 for (const file of files) {
