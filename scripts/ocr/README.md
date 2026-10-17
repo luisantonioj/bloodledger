@@ -19,6 +19,23 @@ clinical information.
   split; report distinct writers/labels as well as photo counts.
 - Mediatrix has a draft anchor profile. Medix and N.L. Villa references are
   pending; planning sheets do not impersonate their unknown label layouts.
+- Since 2026-10-17, the corpus uses the three fictional layouts frozen under
+  `PA-OCR-01` (`SYNTHETIC_LABEL_LAYOUT_V1`) in
+  [`contracts/synthetic-label-layout-v1.json`](../../contracts/synthetic-label-layout-v1.json).
+  They copy no real hospital label. A profile's SHA-256 is computed over
+  `JSON.stringify({schemaVersion, marker, timeCaption, timeZoneOffset,
+  dateFormats, bloodTypeForms, componentForms, profile})` (UTF-8, file key
+  order); record its ID, version and hash with every label made from it.
+
+  | Profile | Version | SHA-256 |
+  | --- | --- | --- |
+  | `SYN_MEDIATRIX_LAYOUT` | 1 | `d2f7e32f34b30a9f9c6ce4135c1aff046f8bff2238ce6ccae4d0ff29f857a8e4` |
+  | `SYN_MEDIX_LAYOUT` | 1 | `a16303ec3cc23127b7755787bcef46afb6b011320e9fb79a2937dfd04fc1d502` |
+  | `SYN_NLVILLA_LAYOUT` | 1 | `6946fcc1e2e635eb99af6db15a4a8071aa2d928925dd3a970ad51e9afcd3ed4f` |
+
+  Any change is a new version with a new hash; the web test pins these values.
+  The existing V2 planning sheets still reference the earlier draft and pending
+  profile IDs; regenerating the plan against these layouts is Buno's step.
 - The frontend flag `VITE_BLOODLEDGER_LABEL_EXTRACTION_PREVIEW` defaults off.
   The isolated browser test enables it; the retained host was not activated.
 

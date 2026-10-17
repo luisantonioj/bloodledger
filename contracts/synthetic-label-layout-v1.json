@@ -1,0 +1,142 @@
+{
+  "schemaVersion": "SYNTHETIC_LABEL_LAYOUT_V1",
+  "assumption": "PA-OCR-01",
+  "classification": "SIMULATION_ONLY",
+  "use": "Fictional label layouts for the private OCR research corpus, its review and benchmarks only. Not a Mary Mediatrix, Medix or N.L. Villa label format; extraction results stay preview-only and are never submittable.",
+  "marker": "SYNTHETIC - NOT A HOSPITAL LABEL",
+  "timeCaption": "Times: Asia/Manila (UTC+08:00)",
+  "timeZoneOffset": "+08:00",
+  "dateFormats": [
+    "YYYY-MM-DD HH:MM",
+    "YYYY-MM-DD"
+  ],
+  "bloodTypeForms": {
+    "A+": "A_POSITIVE",
+    "A-": "A_NEGATIVE",
+    "B+": "B_POSITIVE",
+    "B-": "B_NEGATIVE",
+    "AB+": "AB_POSITIVE",
+    "AB-": "AB_NEGATIVE",
+    "O+": "O_POSITIVE",
+    "O-": "O_NEGATIVE"
+  },
+  "componentForms": {
+    "WB": "WHOLE_BLOOD",
+    "WHOLE BLOOD": "WHOLE_BLOOD",
+    "PRBC": "PACKED_RED_BLOOD_CELLS",
+    "PACKED RED BLOOD CELLS": "PACKED_RED_BLOOD_CELLS",
+    "FFP": "FRESH_FROZEN_PLASMA",
+    "FRESH FROZEN PLASMA": "FRESH_FROZEN_PLASMA",
+    "PLT": "PLATELETS",
+    "PLATELETS": "PLATELETS",
+    "CRYO": "CRYOPRECIPITATE",
+    "CRYOPRECIPITATE": "CRYOPRECIPITATE"
+  },
+  "profiles": [
+    {
+      "id": "SYN_MEDIATRIX_LAYOUT",
+      "version": "1",
+      "bankCode": "MEDIATRIX",
+      "institutionId": "INST_MEDIATRIX",
+      "bankLine": "BANK CODE: MEDIATRIX",
+      "donationNumberPattern": "^MM[0-9]{2}-(0[1-9]|1[0-2])-[0-9]{4}$",
+      "fields": [
+        {
+          "field": "donationNumber",
+          "heading": "DONATION NO",
+          "placement": "BESIDE"
+        },
+        {
+          "field": "bloodType",
+          "heading": "ABO/RH",
+          "placement": "BESIDE"
+        },
+        {
+          "field": "componentType",
+          "heading": "COMPONENT",
+          "placement": "BESIDE"
+        },
+        {
+          "field": "collectedAt",
+          "heading": "COLLECTED",
+          "placement": "BESIDE"
+        },
+        {
+          "field": "expiresAt",
+          "heading": "EXPIRES",
+          "placement": "BESIDE"
+        }
+      ]
+    },
+    {
+      "id": "SYN_MEDIX_LAYOUT",
+      "version": "1",
+      "bankCode": "MEDIX",
+      "institutionId": "INST_SYNTH_MEDIX",
+      "bankLine": "BANK CODE: MEDIX",
+      "donationNumberPattern": "^SYNMEDIX-[0-9]{4}-[0-9]{4}$",
+      "fields": [
+        {
+          "field": "bloodType",
+          "heading": "BLOOD GROUP",
+          "placement": "BELOW"
+        },
+        {
+          "field": "donationNumber",
+          "heading": "UNIT NUMBER",
+          "placement": "BELOW"
+        },
+        {
+          "field": "componentType",
+          "heading": "PRODUCT",
+          "placement": "BELOW"
+        },
+        {
+          "field": "expiresAt",
+          "heading": "EXPIRY",
+          "placement": "BELOW"
+        },
+        {
+          "field": "collectedAt",
+          "heading": "DRAWN",
+          "placement": "BELOW"
+        }
+      ]
+    },
+    {
+      "id": "SYN_NLVILLA_LAYOUT",
+      "version": "1",
+      "bankCode": "NLVILLA",
+      "institutionId": "INST_SYNTH_NLVILLA",
+      "bankLine": "BANK CODE: NLVILLA",
+      "donationNumberPattern": "^SYNNLVILLA-[0-9]{4}-[0-9]{4}$",
+      "fields": [
+        {
+          "field": "donationNumber",
+          "heading": "DONATION NUMBER",
+          "placement": "BESIDE"
+        },
+        {
+          "field": "componentType",
+          "heading": "COMP",
+          "placement": "BELOW"
+        },
+        {
+          "field": "bloodType",
+          "heading": "TYPE",
+          "placement": "BESIDE"
+        },
+        {
+          "field": "collectedAt",
+          "heading": "COLL DATE",
+          "placement": "BELOW"
+        },
+        {
+          "field": "expiresAt",
+          "heading": "EXP DATE",
+          "placement": "BESIDE"
+        }
+      ]
+    }
+  ]
+}

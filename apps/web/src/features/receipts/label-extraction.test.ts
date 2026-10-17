@@ -49,3 +49,38 @@ describe("synthetic label extraction preview, FR-02 / RQ-02 / RQ-19",()=>{
  });
  it("validates local image transforms before decoding",()=>{expect(validatePreparation(defaultPreparation())).toEqual(defaultPreparation());expect(()=>validatePreparation({...defaultPreparation(),crop:{x:90,y:0,width:20,height:100}})).toThrow();expect(()=>validatePreparation({...defaultPreparation(),deskew:11})).toThrow();});
 });
+
+// PA-OCR-01 SYNTHETIC_LABEL_LAYOUT_V1: frozen fictional corpus layouts. A change to a layout or its shared value
+// forms changes its SHA-256 and needs a new profile version, not an edit to these pins.
+describe("SYNTHETIC_LABEL_LAYOUT_V1 corpus profiles (PA-OCR-01)",async()=>{
+ const {createHash}=await import("node:crypto");
+ const {default:layouts}=await import("../../../../../contracts/synthetic-label-layout-v1.json");
+ const frozen:Record<string,string>={SYN_MEDIATRIX_LAYOUT:"d2f7e32f34b30a9f9c6ce4135c1aff046f8bff2238ce6ccae4d0ff29f857a8e4",SYN_MEDIX_LAYOUT:"a16303ec3cc23127b7755787bcef46afb6b011320e9fb79a2937dfd04fc1d502",SYN_NLVILLA_LAYOUT:"6946fcc1e2e635eb99af6db15a4a8071aa2d928925dd3a970ad51e9afcd3ed4f"};
+ const vocabulary=LABEL_PROFILES.find(profile=>profile.id==="SYN_MEDIX_LAYOUT")!.vocabulary!;
+ it("keeps each frozen profile version at its recorded SHA-256",()=>{
+  const {profiles,...shared}=layouts;
+  for(const profile of profiles){const canonical=JSON.stringify({schemaVersion:shared.schemaVersion,marker:shared.marker,timeCaption:shared.timeCaption,timeZoneOffset:shared.timeZoneOffset,dateFormats:shared.dateFormats,bloodTypeForms:shared.bloodTypeForms,componentForms:shared.componentForms,profile});
+   expect([profile.id,profile.version,createHash("sha256").update(canonical,"utf8").digest("hex")]).toEqual([profile.id,"1",frozen[profile.id]]);}
+  expect(profiles.map(profile=>profile.id).sort()).toEqual(Object.keys(frozen).sort());
+ });
+ it("maps only the closed PA-OCR-01 value forms onto the wire enums",()=>{
+  expect(Object.values(layouts.bloodTypeForms).sort()).toEqual([...V2_BLOOD_TYPES].sort());expect([...new Set(Object.values(layouts.componentForms))].sort()).toEqual(["CRYOPRECIPITATE","FRESH_FROZEN_PLASMA","PACKED_RED_BLOOD_CELLS","PLATELETS","WHOLE_BLOOD"]);
+  expect(normalizeCandidate("bloodType","AB-",vocabulary).candidate).toBe("AB_NEGATIVE");expect(normalizeCandidate("bloodType","A POS",vocabulary).candidate).toBeNull();expect(normalizeCandidate("bloodType","0+",vocabulary).candidate).toBeNull();
+  expect(normalizeCandidate("componentType","PLT",vocabulary).candidate).toBe("PLATELETS");expect(normalizeCandidate("componentType","Platelet",vocabulary).candidate).toBeNull();
+  // Outside the corpus layouts, PLT is not a recognized abbreviation.
+  expect(normalizeCandidate("componentType","PLT").candidate).toBeNull();
+ });
+ it("reads printed corpus times in the layout's own UTC+08:00 and never invents a time for a date",()=>{
+  expect(normalizeCandidate("collectedAt","2026-10-01 08:00",vocabulary)).toEqual({candidate:"2026-10-01T00:00:00.000Z",precision:"INSTANT"});
+  expect(normalizeCandidate("expiresAt","2026-11-01",vocabulary)).toMatchObject({candidate:"2026-11-01",precision:"DATE_ONLY"});
+  for(const value of ["2026-02-30 08:00","2026-10-01 24:00","01/10/26 08:00"])expect(normalizeCandidate("collectedAt",value,vocabulary).candidate).toBeNull();
+  // Without a corpus layout, a printed local time is not interpreted as Asia/Manila.
+  expect(normalizeCandidate("collectedAt","2026-10-01 08:00").candidate).toBeNull();
+ });
+ it("detects a corpus layout by its bank line and reads values printed below its headings",()=>{
+  const result=extractLabelReview([line("SYNTHETIC - NOT A HOSPITAL LABEL",5),line("BANK CODE: MEDIX",30),line("BLOOD GROUP",60),line("O-",85),line("UNIT NUMBER",115),line("SYNMEDIX-2026-7001",140),line("PRODUCT",170),line("FFP",195),line("EXPIRY",225),line("2026-11-01 17:30",250),line("DRAWN",280),line("2026-10-01",305)]);
+  expect(result.extraction).toMatchObject({profileId:"SYN_MEDIX_LAYOUT",profileVersion:"1",profileStatus:"SYNTHETIC_CORPUS",previewOnly:true});
+  expect(result.draft).toMatchObject({donationNumber:"SYNMEDIX-2026-7001",bloodType:"O_NEGATIVE",componentType:"FRESH_FROZEN_PLASMA",expiresAt:"2026-11-01T09:30:00.000Z",collectedAt:"2026-10-01"});
+  expect(result.verified).toBeUndefined();expect(result.extraction!.warnings).toContain("Synthetic corpus layout (PA-OCR-01); not a hospital label format");
+ });
+});

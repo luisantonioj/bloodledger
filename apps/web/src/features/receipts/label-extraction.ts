@@ -1,5 +1,5 @@
 import {V2_BLOOD_TYPES,V2_COMPONENT_TYPES} from "../../services/api/v2";
-import {LABEL_PROFILES,FIELD_ANCHORS,type LabelField,type LabelProfile} from "./label-profiles";
+import {LABEL_PROFILES,FIELD_ANCHORS,type LabelField,type LabelProfile,type SyntheticVocabulary} from "./label-profiles";
 import {emptyLabel,type ScanReview} from "./scan-review-data";
 export interface OcrBox {x0:number;y0:number;x1:number;y1:number}
 export interface OcrLine {text:string;confidence:number;bbox?:OcrBox}
@@ -8,8 +8,17 @@ export interface FieldSuggestion {candidate:string|null;recognizedValue:string|n
 export interface ExtractionEvidence {profileId:string|null;profileVersion:string|null;profileStatus:LabelProfile["status"]|"UNKNOWN";engineVersion:"7.0.0";previewOnly:true;fields:Record<LabelField,FieldSuggestion>;warnings:string[]}
 const keys=Object.keys(FIELD_ANCHORS) as LabelField[];
 function normalized(value:string){return value.toUpperCase().replace(/[.]/g,"").replace(/\s+/g," ").trim();}
-export function normalizeCandidate(field:LabelField,value:string):{candidate:string|null;precision:DatePrecision;issue?:string}{
+export function normalizeCandidate(field:LabelField,value:string,vocabulary?:SyntheticVocabulary):{candidate:string|null;precision:DatePrecision;issue?:string}{
  const raw=value.trim(),text=normalized(raw);if(!raw)return {candidate:null,precision:"UNKNOWN"};
+ // PA-OCR-01 corpus layouts use closed forms; anything else stays unresolved rather than guessed.
+ if(vocabulary&&field==="bloodType"){const candidate=vocabulary.bloodTypeForms[text.replace(/\s+/g,"")]??null;return {candidate,precision:"UNKNOWN",...(!candidate?{issue:"Unrecognized blood group"}:{})};}
+ if(vocabulary&&field==="componentType"){const candidate=vocabulary.componentForms[text]??null;return {candidate,precision:"UNKNOWN",...(!candidate?{issue:"Component must be explicitly identified"}:{})};}
+ if(vocabulary&&(field==="collectedAt"||field==="expiresAt")){
+  const local=/^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d)$/.exec(raw);
+  if(local){const instant=new Date(`${local[1]}-${local[2]}-${local[3]}T${local[4]}:${local[5]}:00.000${vocabulary.timeZoneOffset}`);
+   // The layout prints its own time zone; this applies to the fictional corpus layouts only (not ADR-010 or real labels).
+   if(Number.isFinite(instant.getTime())&&new Date(Date.UTC(Number(local[1]),Number(local[2])-1,Number(local[3]))).toISOString().slice(0,10)===`${local[1]}-${local[2]}-${local[3]}`&&Number(local[4])<24&&Number(local[5])<60)return {candidate:instant.toISOString(),precision:"INSTANT"};}
+ }
  if(field==="bloodType"){
   const match=/^(AB|A|B|O)\s*(POSITIVE|NEGATIVE|POS|NEG|\+|-)$/i.exec(raw);
   const candidate=V2_BLOOD_TYPES.includes(raw as typeof V2_BLOOD_TYPES[number])?raw:match?`${match[1].toUpperCase()}_${["POSITIVE","POS","+"].includes(match[2].toUpperCase())?"POSITIVE":"NEGATIVE"}`:null;
@@ -49,9 +58,10 @@ export function extractLabelReview(lines:OcrLine[],options:{profileId?:string;fi
  if(matches.length>1)warnings.push("Conflicting institution anchors; select a profile or field crop manually");
  if(!profile)warnings.push("Unsupported layout: use a guided field crop or Manual review");
  if(profile?.status==="REFERENCE_PENDING")warnings.push("This hospital’s layout reference and evaluation are pending; use a guided field crop");
+ if(profile?.status==="SYNTHETIC_CORPUS")warnings.push("Synthetic corpus layout (PA-OCR-01); not a hospital label format");
  if(options.profileId)warnings.push("Profile selected manually; issuing institution is not verified");
  const buckets=Object.fromEntries(keys.map(key=>[key,[]])) as unknown as Record<LabelField,{value:string;confidence:number;box?:OcrBox}[]>;
- const anchorMap=profile?.status==="DRAFT_REFERENCE"?profile.anchors:{};
+ const anchorMap=profile?.status==="DRAFT_REFERENCE"||profile?.status==="SYNTHETIC_CORPUS"?profile.anchors:{};
  for(let index=0;index<lines.length;index++){
   const line=lines[index],anchor=findAnchor(line,anchorMap);if(!anchor)continue;
   if(anchor.remainder){buckets[anchor.field].push({value:anchor.remainder,confidence:line.confidence,box:validBox(line.bbox)?line.bbox:undefined});continue;}
@@ -78,7 +88,7 @@ export function extractLabelReview(lines:OcrLine[],options:{profileId?:string;fi
   const candidates=buckets[field],unique=[...new Set(candidates.map(item=>item.value.trim()))];
   if(unique.length!==1){fields[field]={candidate:null,recognizedValue:null,confidence:null,state:unique.length?"needs review":"missing",source:options.field===field?"OPERATOR_REGION":"OCR_REGION",precision:"UNKNOWN",...(unique.length?{issue:"Conflicting values; recapture this field"}:{})};continue;}
   const items=candidates.filter(item=>item.value.trim()===unique[0]),confidence=items.every(item=>Number.isFinite(item.confidence)&&item.confidence>=0&&item.confidence<=100)?Math.min(...items.map(item=>item.confidence)):null;
-  const value=normalizeCandidate(field,unique[0]);
+  const value=normalizeCandidate(field,unique[0],profile?.vocabulary);
   fields[field]={...value,recognizedValue:unique[0],confidence,state:value.candidate&&confidence!==null&&confidence>=90&&!(value.precision==="DATE_ONLY")?"recognized":"needs review",source:options.field===field?"OPERATOR_REGION":"OCR_REGION",box:items.find(item=>item.box)?.box};
   draft[field]=value.candidate??"";if(confidence!==null)confidences[field]=confidence;
  }
