@@ -14,6 +14,7 @@ import {useCommandStatus} from "../commands/use-command-status";
 import {LabelReviewFields} from "./label-review-fields";
 import {emptyLabel,unchangedVerifiedDraft,validLabel,type ScanReview} from "./scan-review-data";
 import {ScannerTransferActions} from "./scanner-transfer-actions";
+import {IncomingReceipt,receiptVerificationReady} from "./incoming-receipt";
 
 type Attempt={keys:ReturnType<typeof newMutationKeys>;payload:Record<string,unknown>};
 export function UnitCaptureWorkspace({principal,direction,onBack,onLockChange}:{principal:Principal;direction:"Inbound"|"Outbound";onBack?:()=>void;onLockChange?:(locked:boolean)=>void}){
@@ -53,7 +54,7 @@ export function UnitCaptureWorkspace({principal,direction,onBack,onLockChange}:{
    const cancelled=reason instanceof Error&&reason.message==="Operator verification cancelled. The command was not sent.";
    const definitive=reason instanceof ApiRequestError&&reason.status>=400&&reason.status<500&&reason.code!=="AUTH_CONTEXT_CHANGED";
    if(failure.discardAttempt||definitive||(cancelled&&!frozen))attempt.current=undefined;
-   setFrozen(Boolean(attempt.current));setConfirmed(false);setError(cancelled?(frozen?"Operator verification cancelled. The original attempt stays frozen; no retry was sent.":"Operator verification cancelled. No intake was sent."):failure.timeRejected?failure.message:definitive?"Intake was not accepted. Review the label and current account before trying again.":"The intake outcome is unknown. Retry the same frozen attempt explicitly; no second unit is assumed.");
+   setFrozen(Boolean(attempt.current));setConfirmed(false);setError(cancelled?(frozen?"Operator verification cancelled. The original attempt stays frozen; no retry was sent.":"Operator verification cancelled. No intake was sent."):failure.timeRejected?failure.message:reason instanceof ApiRequestError&&reason.code==="INBOUND_RECEIPT_REQUIRED"?"This unit belongs to an in-transit transfer. Verify every unit under Incoming transfer, then receive it.":definitive?"Intake was not accepted. Review the label and current account before trying again.":"The intake outcome is unknown. Retry the same frozen attempt explicitly; no second unit is assumed.");
   }finally{if(active.current)setBusy(false);}
  }
  async function recover(){
@@ -84,11 +85,12 @@ export function UnitCaptureWorkspace({principal,direction,onBack,onLockChange}:{
  {!verified&&<p className="receipt-preview-note">Manual and corrected values can be reviewed here. Submitting them requires the new verification contract from Jopia (RQ-19).</p>}
  {canIntake&&verified&&<div className="receipt-confirm-footer"><label><input type="checkbox" checked={confirmed} disabled={locked} onChange={event=>setConfirmed(event.target.checked)}/>I checked all five fields against the label.</label></div>}
  </>:<div className="requester-records-empty"><strong>Scan a label or enter unit details</strong><span>Your editable review will appear here.</span></div>}
- {direction==="Inbound"&&<div className="receipt-confirm-footer"><button className="button primary compact" type="button" disabled={busy||Boolean(status.command)||(!frozen&&(!canIntake||!verified||!confirmed||!label))} onClick={()=>void submit()}>{busy?"Submitting…":frozen?"Retry same intake":requester?"Confirm inbound receipt":"Confirm inbound transaction"}</button>{requester&&<span>Receipt confirmation needs server-side incoming-transfer label matching for ROLE-03; this account cannot register new stock.</span>}{!requester&&!canIntake&&<span>An operator with inventory:capture capability is required.</span>}</div>}
+ {direction==="Inbound"&&!(requester&&receiptVerificationReady)&&<div className="receipt-confirm-footer"><button className="button primary compact" type="button" disabled={busy||Boolean(status.command)||(!frozen&&(!canIntake||!verified||!confirmed||!label))} onClick={()=>void submit()}>{busy?"Submitting…":frozen?"Retry same intake":requester?"Confirm inbound receipt":"Confirm inbound transaction"}</button>{requester&&<span>Receipt confirmation needs server-side incoming-transfer label matching for ROLE-03; this account cannot register new stock.</span>}{!requester&&!canIntake&&<span>An operator with inventory:capture capability is required.</span>}</div>}
  {frozen&&<div className="receipt-confirm-footer"><button className="button compact" type="button" disabled={busy||Boolean(status.command)} onClick={()=>void recover()}>Look up saved intake</button></div>}
  {duplicate&&<p className="receipt-preview-note" role="status">Already registered by another request. No duplicate unit was created.</p>}{error&&<p className="receipt-image-error" role="alert">{error}</p>}
  </section>
  {direction==="Outbound"&&<ScannerTransferActions principal={principal} review={verified?review:undefined} onLockChange={setTransferLocked}/>}
+ {direction==="Inbound"&&<IncomingReceipt principal={principal} scannedRecognition={verified?review?.verified:undefined} onLockChange={setTransferLocked}/>}
  {status.command&&<CommandStatusCard command={status.command} pollError={status.pollError} onClear={()=>{status.clear();reset();}}/>}
  </>;
 }

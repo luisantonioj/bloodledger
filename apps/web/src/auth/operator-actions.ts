@@ -6,6 +6,8 @@ export function actionCapability(action: string): string | undefined {
   if (/^POST \/api\/v2\/prc-supply-requests\/[^/]+\/cancel$/.test(action)) return "prc-supply:cancel";
   if (/^POST \/api\/v2\/prc-supply-requests\/[^/]+\/(acknowledge|fulfil|decline)$/.test(action)) return "prc-supply:respond";
   if (/^POST \/api\/v2\/reservations\/[^/]+\/outbound-verifications$/.test(action)) return "transfer:prepare";
+  // ADR-049: verifying incoming labels is part of receiving the transfer.
+  if (/^POST \/api\/v2\/reservations\/[^/]+\/receipt-verifications$/.test(action)) return "transfer:receive";
   if (action === "POST /api/v2/reservations") return "transfer:approve";
   if (action === "POST /api/v2/transfers") return "transfer:request";
   if (action === "POST /api/v2/local-releases") return "inventory:local-release";

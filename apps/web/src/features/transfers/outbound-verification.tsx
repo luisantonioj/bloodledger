@@ -5,7 +5,10 @@ import {parseOutboundVerification} from "../../services/api/blood-bank-completio
 import type {ReservationDetail} from "../../services/api/v2-navigation";
 import type {ReceiptRecognition} from "../receipts/receipt-ocr";
 
-// F1 usability guard only: V1 still needs Jopia's additive server-side V2 fix.
+type ScannedLabel={donationNumber:string;componentType:string};
+
+// J2: requests use OUTBOUND_LABEL_VERIFICATION_V2, so the server also matches each label's OCR-read component (F1).
+// This client check stays as a usability guard: it rejects a sibling component before anything is sent.
 export function outboundComponentMatches(recognition:ReceiptRecognition|undefined,reservation:Pick<ReservationDetail,"components">){
  return Boolean(recognition&&reservation.components.length&&reservation.components.every(member=>member.componentType===recognition.label.componentType));
 }
@@ -26,8 +29,8 @@ export function outboundFailure(reason:unknown){
 export function OutboundVerification({reservation,onVerified,onLockChange,scannedRecognition}:{scannedRecognition?:ReceiptRecognition;reservation:ReservationDetail;onVerified:(result:ReturnType<typeof parseOutboundVerification>)=>void;onLockChange:(locked:boolean)=>void}){
   // Operations must explicitly enable this after the separately approved host migration.
   const enabled=import.meta.env.VITE_BLOODLEDGER_OUTBOUND_VERIFICATION_READY==="true";
-  const [image,setImage]=useState<File>(),[recognition,setRecognition]=useState<ReceiptRecognition>(),[labels,setLabels]=useState<string[]>([]),[confirmed,setConfirmed]=useState(false),[reading,setReading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[done,setDone]=useState(false),[ambiguous,setAmbiguous]=useState(false);
-  const active=useRef(true),controller=useRef<AbortController|null>(null),attempt=useRef<{keys:ReturnType<typeof newMutationKeys>;body:{expectedVersion:number;correlationId:string;scannedLabels:string[]}}|null>(null);
+  const [image,setImage]=useState<File>(),[recognition,setRecognition]=useState<ReceiptRecognition>(),[labels,setLabels]=useState<ScannedLabel[]>([]),[confirmed,setConfirmed]=useState(false),[reading,setReading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[done,setDone]=useState(false),[ambiguous,setAmbiguous]=useState(false);
+  const active=useRef(true),controller=useRef<AbortController|null>(null),attempt=useRef<{keys:ReturnType<typeof newMutationKeys>;body:{policyVersion:"OUTBOUND_LABEL_VERIFICATION_V2";expectedVersion:number;correlationId:string;scannedLabels:ScannedLabel[]}}|null>(null);
   useEffect(()=>{active.current=true;return()=>{active.current=false;controller.current?.abort();};},[]);
   const locked=busy||ambiguous;
   const componentMatches=outboundComponentMatches(recognition,reservation);
@@ -39,13 +42,13 @@ export function OutboundVerification({reservation,onVerified,onLockChange,scanne
     catch{if(active.current&&!abort.signal.aborted)setError("The label could not be read confidently. Use a clear image of the supported five-field label.");}
     finally{if(active.current)setReading(false);}
   }
-  function add(){if(!recognition||!confirmed||locked||!outboundComponentMatches(recognition,reservation))return;const label=recognition.label.donationNumber;if(labels.includes(label)){setError("This label has already been added.");return;}setLabels([...labels,label]);setRecognition(undefined);setImage(undefined);setConfirmed(false);setError("");}
+  function add(){if(!recognition||!confirmed||locked||!outboundComponentMatches(recognition,reservation))return;const label={donationNumber:recognition.label.donationNumber,componentType:recognition.label.componentType};if(labels.some(entry=>entry.donationNumber===label.donationNumber&&entry.componentType===label.componentType)){setError("This label has already been added.");return;}setLabels([...labels,label]);setRecognition(undefined);setImage(undefined);setConfirmed(false);setError("");}
   async function verify(){
     if(!enabled||busy||done||(!ambiguous&&labels.length!==reservation.components.length))return;
-    if(!attempt.current){const keys=newMutationKeys();attempt.current={keys,body:{expectedVersion:reservation.version,correlationId:keys.correlationId,scannedLabels:[...labels]}};}
+    if(!attempt.current){const keys=newMutationKeys();attempt.current={keys,body:{policyVersion:"OUTBOUND_LABEL_VERIFICATION_V2",expectedVersion:reservation.version,correlationId:keys.correlationId,scannedLabels:[...labels]}};}
     const saved=attempt.current;setBusy(true);setError("");
     try{
-      const result=parseOutboundVerification(await requestJson<unknown>(`/api/v2/reservations/${encodeURIComponent(reservation.reservationId)}/outbound-verifications`,{method:"POST",headers:{"Idempotency-Key":saved.keys.idempotencyKey},body:JSON.stringify(saved.body)}),reservation.reservationId,saved.body.expectedVersion);
+      const result=parseOutboundVerification(await requestJson<unknown>(`/api/v2/reservations/${encodeURIComponent(reservation.reservationId)}/outbound-verifications`,{method:"POST",headers:{"Idempotency-Key":saved.keys.idempotencyKey},body:JSON.stringify(saved.body)}),reservation.reservationId,saved.body.expectedVersion,"OUTBOUND_LABEL_VERIFICATION_V2");
       const expected=reservation.components.map(member=>member.componentId).sort();if(JSON.stringify([...result.componentIds].sort())!==JSON.stringify(expected))throw Error("Evidence membership mismatch");
       if(active.current){onVerified(result);setDone(true);setAmbiguous(false);setLabels([]);attempt.current=null;}
     }catch(reason){if(active.current){setError(outboundFailure(reason));const uncertain=!(reason instanceof ApiRequestError)||reason.status>=500;setAmbiguous(uncertain);if(!uncertain)attempt.current=null;}}

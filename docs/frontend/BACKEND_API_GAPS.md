@@ -274,3 +274,32 @@ wired. Server F1/F2/F4 and RQ-02/03/09/10/19 remain open dependencies.
 
 See [the response](../handoffs/LAT-TO-BUNO-JOPIA-OCR-SOURCE-AND-GUARDS-2026-10-17.md)
 and [follow-up evidence](../validation/lat-label-extraction-2026-10-17/JOPIA-BUNO-FOLLOWUP.md).
+
+### Receipt verification and outbound V2 wiring — 2026-10-17
+
+Lat-role wiring of Jopia's J2/J3 contracts (PRs #74/#75), on top of the
+integrated scanner (PR #77). Requests and fixtures are synthetic.
+
+- **Outbound V2 (J2, ADR-047 amendment).** Outbound verification now sends
+  `OUTBOUND_LABEL_VERIFICATION_V2`: each scanned label carries its OCR-read
+  `componentType`, so the server rejects a sibling component. The client
+  component guard stays as a usability check. `VITE_BLOODLEDGER_OUTBOUND_VERIFICATION_READY`
+  remains off and may be enabled only with an API that includes J2.
+- **Receipt verification (J3, ADR-049).** A new Incoming transfer card in the
+  bank inbound and requester scanners selects an in-transit transfer the
+  institution is the destination of. The operator scans every unit (strict OCR,
+  component required), confirms each, then verifies them together through
+  `receipt-verifications` and receives with the returned `RCV_` evidence. Both
+  steps are PIN-bound, idempotent and frozen for explicit retry when the outcome
+  is unknown; the receive command is polled. Mismatches show counts only.
+  `transfer:receive` is the operator capability for both steps.
+- **Readiness flag.** The card is behind the new default-off
+  `VITE_BLOODLEDGER_RECEIPT_VERIFICATION_READY`, enabled only in the isolated
+  receipt test build. With the flag off, scanners look exactly as before and the
+  requester's single-label confirmation stays disabled. Enable it together with
+  an API that has ADR-049, because that API no longer lets a bank intake scan
+  receive a transfer (`409 INBOUND_RECEIPT_REQUIRED`, now shown as a pointer to
+  the Incoming transfer card).
+- **Unchanged.** The reservation-level requester `receive` action without
+  evidence is untouched. `RECEIVED` stock is still not usable (`RQ-10`). No
+  manual/corrected intake (`RQ-19`), retained-host change or live write.

@@ -1,8 +1,9 @@
 import {describe,it,expect} from "vitest";
-import {parseBankSummary,parseNetworkAvailability,historyChunks,parseRequestHistory,parseOutboundVerification} from "./blood-bank-completion";
+import {parseBankSummary,parseNetworkAvailability,historyChunks,parseRequestHistory,parseOutboundVerification,parseReceiptVerification} from "./blood-bank-completion";
 import {summarizeBankHistory} from "../../features/analytics/bank-observed-demand";
 import {emptyAnalyticsFilters} from "../../features/analytics/analytics-reporting-filters";
 import {outboundFailure} from "../../features/transfers/outbound-verification";
+import {receiptFailure} from "../../features/receipts/incoming-receipt";
 import {ApiRequestError} from "./client";
 import {actionCapability} from "../../auth/operator-actions";
 const common={classification:"SIMULATION_ONLY",asOf:"2026-10-15T00:00:00.123Z"};
@@ -25,4 +26,7 @@ describe("blood-bank completion contracts",()=>{
  it.each([{...verification,reservationVersion:3},{...verification,ledger:{status:"COMMITTED"}},{...verification,componentIds:["COMP_TEST","COMP_TEST"],matchedUnits:2},{...verification,matchedUnits:2}])("rejects wrong reservation evidence",value=>expect(()=>parseOutboundVerification(value,"RES_TEST",2)).toThrow());
  it("never echoes arbitrary mismatch messages or label values",()=>{expect(outboundFailure(new ApiRequestError(409,"SECRET_LABEL", "OUTBOUND_LABELS_MISMATCH"))).not.toContain("SECRET_LABEL");expect(outboundFailure(new ApiRequestError(409,"Scanned labels do not match the reserved units: 1 of 2 matched, 1 unmatched, 1 missing.","OUTBOUND_LABELS_MISMATCH"))).toContain("1 of 2 matched; 1 unmatched; 1 missing");});
  it("maps outbound verification to transfer preparation",()=>expect(actionCapability("POST /api/v2/reservations/RES_TEST/outbound-verifications")).toBe("transfer:prepare"));
+ it("accepts outbound V2 evidence only when V2 was requested (J2)",()=>{const v2={...verification,policyVersion:"OUTBOUND_LABEL_VERIFICATION_V2"};expect(parseOutboundVerification(v2,"RES_TEST",2,"OUTBOUND_LABEL_VERIFICATION_V2").matchedUnits).toBe(1);expect(()=>parseOutboundVerification(v2,"RES_TEST",2)).toThrow();expect(()=>parseOutboundVerification(verification,"RES_TEST",2,"OUTBOUND_LABEL_VERIFICATION_V2")).toThrow();});
+ it("accepts ADR-049 receipt evidence with an RCV_ ID and its own policy",()=>{const receipt={...verification,policyVersion:"INBOUND_RECEIPT_LABEL_VERIFICATION_V1",evidenceId:"RCV_"+"A".repeat(40)};expect(parseReceiptVerification(receipt,"RES_TEST",2)).toMatchObject({evidenceId:"RCV_"+"A".repeat(40),matchedUnits:1});for(const wrong of [{...receipt,evidenceId:"EVD_"+"A".repeat(40)},verification,{...receipt,reservationVersion:3},{...receipt,ledger:{status:"COMMITTED"}}])expect(()=>parseReceiptVerification(wrong,"RES_TEST",2)).toThrow();});
+ it("maps receipt verification to receiving and never echoes receipt labels",()=>{expect(actionCapability("POST /api/v2/reservations/RES_TEST/receipt-verifications")).toBe("transfer:receive");expect(receiptFailure(new ApiRequestError(409,"Scanned labels do not match the in-transit units: 1 of 2 matched, 1 unmatched, 1 missing.","RECEIPT_LABELS_MISMATCH"))).toBe("1 of 2 matched; 1 unmatched; 1 missing. Review all scanned units.");expect(receiptFailure(new ApiRequestError(409,"MM26-01-0001","RECEIPT_LABELS_MISMATCH"))).not.toContain("MM26-01-0001");expect(receiptFailure(new ApiRequestError(409,"stale","RECEIPT_EVIDENCE_INVALID"))).toContain("verify every unit again");});
 });
