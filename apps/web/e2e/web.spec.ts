@@ -145,7 +145,7 @@ for (const roleId of Object.keys(navigation) as RoleId[]) {
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
     await expect(page.locator("nav a > span")).toHaveText(navigation[roleId]);
     await expect(page.locator(".side-brand")).toBeVisible();
-    await expect(page.locator(".session-profile")).toContainText(activePrincipal.displayName);
+    await expect(page.locator(".session-profile")).toContainText(sidebarInstitutionName(activePrincipal.institutionId, activePrincipal.institutionDisplayName));
     await expect(page.locator(".page-head")).toBeVisible();
     await expect(page.locator(".top-status")).toHaveCount(0);
   });
@@ -165,7 +165,7 @@ test("two synthetic secondary hospitals share structure while retaining distinct
     }, { institutionId, institutionDisplayName, displayName: `${institutionDisplayName} operator` });
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
-    await expect(page.locator(".session-profile")).toContainText(`${institutionDisplayName} operator`);
+    await expect(page.locator(".session-profile")).toContainText(sidebarInstitutionName(institutionId, institutionDisplayName));
     await expect(page.getByRole("heading", { name: "My Requests", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Blood Inventory Overview", exact: true })).toHaveCount(0);
     const confirmed = page.locator(".requester-availability-quantity strong");
@@ -187,7 +187,7 @@ test("PRC, DOH, and administrators receive truthful non-operational compositions
     const page = await context.newPage();
     await authenticatedApi(page, roleId, undefined, { institutionId, institutionDisplayName, displayName: `${institutionDisplayName} operator` });
     await page.goto("/");
-    await expect(page.locator(".session-profile")).toContainText(`${institutionDisplayName} operator`);
+    await expect(page.locator(".session-profile")).toContainText(sidebarInstitutionName(institutionId, institutionDisplayName));
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
     await expect(page.getByRole("main").locator(".page-head .eyebrow")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Open capture workspace" })).toHaveCount(0);
@@ -228,8 +228,9 @@ test("login fails safely, then accepts only the server-returned principal and ca
   await page.goto("/");
   await expect(page.locator(".auth-hero")).toBeVisible();
   await expect(page.locator(".auth-card")).toBeVisible();
+  await expect(page.locator(".auth-scope-note, .auth-footer")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "One ledger. Clear custody. Every unit accounted for." })).toBeVisible();
-  await expect(page.getByText("Server-assigned access", { exact: true })).toBeVisible();
+  await expect(page.getByText("Server-assigned access", { exact: true })).toHaveCount(0);
   await page.getByRole("tab", { name: "Apply for access" }).click();
   await expect(page.getByRole("heading", { name: "How will your facility participate?" })).toBeVisible();
   await page.getByRole("button", { name: /Apply as a Blood Bank/ }).click();
@@ -237,7 +238,7 @@ test("login fails safely, then accepts only the server-returned principal and ca
   await expect(page.getByText("Blood Bank application", { exact: true })).toBeVisible();
   await expect(page.getByText("Step 1 of 4 · Facility", { exact: false })).toBeVisible();
   await page.getByRole("tab", { name: "Sign in" }).click();
-  await expect(page.getByText("Server-assigned access", { exact: true })).toBeVisible();
+  await expect(page.getByText("Server-assigned access", { exact: true })).toHaveCount(0);
   await page.getByLabel("Institution email or username", { exact: true }).fill("synth_browser_user");
   await page.getByRole("textbox", { name: "Password", exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
@@ -863,7 +864,7 @@ for (const [accountType, roleId] of [["Blood bank", "ROLE-02"], ["Requestor", "R
   test(`${accountType} dashboard Refresh reloads data without reloading the page`, async ({ page }) => {
     let calls = 0;
     let release: (() => void) | undefined;
-    await authenticatedApi(page, roleId, async (route, path) => {
+    const refreshPrincipal = await authenticatedApi(page, roleId, async (route, path) => {
       if (path !== "/api/v1/dashboard") return false;
       expect(route.request().method()).toBe("GET");
       calls++;
@@ -886,7 +887,7 @@ for (const [accountType, roleId] of [["Blood bank", "ROLE-02"], ["Requestor", "R
     await expect(refresh).toBeEnabled();
     await expect(page.locator(".dashboard-updated time")).toHaveAttribute("datetime", "2026-10-09T01:00:00.000Z");
     expect(await page.evaluate(() => (window as unknown as { refreshMarker: string }).refreshMarker)).toBe("same-page");
-    await expect(page.locator(".session-profile")).toContainText(`Synthetic ${accountType} operator`);
+    await expect(page.locator(".session-profile")).toContainText(sidebarInstitutionName(refreshPrincipal.institutionId, refreshPrincipal.institutionDisplayName));
   });
 }
 
@@ -1267,3 +1268,7 @@ test("requester request authorization loss clears preserved records", async ({pa
   await expect(page.getByText("Requests unavailable",{exact:true})).toBeVisible();
   await expect(page.getByRole("link",{name:"TRF_SYNTH_SCOPED",exact:true})).toHaveCount(0);
 });
+
+function sidebarInstitutionName(id: string, name: string) {
+  return ({INST_MEDIATRIX:"Mary Mediatrix Medical Center",INST_SYNTH_MEDIX:"Lipa Medix Medical Center",INST_SYNTH_NLVILLA:"N.L. Villa Memorial Medical Center",INST_SYNTH_METROLIPA:"Metro Lipa Medical Center",INST_SYNTH_PRC:"PRC Lipa City Chapter",INST_SYNTH_DOH:"DOH-CHD CALABARZON"} as Record<string,string>)[id] ?? name.replace(/\bsynthetic\b\s*/gi, "").trim();
+}

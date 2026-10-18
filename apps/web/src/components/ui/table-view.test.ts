@@ -55,7 +55,7 @@ describe("table view rendering", () => {
     expect(html.match(/UNIT-\d+/g)).toEqual(["UNIT-10", "UNIT-2", "UNIT-1", "UNIT-3"]);
     expect(html).toContain("4|Default order");
     expect(html).not.toContain("aria-sort");
-    expect(html).toContain(">Reference</button></th>");
+    expect(html).toContain(">Reference<svg");
     expect(html).toContain("<th>Actions</th>");
   });
   it("applies a stored sort and hidden column, keeping the action column", () => {
@@ -63,7 +63,7 @@ describe("table view rendering", () => {
     const html = renderToStaticMarkup(h(Table, { data: rows }));
     expect(html.match(/UNIT-\d+/g)).toEqual(["UNIT-10", "UNIT-3", "UNIT-2", "UNIT-1"]);
     expect(html).toContain('aria-sort="descending"');
-    expect(html).not.toContain(">Time</button></th>"); expect(html).not.toContain("<input");
+    expect(html).not.toContain(">Time<svg"); expect(html).not.toContain("<input");
     expect(html).toContain("Actions");
     expect(html).toContain("3|Reference descending");
   });
@@ -77,7 +77,7 @@ describe("table view rendering", () => {
   it("never hides every data column, even from stored state", () => {
     vi.stubGlobal("localStorage", storage({ "bloodledger.table-view.v1.unit-test": JSON.stringify({ hidden: ["id", "count", "time"] }) }));
     const html = renderToStaticMarkup(h(Table, { data: rows }));
-    expect(html).toContain(">Reference</button></th>"); expect(html).toContain("4|Default order");
+    expect(html).toContain(">Reference<svg"); expect(html).toContain("4|Default order");
   });
   it("works when storage throws", () => {
     vi.stubGlobal("localStorage", { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } });

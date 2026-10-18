@@ -85,7 +85,7 @@ export function useTableView<T>(tableId: string, columns: TableColumn<T>[], rows
       if (!columns.some(column => column.id === id && column.sortValue)) return;
       if (sortColumn?.id !== id) update({ ...view, sortId: id, direction: "asc" });
       else if (direction === "asc") update({ ...view, sortId: id, direction: "desc" });
-      else update({ hidden: view.hidden });
+      else update({ ...view, sortId: id, direction: "asc" });
     },
     setHidden: (id, hide) => {
       const next = hide ? [...new Set([...view.hidden, id])] : view.hidden.filter(entry => entry !== id);
@@ -96,15 +96,15 @@ export function useTableView<T>(tableId: string, columns: TableColumn<T>[], rows
   };
 }
 
-// Same header text; the indicator is CSS-only so header text content is unchanged.
+// Decorative arrows keep header names unchanged and expose sort direction through aria-sort.
 export function SortableHeader<T>({ view, id, children, className }: { view: TableView<T>; id: string; children: ReactNode; className?: string }) {
   if (!view.isVisible(id)) return null;
   const column = view.columns.find(entry => entry.id === id);
   const active = view.sortId === id;
   const ariaSort = active ? (view.direction === "asc" ? "ascending" : "descending") : undefined;
   if (!column?.sortValue) return <th className={className}>{children}</th>;
-  const next = !active ? "ascending" : view.direction === "asc" ? "descending" : "default order";
-  return <th className={className} aria-sort={ariaSort}><button type="button" className="table-sort-button" title={`Sort by ${column.label}: ${next}`} onClick={() => view.toggleSort(id)}>{children}</button></th>;
+  const next = !active ? "ascending" : view.direction === "asc" ? "descending" : "ascending";
+  return <th className={className} aria-sort={ariaSort}><button type="button" className="table-sort-button" title={`Sort by ${column.label}: ${next}`} onClick={() => view.toggleSort(id)}>{children}<svg className="table-sort-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path className="sort-up" d="m1 6 3-3 3 3M4 3v10"/><path className="sort-down" d="m9 10 3 3 3-3M12 13V3"/></svg></button></th>;
 }
 
 // The menu mounts only while open so its checkbox labels never shadow page fields.
@@ -126,11 +126,11 @@ export function ColumnPicker<T>({ view }: { view: TableView<T> }) {
     return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", close); };
   }, [open]);
   return <details ref={root} className="table-column-picker" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
-    <summary className="button compact" aria-label={`Choose visible columns${customized ? " (customized)" : ""}`}>Columns{customized && <span className="table-column-picker-dot" aria-hidden="true"/>}</summary>
+    <summary className="button compact" aria-label={`Choose visible columns${customized ? " (customized)" : ""}`}><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>Columns</summary>
     {open && <div className="table-column-picker-menu" role="group" aria-label="Visible columns">
       {hideable.map(column => {
         const visible = view.isVisible(column.id);
-        return <label key={column.id}><input type="checkbox" checked={visible} disabled={visible && hideable.filter(entry => view.isVisible(entry.id)).length <= 1} onChange={event => view.setHidden(column.id, !event.target.checked)}/>{column.label}</label>;
+        return <label key={column.id}><span>{column.label}</span><input type="checkbox" checked={visible} disabled={visible && hideable.filter(entry => view.isVisible(entry.id)).length <= 1} onChange={event => view.setHidden(column.id, !event.target.checked)}/></label>;
       })}
       <button type="button" className="table-column-picker-reset" onClick={view.reset} disabled={!customized}>Reset view</button>
     </div>}

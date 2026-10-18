@@ -23,11 +23,25 @@ const unitOrder=(page:Page)=>page.locator(".inventory-table tbody tr td:first-ch
 
 test("inventory header sort cycles, column choice persists and the PDF keeps every column",async({page})=>{
  const posts=await setup(page);await page.goto("/inventory");
+ const filters=page.getByRole("region",{name:"Inventory filters"});
+ await expect(filters.getByLabel(/^Choose visible columns/)).toBeVisible();
+ const filterBox=await filters.getByLabel("Blood type filter",{exact:true}).boundingBox(),columnsBox=await filters.getByLabel(/^Choose visible columns/).boundingBox();
+ expect(filterBox).not.toBeNull();expect(columnsBox).not.toBeNull();expect(Math.abs(filterBox!.y-columnsBox!.y)).toBeLessThanOrEqual(2);
  const table=page.locator(".inventory-table"),unitHeader=table.getByRole("columnheader",{name:"Unit ID",exact:true});
  await expect(table.locator("tbody tr")).toHaveCount(3);
  await expect(table.getByRole("columnheader")).toHaveText(["Unit ID","Blood type","Component","Expiration date","Time remaining","Status"]);
  expect(await unitOrder(page)).toEqual(["SYNTH-MIKE-0002","SYNTH-ZULU-0003","SYNTH-ALPHA-0001"]);
  await expect(table.locator("th[aria-sort]")).toHaveCount(0);
+ await expect(table.locator(".table-sort-icon")).toHaveCount(6);
+ const expiryHeader=table.getByRole("columnheader",{name:"Expiration date",exact:true});
+ await expiryHeader.getByRole("button").click();
+ await expect(expiryHeader).toHaveAttribute("aria-sort","ascending");
+ expect(await unitOrder(page)).toEqual(["SYNTH-MIKE-0002","SYNTH-ZULU-0003","SYNTH-ALPHA-0001"]);
+ await expiryHeader.getByRole("button").click();
+ expect(await unitOrder(page)).toEqual(["SYNTH-ALPHA-0001","SYNTH-ZULU-0003","SYNTH-MIKE-0002"]);
+ await expiryHeader.getByRole("button").click();
+ await expect(expiryHeader).toHaveAttribute("aria-sort","ascending");
+ await page.screenshot({path:"/tmp/lat-inventory-table-polish.png"});
  await unitHeader.getByRole("button").click();
  await expect(unitHeader).toHaveAttribute("aria-sort","ascending");
  expect(await unitOrder(page)).toEqual(["SYNTH-ALPHA-0001","SYNTH-MIKE-0002","SYNTH-ZULU-0003"]);
@@ -42,6 +56,10 @@ test("inventory header sort cycles, column choice persists and the PDF keeps eve
  await page.getByRole("group",{name:"Visible columns"}).waitFor({state:"detached"});
  await page.getByLabel("Choose visible columns (customized)",{exact:true}).click();
  const menu=page.getByRole("group",{name:"Visible columns"});
+ const choices=await menu.locator("label").evaluateAll(labels=>labels.map(label=>{const text=label.querySelector("span")!.getBoundingClientRect(),box=label.querySelector("input")!.getBoundingClientRect();return {left:text.left,right:box.right,width:box.width,height:box.height,textEnd:text.right,boxStart:box.left};}));
+ for(const choice of choices){expect(choice.width).toBe(14);expect(choice.height).toBe(14);expect(choice.left).toBe(choices[0].left);expect(choice.right).toBe(choices[0].right);expect(choice.textEnd).toBeLessThan(choice.boxStart);}
+ await page.screenshot({path:"/tmp/lat-compact-column-picker.png"});
+
  await menu.getByLabel("Blood type",{exact:true}).uncheck();
  await expect(table.getByRole("columnheader")).toHaveText(["Unit ID","Component","Expiration date","Time remaining","Status"]);
  await expect(table.locator("tbody tr").first().locator("td")).toHaveCount(5);
@@ -61,6 +79,7 @@ test("inventory header sort cycles, column choice persists and the PDF keeps eve
 
 test("activity history sorts loaded records by event time and keeps the last data column visible",async({page})=>{
  await setup(page);await page.goto("/audit");
+ await expect(page.locator(".audit-filter-controls").getByLabel(/^Choose visible columns/)).toBeVisible();
  const table=page.locator(".audit-table"),timeHeader=table.getByRole("columnheader",{name:"Date & Time",exact:true});
  await expect(table.locator("tbody tr")).toHaveCount(2);
  const titles=()=>table.locator("tbody tr td.activity-description").evaluateAll(cells=>cells.map(cell=>(cell.getAttribute("title")??"").split(" · ")[0]));
