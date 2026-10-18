@@ -15,7 +15,7 @@ const permissions = {
 const navigation: Record<RoleId, string[]> = {
   "ROLE-01": ["Dashboard", "Blood Inventory", "Blood Unit Transactions", "Requests & Transfers", "Alerts", "Analytics", "Profile"],
   "ROLE-02": ["Dashboard", "Blood Inventory", "Blood Unit Transactions", "Requests & Transfers", "Alerts", "Activity History", "Analytics", "Profile"],
-  "ROLE-03": ["Dashboard", "Blood Unit Receipt", "Requests & Transfers", "Alerts", "Analytics", "Profile"],
+  "ROLE-03": ["Dashboard", "Blood Unit Receipt", "Requests & Transfers", "Alerts", "Activity History", "Analytics", "Profile"],
   "ROLE-04": ["Dashboard", "Blood Inventory", "Requests & Transfers", "Alerts", "Activity History", "Network view", "Reports", "Profile"],
   "ROLE-05": ["Dashboard", "Profile", "Staff Accounts"],
   "ROLE-06": ["Dashboard", "Profile", "Staff Accounts"],
@@ -145,9 +145,8 @@ for (const roleId of Object.keys(navigation) as RoleId[]) {
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
     await expect(page.locator("nav a > span")).toHaveText(navigation[roleId]);
     await expect(page.locator(".side-brand")).toBeVisible();
-    await expect(page.locator(".facility-context")).toBeVisible();
+    await expect(page.locator(".session-profile")).toContainText(activePrincipal.displayName);
     await expect(page.locator(".page-head")).toBeVisible();
-    await expect(page.getByText(activePrincipal.institutionDisplayName, { exact: true })).toBeVisible();
     await expect(page.locator(".top-status")).toHaveCount(0);
   });
 }
@@ -163,10 +162,10 @@ test("two synthetic secondary hospitals share structure while retaining distinct
       if (path !== "/api/v1/dashboard") return false;
       await fulfillJson(route, { ...dashboardFor("ROLE-03"), inventory: [{ ...aggregate, institutionId, institutionDisplayName, confirmedCount, bloodType: "O_POSITIVE", component: "PACKED_RED_BLOOD_CELLS" }] });
       return true;
-    }, { institutionId, institutionDisplayName });
+    }, { institutionId, institutionDisplayName, displayName: `${institutionDisplayName} operator` });
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
-    await expect(page.locator(".facility-context")).toContainText(institutionDisplayName);
+    await expect(page.locator(".session-profile")).toContainText(`${institutionDisplayName} operator`);
     await expect(page.getByRole("heading", { name: "My Requests", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Blood Inventory Overview", exact: true })).toHaveCount(0);
     const confirmed = page.locator(".requester-availability-quantity strong");
@@ -186,9 +185,9 @@ test("PRC, DOH, and administrators receive truthful non-operational compositions
   for (const [roleId, institutionId, institutionDisplayName, eyebrow] of cases) {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await authenticatedApi(page, roleId, undefined, { institutionId, institutionDisplayName });
+    await authenticatedApi(page, roleId, undefined, { institutionId, institutionDisplayName, displayName: `${institutionDisplayName} operator` });
     await page.goto("/");
-    await expect(page.getByText(institutionDisplayName, { exact: true })).toBeVisible();
+    await expect(page.locator(".session-profile")).toContainText(`${institutionDisplayName} operator`);
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
     await expect(page.getByRole("main").locator(".page-head .eyebrow")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Open capture workspace" })).toHaveCount(0);
@@ -234,12 +233,13 @@ test("login fails safely, then accepts only the server-returned principal and ca
   await page.getByRole("tab", { name: "Apply for access" }).click();
   await expect(page.getByRole("heading", { name: "How will your facility participate?" })).toBeVisible();
   await page.getByRole("button", { name: /Apply as a Blood Bank/ }).click();
-  await expect(page.getByLabel("Private invitation secret")).toBeVisible();
-  await expect(page.getByText("A PRC invitation is required.", { exact: false })).toBeVisible();
+  // The public four-step application replaced the PRC invitation step; access-application.spec covers it in full.
+  await expect(page.getByText("Blood Bank application", { exact: true })).toBeVisible();
+  await expect(page.getByText("Step 1 of 4 · Facility", { exact: false })).toBeVisible();
   await page.getByRole("tab", { name: "Sign in" }).click();
   await expect(page.getByText("Server-assigned access", { exact: true })).toBeVisible();
-  await page.getByLabel("Username").fill("synth_browser_user");
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Institution email or username", { exact: true }).fill("synth_browser_user");
+  await page.getByRole("textbox", { name: "Password", exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("alert")).toHaveText("Credentials were not accepted.");
   await page.getByRole("button", { name: "Sign in" }).click();
@@ -698,7 +698,7 @@ test("regulatory navigation renders every selected read-only page and CSV bounda
     expect(pageErrors).toEqual([]);
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /Submit|Approve|Acknowledge|Dispatch|Receipt/ })).toHaveCount(0);
-    if (path === "/consortium") await expect(page.locator(".regulatory-stats")).toBeVisible();
+    if (path === "/consortium") await expect(page.locator(".consortium-summary-grid")).toBeVisible();
     if (path === "/audit") await expect(page.locator(".audit-summary")).toHaveCount(0);
     if (path === "/reporting") await expect(page.locator(".report-summary")).toBeVisible();
     if (path === "/profile") await expect(page.locator(".profile-identity")).toBeVisible();
@@ -727,15 +727,18 @@ test("latest visual baseline stays role-scoped while Sprint 6 integrations remai
 
   await page.getByRole("link", { name: "Analytics", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "V4 default", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "V5 simulation preview", exact: true })).toBeVisible();
-  await expect(page.getByText("Uncertainty unavailable", { exact: false }).first()).toBeVisible();
+  await expect(v5Card(page).getByRole("heading", { name: "Expected blood demand", exact: true })).toBeVisible();
+  await openDisclosure(page, "Default forecast availability (V4)");
+  await expect(v4Card(page).getByRole("heading", { name: "V4 default", exact: true })).toBeVisible();
+  await v4Card(page).locator("summary").filter({ hasText: "View detailed data" }).click();
+  await expect(v4Card(page).getByText("Uncertainty unavailable", { exact: true }).first()).toBeVisible();
+  await v4Card(page).locator("summary").filter({ hasText: "Model and data details" }).click();
+  await expect(v4Card(page).getByText("SYNTHETIC_FORECAST_V4_RUNTIME_V1", { exact: true })).toBeVisible();
   await expect(page.getByText("View inventory snapshot", { exact: false })).toBeVisible();
-  await expect(page.getByText("SYNTHETIC_FORECAST_V4_RUNTIME_V1", { exact: false }).first()).toBeVisible();
 
-  await page.getByRole("link", { name: "Blood Inventory", exact: true }).click();
-  await expect(page.locator(".inventory-table th")).toHaveCount(7);
-  await expect(page.getByText("CMP_SYNTH_BROWSER_01", { exact: true })).toBeVisible();
+  await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Blood Inventory", exact: true }).click();
+  await expect(page.locator(".inventory-table th")).toHaveCount(6);
+  await expect(page.getByRole("button", { name: "Open component CMP_SYNTH_BROWSER_01", exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Facility operations", exact: true })).toHaveCount(0);
@@ -778,6 +781,7 @@ test("committed projection becomes visible within the frontend NFR-06 budget", a
     return true;
   });
   await page.goto("/");
+  await page.getByRole("combobox", { name: "Inventory overview blood component" }).selectOption("RED_BLOOD_CELLS");
   const confirmedCount = page.locator(".inventory-overview-track > strong").first();
   await expect.poll(() => page.evaluate(() => document.visibilityState)).toBe("visible");
   await expect(confirmedCount).toHaveText("1");
@@ -801,7 +805,8 @@ test("failed dashboard load exposes a non-destructive retry and recovers", async
   await authenticatedApi(page, "ROLE-01", async (route, path) => {
     if (path !== "/api/v1/dashboard") return false;
     dashboardCalls += 1;
-    if (dashboardCalls === 1) await fulfillJson(route, { error: { code: "PROJECTION_UNAVAILABLE", message: "Projection is temporarily unavailable." } }, 503);
+    // The first load and its one quiet 5xx retry both fail, so the failure is persistent.
+    if (dashboardCalls <= 2) await fulfillJson(route, { error: { code: "PROJECTION_UNAVAILABLE", message: "Projection is temporarily unavailable." } }, 503);
     else await fulfillJson(route, responses[path]);
     return true;
   });
@@ -810,7 +815,7 @@ test("failed dashboard load exposes a non-destructive retry and recovers", async
   await expect(page.locator(".dashboard-updated")).toHaveText("Last updated: Unavailable");
   await page.getByRole("button", { name: "Retry" }).click();
   await expect(page.locator(".dashboard-stats")).toBeVisible();
-  expect(dashboardCalls).toBe(2);
+  expect(dashboardCalls).toBe(3);
 });
 
 test("inventory exposes loading and empty states without inventing committed data", async ({ page }) => {
@@ -826,7 +831,7 @@ test("inventory exposes loading and empty states without inventing committed dat
   await expect(page.getByText("Loading inventory…", { exact: true })).toBeVisible();
   expect(releaseInventory).toBeDefined();
   releaseInventory?.();
-  await expect(page.getByText("No committed V2 components", { exact: true })).toBeVisible();
+  await expect(page.getByText("No blood unit records", { exact: true })).toBeVisible();
 });
 
 // FR-03 / NFR-11 / BL-TST-01: explicit refresh retains confirmed data on failure.
@@ -865,7 +870,7 @@ for (const [accountType, roleId] of [["Blood bank", "ROLE-02"], ["Requestor", "R
       if (calls === 2) await new Promise<void>(resolve => { release = resolve; });
       await fulfillJson(route, { ...dashboardFor(roleId), inventory: [{ ...aggregate, confirmedCount: calls === 1 ? 2 : 7 }], lastSuccessfulProjectionAt: calls === 1 ? timestamp : "2026-10-09T01:00:00.000Z" });
       return true;
-    }, { institutionDisplayName: `Synthetic ${accountType}` });
+    }, { institutionDisplayName: `Synthetic ${accountType}`, displayName: `Synthetic ${accountType} operator` });
     await page.goto("/");
     await expect(page.locator(".dashboard-updated time")).toHaveAttribute("datetime", timestamp);
     await page.evaluate(() => { (window as unknown as { refreshMarker: string }).refreshMarker = "same-page"; });
@@ -881,7 +886,7 @@ for (const [accountType, roleId] of [["Blood bank", "ROLE-02"], ["Requestor", "R
     await expect(refresh).toBeEnabled();
     await expect(page.locator(".dashboard-updated time")).toHaveAttribute("datetime", "2026-10-09T01:00:00.000Z");
     expect(await page.evaluate(() => (window as unknown as { refreshMarker: string }).refreshMarker)).toBe("same-page");
-    await expect(page.locator(".facility-context")).toContainText(`Synthetic ${accountType}`);
+    await expect(page.locator(".session-profile")).toContainText(`Synthetic ${accountType} operator`);
   });
 }
 
@@ -897,7 +902,7 @@ test("route changes clean up the previous poller and refresh only the active pag
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Blood Inventory", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Blood Inventory", exact: true })).toBeVisible();
-  await expect(page.locator(".blood-type")).toHaveText("A+");
+  await expect(page.locator(".inventory-table .aggregate-plain-text")).toHaveText("A+");
   await page.waitForTimeout(5_200);
   expect(dashboardCalls).toBe(1);
   expect(inventoryCalls).toBeGreaterThanOrEqual(2);
@@ -965,7 +970,12 @@ function v5Forecast(status: "CURRENT" | "STALE" | "UNAVAILABLE" = "CURRENT", una
   return { ...forecastResponse, businessDate, asOfDate, horizonDate: businessDate, generatedAt, runId: "FRUN_SYNTH_BROWSER_01", datasetVersion, modelVersion, status, forecastStatus: status === "CURRENT" ? "AVAILABLE" : status, unavailableReason, trainingCutoffDate: "2025-06-30", lineage: { trainingCutoffDate: "2025-06-30", modelSha256: "a".repeat(64) }, forecasts: status === "UNAVAILABLE" ? [] : ["A_POSITIVE", "B_POSITIVE", "O_POSITIVE", "AB_POSITIVE"].flatMap(bloodType => ["WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_PLASMA", "PLATELETS", "CRYOPRECIPITATE"].map((component, index) => ({ ...forecastResponse.forecasts[0], asOfDate, horizonDate: businessDate, generatedAt, bloodType, component, pointForecast: index + 0.25, datasetVersion, modelVersion, forecastId: "FC_" + (["A_POSITIVE", "B_POSITIVE", "O_POSITIVE", "AB_POSITIVE"].indexOf(bloodType) * 5 + index).toString(16).toUpperCase().padStart(40, "0"), forecastStatus: status === "STALE" ? "STALE" : "AVAILABLE", stale: status === "STALE" }))) };
 }
 
-test("V4 default, keyboard V5 preview, twenty series and narrow provenance", async ({ page }) => {
+// 2026-10-15 Analytics hierarchy: V5 is the primary card and V4 sits in a disclosure; there is no version selector.
+const v5Card = (page: Page) => page.locator('[data-forecast-version="V5"]');
+const v4Card = (page: Page) => page.locator('[data-forecast-version="V4"]');
+const openDisclosure = async (page: Page, summary: string | RegExp) => { await page.locator("summary").filter({ hasText: summary }).first().click(); };
+
+test("V5 primary forecast, V4 disclosure, twenty series and narrow provenance", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await authenticatedApi(page, "ROLE-01", async (route, path) => {
     if (path !== "/api/v1/demand-forecasts") return false;
@@ -975,16 +985,20 @@ test("V4 default, keyboard V5 preview, twenty series and narrow provenance", asy
     await fulfillJson(route, { ...body, businessDate: query.get("businessDate") }); return true;
   });
   await page.goto("/analytics");
-  const choice = page.getByLabel("Forecast version");
-  await expect(choice).toHaveValue("SYNTHETIC_FORECAST_V4_RUNTIME_V1");
-  await expect(page.locator(".forecast-table tbody tr")).toHaveCount(1);
-  await choice.focus(); await choice.press("ArrowDown"); await choice.press("Enter");
-  await expect(choice).toHaveValue("SYNTHETIC_FORECAST_V5_RUNTIME_V1");
-  await expect(page.locator(".forecast-table tbody tr")).toHaveCount(20);
-  await expect(page.getByText("2025-06-30", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("Uncertainty unavailable", { exact: true })).toHaveCount(20);
-  await expect(page.getByText("Inventory validity unavailable", { exact: true })).toBeVisible();
-  await expect(page.getByText("DISABLED_UNAPPROVED_POLICY", { exact: true }).first()).toBeVisible();
+  await expect(v5Card(page).getByRole("heading", { name: "Expected blood demand", exact: true })).toBeVisible();
+  await expect(v5Card(page).locator(".forecast-table tbody tr")).toHaveCount(20);
+  await expect(v4Card(page).locator(".forecast-table tbody tr")).toHaveCount(1);
+  await v5Card(page).locator("summary").filter({ hasText: "View detailed data" }).click();
+  await expect(v5Card(page).getByText("Uncertainty unavailable", { exact: true })).toHaveCount(20);
+  await v5Card(page).locator("summary").filter({ hasText: "About this prediction" }).click();
+  await expect(v5Card(page).getByText("2025-06-30", { exact: true })).toBeVisible();
+  await expect(v5Card(page).getByText(/Recommendations are disabled/)).toBeVisible();
+  await openDisclosure(page, "Default forecast availability (V4)");
+  await expect(v4Card(page).getByRole("heading", { name: "V4 default", exact: true })).toBeVisible();
+  // Unknown inventory stays unavailable rather than zero.
+  await openDisclosure(page, "View inventory snapshot");
+  await expect(page.getByText("No inventory snapshot available", { exact: true })).toBeVisible();
+  await expect(page.locator(".inventory-evidence tbody tr")).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
@@ -1003,15 +1017,16 @@ for (const scenario of ["STALE", "V5_FORECAST_FUTURE_GENERATED", "MODEL_ARTIFACT
       return true;
     });
     await page.goto("/analytics");
-    await expect(page.locator(".forecast-table tbody tr")).toHaveCount(1);
-    await page.getByLabel("Forecast version").selectOption("SYNTHETIC_FORECAST_V5_RUNTIME_V1");
-    if (scenario === "STALE") { await expect(page.getByText("Forecast is stale", { exact: true })).toBeVisible(); await expect(page.locator(".forecast-table tbody tr")).toHaveCount(20); }
+    if (scenario === "401") await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
     else {
-      await expect(page.locator(".forecast-table tbody tr")).toHaveCount(0);
-      if (scenario === "401") await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
-      else if (scenario === "403") await expect(page.getByText("Your session is not authorized to view this forecast.")).toBeVisible();
-      else if (["network", "malformed"].includes(scenario)) await expect(page.getByText("Unable to load validated forecast evidence. Please retry.")).toBeVisible();
-      else await expect(page.getByText("Forecast unavailable", { exact: true })).toBeVisible();
+      await expect(v4Card(page).locator(".forecast-table tbody tr")).toHaveCount(1);
+      if (scenario === "STALE") { await expect(v5Card(page).getByText("Forecast is stale. These estimates describe an older result.", { exact: true })).toBeVisible(); await expect(v5Card(page).locator(".forecast-table tbody tr")).toHaveCount(20); }
+      else {
+        await expect(v5Card(page).locator(".forecast-table tbody tr")).toHaveCount(0);
+        if (scenario === "403") await expect(v5Card(page).getByText("Your session is not authorized to view this forecast.")).toBeVisible();
+        else if (["network", "malformed"].includes(scenario)) await expect(v5Card(page).getByText("Unable to load validated forecast evidence. Please retry.")).toBeVisible();
+        else await expect(v5Card(page).getByText("Forecast unavailable", { exact: true })).toBeVisible();
+      }
     }
     await expect(page.getByText("internal diagnostic must not render")).toHaveCount(0);
   });
@@ -1024,20 +1039,24 @@ test("out-of-order date/version requests and refresh never restore old evidence"
   await authenticatedApi(page, "ROLE-01", async (route, path) => {
     if (path !== "/api/v1/demand-forecasts") return false;
     const query = new URL(route.request().url()).searchParams; calls++;
-    if (!query.has("datasetVersion")) { entered = true; await new Promise<void>(resolve => { release = resolve; }); }
-    await fulfillJson(route, { ...(query.has("datasetVersion") ? v5Forecast("UNAVAILABLE", "V5_FORECAST_FUTURE_GENERATED", query.get("businessDate")!) : forecastResponse), businessDate: query.get("businessDate") });
+    // Hold only the first V4 read; its late response carries a distinctive estimate that must never render.
+    const late = !query.has("datasetVersion") && !entered;
+    if (late) { entered = true; await new Promise<void>(resolve => { release = resolve; }); }
+    const v4 = late ? { ...forecastResponse, forecasts: forecastResponse.forecasts.map(item => ({ ...item, pointForecast: 98.76 })) } : forecastResponse;
+    await fulfillJson(route, { ...(query.has("datasetVersion") ? v5Forecast("UNAVAILABLE", "V5_FORECAST_FUTURE_GENERATED", query.get("businessDate")!) : v4), businessDate: query.get("businessDate") });
     return true;
   });
   await page.goto("/analytics");
   await expect.poll(() => entered).toBe(true);
-  await page.getByLabel("Forecast version").selectOption("SYNTHETIC_FORECAST_V5_RUNTIME_V1");
-  await expect(page.getByText("Forecast unavailable", { exact: true })).toBeVisible();
-  release?.();
+  await expect(v5Card(page).getByText("Forecast unavailable", { exact: true })).toBeVisible();
   await page.getByLabel("Business date").fill("2026-09-19");
-  await expect(page.getByText("2026-09-19", { exact: true }).first()).toBeVisible();
+  await expect(v4Card(page).locator(".forecast-table tbody tr")).toHaveCount(1);
+  release?.();
   await page.getByRole("button", { name: "Refresh forecast" }).click();
-  await expect(page.getByText("Forecast unavailable", { exact: true })).toBeVisible();
-  await expect(page.locator(".forecast-table tbody tr")).toHaveCount(0);
+  await expect(v5Card(page).getByText("Forecast unavailable", { exact: true })).toBeVisible();
+  await expect(v5Card(page).locator(".forecast-table tbody tr")).toHaveCount(0);
+  await expect(v4Card(page).locator(".forecast-table tbody tr")).toHaveCount(1);
+  await expect(v4Card(page)).not.toContainText("98.76");
   expect(calls).toBeGreaterThanOrEqual(4);
 });
 
@@ -1054,11 +1073,13 @@ for (const inventoryCase of ["projection-current", "projection-stale", "projecti
     await page.goto("/");
     await page.getByRole("link", { name: "Analytics", exact: true }).click();
     // The default must reject an unsolicited V5 response rather than accept/fallback.
-    await expect(page.getByText("Unable to load validated forecast evidence. Please retry.")).toBeVisible();
-    await page.getByLabel("Forecast version").selectOption("SYNTHETIC_FORECAST_V5_RUNTIME_V1");
-    await expect(page.locator(".forecast-table tbody tr")).toHaveCount(20);
-    await expect(page.getByText("Inventory validity unavailable", { exact: true })).toBeVisible();
-    await expect(page.getByText(/Unknown inventory remains unavailable, never zero/)).toBeVisible();
+    await expect(v4Card(page).getByText("Unable to load validated forecast evidence. Please retry.")).toBeAttached();
+    await expect(v4Card(page).locator(".forecast-table tbody tr")).toHaveCount(0);
+    await expect(v5Card(page).locator(".forecast-table tbody tr")).toHaveCount(20);
+    // Dashboard projection never becomes census evidence; unknown inventory stays unavailable, never zero.
+    await openDisclosure(page, "View inventory snapshot");
+    await expect(page.getByText("No inventory snapshot available", { exact: true })).toBeVisible();
+    await expect(page.locator(".inventory-evidence tbody tr")).toHaveCount(0);
   });
 }
 
@@ -1069,7 +1090,8 @@ test("foreign institution evidence fails closed within authenticated Analytics",
     await fulfillJson(route, body); return true;
   });
   await page.goto("/analytics");
-  await expect(page.getByText("Unable to load validated forecast evidence. Please retry.")).toBeVisible();
+  await expect(v5Card(page).getByText("Unable to load validated forecast evidence. Please retry.")).toBeVisible();
+  await expect(v4Card(page).getByText("Unable to load validated forecast evidence. Please retry.")).toBeAttached();
   await expect(page.locator(".forecast-table tbody tr")).toHaveCount(0);
 });
 
@@ -1104,16 +1126,18 @@ for (const scenario of ["current", "stale", "missing-row", "foreign", "future", 
       return true;
     });
     await page.goto("/analytics");
-    await page.getByLabel("Forecast version").selectOption("SYNTHETIC_FORECAST_V5_RUNTIME_V1");
-    await expect(page.getByText("Forecast unavailable", { exact: true })).toBeVisible();
+    await expect(v5Card(page).getByText("Forecast unavailable", { exact: true })).toBeVisible();
+    await openDisclosure(page, "View inventory snapshot");
+    const evidence = page.locator(".inventory-evidence");
     if (["current", "stale"].includes(scenario)) {
-      await expect(page.locator(".inventory-evidence tbody tr")).toHaveCount(40);
-      await expect(page.getByText("0 (verified)", { exact: true })).toHaveCount(40);
-      await expect(page.getByText(scenario === "stale" ? "Stale inventory evidence — historical counts only" : "Current synthetic inventory evidence", { exact: true })).toBeVisible();
+      await expect(evidence.locator("tbody tr")).toHaveCount(40);
+      // Verified zero is shown as recorded zero, labelled with the snapshot's currency.
+      await expect(evidence.locator("tbody tr").first().locator("td").nth(2)).toHaveText("0");
+      await expect(evidence.locator(".analytics-stock-details > summary")).toContainText(scenario === "stale" ? "Stale ·" : "Current ·");
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     } else {
-      await expect(page.getByText("Inventory validity unavailable", { exact: true })).toBeVisible();
-      await expect(page.locator(".inventory-evidence tbody tr")).toHaveCount(0);
+      await expect(evidence.getByText("No inventory snapshot available", { exact: true })).toBeVisible();
+      await expect(evidence.locator("tbody tr")).toHaveCount(0);
     }
   });
 }
@@ -1130,6 +1154,7 @@ test("inventory clears during date changes and refresh failure; late response ca
     return true;
   });
   await page.goto("/analytics");
+  await openDisclosure(page, "View inventory snapshot");
   await expect(page.locator(".inventory-evidence tbody tr")).toHaveCount(40);
   await page.getByLabel("Business date").fill("2026-09-19");
   await expect.poll(() => slow).toBe(true);
@@ -1137,8 +1162,9 @@ test("inventory clears during date changes and refresh failure; late response ca
   await page.getByLabel("Business date").fill("2026-09-20");
   await expect(page.locator(".inventory-evidence tbody tr")).toHaveCount(40);
   release?.();
-  await expect(page.locator(".inventory-evidence")).toContainText("2026-09-20T03:00:00.000Z");
-  await expect(page.locator(".inventory-evidence")).not.toContainText("2026-09-19T03:00:00.000Z");
+  // Capture time is displayed in Manila time (03:00Z → 11:00 AM).
+  await expect(page.locator(".inventory-evidence .analytics-stock-details > summary")).toContainText(/Sep 20, 2026/);
+  await expect(page.locator(".inventory-evidence .analytics-stock-details > summary")).not.toContainText(/Sep 19, 2026/);
   fail = true;
   await page.getByRole("button", { name: "Refresh forecast" }).click();
   await expect(page.getByText("Validated inventory evidence could not be loaded.")).toBeVisible();
