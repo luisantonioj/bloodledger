@@ -57,8 +57,55 @@ prepare or dispatch. No reset, population, account creation, census or forecast
 run, or Fabric change. No password or PIN was displayed. The private backup,
 counts, harness and screenshot stay in the ignored `build/lat-ocr-rollout-private/`.
 
+## Live receipt test, 2026-10-18
+
+Run after the rollout, in the Lat role on the same host, under decisions L1–L4
+and L5 (approved by the user on 2026-10-18). The user started the worker for the
+test and stopped it afterwards. A custom-format backup was taken first (62
+table-data entries, SHA-256
+`5a64363f4c74025906a821a32edb440b4fdee01a7eee34295d72c383f74c1043`).
+
+**First attempt: stopped before any write.** Every labelled `AVAILABLE`
+Mediatrix unit on this host was past its printed expiry, so the test stopped
+with `LABELLED_STOCK_UNAVAILABLE`. Counts and ledger height were unchanged.
+
+**L5.** One fresh fictional Mediatrix unit (O positive whole blood, collected
+2026-10-18, 35-day expiry) was registered through the verified OCR intake, with
+blood type and component evidence both `OCR_LABEL` (J5). This was an API-level
+capture of a fictional label: no label image was read, so it tests the
+label-only intake rule, not OCR accuracy. Its Donation No. stays in the private
+ignored folder.
+
+| Step | What | Result |
+| --- | --- | --- |
+| I0 | Intake of the fresh unit | `COMMITTED` |
+| A1–A5 | Synthetic Medix requests one unit; Mediatrix reserves (FEFO-first), prepares, dispatches, starts transit | all `COMMITTED` |
+| N1 | Receive without receipt evidence | Refused `RECEIPT_VERIFICATION_REQUIRED`, nothing queued: **PASS** |
+| N2 | Receipt verification with the wrong component | Refused `RECEIPT_LABELS_MISMATCH`, nothing queued: **PASS** |
+| N3 | Intake scan of the in-transit unit | Refused `INBOUND_RECEIPT_REQUIRED`, nothing queued: **PASS** |
+| V1 | Receipt verification of every unit (1 of 1), then the same request again | `RCV_` evidence under `INBOUND_RECEIPT_LABEL_VERIFICATION_V1`; the repeat returned the same evidence: **PASS** |
+| R1 | Receive with the evidence | `COMMITTED` |
+| Outcome | Reservation `RECEIVED`; unit held by `INST_SYNTH_MEDIX` as `RECEIVED` | **PASS** |
+
+Each command settled in 4–10 seconds. The run took 5½ minutes, with requests
+paced 35 seconds apart per account.
+
+| Measure | Before | After |
+| --- | --- | --- |
+| `app.v2_commands` | 606 | 613 (0 non-terminal) |
+| `app.v2_reservations` | 30 | 31 |
+| `app.v2_components` | 531 | 532 |
+| `app.v2_receipt_verifications` | 0 | 1 |
+| `app.v2_outbound_verifications` | 0 | 0 |
+| Fabric ledger height | 1185 | 1192 |
+
+These seven records are permanent synthetic ledger history. This is
+self-validation by one person acting for Jopia and Lat, and it establishes no
+clinical, regulatory or production readiness.
+
 ## Remaining
 
 - Lat's own host: run the same runbook there. Its gate 1 should show two pending migrations.
 - A requester-role read-only check needs a requester account in a private config on whichever host is checked.
-- A live receipt test and enabling outbound verification each need their own plan, as the runbook states.
+- The live receipt test is recorded above. Enabling outbound verification still needs its own plan, as the runbook states.
+- This host's remaining labelled Mediatrix stock is past printed expiry and still `AVAILABLE`; evaluating it is out of this scope.
