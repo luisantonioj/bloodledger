@@ -23,10 +23,12 @@ function storage(values: Record<string, string> = {}) {
   return { getItem: (key: string) => values[key] ?? null, setItem: (key: string, value: string) => { values[key] = value; } };
 }
 
+const RowHeader = SortableHeader<Row>, RowPicker = ColumnPicker<Row>;
+
 function Table({ data }: { data: Row[] }) {
   const view = useTableView("unit-test", columns, data);
-  return h("div", {}, h(ColumnPicker, { view }), h(PaginatedTable, { total: data.length, resetKey: view.sortKey, children:
-    h("table", {}, h("thead", {}, h("tr", {}, ...columns.map(column => h(SortableHeader, { key: column.id, view, id: column.id }, column.label)))),
+  return h("div", {}, h(RowPicker, { view }), h(PaginatedTable, { total: data.length, resetKey: view.sortKey, children:
+    h("table", {}, h("thead", {}, h("tr", {}, ...columns.map(column => h(RowHeader, { key: column.id, view, id: column.id, children: column.label })))),
       h("tbody", {}, view.rows.map(row => h("tr", { key: row.id }, view.isVisible("id") && h("td", {}, row.id), view.isVisible("count") && h("td", {}, String(row.count)), view.isVisible("time") && h("td", {}, row.time ?? "-"), h("td", {}, "Open")))),
       ) }), h("output", {}, `${view.visibleCount}|${view.sortDescription}`));
 }
