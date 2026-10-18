@@ -122,3 +122,11 @@ export function ColumnPicker<T>({ view }: { view: TableView<T> }) {
 export function TableViewBar<T>({ view }: { view: TableView<T> }) {
   return <div className="table-view-bar"><ColumnPicker view={view}/></div>;
 }
+
+// Columns for tables that already have PDF export headers/rows: each column sorts
+// by its exported text unless an override (for example a timestamp) is supplied.
+// Placeholder text such as "Not available" sorts with missing values, last.
+const EXPORT_PLACEHOLDERS = new Set(["—", "-", "Not available", "Not recorded", "Not committed", "Unavailable"]);
+export function columnsFromExport<T>(headers: readonly string[], exportRow: (row: T) => readonly (string | number | null | undefined)[], overrides: Record<string, Partial<TableColumn<T>>> = {}): TableColumn<T>[] {
+  return headers.map((label, index) => ({ id: label, label, sortValue: (row: T) => { const value = exportRow(row)[index]; return typeof value === "string" && EXPORT_PLACEHOLDERS.has(value) ? null : value; }, ...overrides[label] }));
+}
