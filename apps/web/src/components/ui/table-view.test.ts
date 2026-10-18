@@ -63,7 +63,7 @@ describe("table view rendering", () => {
     const html = renderToStaticMarkup(h(Table, { data: rows }));
     expect(html.match(/UNIT-\d+/g)).toEqual(["UNIT-10", "UNIT-3", "UNIT-2", "UNIT-1"]);
     expect(html).toContain('aria-sort="descending"');
-    expect(html).not.toContain(">Time</button></th>"); expect(html).toContain('<input type="checkbox"/>Time</label>');
+    expect(html).not.toContain(">Time</button></th>"); expect(html).not.toContain("<input");
     expect(html).toContain("Actions");
     expect(html).toContain("3|Reference descending");
   });

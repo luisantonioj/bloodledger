@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 // Shared header sort and column visibility for record tables. Default order is the
 // order the caller supplies; only column ids and sort direction are persisted.
@@ -104,18 +104,33 @@ export function SortableHeader<T>({ view, id, children, className }: { view: Tab
   return <th className={className} aria-sort={ariaSort}><button type="button" className="table-sort-button" title={`Sort by ${column.label}: ${next}`} onClick={() => view.toggleSort(id)}>{children}</button></th>;
 }
 
+// The menu mounts only while open so its checkbox labels never shadow page fields.
 export function ColumnPicker<T>({ view }: { view: TableView<T> }) {
   const hideable = view.columns.filter(column => column.hideable !== false);
   const customized = view.sortId !== undefined || view.visibleCount < view.columns.length;
-  return <details className="table-column-picker">
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: Event) => {
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : !root.current?.contains(event.target as Node)) {
+        setOpen(false);
+        if (event instanceof KeyboardEvent) root.current?.querySelector("summary")?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", close); };
+  }, [open]);
+  return <details ref={root} className="table-column-picker" open={open} onToggle={event => setOpen(event.currentTarget.open)}>
     <summary className="button compact" aria-label={`Choose visible columns${customized ? " (customized)" : ""}`}>Columns{customized && <span className="table-column-picker-dot" aria-hidden="true"/>}</summary>
-    <div className="table-column-picker-menu" role="group" aria-label="Visible columns">
+    {open && <div className="table-column-picker-menu" role="group" aria-label="Visible columns">
       {hideable.map(column => {
         const visible = view.isVisible(column.id);
         return <label key={column.id}><input type="checkbox" checked={visible} disabled={visible && view.visibleCount <= 1} onChange={event => view.setHidden(column.id, !event.target.checked)}/>{column.label}</label>;
       })}
       <button type="button" className="table-column-picker-reset" onClick={view.reset} disabled={!customized}>Reset view</button>
-    </div>
+    </div>}
   </details>;
 }
 

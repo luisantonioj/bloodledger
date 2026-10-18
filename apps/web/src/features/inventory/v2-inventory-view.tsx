@@ -2,7 +2,7 @@ import { labelText } from "../../services/api/label-identity";
 import { InventoryStatus, InventoryTimeRemaining, inventoryExpiryDate, inventoryTimeRemaining, inventoryStatusInfo } from "./inventory-presentation";
 import { ActionButton } from "../../components/ui/action-button";
 import { RecordPagination } from "../../components/ui/record-pagination";
-import { ColumnPicker, SortableHeader, timeValue, useTableView, type TableColumn } from "../../components/ui/table-view";
+import { SortableHeader, TableViewBar, timeValue, useTableView, type TableColumn } from "../../components/ui/table-view";
 import { ActionIcon } from "../../components/ui/action-icon";
 import { exportTablePdf } from "../../services/pdf/table-report";
 import { InformationHelp } from "../../components/ui/information-help";
@@ -123,8 +123,8 @@ export function V2InventoryView({ principal }: { principal: Principal }) {
       <label>Blood type<span className="requester-select"><select aria-label="Blood type filter" value={bloodFilter} onChange={event=>setBloodFilter(event.target.value)}><option value="ALL">All blood types</option>{V2_BLOOD_TYPES.map(value=><option key={value} value={value}>{formatBloodType(value)}{data?` (${bloodCounts.filter(c=>c.bloodType===value).length})`:""}</option>)}</select></span></label>
       {expiryFilter!=="ALL"&&<p className="bank-action-note">Label expired, awaiting evaluation <button className="button compact" onClick={()=>{setExpiryFilter("ALL");const query=new URLSearchParams(location.search);query.delete("expiryState");history.replaceState(null,"",location.pathname+(query.size?"?"+query:""));}}>Clear expiry filter</button></p>}<label>Component<span className="requester-select"><select aria-label="Component filter" value={componentFilter} onChange={event=>setComponentFilter(event.target.value)}><option value="ALL">All components</option>{V2_COMPONENT_TYPES.filter(value=>version==="V2.1"||value!=="CRYOPRECIPITATE").map(value=><option key={value} value={value}>{componentLabel(value)}{data?` (${componentCounts.filter(c=>c.componentType===value).length})`:""}</option>)}</select></span></label>
       <label className="bank-search">Search inventory<input type="search" placeholder="Search loaded labels, components or status…" value={search} onChange={event=>setSearch(event.target.value)}/></label>
-      <ColumnPicker view={view}/>
     </section>
+      <TableViewBar view={view}/>
       <div className="table-wrap"><table className="data-table inventory-table"><thead><tr><SortableHeader view={view} id="unit">Unit ID</SortableHeader><SortableHeader view={view} id="bloodType">Blood type</SortableHeader><SortableHeader view={view} id="component">Component</SortableHeader><SortableHeader view={view} id="expiration">Expiration date</SortableHeader><SortableHeader view={view} id="remaining">Time remaining</SortableHeader><SortableHeader view={view} id="status">Status</SortableHeader></tr></thead><tbody>{pageRows.map((component) => <tr key={component.componentId}>
         {show("unit")&&<td><button className={"button compact unit-reference "+(component.labelIdentity?.status==="AVAILABLE"?"mono":"label-unavailable")} aria-label={"Open component " + component.componentId} onClick={() => setSelected({kind:"component", id:component.componentId})}>{labelText(component.labelIdentity)}</button></td>}
         {show("bloodType")&&<td><span className="aggregate-plain-text">{formatBloodType(component.bloodType)}</span></td>}

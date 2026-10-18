@@ -3,13 +3,15 @@ import {parseNetworkAvailability} from "../../services/api/blood-bank-completion
 import {formatManilaDateTime} from "../../components/ui/display";
 import { DashboardRedistribution } from "./dashboard-redistribution";
 import { PaginatedTable, RecordPagination } from "../../components/ui/record-pagination";
+import { SortableHeader, TableViewBar, useTableView, type TableColumn } from "../../components/ui/table-view";
+import { urgencyRank } from "../../services/api/transaction-reads";
 import { useState } from "react";
 import { can, canAct, type Principal } from "../../auth/permissions";
 import { BloodTypeBadge } from "../../components/ui/aggregate-tables";
 import { formatBloodType, humanizeCode, statusClassName } from "../../components/ui/display";
 import type { Dashboard } from "../../services/api/types";
 import { V2_BLOOD_TYPES, V2_COMPONENT_TYPES } from "../../services/api/v2";
-import { networkAvailableUnits, ownRequests, type RequesterRequests } from "./requester-dashboard-data";
+import { networkAvailableUnits, ownRequests, type RequesterRequest, type RequesterRequests } from "./requester-dashboard-data";
 
 export interface RequesterRequestsState {
   data?: RequesterRequests;
@@ -22,6 +24,15 @@ const componentLabels: Record<string, string> = {
   PLATELETS: "Platelets", CRYOPRECIPITATE: "Cryo",
 };
 
+const requestColumns = (bankMode: boolean): TableColumn<RequesterRequest>[] => [
+  { id: "reference", label: "Reference", sortValue: row => row.transfer_id },
+  { id: "blood", label: bankMode ? "Blood Type" : "Blood", sortValue: row => formatBloodType(row.blood_type) },
+  ...(bankMode ? [{ id: "component", label: "Component", sortValue: (row: RequesterRequest) => componentLabels[row.component_type] ?? humanizeCode(row.component_type) }] : []),
+  { id: "units", label: "Units", sortValue: row => row.quantity },
+  { id: "priority", label: "Priority", sortValue: row => urgencyRank(row.urgency) },
+  { id: "status", label: "Status", sortValue: row => humanizeCode(row.status) },
+];
+
 export function RequesterDashboard({ data, principal, requests, bankMode=false }: { data: Dashboard; principal: Principal; requests: RequesterRequestsState; bankMode?:boolean }) {
   const [bloodType, setBloodType] = useState("O_POSITIVE");
   const [component, setComponent] = useState("PACKED_RED_BLOOD_CELLS");
@@ -29,6 +40,7 @@ export function RequesterDashboard({ data, principal, requests, bankMode=false }
   const available = bankMode ? network.data?network.data.rows.filter(row=>row.bloodType===bloodType&&row.componentType===component).reduce((sum,row)=>sum+row.availableUnits,0):null : networkAvailableUnits(data, bloodType, component);
   const rows = requests.data ? bankMode ? requests.data.requests : ownRequests(requests.data, principal.institutionId) : [];
   const mayRead = can(principal, "transfers:read");
+  const view = useTableView(bankMode ? "dashboard-bank-requests" : "dashboard-requests", requestColumns(bankMode), rows), show = view.isVisible;
   const mayRequest = mayRead && (principal.accountId ? canAct(principal, "transfer:request") : can(principal, "transfers:write"));
   return <div className="requester-dashboard-grid">
     {bankMode ? <DashboardRedistribution principal={principal}/> : <section className="requester-dashboard-card" aria-labelledby="requester-requests-heading">
@@ -36,11 +48,11 @@ export function RequesterDashboard({ data, principal, requests, bankMode=false }
       {!mayRead ? <div className="empty"><strong>Requests unavailable</strong>This account cannot view requests.</div>
         : !requests.data ? <div className="empty" aria-live="polite"><strong>{requests.error ? "Requests unavailable" : "Loading requests…"}</strong></div>
         : rows.length === 0 ? <div className="empty"><strong>No requests yet</strong>Your submitted blood requests will appear here.</div>
-        : <PaginatedTable total={rows.length} label="Dashboard requests"><table className="data-table requester-requests-table"><thead><tr><th>Reference</th><th>{bankMode?"Blood Type":"Blood"}</th>{bankMode&&<th>Component</th>}<th className="numeric">Units</th><th>Priority</th><th>Status</th></tr></thead><tbody>{rows.map(row => <tr key={row.transfer_id}>
-          <td><a className="requester-request-reference mono" href={"/transfers?record=request&recordId=" + encodeURIComponent(row.transfer_id)}>{row.transfer_id}</a></td>
-          <td>{bankMode?formatBloodType(row.blood_type):<><BloodTypeBadge value={row.blood_type}/><small>{componentLabels[row.component_type] ?? humanizeCode(row.component_type)}</small></>}</td>{bankMode&&<td>{componentLabels[row.component_type] ?? humanizeCode(row.component_type)}</td>}
-          <td className="numeric">{row.quantity}</td><td>{humanizeCode(row.urgency)}</td>
-          <td><span className={statusClassName(row.status)}>{humanizeCode(row.status)}</span>{!row.ledger_transaction_id && <small>Awaiting ledger confirmation</small>}</td>
+        : <PaginatedTable total={rows.length} label="Dashboard requests" resetKey={view.sortKey} toolbar={<TableViewBar view={view}/>}><table className="data-table requester-requests-table"><thead><tr><SortableHeader view={view} id="reference">Reference</SortableHeader><SortableHeader view={view} id="blood">{bankMode?"Blood Type":"Blood"}</SortableHeader>{bankMode&&<SortableHeader view={view} id="component">Component</SortableHeader>}<SortableHeader view={view} id="units" className="numeric">Units</SortableHeader><SortableHeader view={view} id="priority">Priority</SortableHeader><SortableHeader view={view} id="status">Status</SortableHeader></tr></thead><tbody>{view.rows.map(row => <tr key={row.transfer_id}>
+          {show("reference")&&<td><a className="requester-request-reference mono" href={"/transfers?record=request&recordId=" + encodeURIComponent(row.transfer_id)}>{row.transfer_id}</a></td>}
+          {show("blood")&&<td>{bankMode?formatBloodType(row.blood_type):<><BloodTypeBadge value={row.blood_type}/><small>{componentLabels[row.component_type] ?? humanizeCode(row.component_type)}</small></>}</td>}{bankMode&&show("component")&&<td>{componentLabels[row.component_type] ?? humanizeCode(row.component_type)}</td>}
+          {show("units")&&<td className="numeric">{row.quantity}</td>}{show("priority")&&<td>{humanizeCode(row.urgency)}</td>}
+          {show("status")&&<td><span className={statusClassName(row.status)}>{humanizeCode(row.status)}</span>{!row.ledger_transaction_id && <small>Awaiting ledger confirmation</small>}</td>}
         </tr>)}</tbody></table></PaginatedTable>}
       {mayRead&&rows.length===0&&<RecordPagination total={0} ready={Boolean(requests.data)} label="Dashboard requests"/>}
     </section>}

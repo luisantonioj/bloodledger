@@ -4,7 +4,7 @@ import { PaginatedTable, RecordPagination } from "../../components/ui/record-pag
 import { ActionIcon } from "../../components/ui/action-icon";
 import { RefreshButton } from "../../components/ui/refresh-button";
 import { exportTablePdf } from "../../services/pdf/table-report";
-import { ColumnPicker, SortableHeader, columnsFromExport, timeValue, useTableView } from "../../components/ui/table-view";
+import { SortableHeader, TableViewBar, columnsFromExport, timeValue, useTableView } from "../../components/ui/table-view";
 import { activityHeaders,activityRows,activityReferences,filterActivity,requesterActivity } from "./activity-export";
 import type { Principal } from "../../auth/permissions";
 import type { ReactNode } from "react";
@@ -35,7 +35,8 @@ export function AuditView({data,ready=true,principal,busy=false,onRefresh,notice
 
 
     <section className="bank-record-card"><header className="bank-section-heading"><h2>Activity records</h2><span>{ready?`${visible.length} of ${data.events.length}`:"—"}</span><InformationHelp label="Activity records">Read the actions and outcomes available within your account’s scope. Search the recorded action or reference, or filter by activity type. User / Source currently identifies the institution source, not an acting person. Scan, request and transfer references appear only when the authorized read explicitly links them; unavailable does not mean no such record exists. Blockchain ID uses the actual ledger reference. Recorded outcomes are not automatically completed custody actions. Exact locations and credentials are excluded. Export PDF includes all matching loaded records, beyond the current page, with account scope and applied filters. Requester activity uses its own permitted transfer command history; command states are not automatically ledger-confirmed outcomes.</InformationHelp></header>
-      <div className="bank-filter-panel audit-filter-controls"><label>Activity type<span className="requester-select"><select aria-label="Activity type" value={action} onChange={event=>setAction(event.target.value)}><option value="ALL">All activities</option>{actions.map(value=><option key={value} value={value}>{humanizeCode(value)}</option>)}</select></span></label><label className="bank-search">Search activity<input type="search" value={search} placeholder="Action, outcome or reference…" onChange={event=>setSearch(event.target.value)}/></label><ColumnPicker view={view}/></div>
+      <div className="bank-filter-panel audit-filter-controls"><label>Activity type<span className="requester-select"><select aria-label="Activity type" value={action} onChange={event=>setAction(event.target.value)}><option value="ALL">All activities</option>{actions.map(value=><option key={value} value={value}>{humanizeCode(value)}</option>)}</select></span></label><label className="bank-search">Search activity<input type="search" value={search} placeholder="Action, outcome or reference…" onChange={event=>setSearch(event.target.value)}/></label></div>
+      <TableViewBar view={view}/>
       {visible.length?<PaginatedTable total={visible.length} label="Activity records" resetKey={action+"|"+search+"|"+view.sortKey}>{table}</PaginatedTable>:<div className="table-wrap">{table}</div>}
       {visible.length===0&&<RecordPagination total={0} ready={ready} label="Activity records"/>}
     </section>
