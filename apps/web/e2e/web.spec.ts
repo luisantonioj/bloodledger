@@ -727,15 +727,18 @@ test("latest visual baseline stays role-scoped while Sprint 6 integrations remai
 
   await page.getByRole("link", { name: "Analytics", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Analytics", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "V4 default", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "V5 simulation preview", exact: true })).toBeVisible();
-  await expect(page.getByText("Uncertainty unavailable", { exact: false }).first()).toBeVisible();
+  await expect(v5Card(page).getByRole("heading", { name: "Expected blood demand", exact: true })).toBeVisible();
+  await openDisclosure(page, "Default forecast availability (V4)");
+  await expect(v4Card(page).getByRole("heading", { name: "V4 default", exact: true })).toBeVisible();
+  await v4Card(page).locator("summary").filter({ hasText: "View detailed data" }).click();
+  await expect(v4Card(page).getByText("Uncertainty unavailable", { exact: true }).first()).toBeVisible();
+  await v4Card(page).locator("summary").filter({ hasText: "Model and data details" }).click();
+  await expect(v4Card(page).getByText("SYNTHETIC_FORECAST_V4_RUNTIME_V1", { exact: true })).toBeVisible();
   await expect(page.getByText("View inventory snapshot", { exact: false })).toBeVisible();
-  await expect(page.getByText("SYNTHETIC_FORECAST_V4_RUNTIME_V1", { exact: false }).first()).toBeVisible();
 
-  await page.getByRole("link", { name: "Blood Inventory", exact: true }).click();
-  await expect(page.locator(".inventory-table th")).toHaveCount(7);
-  await expect(page.getByText("CMP_SYNTH_BROWSER_01", { exact: true })).toBeVisible();
+  await page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: "Blood Inventory", exact: true }).click();
+  await expect(page.locator(".inventory-table th")).toHaveCount(6);
+  await expect(page.getByRole("button", { name: "Open component CMP_SYNTH_BROWSER_01", exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "Requests & Transfers", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Facility operations", exact: true })).toHaveCount(0);
@@ -778,6 +781,7 @@ test("committed projection becomes visible within the frontend NFR-06 budget", a
     return true;
   });
   await page.goto("/");
+  await page.getByRole("combobox", { name: "Inventory overview blood component" }).selectOption("RED_BLOOD_CELLS");
   const confirmedCount = page.locator(".inventory-overview-track > strong").first();
   await expect.poll(() => page.evaluate(() => document.visibilityState)).toBe("visible");
   await expect(confirmedCount).toHaveText("1");
@@ -801,7 +805,8 @@ test("failed dashboard load exposes a non-destructive retry and recovers", async
   await authenticatedApi(page, "ROLE-01", async (route, path) => {
     if (path !== "/api/v1/dashboard") return false;
     dashboardCalls += 1;
-    if (dashboardCalls === 1) await fulfillJson(route, { error: { code: "PROJECTION_UNAVAILABLE", message: "Projection is temporarily unavailable." } }, 503);
+    // The first load and its one quiet 5xx retry both fail, so the failure is persistent.
+    if (dashboardCalls <= 2) await fulfillJson(route, { error: { code: "PROJECTION_UNAVAILABLE", message: "Projection is temporarily unavailable." } }, 503);
     else await fulfillJson(route, responses[path]);
     return true;
   });
@@ -810,7 +815,7 @@ test("failed dashboard load exposes a non-destructive retry and recovers", async
   await expect(page.locator(".dashboard-updated")).toHaveText("Last updated: Unavailable");
   await page.getByRole("button", { name: "Retry" }).click();
   await expect(page.locator(".dashboard-stats")).toBeVisible();
-  expect(dashboardCalls).toBe(2);
+  expect(dashboardCalls).toBe(3);
 });
 
 test("inventory exposes loading and empty states without inventing committed data", async ({ page }) => {
@@ -826,7 +831,7 @@ test("inventory exposes loading and empty states without inventing committed dat
   await expect(page.getByText("Loading inventory…", { exact: true })).toBeVisible();
   expect(releaseInventory).toBeDefined();
   releaseInventory?.();
-  await expect(page.getByText("No committed V2 components", { exact: true })).toBeVisible();
+  await expect(page.getByText("No blood unit records", { exact: true })).toBeVisible();
 });
 
 // FR-03 / NFR-11 / BL-TST-01: explicit refresh retains confirmed data on failure.
@@ -897,7 +902,7 @@ test("route changes clean up the previous poller and refresh only the active pag
   await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Blood Inventory", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Blood Inventory", exact: true })).toBeVisible();
-  await expect(page.locator(".blood-type")).toHaveText("A+");
+  await expect(page.locator(".inventory-table .aggregate-plain-text")).toHaveText("A+");
   await page.waitForTimeout(5_200);
   expect(dashboardCalls).toBe(1);
   expect(inventoryCalls).toBeGreaterThanOrEqual(2);
