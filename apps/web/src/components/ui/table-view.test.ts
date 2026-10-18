@@ -74,6 +74,11 @@ describe("table view rendering", () => {
     expect(html.match(/<td>UNIT-\d+<\/td>/g)).toHaveLength(20);
     expect(html).toContain("<td>UNIT-0</td>"); expect(html).toContain("1–20 of 45 records");
   });
+  it("never hides every data column, even from stored state", () => {
+    vi.stubGlobal("localStorage", storage({ "bloodledger.table-view.v1.unit-test": JSON.stringify({ hidden: ["id", "count", "time"] }) }));
+    const html = renderToStaticMarkup(h(Table, { data: rows }));
+    expect(html).toContain(">Reference</button></th>"); expect(html).toContain("4|Default order");
+  });
   it("works when storage throws", () => {
     vi.stubGlobal("localStorage", { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } });
     expect(() => renderToStaticMarkup(h(Table, { data: rows }))).not.toThrow();

@@ -70,7 +70,10 @@ export function useTableView<T>(tableId: string, columns: TableColumn<T>[], rows
   const update = (next: StoredView) => { setView(next); writeStoredView(tableId, next); };
   const sortColumn = view.sortId && view.direction ? columns.find(column => column.id === view.sortId && column.sortValue) : undefined;
   const sorted = sortColumn?.sortValue && view.direction ? sortRows(rows, sortColumn.sortValue, view.direction) : rows;
-  const hidden = new Set(view.hidden.filter(id => columns.some(column => column.id === id && column.hideable !== false)));
+  const hideableIds = columns.filter(column => column.hideable !== false).map(column => column.id);
+  const storedHidden = view.hidden.filter(id => hideableIds.includes(id));
+  // At least one data column always stays visible.
+  const hidden = new Set(storedHidden.length >= hideableIds.length ? [] : storedHidden);
   const direction = sortColumn ? view.direction : undefined;
   return {
     tableId, columns, rows: sorted, sortId: sortColumn?.id, direction,
@@ -86,7 +89,7 @@ export function useTableView<T>(tableId: string, columns: TableColumn<T>[], rows
     },
     setHidden: (id, hide) => {
       const next = hide ? [...new Set([...view.hidden, id])] : view.hidden.filter(entry => entry !== id);
-      if (next.length >= columns.length) return;
+      if (next.filter(entry => hideableIds.includes(entry)).length >= hideableIds.length) return;
       update({ ...view, hidden: next });
     },
     reset: () => update({ hidden: [] }),
@@ -127,14 +130,16 @@ export function ColumnPicker<T>({ view }: { view: TableView<T> }) {
     {open && <div className="table-column-picker-menu" role="group" aria-label="Visible columns">
       {hideable.map(column => {
         const visible = view.isVisible(column.id);
-        return <label key={column.id}><input type="checkbox" checked={visible} disabled={visible && view.visibleCount <= 1} onChange={event => view.setHidden(column.id, !event.target.checked)}/>{column.label}</label>;
+        return <label key={column.id}><input type="checkbox" checked={visible} disabled={visible && hideable.filter(entry => view.isVisible(entry.id)).length <= 1} onChange={event => view.setHidden(column.id, !event.target.checked)}/>{column.label}</label>;
       })}
       <button type="button" className="table-column-picker-reset" onClick={view.reset} disabled={!customized}>Reset view</button>
     </div>}
   </details>;
 }
 
+// Omitted when fewer than two columns can be hidden; header sort still applies.
 export function TableViewBar<T>({ view }: { view: TableView<T> }) {
+  if (view.columns.filter(column => column.hideable !== false).length < 2) return null;
   return <div className="table-view-bar"><ColumnPicker view={view}/></div>;
 }
 

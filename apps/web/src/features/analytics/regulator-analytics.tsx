@@ -4,6 +4,7 @@ import { ReportingFilters,emptyAnalyticsFilters,type AnalyticsFilters } from "./
 import type { Principal } from "../../auth/permissions";
 import { InformationHelp } from "../../components/ui/information-help";
 import { RefreshButton } from "../../components/ui/refresh-button";
+import { SortableHeader, TableViewBar, useTableView, type TableColumn } from "../../components/ui/table-view";
 import { formatManilaDateTime } from "../../components/ui/display";
 import { useLiveData } from "../../hooks/use-live-data";
 import { parseCensusIndex, type CensusIndex } from "../../services/api/census-index";
@@ -31,6 +32,12 @@ export function reportingActivity(index: CensusIndex) {
   }
   return [...days.values()].sort((a,b) => a.date.localeCompare(b.date));
 }
+type ActivityRow = ReturnType<typeof reportingActivity>[number];
+const activityColumns: TableColumn<ActivityRow>[] = [
+  { id: "date", label: "Capture date", sortValue: row => row.date },
+  { id: "records", label: "Recorded reports", sortValue: row => row.records },
+  { id: "facilities", label: "Reporting facilities", sortValue: row => row.facilities.size },
+];
 function SummaryCards({cards}:{cards:[string,number|null,string][]}) {
   return <div className="consortium-summary-grid">{cards.map(([label,value,help]) => <section className="consortium-summary" key={label}><header className="consortium-summary-title"><span>{label}</span><InformationHelp label={label}>{help}</InformationHelp></header><strong>{value ?? "—"}</strong></section>)}</div>;
 }
@@ -49,6 +56,7 @@ function DohAnalytics({principal}:{principal:Principal}) {
   const facilities:[string,string][]=[...new Set(index?.snapshots.map(row=>row.institutionId)??[])].map(id=>[id,id]);
   const filtered=index?{...index,snapshots:index.snapshots.filter(row=>(!filters.group||row.institutionId===filters.group)&&(!filters.from||analyticsManilaDay(row.capturedAt)>=filters.from)&&(!filters.to||analyticsManilaDay(row.capturedAt)<=filters.to)&&(!filters.from||!filters.to||filters.from<=filters.to))}:undefined;
   const activity = filtered ? reportingActivity(filtered) : [];
+  const view = useTableView("regulator-reporting-activity", activityColumns, activity), show = view.isVisible;
   return <div className="regulator-analytics">
     <header className="page-head analytics-page-head"><h1 className="page-title">Analytics</h1><RefreshButton busy={state.busy} onRefresh={state.manual}/></header>
     <p className="analytics-page-description">Saved census captures in the loaded report batch. These records do not establish reporting completion or compliance.</p>
@@ -60,7 +68,7 @@ function DohAnalytics({principal}:{principal:Principal}) {
       ["Verification Outcomes",null,"Report verification and compliance outcomes are not supplied by the current census read. Missing information is not counted as failed compliance."],
     ]}/>
     <section className="bank-record-card"><header className="bank-section-heading"><h2>Reporting Activity</h2><a className="button compact" href="/reporting">View Reports</a><InformationHelp label="Reporting Activity">Census records grouped by capture date in Manila time, within the loaded batch. This shows recorded capture activity, not reporting completeness, punctuality, submission or regulatory compliance. Dates without records are not inferred as missed reporting days.</InformationHelp></header>
-      <div className="table-wrap"><table className="data-table regulator-report-activity"><thead><tr><th>Capture date</th><th>Recorded reports</th><th>Reporting facilities</th></tr></thead><tbody>{activity.map(row => <tr key={row.date}><td>{row.date}</td><td>{row.records}</td><td>{row.facilities.size}</td></tr>)}{!activity.length && <tr><td colSpan={3}><div className="analytics-empty"><strong>{error ? "Reporting summary unavailable" : state.busy && !index ? "Loading reporting activity…" : "No reporting activity recorded"}</strong><p>{error || "Saved census captures will appear here. Missing records do not establish noncompliance."}</p></div></td></tr>}</tbody></table></div>
+      <TableViewBar view={view}/><div className="table-wrap"><table className="data-table regulator-report-activity"><thead><tr><SortableHeader view={view} id="date">Capture date</SortableHeader><SortableHeader view={view} id="records">Recorded reports</SortableHeader><SortableHeader view={view} id="facilities">Reporting facilities</SortableHeader></tr></thead><tbody>{view.rows.map(row => <tr key={row.date}>{show("date")&&<td>{row.date}</td>}{show("records")&&<td>{row.records}</td>}{show("facilities")&&<td>{row.facilities.size}</td>}</tr>)}{!activity.length && <tr><td colSpan={view.visibleCount}><div className="analytics-empty"><strong>{error ? "Reporting summary unavailable" : state.busy && !index ? "Loading reporting activity…" : "No reporting activity recorded"}</strong><p>{error || "Saved census captures will appear here. Missing records do not establish noncompliance."}</p></div></td></tr>}</tbody></table></div>
       {index?.nextCursor && <p className="regulator-analytics-note">More records are available. These summaries cover the first loaded batch; open Compliance Reports to browse the remaining records.</p>}
       {state.error && index && <p className="regulator-analytics-note" role="status">Refresh unavailable. Showing the last loaded report batch.</p>}
     </section>

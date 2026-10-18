@@ -1,4 +1,5 @@
 import {PaginatedTable} from "../../components/ui/record-pagination";
+import {SortableHeader,TableViewBar,timeValue,useTableView,type TableColumn} from "../../components/ui/table-view";
 import {useState} from "react";
 import type {Dashboard,Consortium} from "../../services/api/types";
 import {V2_BLOOD_TYPES,V2_COMPONENT_TYPES} from "../../services/api/v2";
@@ -24,7 +25,16 @@ export function PrcNetworkOverview({data,loading=false}:{data:Dashboard;loading?
  try{view=prcNetworkOverview(data,component);}catch{error="Network inventory is unavailable for this view.";}
  const {ready,facilities,selected,totals}=view;
  const products=component==="ALL"?V2_COMPONENT_TYPES:[component];
- const matrix=ready?facilities.flatMap(([id,name])=>products.map(product=>({id,name,product,rows:selected.filter(row=>row.institutionId===id&&row.component===product)}))):[];
+ const matrix=ready?facilities.flatMap(([id,name])=>products.map(product=>{const rows=selected.filter(row=>row.institutionId===id&&row.component===product);return {id,name,product,rows,oldest:rows.reduce<string|null>((date,row)=>!date||Date.parse(row.updatedAt)<Date.parse(date)?row.updatedAt:date,null)};})):[];
+ type MatrixRow=typeof matrix[number];
+ const matrixColumns:TableColumn<MatrixRow>[]=[
+  {id:"bank",label:"Blood bank",sortValue:row=>row.name},
+  {id:"component",label:"Component",sortValue:row=>componentLabel(row.product)},
+  ...V2_BLOOD_TYPES.map(type=>({id:type,label:formatBloodType(type),sortValue:(row:MatrixRow)=>row.rows.find(item=>item.bloodType===type)?.available??null})),
+  {id:"redistributable",label:"Redistributable"},
+  {id:"updated",label:"Last updated",sortValue:row=>timeValue(row.oldest)},
+ ];
+ const tableView=useTableView("prc-network-matrix",matrixColumns,matrix),show=tableView.isVisible;
  const label=component==="ALL"?"All components":componentLabel(component);
  const max=Math.max(1,...totals.map(value=>value??0),...facilities.flatMap(([id])=>V2_BLOOD_TYPES.map(type=>ready?prcComponentAvailable(selected.filter(row=>row.institutionId===id),type,component,1)??0:0)));
  return <>
@@ -42,9 +52,9 @@ export function PrcNetworkOverview({data,loading=false}:{data:Dashboard;loading?
  </section>
  <section className="prc-dashboard-card consortium-matrix-card" aria-labelledby="prc-matrix-heading">
   <header><div><h2 id="prc-matrix-heading">Blood Bank Availability Matrix</h2></div><InformationHelp label="Blood Bank Availability Matrix">Review each reporting blood bank’s available units for the selected components. All shows a separate row for each bank and component. Reserved units appear beneath available counts. A dash means missing information. Reported availability does not establish redistributable supply or approve a transfer.</InformationHelp></header>
-  <PaginatedTable total={matrix.length} ready={ready} resetKey={component} label="Blood bank component records"><table className="data-table consortium-matrix"><thead><tr><th>Blood bank</th><th>Component</th>{V2_BLOOD_TYPES.map(type=><th key={type}>{formatBloodType(type)}</th>)}<th>Redistributable</th><th>Last updated</th></tr></thead><tbody>
-   {matrix.map(({id,name,product,rows})=>{const oldest=rows.reduce<string|null>((date,row)=>!date||Date.parse(row.updatedAt)<Date.parse(date)?row.updatedAt:date,null);return <tr key={id+product}><td><strong>{name}</strong></td><td>{componentLabel(product)}</td>{V2_BLOOD_TYPES.map(type=>{const row=rows.find(row=>row.bloodType===type);return <td key={type}><strong>{row?.available??"—"}</strong><small>{row?.reserved!==null&&row?.reserved!==undefined?row.reserved+" reserved":"Reserved: —"}</small></td>;})}<td>—<small>Not supplied</small></td><td>{oldest?formatManilaDateTime(oldest):"—"}</td></tr>;})}
-   {!matrix.length&&<tr><td colSpan={12}><div className="requester-records-empty"><strong>{loading?"Loading network inventory…":"No network records available"}</strong><span>{error||"Reported blood-bank inventory will appear here. Missing reports do not mean zero stock."}</span></div></td></tr>}
+  <PaginatedTable total={matrix.length} ready={ready} resetKey={component+"|"+tableView.sortKey} label="Blood bank component records" toolbar={<TableViewBar view={tableView}/>}><table className="data-table consortium-matrix"><thead><tr><SortableHeader view={tableView} id="bank">Blood bank</SortableHeader><SortableHeader view={tableView} id="component">Component</SortableHeader>{V2_BLOOD_TYPES.map(type=><SortableHeader key={type} view={tableView} id={type}>{formatBloodType(type)}</SortableHeader>)}<SortableHeader view={tableView} id="redistributable">Redistributable</SortableHeader><SortableHeader view={tableView} id="updated">Last updated</SortableHeader></tr></thead><tbody>
+   {tableView.rows.map(({id,name,product,rows,oldest})=>{return <tr key={id+product}>{show("bank")&&<td><strong>{name}</strong></td>}{show("component")&&<td>{componentLabel(product)}</td>}{V2_BLOOD_TYPES.filter(show).map(type=>{const row=rows.find(row=>row.bloodType===type);return <td key={type}><strong>{row?.available??"—"}</strong><small>{row?.reserved!==null&&row?.reserved!==undefined?row.reserved+" reserved":"Reserved: —"}</small></td>;})}{show("redistributable")&&<td>—<small>Not supplied</small></td>}{show("updated")&&<td>{oldest?formatManilaDateTime(oldest):"—"}</td>}</tr>;})}
+   {!matrix.length&&<tr><td colSpan={tableView.visibleCount}><div className="requester-records-empty"><strong>{loading?"Loading network inventory…":"No network records available"}</strong><span>{error||"Reported blood-bank inventory will appear here. Missing reports do not mean zero stock."}</span></div></td></tr>}
   </tbody></table></PaginatedTable>
  </section>
  </>;
