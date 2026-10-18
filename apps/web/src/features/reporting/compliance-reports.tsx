@@ -12,6 +12,7 @@ import type { Principal } from "../../auth/permissions";
 import { InformationHelp } from "../../components/ui/information-help";
 import { RefreshButton } from "../../components/ui/refresh-button";
 import { PaginatedTable } from "../../components/ui/record-pagination";
+import { SortableHeader, TableViewBar, timeValue, useTableView, type TableColumn } from "../../components/ui/table-view";
 import { formatBloodType, formatManilaDateTime } from "../../components/ui/display";
 import { useLiveData } from "../../hooks/use-live-data";
 import { CENSUS_ORDER, readCensusIndex, readCompleteCensusIndex, type CensusIndex, type CensusSnapshot } from "../../services/api/census-index";
@@ -19,6 +20,17 @@ import { V2_COMPONENT_TYPES } from "../../services/api/v2";
 import type { Dashboard } from "../../services/api/types";
 import { componentLabel } from "../transfers/requester-transfer-data";
 
+const savedRecordColumns: TableColumn<CensusSnapshot>[] = [
+  { id: "recorded", label: "Time Recorded", sortValue: record => timeValue(record.scheduledFor) },
+  { id: "copy", label: "Copy", hideable: false },
+];
+const complianceColumns = (principal: Principal): TableColumn<CensusSnapshot>[] => [
+  { id: "checkpoint", label: "Reporting checkpoint", sortValue: row => timeValue(row.scheduledFor) },
+  { id: "facility", label: "Facility", sortValue: row => row.institutionId === principal.institutionId ? principal.institutionDisplayName : row.institutionId },
+  { id: "captured", label: "Captured", sortValue: row => timeValue(row.capturedAt) },
+  { id: "verification", label: "Verification" },
+  { id: "actions", label: "Actions", hideable: false },
+];
 
 export function ComplianceReports({ principal }: { principal: Principal }) {
   const bank = principal.accountCategory === "BLOOD_BANK";
@@ -54,6 +66,8 @@ export function ComplianceReports({ principal }: { principal: Principal }) {
   const demoRows=demos.filter((_,i)=>{const latest=latestReal(i===0?"09":"16");return !latest.record&&!latest.ambiguous;});
   const realSavedRows=(index?.snapshots??[]).filter(record=>(["09","16"] as const).some(hour=>Boolean(latestCheckpointRecord([record],principal.institutionId,hour).record)));
   const savedBankRows=[...realSavedRows,...demoRows.map(row=>row.record)].filter(row=>!date||day(row.scheduledFor)===date).sort((a,b)=>Date.parse(b.scheduledFor)-Date.parse(a.scheduledFor));
+  const savedView=useTableView("saved-stock-records",savedRecordColumns,savedBankRows),showSaved=savedView.isVisible;
+  const reportView=useTableView("compliance-records",complianceColumns(principal),shown),showReport=reportView.isVisible;
   const isDemo=(record:CensusSnapshot)=>demos.some(row=>row.record.snapshotId===record.snapshotId);
   const copyAllowed=(record:CensusSnapshot)=>isDemo(record)||Boolean(index&&index.reportAvailability==="EXPORT_AVAILABLE"&&!index.nextCursor&&!busy);
   const validInventory = inventory.data && inventory.data.classification === "SIMULATION_ONLY" && inventory.data.scope === (bank ? "INSTITUTION" : "CITY_AGGREGATE") && inventory.data.lastSuccessfulProjectionAt !== null && Array.isArray(inventory.data.inventory) && inventory.data.inventory.every(row => (!bank || row.institutionId === principal.institutionId) && Number.isSafeInteger(row.confirmedCount) && row.confirmedCount >= 0);
@@ -117,15 +131,15 @@ export function ComplianceReports({ principal }: { principal: Principal }) {
       {bank?<section className="bank-record-card">
         <header className="bank-section-heading"><h2>Saved Stock Records</h2><InformationHelp label="Saved Stock Records">Each row represents one saved morning or afternoon checkpoint. Copy includes its complete stock matrix. Demo rows are explicit frontend examples and are not inserted into the reporting database.</InformationHelp></header>
         <div className="compliance-filters compliance-date-filter"><label>Recorded date<input type="date" value={date} onChange={event=>setDate(event.target.value)}/></label></div>
-        <PaginatedTable total={savedBankRows.length} ready label="Saved stock records" resetKey={date}>
-          <table className="data-table compliance-record-table bank-stock-record-table"><thead><tr><th>Time Recorded</th><th>Copy</th></tr></thead><tbody>{savedBankRows.map(record=><tr key={record.snapshotId} className={selectedId===record.snapshotId?"compliance-selected-row":""} onClick={()=>setSelectedId(record.snapshotId)}><td><button className="bank-review-link" onClick={()=>setSelectedId(record.snapshotId)} aria-label={"View stock record "+record.snapshotId} aria-pressed={selectedId===record.snapshotId}>{formatManilaDateTime(record.scheduledFor)}</button></td><td>{copyIcon(record,"Copy stock record "+record.snapshotId)}</td></tr>)}{!savedBankRows.length&&<tr><td colSpan={2}><div className="requester-records-empty"><strong>No stock records for this date</strong></div></td></tr>}</tbody></table>
+        <PaginatedTable total={savedBankRows.length} ready label="Saved stock records" resetKey={date+"|"+savedView.sortKey} toolbar={<TableViewBar view={savedView}/>}>
+          <table className="data-table compliance-record-table bank-stock-record-table"><thead><tr><SortableHeader view={savedView} id="recorded">Time Recorded</SortableHeader><SortableHeader view={savedView} id="copy">Copy</SortableHeader></tr></thead><tbody>{savedView.rows.map(record=><tr key={record.snapshotId} className={selectedId===record.snapshotId?"compliance-selected-row":""} onClick={()=>setSelectedId(record.snapshotId)}>{showSaved("recorded")&&<td><button className="bank-review-link" onClick={()=>setSelectedId(record.snapshotId)} aria-label={"View stock record "+record.snapshotId} aria-pressed={selectedId===record.snapshotId}>{formatManilaDateTime(record.scheduledFor)}</button></td>}{showSaved("copy")&&<td>{copyIcon(record,"Copy stock record "+record.snapshotId)}</td>}</tr>)}{!savedBankRows.length&&<tr><td colSpan={savedView.visibleCount}><div className="requester-records-empty"><strong>No stock records for this date</strong></div></td></tr>}</tbody></table>
         </PaginatedTable>
       </section>:(
       <section className="bank-record-card">
         <header className="bank-section-heading"><h2>Saved Stock Reports</h2><InformationHelp label="Saved Stock Reports">Browse the saved census reports available to your account. {bank ? "Select a record to review its capture details; the inventory table continues showing current stock." : "Select a record to review its capture details and stock matrix."} Saved means a census record exists; it does not establish verification or successful submission to DOH. Filters and pagination apply to loaded records.</InformationHelp></header>
         <div className="compliance-filters"><label>Search records<input type="search" placeholder="Report or institution ID" value={search} onChange={event => setSearch(event.target.value)}/></label><label>Reporting date<input type="date" value={date} onChange={event => setDate(event.target.value)}/></label></div>
-        <PaginatedTable total={shown.length} ready={Boolean(index)} resetKey={search+"|"+date} label="Compliance records">
-          <table className="data-table compliance-record-table"><thead><tr><th>Reporting checkpoint</th><th>Facility</th><th>Captured</th><th>Verification</th><th>Actions</th></tr></thead><tbody>{shown.map(row => <tr key={row.snapshotId} className={selectedId === row.snapshotId ? "compliance-selected-row" : ""}><td>{formatManilaDateTime(row.scheduledFor)}</td><td>{row.institutionId === principal.institutionId ? principal.institutionDisplayName : row.institutionId}</td><td>{formatManilaDateTime(row.capturedAt)}</td><td>Not supplied</td><td><button className="button compact" onClick={() => setSelectedId(row.snapshotId)}>View report</button></td></tr>)}{shown.length === 0 && <tr><td colSpan={5}><div className="requester-records-empty"><strong>{busy ? "Loading reports…" : error ? "Reports unavailable" : index?.snapshots.length ? "No matching records" : "No saved stock reports yet"}</strong><span>{error || "Saved stock records will appear here. Missing reports do not mean there is no inventory."}</span></div></td></tr>}</tbody></table>
+        <PaginatedTable total={shown.length} ready={Boolean(index)} resetKey={search+"|"+date+"|"+reportView.sortKey} label="Compliance records" toolbar={<TableViewBar view={reportView}/>}>
+          <table className="data-table compliance-record-table"><thead><tr><SortableHeader view={reportView} id="checkpoint">Reporting checkpoint</SortableHeader><SortableHeader view={reportView} id="facility">Facility</SortableHeader><SortableHeader view={reportView} id="captured">Captured</SortableHeader><SortableHeader view={reportView} id="verification">Verification</SortableHeader><SortableHeader view={reportView} id="actions">Actions</SortableHeader></tr></thead><tbody>{reportView.rows.map(row => <tr key={row.snapshotId} className={selectedId === row.snapshotId ? "compliance-selected-row" : ""}>{showReport("checkpoint")&&<td>{formatManilaDateTime(row.scheduledFor)}</td>}{showReport("facility")&&<td>{row.institutionId === principal.institutionId ? principal.institutionDisplayName : row.institutionId}</td>}{showReport("captured")&&<td>{formatManilaDateTime(row.capturedAt)}</td>}{showReport("verification")&&<td>Not supplied</td>}{showReport("actions")&&<td><button className="button compact" onClick={() => setSelectedId(row.snapshotId)}>View report</button></td>}</tr>)}{shown.length === 0 && <tr><td colSpan={reportView.visibleCount}><div className="requester-records-empty"><strong>{busy ? "Loading reports…" : error ? "Reports unavailable" : index?.snapshots.length ? "No matching records" : "No saved stock reports yet"}</strong><span>{error || "Saved stock records will appear here. Missing reports do not mean there is no inventory."}</span></div></td></tr>}</tbody></table>
         </PaginatedTable>
         {index?.nextCursor && <div className="compliance-load-more"><button className="button compact" disabled={busy} onClick={() => setCursor(index.nextCursor!)}>Load more records</button><small>Pagination covers loaded records.</small></div>}
       </section>

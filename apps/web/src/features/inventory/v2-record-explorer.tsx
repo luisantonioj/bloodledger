@@ -1,15 +1,23 @@
 import { retryAfterContextChange } from "../../services/api/client";
 import { labelText } from "../../services/api/label-identity";
 import { PaginatedTable } from "../../components/ui/record-pagination";
+import { SortableHeader, TableViewBar, useTableView, type TableColumn } from "../../components/ui/table-view";
 import { useEffect, useRef, useState } from "react";
 import type { Principal } from "../../auth/permissions";
 import { formatBloodType, formatManilaDateTime, humanizeCode, statusClassName } from "../../components/ui/display";
-import { readSelectedRecord, recordErrorMessage, type RecordSelection, type SelectedRecord } from "../../services/api/v2-navigation";
+import { readSelectedRecord, recordErrorMessage, type RecordSelection, type ReservationDetail, type SelectedRecord } from "../../services/api/v2-navigation";
 import { componentLabel, facilityLabel } from "../transfers/requester-transfer-data";
 import { ExpiryState } from "./expiry-state";
 import { ExpiryEvaluation } from "./expiry-evaluation";
 import { ReconciliationHold } from "./reconciliation-hold";
 import { ReservationActions } from "../transfers/reservation-actions";
+
+const memberColumns: TableColumn<ReservationDetail["components"][number]>[] = [
+  { id: "componentId", label: "Component ID", sortValue: member => member.componentId },
+  { id: "component", label: "Component", sortValue: member => componentLabel(member.componentType) },
+  { id: "status", label: "Status", sortValue: member => humanizeCode(member.inventoryStatus) },
+  { id: "version", label: "Version", sortValue: member => member.inventoryVersion },
+];
 import { CommandRecovery } from "../commands/command-recovery";
 
 export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline = false, showRecovery = true, navigationLocked: externalNavigationLocked = false, onActionLockChange, headerHelp, renderExtra, renderBody}: {initial: RecordSelection; principal: Principal; onClose: () => void; onRefresh?: () => void; inline?: boolean; showRecovery?: boolean; navigationLocked?: boolean; onActionLockChange?:(locked:boolean)=>void; headerHelp?: React.ReactNode; renderBody?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode; renderExtra?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode}) {
@@ -46,6 +54,7 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
   const component = record?.kind === "component" ? record.value : undefined;
   const reservation = record?.kind === "reservation" ? record.value : undefined;
   const request = record?.kind === "request" ? record.value : undefined;
+  const members = useTableView("reservation-members", memberColumns, reservation?.components ?? []), showMember = members.isVisible;
   const refresh = () => {setRetry(value => value + 1); onRefresh?.();};
   return <div className={inline ? "requester-inline-detail" : "preview-modal-backdrop"}><section ref={panel} className={inline ? "requester-record-detail" : "preview-modal record-explorer-modal"} role={inline ? "region" : "dialog"} aria-modal={inline ? undefined : true} aria-labelledby="record-explorer-title" onKeyDown={keyDown}>
     <header><div><h2 id="record-explorer-title">{selected.kind === "component" ? "Component details" : selected.kind === "reservation" ? (renderExtra ? "Transfer details" : "Reservation details") : (renderExtra ? "Request details" : "Transfer request details")}</h2>{(!renderBody || selected.kind === "component") && <p className="mono">{selected.id}</p>}</div>{reservation && !renderBody && <span className={statusClassName(reservation.status)}>{humanizeCode(reservation.status)}</span>}<button ref={closeButton} aria-label="Close record details" disabled={navigationLocked} onClick={onClose}>×</button>{headerHelp}</header>
@@ -74,9 +83,9 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
         {reservation.purpose === "TRANSFER" && reservation.transferId && <section className="reservation-linked-workflow"><div><h3>Linked transfer request</h3><p className="mono">{reservation.transferId}</p></div><button className="button compact" aria-label="Open linked transfer request" onClick={() => open("request", reservation.transferId!)}>View request</button></section>}
         {reservation.purpose === "LOCAL_RELEASE" && <section className="reservation-linked-workflow"><div><h3>Local-release workflow</h3><p className="mono">{reservation.localReleaseId}</p></div></section>}
         <section className="reservation-members"><header><h3>Reserved component members</h3><span>{reservation.components.length} unit{reservation.components.length === 1 ? "" : "s"}</span></header>
-          <PaginatedTable total={reservation.components.length} label="Reserved components" resetKey={reservation.reservationId} className="table-wrap reservation-members-table"><table><thead><tr><th>Component ID</th><th>Component</th><th>Status</th><th>Version</th></tr></thead><tbody>
-          {reservation.components.map(member => <tr key={member.componentId}><td><button className="bank-review-link mono" onClick={() => open("component", member.componentId)} aria-label={"Open member " + member.componentId}>{member.componentId}</button></td><td>{componentLabel(member.componentType)}</td><td><span className={statusClassName(member.inventoryStatus)+(member.inventoryStatus === "RESERVED" ? " inventory-status-reserved" : "")}>{humanizeCode(member.inventoryStatus)}</span></td><td>{member.inventoryVersion}</td></tr>)}
-          {reservation.components.length === 0 && <tr><td colSpan={4}>No current component members are returned.</td></tr>}
+          <PaginatedTable total={reservation.components.length} label="Reserved components" resetKey={reservation.reservationId+"|"+members.sortKey} className="table-wrap reservation-members-table" toolbar={<TableViewBar view={members}/>}><table><thead><tr><SortableHeader view={members} id="componentId">Component ID</SortableHeader><SortableHeader view={members} id="component">Component</SortableHeader><SortableHeader view={members} id="status">Status</SortableHeader><SortableHeader view={members} id="version">Version</SortableHeader></tr></thead><tbody>
+          {members.rows.map(member => <tr key={member.componentId}>{showMember("componentId")&&<td><button className="bank-review-link mono" onClick={() => open("component", member.componentId)} aria-label={"Open member " + member.componentId}>{member.componentId}</button></td>}{showMember("component")&&<td>{componentLabel(member.componentType)}</td>}{showMember("status")&&<td><span className={statusClassName(member.inventoryStatus)+(member.inventoryStatus === "RESERVED" ? " inventory-status-reserved" : "")}>{humanizeCode(member.inventoryStatus)}</span></td>}{showMember("version")&&<td>{member.inventoryVersion}</td>}</tr>)}
+          {reservation.components.length === 0 && <tr><td colSpan={members.visibleCount}>No current component members are returned.</td></tr>}
           </tbody></table></PaginatedTable>
         </section>
       </>}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { can, type Principal } from "../../auth/permissions";
 import { InformationHelp } from "../../components/ui/information-help";
 import { PaginatedTable } from "../../components/ui/record-pagination";
+import { SortableHeader, TableViewBar, timeValue, useTableView, type TableColumn } from "../../components/ui/table-view";
 import { RefreshButton } from "../../components/ui/refresh-button";
 import { formatBloodType, formatManilaDateTime } from "../../components/ui/display";
 import { useLiveData } from "../../hooks/use-live-data";
@@ -57,7 +58,19 @@ export function HospitalNetworkView({ principal }: { principal: Principal }) {
   const totals = V2_BLOOD_TYPES.map(type => networkComponentAvailable(selected, type, component, facilities.length));
   const componentName = component === "ALL" ? "All components" : componentLabel(component);
   const products = component === "ALL" ? V2_COMPONENT_TYPES : [component];
-  const matrix = facilities.flatMap(([id,label]) => products.map(product => ({id,label,product})));
+  const matrix = facilities.flatMap(([id,label]) => products.map(product => {
+    const bankRows = selected.filter(row => row.institutionId === id && row.component === product);
+    const oldest = bankRows.reduce<string | null>((date, row) => !date || Date.parse(row.updatedAt) < Date.parse(date) ? row.updatedAt : date, null);
+    return {id,label,product,bankRows,oldest};
+  }));
+  const matrixColumns: TableColumn<typeof matrix[number]>[] = [
+    { id: "bank", label: "Participating blood bank", sortValue: row => row.label },
+    { id: "component", label: "Component", sortValue: row => componentLabel(row.product) },
+    ...types.map(type => ({ id: type, label: formatBloodType(type), sortValue: (row: typeof matrix[number]) => row.bankRows.find(item => item.bloodType === type)?.available ?? null })),
+    { id: "redistributable", label: "Redistributable" },
+    { id: "updated", label: "Last updated", sortValue: row => timeValue(row.oldest) },
+  ];
+  const tableView = useTableView("network-matrix", matrixColumns, matrix), show = tableView.isVisible;
   const max = Math.max(1, ...totals.map(total => total ?? 0), ...facilities.flatMap(([id]) => V2_BLOOD_TYPES.map(type => networkComponentAvailable(selected.filter(row=>row.institutionId===id),type,component,1) ?? 0)));
   const reportedInventory = ready ? state.data!.inventory.filter(row => component === "ALL" || row.component === component).reduce((sum, row) => sum + row.confirmedCount, 0) : null;
   const zeroTypes = ready && totals.every(total => total !== null) ? totals.filter(total => total === 0).length : null;
@@ -90,17 +103,15 @@ export function HospitalNetworkView({ principal }: { principal: Principal }) {
     </section>
     <section className="bank-record-card consortium-matrix-card">
       <header className="bank-section-heading"><h2>Blood Bank Availability Matrix</h2><div className="bank-toolbar-actions">{bloodType && <button className="button compact" onClick={() => setBloodType("")}>Clear blood type</button>}</div><InformationHelp label="Blood Bank Availability Matrix">Each row shows a facility and component. All shows each of the five components separately; selecting one component narrows the chart and matrix together. Reserved units appear underneath when reported. Missing records stay unavailable; they are not treated as zero. These summaries do not reserve units or guarantee supply. Create blood requests from the Dashboard or Requests & Transfers page.</InformationHelp></header>
-      <PaginatedTable total={ready ? matrix.length : 0} resetKey={component + "|" + bloodType} label="Blood bank component records" ready={ready}>
-        <table className="data-table consortium-matrix"><thead><tr><th>Participating blood bank</th><th>Component</th>{types.map(type => <th key={type}>{formatBloodType(type)}</th>)}<th>Redistributable</th><th>Last updated</th></tr></thead><tbody>
-          {ready && matrix.map(({id, label, product}) => {
-            const bankRows = selected.filter(row => row.institutionId === id && row.component === product);
-            const oldest = bankRows.reduce<string | null>((date, row) => !date || Date.parse(row.updatedAt) < Date.parse(date) ? row.updatedAt : date, null);
-            return <tr key={id+product}><td><strong>{label}</strong></td><td>{componentLabel(product)}</td>{types.map(type => {
+      <PaginatedTable total={ready ? matrix.length : 0} resetKey={component + "|" + bloodType + "|" + tableView.sortKey} label="Blood bank component records" ready={ready} toolbar={<TableViewBar view={tableView}/>}>
+        <table className="data-table consortium-matrix"><thead><tr><SortableHeader view={tableView} id="bank">Participating blood bank</SortableHeader><SortableHeader view={tableView} id="component">Component</SortableHeader>{types.map(type => <SortableHeader key={type} view={tableView} id={type}>{formatBloodType(type)}</SortableHeader>)}<SortableHeader view={tableView} id="redistributable">Redistributable</SortableHeader><SortableHeader view={tableView} id="updated">Last updated</SortableHeader></tr></thead><tbody>
+          {ready && tableView.rows.map(({id, label, product, bankRows, oldest}) => {
+            return <tr key={id+product}>{show("bank")&&<td><strong>{label}</strong></td>}{show("component")&&<td>{componentLabel(product)}</td>}{types.filter(show).map(type => {
               const row = bankRows.find(item => item.bloodType === type);
               return <td key={type}><strong>{row?.available ?? "—"}</strong><small>{row?.reserved !== null && row?.reserved !== undefined ? row.reserved + " reserved" : "Reserved: —"}</small></td>;
-            })}<td>—<small>Not supplied</small></td><td>{oldest ? formatManilaDateTime(oldest) : "—"}</td></tr>;
+            })}{show("redistributable")&&<td>—<small>Not supplied</small></td>}{show("updated")&&<td>{oldest ? formatManilaDateTime(oldest) : "—"}</td>}</tr>;
           })}
-          {(!ready || !facilities.length) && <tr><td colSpan={types.length + 4}><div className="requester-records-empty" role={error ? "alert" : "status"}><strong>{!ready ? state.busy ? "Loading network inventory…" : "Network inventory unavailable" : "No network records available"}</strong><span>{error || "Reported facility inventory will appear here. Missing reports do not mean there is no stock."}</span></div></td></tr>}
+          {(!ready || !facilities.length) && <tr><td colSpan={tableView.visibleCount}><div className="requester-records-empty" role={error ? "alert" : "status"}><strong>{!ready ? state.busy ? "Loading network inventory…" : "Network inventory unavailable" : "No network records available"}</strong><span>{error || "Reported facility inventory will appear here. Missing reports do not mean there is no stock."}</span></div></td></tr>}
         </tbody></table>
       </PaginatedTable>
     </section>
