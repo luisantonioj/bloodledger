@@ -49,10 +49,8 @@ export function AccessPage({ onAuthenticated }: { onAuthenticated: (principal: P
             {error && <p className="auth-error" role="alert">{error}</p>}
             <button className="button primary auth-submit" disabled={submitting}>{submitting ? "Signing in..." : "Sign in"}</button>
           </form>
-          <div className="auth-scope-note"><strong>Server-assigned access</strong><span>Your role and institution scope cannot be selected or changed from this screen.</span></div>
         </>}
       </div>
-      <footer className="auth-footer">Permissioned access for authorized synthetic participants only.</footer>
     </section>
   </main>;
 }

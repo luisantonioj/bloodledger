@@ -30,30 +30,31 @@ async function mock(page: Page, role: "ROLE-01" | "ROLE-03" | "ROLE-04", overrid
   });
 }
 
-test("TP-LAT-001 inventory clears changed contract evidence and rejects late responses at narrow width", async ({ page }) => {
+test("TP-LAT-001 inventory preserves confirmed evidence and rejects late refresh responses at narrow width", async ({ page }) => {
   let release: (() => void) | undefined;
   let started = false;
   let calls = 0;
+  await page.clock.install();
   await mock(page, "ROLE-01", async (route, path) => {
     if (path !== "/api/v2/components") return false;
-    const version = route.request().headers()["x-bloodledger-contract-version"];
     calls++;
-    if (version === "V2.1") { started = true; await new Promise<void>(resolve => { release = resolve; }); }
-    await json(route, { scope: "INSTITUTION", classification: "SIMULATION_ONLY", components: [{ ...component, componentId: version === "V2.1" ? "COMP_LAT_OLD_V21" : calls === 1 ? "COMP_LAT_INITIAL" : "COMP_LAT_LATEST" }] });
+    const delayed = calls === 2;
+    if (delayed) { started = true; await new Promise<void>(resolve => { release = resolve; }); }
+    await json(route, { scope: "INSTITUTION", classification: "SIMULATION_ONLY", components: [{ ...component, componentId: delayed ? "COMP_LAT_OLD_REFRESH" : calls === 1 ? "COMP_LAT_INITIAL" : "COMP_LAT_LATEST" }] });
     return true;
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/inventory");
   await expect(unit(page, "COMP_LAT_INITIAL")).toBeVisible();
-  await page.locator(".bank-view-options summary").click();
-  await page.getByLabel("Contract view").selectOption("V2.1");
+  await expect(page.locator(".bank-view-options, .inventory-intake-options")).toHaveCount(0);
+  await page.getByRole("button", { name: "Refresh", exact: true }).click();
   await expect.poll(() => started).toBe(true);
-  await expect(dataRows(page)).toHaveCount(0);
-  await page.getByLabel("Contract view").selectOption("V2");
+  await expect(unit(page, "COMP_LAT_INITIAL")).toBeVisible();
+  await page.clock.fastForward(5_000);
   await expect(unit(page, "COMP_LAT_LATEST")).toBeVisible();
-  const oldResponse = page.waitForResponse(response => response.url().endsWith("/api/v2/components") && response.request().headers()["x-bloodledger-contract-version"] === "V2.1");
+  const oldResponse = page.waitForResponse(response => response.url().endsWith("/api/v2/components"));
   release?.(); await oldResponse;
-  await expect(unit(page, "COMP_LAT_OLD_V21")).toHaveCount(0);
+  await expect(unit(page, "COMP_LAT_OLD_REFRESH")).toHaveCount(0);
   await expect(unit(page, "COMP_LAT_LATEST")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

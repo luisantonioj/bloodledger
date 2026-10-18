@@ -40,8 +40,16 @@ export function ApplicationShell({ principal, path, navigation, onNavigate, onSi
 }) {
   const currentLabel = navigation.find((item) => item.href === path)?.label ?? "Unavailable";
   const help = pageHelp(path, principal);
-  const facilityName = principal.institutionId === "INST_SYNTH_METROLIPA" ? "Metro Lipa Medical Center" : principal.institutionDisplayName;
-  const accountName = principal.accountId && principal.institutionId === "INST_SYNTH_METROLIPA" ? facilityName : principal.displayName;
+  const facilityNames: Record<string, string> = {
+    INST_MEDIATRIX: "Mary Mediatrix Medical Center",
+    INST_SYNTH_MEDIX: "Lipa Medix Medical Center",
+    INST_SYNTH_NLVILLA: "N.L. Villa Memorial Medical Center",
+    INST_SYNTH_METROLIPA: "Metro Lipa Medical Center",
+    INST_SYNTH_PRC: "PRC Lipa City Chapter",
+    INST_SYNTH_DOH: "DOH-CHD CALABARZON",
+  };
+  const facilityName = facilityNames[principal.institutionId] ?? principal.institutionDisplayName;
+  const accountName = facilityName.replace(/\bsynthetic\b\s*/gi, "").trim() || facilityName;
   let previousSection = "";
   return <div className="shell">
     <aside className="side">

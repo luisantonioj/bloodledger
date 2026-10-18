@@ -1148,4 +1148,52 @@ Analytics header alignment: keep Refresh and Information in one non-growing acti
 
 ### 2026-10-18 Table sort and column visibility
 
-Main record tables (inventory, transactions, receipts, activity, requests and transfers, PRC supply, accounts, compliance and census records, network matrices, and analytics detail tables) add two viewer controls without changing table format. Columns, cell markup, styling, default row order, pagination, empty states and existing page filters are unchanged. Clicking a sortable header cycles ascending, descending and the table's default order. `aria-sort` and a CSS-only ▲/▼ show the state, so header text and accessible names stay the same. A compact Columns button above the table opens a checkbox list with Reset view. Action columns cannot be hidden, at least one data column always stays visible, and the button is omitted when fewer than two columns can be hidden. Sorting covers loaded rows only; cursor-loaded tables re-sort as more rows load. Each table remembers its sort and hidden columns in browser storage. Only column identifiers and sort direction are stored, never record data, and blocked storage falls back to the default view. PDF exports follow the on-screen sort, record it in the filter line, and keep every column. Placeholder text such as "Not available" sorts with missing values, last. Recorded urgency sorts by rank (Routine, Urgent, Critical). Small dashboard summary tables, the redistribution approval snapshot, the empty redistribution-assessment table and frontend-only parity previews are unchanged.
+Main record tables (inventory, transactions, receipts, activity, requests and transfers, PRC supply, accounts, compliance and census records, network matrices, and analytics detail tables) add two viewer controls without changing table format. Columns, cell markup, styling, default row order, pagination, empty states and existing page filters are unchanged. Clicking a sortable header alternates ascending and descending; Reset view restores the table's default order. `aria-sort` and decorative paired arrows show the state while preserving header names. A compact Columns button beside existing filters, or above tables without filters, opens a checkbox list with Reset view. Action columns cannot be hidden, at least one data column always stays visible, and the button is omitted when fewer than two columns can be hidden. Sorting covers loaded rows only; cursor-loaded tables re-sort as more rows load. Each table remembers its sort and hidden columns in browser storage. Only column identifiers and sort direction are stored, never record data, and blocked storage falls back to the default view. PDF exports follow the on-screen sort, record it in the filter line, and keep every column. Placeholder text such as "Not available" sorts with missing values, last. Recorded urgency sorts by rank (Routine, Urgent, Critical). Small dashboard summary tables, the redistribution approval snapshot, the empty redistribution-assessment table and frontend-only parity previews are unchanged.
+
+### 2026-10-18 Access and bank-dashboard presentation cleanup
+
+Sign-in removes the server-assigned-access notice and permissioned-access footer.
+Application choices use a blood-drop icon for blood banks and a hospital icon
+for requestors. Blood-bank summary cards show labels and values only; unavailable
+values remain an accessible em dash. The dashboard expiry link and network
+projection-time disclosure are removed. Inventory expiry filtering and network
+aggregate calculations retain their existing behavior.
+
+### 2026-10-18 Table filters and visible sorting controls
+
+Place Columns beside existing search and filter fields for inventory, unit
+transactions, requests, transfers, PRC supply, activity, staff and stock-report
+lists. The control wraps on narrow screens and preserves saved column choices.
+All shared sortable headers show paired arrows before interaction, highlight
+the active direction, and alternate ascending/descending on each click. Reset
+view restores the supplied order. Sorts apply to loaded rows before pagination;
+PDF headers and missing-value handling retain their existing semantics.
+
+2026-10-18 table-density follow-up: column choices use left-aligned labels and
+right-aligned 14px checkboxes with consistent row spacing. Paired sort arrows
+have a visible gap. Sortable headings stay on one line; operational transaction,
+transfer, PRC and activity tables size columns by their content instead of fixed
+percentages, retaining horizontal scrolling where the available width requires it.
+
+2026-10-18 inventory cleanup: remove the bottom Inventory view options and
+Inbound intake status disclosures. Inventory keeps its account-selected
+contract, filters, record details and refresh controls; the hidden intake
+summary no longer adds an API dependency to inventory refresh.
+
+2026-10-18 transaction and request follow-up: unit history automatically follows
+server cursors when the Transactions screen opens or refreshes. Remove its loaded
+row footer and Load more control; keep local pagination and errors. A failed
+batch preserves fetched records and stops automatic loading until Refresh.
+Blood Requests uses the full content width, with selected details below. Show
+only the request decision badge in one line; reservation state remains in the
+record details instead of a second status line.
+
+2026-10-18 saved-stock pagination: use compact arrow buttons and tighter gaps in
+the narrow Saved Stock Records card. Keep the four navigation controls, page
+indicator and record count on one row, with controls centered and the count at
+the right; other table pagination stays unchanged.
+
+2026-10-18 sidebar identity: show the logged-in institution name instead of
+the generic account display name. Existing hospital, PRC and DOH accounts use
+their full facility labels; omit Synthetic from the visible name. Keep the
+name on one line with an ellipsis and the full value in its hover title.

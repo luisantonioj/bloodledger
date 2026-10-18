@@ -1,6 +1,5 @@
 import {useValidatedRead} from "../../hooks/use-validated-read";
 import {parseNetworkAvailability} from "../../services/api/blood-bank-completion";
-import {formatManilaDateTime} from "../../components/ui/display";
 import { DashboardRedistribution } from "./dashboard-redistribution";
 import { PaginatedTable, RecordPagination } from "../../components/ui/record-pagination";
 import { SortableHeader, TableViewBar, useTableView, type TableColumn } from "../../components/ui/table-view";
@@ -68,7 +67,6 @@ export function RequesterDashboard({ data, principal, requests, bankMode=false }
           <div className="requester-availability-quantity"><strong aria-label={available === null ? "Unavailable" : undefined}>{available ?? "—"}</strong><span>{bankMode?"City-wide, label-current available":"network units available"}</span></div>
           <div className="requester-availability-status"><span className={available !== null && available > 0 ? "status success" : "status warning"}>{available === null ? "Availability unavailable" : available > 0 ? "Current supply available" : "No current supply"}</span><small>{available === null ? "Waiting for a confirmed network projection." : "Availability does not guarantee request approval."}</small></div>
         </div>
-        {bankMode&&network.data&&<details><summary>Institution projection times</summary><ul>{[...new Map(network.data.rows.map(row=>[row.institutionId,row])).values()].map(row=><li key={row.institutionId}>{row.institutionDisplayName} · {row.lastProjectedAt?formatManilaDateTime(row.lastProjectedAt):"Projection time unavailable"}</li>)}</ul><small>As of {formatManilaDateTime(network.data.asOf)} · Absent products mean 0 recorded.</small></details>}
       </div>
     </section>
   </div>;
