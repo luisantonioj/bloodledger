@@ -15,7 +15,7 @@ const permissions = {
 const navigation: Record<RoleId, string[]> = {
   "ROLE-01": ["Dashboard", "Blood Inventory", "Blood Unit Transactions", "Requests & Transfers", "Alerts", "Analytics", "Profile"],
   "ROLE-02": ["Dashboard", "Blood Inventory", "Blood Unit Transactions", "Requests & Transfers", "Alerts", "Activity History", "Analytics", "Profile"],
-  "ROLE-03": ["Dashboard", "Blood Unit Receipt", "Requests & Transfers", "Alerts", "Analytics", "Profile"],
+  "ROLE-03": ["Dashboard", "Blood Unit Receipt", "Requests & Transfers", "Alerts", "Activity History", "Analytics", "Profile"],
   "ROLE-04": ["Dashboard", "Blood Inventory", "Requests & Transfers", "Alerts", "Activity History", "Network view", "Reports", "Profile"],
   "ROLE-05": ["Dashboard", "Profile", "Staff Accounts"],
   "ROLE-06": ["Dashboard", "Profile", "Staff Accounts"],
@@ -145,9 +145,8 @@ for (const roleId of Object.keys(navigation) as RoleId[]) {
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
     await expect(page.locator("nav a > span")).toHaveText(navigation[roleId]);
     await expect(page.locator(".side-brand")).toBeVisible();
-    await expect(page.locator(".facility-context")).toBeVisible();
+    await expect(page.locator(".session-profile")).toContainText(activePrincipal.displayName);
     await expect(page.locator(".page-head")).toBeVisible();
-    await expect(page.getByText(activePrincipal.institutionDisplayName, { exact: true })).toBeVisible();
     await expect(page.locator(".top-status")).toHaveCount(0);
   });
 }
@@ -163,10 +162,10 @@ test("two synthetic secondary hospitals share structure while retaining distinct
       if (path !== "/api/v1/dashboard") return false;
       await fulfillJson(route, { ...dashboardFor("ROLE-03"), inventory: [{ ...aggregate, institutionId, institutionDisplayName, confirmedCount, bloodType: "O_POSITIVE", component: "PACKED_RED_BLOOD_CELLS" }] });
       return true;
-    }, { institutionId, institutionDisplayName });
+    }, { institutionId, institutionDisplayName, displayName: `${institutionDisplayName} operator` });
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
-    await expect(page.locator(".facility-context")).toContainText(institutionDisplayName);
+    await expect(page.locator(".session-profile")).toContainText(`${institutionDisplayName} operator`);
     await expect(page.getByRole("heading", { name: "My Requests", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Blood Inventory Overview", exact: true })).toHaveCount(0);
     const confirmed = page.locator(".requester-availability-quantity strong");
@@ -186,9 +185,9 @@ test("PRC, DOH, and administrators receive truthful non-operational compositions
   for (const [roleId, institutionId, institutionDisplayName, eyebrow] of cases) {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await authenticatedApi(page, roleId, undefined, { institutionId, institutionDisplayName });
+    await authenticatedApi(page, roleId, undefined, { institutionId, institutionDisplayName, displayName: `${institutionDisplayName} operator` });
     await page.goto("/");
-    await expect(page.getByText(institutionDisplayName, { exact: true })).toBeVisible();
+    await expect(page.locator(".session-profile")).toContainText(`${institutionDisplayName} operator`);
     await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
     await expect(page.getByRole("main").locator(".page-head .eyebrow")).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Open capture workspace" })).toHaveCount(0);
@@ -234,12 +233,13 @@ test("login fails safely, then accepts only the server-returned principal and ca
   await page.getByRole("tab", { name: "Apply for access" }).click();
   await expect(page.getByRole("heading", { name: "How will your facility participate?" })).toBeVisible();
   await page.getByRole("button", { name: /Apply as a Blood Bank/ }).click();
-  await expect(page.getByLabel("Private invitation secret")).toBeVisible();
-  await expect(page.getByText("A PRC invitation is required.", { exact: false })).toBeVisible();
+  // The public four-step application replaced the PRC invitation step; access-application.spec covers it in full.
+  await expect(page.getByText("Blood Bank application", { exact: true })).toBeVisible();
+  await expect(page.getByText("Step 1 of 4 · Facility", { exact: false })).toBeVisible();
   await page.getByRole("tab", { name: "Sign in" }).click();
   await expect(page.getByText("Server-assigned access", { exact: true })).toBeVisible();
-  await page.getByLabel("Username").fill("synth_browser_user");
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Institution email or username", { exact: true }).fill("synth_browser_user");
+  await page.getByRole("textbox", { name: "Password", exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("alert")).toHaveText("Credentials were not accepted.");
   await page.getByRole("button", { name: "Sign in" }).click();
@@ -698,7 +698,7 @@ test("regulatory navigation renders every selected read-only page and CSV bounda
     expect(pageErrors).toEqual([]);
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /Submit|Approve|Acknowledge|Dispatch|Receipt/ })).toHaveCount(0);
-    if (path === "/consortium") await expect(page.locator(".regulatory-stats")).toBeVisible();
+    if (path === "/consortium") await expect(page.locator(".consortium-summary-grid")).toBeVisible();
     if (path === "/audit") await expect(page.locator(".audit-summary")).toHaveCount(0);
     if (path === "/reporting") await expect(page.locator(".report-summary")).toBeVisible();
     if (path === "/profile") await expect(page.locator(".profile-identity")).toBeVisible();
@@ -865,7 +865,7 @@ for (const [accountType, roleId] of [["Blood bank", "ROLE-02"], ["Requestor", "R
       if (calls === 2) await new Promise<void>(resolve => { release = resolve; });
       await fulfillJson(route, { ...dashboardFor(roleId), inventory: [{ ...aggregate, confirmedCount: calls === 1 ? 2 : 7 }], lastSuccessfulProjectionAt: calls === 1 ? timestamp : "2026-10-09T01:00:00.000Z" });
       return true;
-    }, { institutionDisplayName: `Synthetic ${accountType}` });
+    }, { institutionDisplayName: `Synthetic ${accountType}`, displayName: `Synthetic ${accountType} operator` });
     await page.goto("/");
     await expect(page.locator(".dashboard-updated time")).toHaveAttribute("datetime", timestamp);
     await page.evaluate(() => { (window as unknown as { refreshMarker: string }).refreshMarker = "same-page"; });
@@ -881,7 +881,7 @@ for (const [accountType, roleId] of [["Blood bank", "ROLE-02"], ["Requestor", "R
     await expect(refresh).toBeEnabled();
     await expect(page.locator(".dashboard-updated time")).toHaveAttribute("datetime", "2026-10-09T01:00:00.000Z");
     expect(await page.evaluate(() => (window as unknown as { refreshMarker: string }).refreshMarker)).toBe("same-page");
-    await expect(page.locator(".facility-context")).toContainText(`Synthetic ${accountType}`);
+    await expect(page.locator(".session-profile")).toContainText(`Synthetic ${accountType} operator`);
   });
 }
 
