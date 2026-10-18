@@ -6,6 +6,10 @@ const component = { componentId: "COMP_LAT_INITIAL", donationId: "DON_LAT_INITIA
 const aggregate = { institutionId: "INST_MEDIATRIX", institutionDisplayName: "Synthetic Lat Inventory", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", inventoryStatus: "AVAILABLE", confirmedCount: 3, lastProjectedAt: instant };
 const alert = { alertId: "ALERT_LAT_001", unitId: "UNIT_LAT_ALERT", bloodType: "A_POSITIVE", component: "RED_BLOOD_CELLS", institutionId: "INST_MEDIATRIX", alertType: "NEAR_EXPIRY", severity: "WARNING", status: "OPEN", thresholdVersion: "SYNTHETIC_EXPIRY_V1", evaluatedAt: instant, expiresAt: "2026-10-08T04:00:00.000Z", acknowledged: false };
 const report = { reportType: "CITY_INVENTORY_SUMMARY", scope: "CITY_AGGREGATE", generatedAt: instant, inventory: [aggregate], alerts: [], transferSummary: [], disclaimer: "Synthetic prototype report; not an official filing.", classification: "SIMULATION_ONLY" };
+// Inventory rows show label identity; the component ID is the row button's accessible name.
+const unit = (page: Page, componentId: string) => page.getByRole("button", { name: "Open component " + componentId, exact: true });
+// The table keeps one empty-state row; data rows are the ones carrying a component button.
+const dataRows = (page: Page) => page.getByRole("button", { name: /^Open component / });
 function json(route: Route, body: unknown, status = 200) { return route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) }); }
 async function mock(page: Page, role: "ROLE-01" | "ROLE-03" | "ROLE-04", override: (route: Route, path: string) => Promise<boolean> = async () => false) {
   const institutionId = role === "ROLE-03" ? "INST_LAT_RECIPIENT" : role === "ROLE-04" ? "INST_LAT_REGULATOR" : "INST_MEDIATRIX";
@@ -40,17 +44,17 @@ test("TP-LAT-001 inventory clears changed contract evidence and rejects late res
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/inventory");
-  await expect(page.getByText("COMP_LAT_INITIAL", { exact: true })).toBeVisible();
+  await expect(unit(page, "COMP_LAT_INITIAL")).toBeVisible();
   await page.locator(".bank-view-options summary").click();
   await page.getByLabel("Contract view").selectOption("V2.1");
   await expect.poll(() => started).toBe(true);
-  await expect(page.locator(".inventory-table tbody tr")).toHaveCount(0);
+  await expect(dataRows(page)).toHaveCount(0);
   await page.getByLabel("Contract view").selectOption("V2");
-  await expect(page.getByText("COMP_LAT_LATEST", { exact: true })).toBeVisible();
+  await expect(unit(page, "COMP_LAT_LATEST")).toBeVisible();
   const oldResponse = page.waitForResponse(response => response.url().endsWith("/api/v2/components") && response.request().headers()["x-bloodledger-contract-version"] === "V2.1");
   release?.(); await oldResponse;
-  await expect(page.getByText("COMP_LAT_OLD_V21", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("COMP_LAT_LATEST", { exact: true })).toBeVisible();
+  await expect(unit(page, "COMP_LAT_OLD_V21")).toHaveCount(0);
+  await expect(unit(page, "COMP_LAT_LATEST")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
@@ -61,12 +65,12 @@ test("TP-LAT-002 foreign inventory rows fail closed after a successful load", as
     await json(route, { scope: "INSTITUTION", components: [{ ...component, componentId: "COMP_LAT_FOREIGN", institutionId: "INST_LAT_FOREIGN" }], classification: "SIMULATION_ONLY" }); return true;
   });
   await page.goto("/inventory");
-  await expect(page.getByText("COMP_LAT_INITIAL", { exact: true })).toBeVisible();
+  await expect(unit(page, "COMP_LAT_INITIAL")).toBeVisible();
   foreign = true;
   await page.getByRole("button", { name: "Refresh", exact: true }).click();
-  await expect(page.getByText("Inventory unavailable", { exact: true })).toBeVisible();
-  await expect(page.locator(".inventory-table tbody tr")).toHaveCount(0);
-  await expect(page.getByText("COMP_LAT_FOREIGN", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Inventory could not refresh", { exact: true })).toBeVisible();
+  await expect(dataRows(page)).toHaveCount(0);
+  await expect(unit(page, "COMP_LAT_FOREIGN")).toHaveCount(0);
 });
 
 for (const status of [401, 403]) for (const feature of ["inventory", "alerts", "reporting"] as const) {
@@ -79,12 +83,13 @@ for (const status of [401, 403]) for (const feature of ["inventory", "alerts", "
     });
     await page.goto("/" + feature);
     const marker = feature === "inventory" ? "COMP_LAT_INITIAL" : feature === "alerts" ? "UNIT_LAT_ALERT" : "Synthetic Lat Inventory";
-    await expect(page.getByText(marker, { exact: true })).toBeVisible();
+    const evidence = () => feature === "inventory" ? unit(page, marker) : page.getByText(marker, { exact: true });
+    await expect(evidence()).toBeVisible();
     denied = true;
     if (feature === "inventory") await page.getByRole("button", { name: "Refresh", exact: true }).click();
-    await expect(page.getByText(marker, { exact: true })).toHaveCount(0);
+    await expect(evidence()).toHaveCount(0);
     if (status === 401) await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
-    else await expect(page.getByText(feature === "inventory" ? "Inventory unavailable" : "Unable to load data", { exact: true })).toBeVisible();
+    else await expect(page.getByText(({ inventory: "Inventory could not refresh", alerts: "Alerts could not refresh", reporting: "Unable to load data" } as const)[feature], { exact: true })).toBeVisible();
   });
 }
 
@@ -100,12 +105,14 @@ for (const feature of ["alerts", "reporting"] as const) {
     const marker = feature === "alerts" ? "UNIT_LAT_ALERT" : "Synthetic Lat Inventory";
     await expect(page.getByText(marker, { exact: true })).toBeVisible();
     fail = true;
-    await expect(page.getByText("Update unavailable", { exact: true })).toBeVisible();
+    // Alerts uses its own refresh notice; Reports keeps the shared preserved-data notice.
+    const notice = feature === "alerts" ? "Alerts could not refresh" : "Update unavailable";
+    await expect(page.getByText(notice, { exact: true })).toBeVisible();
     await expect(page.getByText(marker, { exact: true })).toBeVisible();
-    await expect(page.getByText("Showing the last successfully loaded data.", { exact: true })).toBeVisible();
+    if (feature === "reporting") await expect(page.getByText("Showing the last successfully loaded data.", { exact: true })).toBeVisible();
     fail = false;
-    await page.getByRole("button", { name: "Retry update", exact: true }).click();
-    await expect(page.getByText("Update unavailable", { exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: feature === "alerts" ? "Retry" : "Retry update", exact: true }).click();
+    await expect(page.getByText(notice, { exact: true })).toHaveCount(0);
   });
 }
 
@@ -168,8 +175,8 @@ test("TP-LAT-007 reporting describes available discovery and keeps exports gated
   await mock(page, "ROLE-04");
   await page.goto("/reporting");
   await expect(page.getByRole("heading", {name:"DOH census snapshots",exact:true})).toBeVisible();
-  await expect(page.getByRole("button", {name:"Copy or export census",exact:true})).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Export fixed-layout PDF", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", {name:"Copy or export census unavailable",exact:true})).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Export fixed-layout PDF unavailable", exact: true })).toBeDisabled();
   await expect(page.getByRole("link", { name: "Download simulation CSV", exact: true })).toHaveAttribute("href", "/api/v1/reports/inventory.csv");
 });
 
