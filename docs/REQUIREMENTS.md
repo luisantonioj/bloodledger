@@ -589,6 +589,7 @@ withdrawal creates a new `SUBMITTED` application linked to the prior record.
 | PA-ACCOUNT-03 | Accepted prototype assumption | `SYNTHETIC_PUBLIC_APPLICATION_V1` | User via Lat handoff; implemented by Jopia / 2026-10-16 | Public synthetic Blood Bank and Requestor applications without an invitation; complete four-step synthetic form; ten-facility synthetic Fill Up catalog `SYNTHETIC_FACILITY_CATALOG_V1` with server-side claims; non-destructive deregistration releases a sample. PRC review, approval and separate activation remain. See [the decision](#pa-account-03--public-synthetic-applications-and-sample-facilities-2026-10-16). Resolves `RQ-13` for simulation only. | Approved applicant verification, abuse-prevention and recovery controls, real document handling and `RQ-14` retention |
 
 | PA-OCR-01 | Accepted prototype assumption | `SYNTHETIC_LABEL_LAYOUT_V1` | Jopia / 2026-10-17 | Three fictional label layouts (`MEDIATRIX`, `MEDIX`, `NLVILLA`) and their field semantics, used only to collect, review and benchmark the private OCR research corpus. They copy no real hospital label and use the existing synthetic Donation No. grammars. Extraction stays preview-only and non-submittable. `INBOUND_OCR_V1`, issuer policy and both OCR flags are unchanged. See [the decision](#pa-ocr-01--synthetic-label-layouts-for-the-ocr-corpus-2026-10-17). Not Mediatrix, Medix or N.L. Villa policy. | Approved institution label references for each bank and resolution of `RQ-02`, `RQ-03` and `RQ-19` |
+| PA-OCR-02 | Accepted prototype assumption | `SYNTHETIC_CAPTURE_LABEL_V2` | Jopia / 2026-10-18 | The synthetic five-line capture label may also print readable value forms: blood type and component with spaces instead of underscores, and dates as `YYYY-MM-DD`, meaning 00:00 UTC on that date. The device parser maps each form to exactly one V1 value, so the API payload, `INBOUND_OCR_V1`, the 90% per-field gate and operator confirmation are unchanged. Fictional labels only. See [the decision](#pa-ocr-02--readable-synthetic-capture-label-2026-10-18). | Approved real label structures and `RQ-02` resolution |
 
 Prototype-assumption versions are immutable. A replacement adds a new version,
 marks the earlier one superseded for new operations, preserves historical
@@ -724,6 +725,29 @@ ROLE-02) and `prc-supply:respond` (PRC reviewer). The additive migration
 `20261015000000000_create-prc-supply-requests.js` and
 `services/api/openapi-v2.json` are authoritative for the exact shape and error
 codes.
+
+## PA-OCR-02 — Readable synthetic capture label (2026-10-18)
+
+**Accepted by Jopia; SIMULATION_ONLY.** Phone-camera OCR was first measured on
+2026-10-18, before the defense demonstration. On the five-line synthetic
+capture label, Tesseract.js 7 read the values correctly but rarely reported 90%
+confidence on full UTC timestamps (`2026-10-18T00:00:00.000Z`) or underscore
+values (`A_POSITIVE`) once an image was slightly blurred or tilted. In a
+rendered test, no blurred or 1.5°-tilted date line out of 90 passed. The cause
+is the printed form, not the confidence rule, so this assumption adds readable
+forms under `SYNTHETIC_CAPTURE_LABEL_V2` and keeps the rule.
+
+| Rule | Decision |
+|---|---|
+| Scope | The synthetic five-line capture label only (`DONATION NO`, `BLOOD TYPE`, `COMPONENT`, `COLLECTED AT`, `EXPIRES AT`). It is not a real-label format and does not change `PA-OCR-01` corpus layouts, issuer policy, `RQ-02` or `RQ-03`. |
+| Readable forms | Blood type `A POSITIVE` … `O NEGATIVE` (one space) maps to `A_POSITIVE` … `O_NEGATIVE`. A component printed as uppercase words separated by single spaces maps to the same words joined by underscores, and must then be an enum value. A date `YYYY-MM-DD` maps to `YYYY-MM-DDT00:00:00.000Z`, the instant every V1 synthetic label already prints. V1 forms remain valid, and each field may use either form. |
+| Closed grammar | Mapping is exact and case-sensitive. Any other spelling, spacing or character, including `0` read for `O`, is left as printed and fails validation. It is never a repair of misread text. |
+| Unchanged | Exactly five lines, at least 90% confidence per field, explicit operator confirmation, no manual repair, volatile image and raw text, the `INBOUND_OCR_V1` payload and the API, database and chaincode. Manual review drafts still need full UTC timestamps. |
+| Evidence | The printed form is not recorded separately in the capture evidence; the payload is identical either way. Rendered-image measurements are not physical-camera evidence and support no accuracy claim. |
+
+Implemented in `apps/capture-pwa/src/capture-policy.ts`
+(`normalizePrintedValue`), with unit tests and a browser test of a readable
+label in `apps/web/e2e/scanner-ocr-workflows.spec.ts`.
 
 ## PA-OCR-01 — Synthetic label layouts for the OCR corpus (2026-10-17)
 

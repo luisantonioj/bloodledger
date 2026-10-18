@@ -57,6 +57,34 @@ describe("PA-S6-02 inbound OCR policy", () => {
     ])).toThrowError("CAPTURE_FIELD_NOT_ALLOWED");
   });
 
+  it("PA-OCR-02 maps readable printed forms to the exact V1 values", () => {
+    const readable = [
+      "DONATION NO: MM26-09-0001",
+      "BLOOD TYPE: AB NEGATIVE",
+      "COMPONENT: FRESH FROZEN PLASMA",
+      "COLLECTED AT: 2026-09-17",
+      "EXPIRES AT: 2027-09-17",
+    ].join("\n");
+    expect(parseInboundOcrText(readable, 96)).toEqual(parseInboundOcrText(text, 96));
+    expect(parseInboundOcrText(text.replace("AB_NEGATIVE", "AB NEGATIVE"), 96).label.bloodType).toBe("AB_NEGATIVE");
+  });
+
+  it("PA-OCR-02 accepts only the closed readable grammar and keeps the confidence gate", () => {
+    const cases = [
+      [text.replace("AB_NEGATIVE", "AB  NEGATIVE"), 99, "V2_BLOOD_TYPE_INVALID"],
+      [text.replace("AB_NEGATIVE", "ab negative"), 99, "V2_BLOOD_TYPE_INVALID"],
+      [text.replace("AB_NEGATIVE", "0 NEGATIVE"), 99, "V2_BLOOD_TYPE_INVALID"],
+      [text.replace("FRESH_FROZEN_PLASMA", "FROZEN PLASMA"), 99, "V2_COMPONENT_TYPE_INVALID"],
+      [text.replace("2026-09-17T00:00:00.000Z", "2026-02-30"), 99, "INBOUND_OCR_TIME_INVALID"],
+      [text.replace("2026-09-17T00:00:00.000Z", "2026-9-17"), 99, "INBOUND_OCR_TIME_INVALID"],
+      [text.replace("2027-09-17T00:00:00.000Z", "2026-09-17"), 99, "INBOUND_EXPIRY_INVALID"],
+      [text.replace("AB_NEGATIVE", "AB NEGATIVE"), 89, "INBOUND_OCR_CONFIDENCE_LOW"],
+    ] as const;
+    for (const [input, confidence, code] of cases) {
+      expect(() => parseInboundOcrText(input, confidence)).toThrowError(new CapturePolicyError(code));
+    }
+  });
+
   it("selects V2.1 only for cryoprecipitate", () => {
     expect(contractVersionFor("CRYOPRECIPITATE")).toBe("V2.1");
     expect(contractVersionFor("WHOLE_BLOOD")).toBe("V2");

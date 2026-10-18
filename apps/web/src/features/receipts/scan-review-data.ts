@@ -12,6 +12,8 @@ export function reviewOcrLines(lines:{text:string;confidence:number}[]){
  for(const line of lines){const match=/^\s*(DONATION NO|BLOOD TYPE|COMPONENT|COLLECTED AT|EXPIRES AT)\s*:\s*(.*?)\s*$/i.exec(line.text);if(!match)continue;const key=names[match[1].toUpperCase()];if(seen.has(key))throw Error("CAPTURE_DUPLICATE_FIELD");seen.add(key);draft[key]=match[2].slice(0,128);confidences[key]=Number.isFinite(line.confidence)?Math.round(line.confidence):0;}
  let verified:ReturnType<typeof parseInboundOcrLines>|undefined;
  try{verified=parseInboundOcrLines(lines);}catch{/* A draft is reviewable, not verified capture evidence. */}
+ // A readable printed form (PA-OCR-02) reviews as the exact value it maps to, so the unchanged draft stays verified.
+ if(verified)Object.assign(draft,verified.label);
  return {draft,confidences,verified,capturedAt:new Date().toISOString(),extraction:undefined as ExtractionEvidence|undefined,image:undefined as File|undefined};
 }
 export type ScanReview=ReturnType<typeof reviewOcrLines>;

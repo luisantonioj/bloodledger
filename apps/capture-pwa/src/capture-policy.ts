@@ -28,6 +28,17 @@ export class CapturePolicyError extends Error {
   }
 }
 
+// PA-OCR-02 SYNTHETIC_CAPTURE_LABEL_V2: the same five lines may print readable value forms, which phone OCR reads far
+// more reliably than underscores and full timestamps. Each maps to exactly one V1 value; anything else is left as
+// printed and fails validation. This is a closed grammar, never a repair of misread characters.
+const PRINTED_DATE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+export function normalizePrintedValue(field: "bloodType" | "componentType" | "collectedAt" | "expiresAt", value: string): string {
+  if (field === "bloodType") return value.replace(/^(A|B|AB|O) (POSITIVE|NEGATIVE)$/, "$1_$2");
+  if (field === "componentType") return /^[A-Z]+( [A-Z]+)+$/.test(value) ? value.replace(/ /g, "_") : value;
+  // A printed date is 00:00 UTC on that date, the instant every V1 synthetic label already prints.
+  return PRINTED_DATE.test(value) ? `${value}T00:00:00.000Z` : value;
+}
+
 function exactUtc(value: string): boolean {
   const milliseconds = Date.parse(value);
   return Number.isFinite(milliseconds) && new Date(milliseconds).toISOString() === value;
@@ -96,10 +107,10 @@ export function parseInboundOcrLines(lines: RecognizedLine[]): {
 
   const label = validateCapturedLabel({
     donationNumber: valueAfter("DONATION NO"),
-    bloodType: valueAfter("BLOOD TYPE") as BloodType,
-    componentType: valueAfter("COMPONENT") as ComponentType,
-    collectedAt: valueAfter("COLLECTED AT"),
-    expiresAt: valueAfter("EXPIRES AT"),
+    bloodType: normalizePrintedValue("bloodType", valueAfter("BLOOD TYPE")) as BloodType,
+    componentType: normalizePrintedValue("componentType", valueAfter("COMPONENT")) as ComponentType,
+    collectedAt: normalizePrintedValue("collectedAt", valueAfter("COLLECTED AT")),
+    expiresAt: normalizePrintedValue("expiresAt", valueAfter("EXPIRES AT")),
   });
   const fieldConfidence = validateConfidence({
     donationNumber: Math.round(matched.get("DONATION NO")!.confidence),
