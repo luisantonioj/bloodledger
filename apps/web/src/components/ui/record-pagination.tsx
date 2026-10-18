@@ -27,20 +27,21 @@ export function RecordPagination({ total, page = 0, onPage, label = "Records", r
 
 type TableChild = ReactElement<{ children?: ReactNode }>;
 // Paginate only body rows; headers, empty-state rows and row actions remain intact.
-export function PaginatedTable({ children, total, resetKey = "", label = "Records", className = "table-wrap", ready = true }: { children: TableChild; total: number; resetKey?: string; label?: string; className?: string; ready?: boolean }) {
+export function PaginatedTable({ children, total, resetKey = "", label = "Records", className = "table-wrap", ready = true, toolbar }: { children: TableChild; total: number; resetKey?: string; label?: string; className?: string; ready?: boolean; toolbar?: ReactNode }) {
   const pagination = useRecordPagination(Array.from({ length: total }), resetKey);
   const table = cloneElement(children, {}, Children.map(children.props.children, child => {
     if (!isValidElement<{ children?: ReactNode }>(child) || child.type !== "tbody" || total === 0) return child;
     const rows = Children.toArray(child.props.children);
     return cloneElement(child, {}, rows.slice(pagination.page * RECORDS_PER_PAGE, (pagination.page + 1) * RECORDS_PER_PAGE));
   }));
-  return <><div className={className}>{table}</div><RecordPagination {...pagination} label={label} ready={ready}/></>;
+  return <>{toolbar}<div className={className}>{table}</div><RecordPagination {...pagination} label={label} ready={ready}/></>;
 }
 
 // Cursor batches and visible table pages are separate. Fill a partial page before
 // advancing, so a batch boundary never skips records or pretends it is the end.
-export function CursorPaginatedTable({children,total,hasMore,busy,error,loadMore,ready,label="Records"}:{children:TableChild;total:number;hasMore:boolean;busy:boolean;error:string;loadMore:()=>void;ready:boolean;label?:string}){
+export function CursorPaginatedTable({children,total,hasMore,busy,error,loadMore,ready,label="Records",resetKey="",toolbar}:{children:TableChild;total:number;hasMore:boolean;busy:boolean;error:string;loadMore:()=>void;ready:boolean;label?:string;resetKey?:string;toolbar?:ReactNode}){
  const [page,setPage]=useState(0),[requested,setRequested]=useState<number>();
+ useEffect(()=>{setPage(0);},[resetKey]);
  const count=Math.max(1,Math.ceil(total/RECORDS_PER_PAGE)),current=Math.min(page,count-1);
  function navigate(next:number){
   const target=next>current&&hasMore?Math.min(next,Math.floor(total/RECORDS_PER_PAGE)):next;
@@ -57,5 +58,5 @@ export function CursorPaginatedTable({children,total,hasMore,busy,error,loadMore
   if(!isValidElement<{children?:ReactNode}>(child)||child.type!=="tbody"||total===0)return child;
   return cloneElement(child,{},Children.toArray(child.props.children).slice(current*RECORDS_PER_PAGE,(current+1)*RECORDS_PER_PAGE));
  }));
- return <><div className="table-wrap">{table}</div><RecordPagination total={total} page={current} onPage={navigate} ready={ready} hasMore={hasMore} busy={busy} label={label}/>{busy&&<p className="bank-action-note" role="status">Loading activity records…</p>}{error&&<p role="alert">{error}</p>}</>;
+ return <>{toolbar}<div className="table-wrap">{table}</div><RecordPagination total={total} page={current} onPage={navigate} ready={ready} hasMore={hasMore} busy={busy} label={label}/>{busy&&<p className="bank-action-note" role="status">Loading activity records…</p>}{error&&<p role="alert">{error}</p>}</>;
 }
