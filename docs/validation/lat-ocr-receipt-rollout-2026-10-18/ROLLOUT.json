@@ -83,5 +83,111 @@
     "account creation",
     "census/forecast",
     "Fabric change"
-  ]
+  ],
+  "liveReceiptTest": {
+    "date": "2026-10-18",
+    "authorization": [
+      "L1",
+      "L2",
+      "L3",
+      "L4",
+      "L5"
+    ],
+    "l5": "one fresh fictional Mediatrix unit registered through OCR intake because every labelled AVAILABLE Mediatrix unit on this host was past label expiry",
+    "firstAttempt": {
+      "result": "STOPPED_BEFORE_WRITE",
+      "code": "LABELLED_STOCK_UNAVAILABLE",
+      "writes": 0
+    },
+    "backupBefore": {
+      "tableDataEntries": 62,
+      "sha256": "5a64363f4c74025906a821a32edb440b4fdee01a7eee34295d72c383f74c1043"
+    },
+    "window": {
+      "startedAt": "2026-10-17T23:49:42.119Z",
+      "finishedAt": "2026-10-17T23:55:16.016Z"
+    },
+    "product": {
+      "bloodType": "O_POSITIVE",
+      "componentType": "WHOLE_BLOOD",
+      "source": "INST_MEDIATRIX",
+      "destination": "INST_SYNTH_MEDIX"
+    },
+    "intake": {
+      "step": "I0",
+      "status": "COMMITTED",
+      "evidenceSources": "OCR_LABEL",
+      "note": "API-level capture of a fictional label; no label image was read"
+    },
+    "workflow": {
+      "A1_transfer": "COMMITTED",
+      "A2_reserve": "COMMITTED",
+      "A3_prepare": "COMMITTED",
+      "A4_dispatch": "COMMITTED",
+      "A5_transit": "COMMITTED",
+      "R1_receive": "COMMITTED"
+    },
+    "settleMs": {
+      "min": 4219,
+      "max": 9650
+    },
+    "negatives": {
+      "N1_receiveWithoutEvidence": {
+        "code": "RECEIPT_VERIFICATION_REQUIRED",
+        "queued": 0,
+        "result": "PASS"
+      },
+      "N2_wrongComponent": {
+        "code": "RECEIPT_LABELS_MISMATCH",
+        "queued": 0,
+        "result": "PASS"
+      },
+      "N3_intakeOfInTransitUnit": {
+        "code": "INBOUND_RECEIPT_REQUIRED",
+        "queued": 0,
+        "result": "PASS"
+      }
+    },
+    "verification": {
+      "policyVersion": "INBOUND_RECEIPT_LABEL_VERIFICATION_V1",
+      "matchedUnits": 1,
+      "evidenceIdPattern": "RCV_[A-F0-9]{40}",
+      "replaySameEvidence": true
+    },
+    "outcome": {
+      "reservationStatus": "RECEIVED",
+      "componentInstitution": "INST_SYNTH_MEDIX",
+      "componentStatus": "RECEIVED",
+      "result": "PASS"
+    },
+    "counts": {
+      "v2_commands": [
+        606,
+        613
+      ],
+      "v2_reservations": [
+        30,
+        31
+      ],
+      "v2_components": [
+        531,
+        532
+      ],
+      "v2_receipt_verifications": [
+        0,
+        1
+      ],
+      "v2_outbound_verifications": [
+        0,
+        0
+      ],
+      "nonTerminalCommandsAfter": 0
+    },
+    "ledgerHeight": [
+      1185,
+      1192
+    ],
+    "worker": "started by the user for the test and stopped afterwards",
+    "private": "Donation No., credentials and the harness stay in the ignored build/lat-ocr-rollout-private/"
+  }
 }
