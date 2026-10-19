@@ -8,7 +8,7 @@ const FIELDS = Object.keys(GRAMMAR);
 const files = readdirSync('..').filter(f => /^pred-.*\.json$/.test(f));
 const table = [];
 for (const f of files) {
-  const {model: raw, rows} = JSON.parse(readFileSync('../' + f, 'utf8')); const model = raw.startsWith('file:') ? 'PaddleOCR ' + raw.replace(/.*paddle-|_rec.json/g, '') : raw;
+  const {model: raw, rows} = JSON.parse(readFileSync('../' + f, 'utf8')); const model = raw.startsWith('file:') ? raw.replace(/^file:..\/|\.json$/g, '') : raw;
   const source = f.includes('-lat-') ? 'lat' : 'buno';
   const scored = rows.filter(r => r.exact !== undefined);
   const stat = rs => ({n: rs.length, exact: rs.filter(r => r.exact).length, cer: +(rs.reduce((a, r) => a + Math.min(1, r.cer), 0) / Math.max(1, rs.length)).toFixed(3),

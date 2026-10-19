@@ -50,6 +50,9 @@ Photos, crops, the answer key and predictions stay private in
 | TrOCR-small-handwritten (`Xenova/trocr-small-handwritten`, fp32) via `@huggingface/transformers` 4.3.0 | ~300 MB | Node/ONNX, ~0.5 s/field |
 | PaddleOCR PP-OCRv5 mobile recogniser (`paddleocr` 3.0.3, `paddlex` 3.0.3, `paddlepaddle` 3.0.0) | 17 MB | Python container, ~0.23 s/field |
 | PaddleOCR PP-OCRv5 server recogniser | 82 MB | Python container, ~0.41 s/field |
+| OpenOCR SVTRv2 mobile recogniser (`openocr-python` 0.1.5, ONNX) | 24 MB | Python container, ~0.09 s/field |
+| OpenOCR SVTRv2 server recogniser (Torch 2.7.1 CPU) | 119 MB | Python container, ~0.51 s/field |
+| OpenOCR UniRec-0.1B (small vision-language recogniser, ONNX) | ~700 MB | Python container, ~2.3 s/field |
 
 **Not run:** TrOCR-base-handwritten (fp32, 1.6 GB). Running it alongside the
 other jobs exhausted this laptop's 3.7 GB WSL memory and stopped Docker
@@ -63,6 +66,9 @@ height 1192).
 | Tesseract.js 7 | 2/119 (2%) | 3/40 (8%) | 0/32 | 4 |
 | TrOCR-small-handwritten | 2/119 (2%) | 1/40 (3%) | 0/32 | 3 |
 | PP-OCRv5 mobile | 35/119 (29%) | 22/40 (55%) | 0/32 | 34 |
+| OpenOCR mobile | 26/119 (22%) | 24/40 (60%) | 0/32 | 35 |
+| OpenOCR UniRec-0.1B | 33/119 (28%) | 22/40 (55%) | 1/32 | 35 |
+| OpenOCR server | 40/119 (34%) | 31/40 (78%) | 2/32 | 23 |
 | **PP-OCRv5 server** | **68/119 (57%)** | **33/40 (83%)** | **5/32** | **32** |
 
 **PP-OCRv5 server by field:**
@@ -82,9 +88,13 @@ height 1192).
    word, a Donation No. as a name).
 2. **Tesseract cannot read handwriting** (2–8% of fields). The app's
    printed-label path stays correct for printed labels only.
-3. **PP-OCRv5 server is the only promising pretrained model.** It reads 83%
+3. **PP-OCRv5 server is the most promising pretrained model.** It reads 83%
    of fields from the clearer writer and 57% from the other, with no
-   training.
+   training. OpenOCR (Fudan FVL, Apache-2.0), added on 2026-10-19, came
+   second with its server recogniser (78% / 34%). Its UniRec-0.1B
+   vision-language recogniser was slower (~2.3 s/field) and less accurate
+   (55% / 28%). The OpenOCR models also misread the `6` of
+   writer L.
 4. **Most errors are dangerous because they look valid.** Writer L's `6` was
    read as `4`, turning `26` into `24` in dates and Donation Nos. That
    confusion alone explains 26 of the 31 valid-but-wrong errors for that writer;
