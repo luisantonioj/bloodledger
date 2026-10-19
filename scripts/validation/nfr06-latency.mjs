@@ -33,7 +33,8 @@ async function once(index) {
   const now = new Date().toISOString(), idempotencyKey = 'IDEM_NFR06_' + randomUUID().replaceAll('-', '').toUpperCase();
   const capture = {
     captureMethod: 'OCR', capturePolicyVersion: 'INBOUND_OCR_V1', issuerInstitutionId: 'INST_MEDIATRIX',
-    donationNumber: `MM26-10-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
+    // A random synthetic month/sequence outside the seeded demo stock; a collision is reported, not timed.
+    donationNumber: `MM29-${String(1 + Math.floor(Math.random() * 12)).padStart(2, '0')}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
     bloodType: 'O_POSITIVE', bloodTypeEvidence: { source: 'OCR_LABEL', confirmed: true }, componentType: 'PACKED_RED_BLOOD_CELLS', componentEvidence: { source: 'OCR_LABEL', confirmed: true },
     collectedAt: new Date(Date.now() - 86400000).toISOString(), expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
     capturedAt: now, confirmedAt: now, eventTime: now, correlationId: 'CORR_' + randomUUID().replaceAll('-', '').toUpperCase(),
@@ -43,6 +44,7 @@ async function once(index) {
   const verification = await call('POST', '/api/v2/auth/operator-verifications', { operatorId: process.env.BL_OPERATOR_ID, pin: process.env.BL_OPERATOR_PIN, action: 'POST /api/v2/inbound-captures', payload: capture, idempotencyKey });
   const t0 = performance.now();
   const accepted = await call('POST', '/api/v2/inbound-captures', capture, { 'idempotency-key': idempotencyKey, 'x-bloodledger-contract-version': contractVersion, 'Operator-Verification': verification.verificationId });
+  if (!accepted.statusUrl) throw new Error('Capture was not queued (' + (accepted.resolution ?? 'no command') + '); rerun for a fresh synthetic label');
   const tAccepted = performance.now(), statuses = [];
   let tCommitted = null, tVisible = null, last = null;
   while (performance.now() - t0 < timeoutMs && (tCommitted === null || tVisible === null)) {
