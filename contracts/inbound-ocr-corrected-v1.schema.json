@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bloodledger.local/contracts/inbound-ocr-corrected-v1.schema.json",
+  "title": "BloodLedger corrected OCR inbound capture V1 (PA-OCR-03, RQ-19, SIMULATION_ONLY)",
+  "description": "An OCR capture in which the operator corrected some fields. Top-level values are the final, operator-confirmed values and follow every INBOUND_OCR_V1 value rule. Server rules beyond this schema: at least one field corrected and at least one uncorrected; an uncorrected field's ocrValue equals the final value with ocrConfidence >= 90; donationNumberConfirmation is required and equal to donationNumber only when donationNumber is corrected. Enabled only when the host sets BLOODLEDGER_CORRECTED_INTAKE_ENABLED=true.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "captureMethod",
+    "capturePolicyVersion",
+    "issuerInstitutionId",
+    "donationNumber",
+    "bloodType",
+    "componentType",
+    "collectedAt",
+    "expiresAt",
+    "capturedAt",
+    "confirmedAt",
+    "eventTime",
+    "correlationId",
+    "ocrEvidence",
+    "fields"
+  ],
+  "properties": {
+    "captureMethod": {
+      "const": "OCR"
+    },
+    "issuerInstitutionId": {
+      "type": "string",
+      "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+    },
+    "donationNumber": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "bloodType": {
+      "$ref": "core-v2.schema.json#/properties/bloodType"
+    },
+    "componentType": {
+      "$ref": "core-v2.schema.json#/properties/componentType"
+    },
+    "collectedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "confirmedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "eventTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "correlationId": {
+      "type": "string",
+      "pattern": "^CORR_[0-9A-F]{32}$"
+    },
+    "capturePolicyVersion": {
+      "const": "INBOUND_OCR_CORRECTED_V1"
+    },
+    "donationNumberConfirmation": {
+      "type": "string",
+      "description": "The corrected Donation No. entered a second time."
+    },
+    "ocrEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "engine",
+        "engineVersion"
+      ],
+      "properties": {
+        "engine": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "engineVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      }
+    },
+    "fields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "donationNumber",
+        "bloodType",
+        "componentType",
+        "collectedAt",
+        "expiresAt"
+      ],
+      "properties": {
+        "donationNumber": {
+          "$ref": "#/$defs/field"
+        },
+        "bloodType": {
+          "$ref": "#/$defs/field"
+        },
+        "componentType": {
+          "$ref": "#/$defs/field"
+        },
+        "collectedAt": {
+          "$ref": "#/$defs/field"
+        },
+        "expiresAt": {
+          "$ref": "#/$defs/field"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ocrValue",
+        "ocrConfidence",
+        "corrected"
+      ],
+      "properties": {
+        "ocrValue": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "What OCR read, in the normalized form the client parsed. Used only to derive a keyed digest; never stored."
+        },
+        "ocrConfidence": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "corrected": {
+          "type": "boolean"
+        },
+        "reason": {
+          "enum": [
+            "OCR_MISREAD",
+            "OCR_NOT_READ",
+            "OCR_LOW_CONFIDENCE"
+          ],
+          "description": "Required when corrected. OCR_NOT_READ: ocrValue and ocrConfidence null. OCR_MISREAD: ocrValue differs from the final value. OCR_LOW_CONFIDENCE: ocrValue equals the final value with ocrConfidence below 90."
+        }
+      }
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import {COMMAND_PRESENTATION} from "../commands/command-state";
 import type {ReceiptRecognition} from "../receipts/receipt-ocr";
 import { OutboundVerification } from "./outbound-verification";
 import { RefreshIcon } from "../../components/ui/refresh-button";
@@ -15,7 +16,8 @@ export function ReservationActions({ reservation, principal, onRefresh, onLockCh
   const [action, setAction] = useState<ReservationAction>(), [reason, setReason] = useState(""), [confirmed, setConfirmed] = useState(false);
   const [evidenceId, setEvidenceId] = useState(""), [digest, setDigest] = useState(""), [preparedAt, setPreparedAt] = useState("");
   const [verificationLocked,setVerificationLocked]=useState(false);
-  useEffect(()=>{onLockChange?.(command.locked||verificationLocked);return()=>onLockChange?.(false);},[command.locked,verificationLocked,onLockChange]);
+  const closeLocked=command.busy||command.ambiguous||verificationLocked||Boolean(command.command&&!COMMAND_PRESENTATION[command.command.status].terminal);
+  useEffect(()=>{onLockChange?.(closeLocked);return()=>onLockChange?.(false);},[closeLocked,onLockChange]);
   const actions = reservation ? reservationActions(reservation, principal) : [];
   useEffect(() => { if (!command.locked) { setAction(undefined); setConfirmed(false); setReason(""); setEvidenceId(""); setDigest(""); setPreparedAt(""); command.correct(); } }, [reservation?.version]);
   const prepareValid = action !== "prepare" || (/^EVD_[A-Z0-9_-]+$/.test(evidenceId) && /^[a-f0-9]{64}$/.test(digest) && /(Z|[+-]\d{2}:\d{2})$/.test(preparedAt) && Number.isFinite(Date.parse(preparedAt)) && Date.parse(preparedAt) <= Date.now());
