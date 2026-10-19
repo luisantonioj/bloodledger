@@ -1,6 +1,6 @@
 import type { Principal } from "../../auth/permissions";
 import { InformationHelp } from "../../components/ui/information-help";
-import { RefreshIcon } from "../../components/ui/refresh-button";
+import { RefreshButton } from "../../components/ui/refresh-button";
 import { formatBloodType } from "../../components/ui/display";
 import { useLiveData } from "../../hooks/use-live-data";
 import { componentLabel, parseRequesterRecords, type RequesterRecords } from "../transfers/requester-transfer-data";
@@ -29,7 +29,7 @@ export function RequesterAnalytics({ principal }: { principal: Principal }) {
   return <div className="analytics-preview analytics-workspace requester-analytics">
     <section className="analytics-preview-filter">
       <header><h3>Request overview</h3><InformationHelp label="Request overview">Review blood requested by your facility and the recorded progress of those requests. Pending means waiting for a decision; approved requests are not yet fulfilled. Fulfilled counts only requests recorded as received with ledger confirmation. These summaries cover the records returned for your facility, not a forecast or a complete historical report.</InformationHelp></header>
-      <div className="requester-analytics-toolbar"><span>{principal.institutionDisplayName}</span><button className="button compact refresh-icon-button" onClick={state.manual} disabled={state.busy}><RefreshIcon/>{state.busy ? "Refreshing…" : "Refresh"}</button></div>
+      <div className="requester-analytics-toolbar"><span>{principal.institutionDisplayName}</span><RefreshButton busy={state.busy} onRefresh={state.manual}/></div>
     </section>
     <div className="analytics-preview-metrics requester-analytics-metrics">
       <article><span>Units requested</span><strong>{value(requests.reduce((sum, row) => sum + row.quantity, 0))}</strong><small>Across returned requests, including closed requests</small></article>
