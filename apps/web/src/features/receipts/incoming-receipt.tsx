@@ -1,3 +1,4 @@
+import {COMMAND_PRESENTATION} from "../commands/command-state";
 import {useCallback,useEffect,useRef,useState} from "react";
 import { captureCheckpointLocation, type CheckpointLocation } from "../transfers/checkpoint-location";
 import type {Principal} from "../../auth/permissions";
@@ -47,8 +48,9 @@ export function IncomingReceipt({principal,scannedRecognition,onLockChange}:{pri
  const [selected,setSelected]=useState(""),[childLocked,setChildLocked]=useState(false);
  // The receive command outlives the verification panel: once it commits, the transfer leaves IN_TRANSIT.
  const status=useCommandStatus(),locked=childLocked||Boolean(status.command);
+ const closeLocked=status.command?!COMMAND_PRESENTATION[status.command.status].terminal:childLocked;
  const notifyLock=useCallback((value:boolean)=>setChildLocked(value),[]);
- useEffect(()=>{onLockChange(locked);},[locked,onLockChange]);
+ useEffect(()=>{onLockChange(closeLocked);},[closeLocked,onLockChange]);
  useEffect(()=>()=>onLockChange(false),[onLockChange]);
  const list=usePagedRead(receiptVerificationReady?"/api/v2/reservations":null,value=>parseIncoming(value,principal),"reservationId",principal.accountId??principal.userId,undefined,contractHeaders);
  const detail=useValidatedRead<ReservationDetail>(selected?"/api/v2/reservations/"+encodeURIComponent(selected):null,value=>{const reservation=parseReservationDetail(value,selected,principal);if(reservation.destinationInstitutionId!==principal.institutionId||reservation.purpose!=="TRANSFER")throw Error("Not an incoming transfer");return reservation;},contractHeaders);

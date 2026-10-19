@@ -2,7 +2,7 @@ import { BANK_INSTITUTION_IDS } from "./institution-access.js";
 import { selectCorePolicy } from "./persistent-development-policy.js";
 import { registerDevelopmentReads, type DevelopmentReader } from "./development-read.js";
 import { readInventoryEvidence, validEvidenceDate, type MlInventoryEvidenceReader } from "./inventory-evidence.js";
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { ApiFailure } from "./errors.js";
 import { encryptDonationNumber, type DonationKeyring } from "./donation-crypto.js";
@@ -10,7 +10,7 @@ import type { WebPrincipal } from "./session.js";
 import type { V2CommandStore, V2ResourceType } from "./v2-command.js";
 import type { CensusStore } from "./census-worker.js";
 import type { V2ProjectionReader } from "./database-v2.js";
-import { requireOcrLabelEvidence, validateInboundOcrInput } from "./inbound-ocr-policy.js";
+import { CORRECTED_OCR_POLICY_VERSION, REVIEWED_OCR_POLICY_VERSION, validateReviewedInboundInput, requireOcrLabelEvidence, validateCorrectedInboundInput, validateInboundOcrInput } from "./inbound-ocr-policy.js";
 import { resolveLabelIdentity, type LabelIdentity, type SealedDonationNumber } from "./label-identity.js";
 import { assembleUnitHistory, decodeHistoryCursor, type UnitHistoryReader } from "./unit-history.js";
 import { assembleTransferSummaries, decodeSummaryCursor, type TransferSummaryReader } from "./transfer-summary.js";
@@ -59,6 +59,9 @@ export interface V2RouteDependencies {
   webOrigin: string;
   clock: () => Date;
   enabledIssuerInstitutionIds?: readonly string[];
+  /** PA-OCR-03: accept INBOUND_OCR_CORRECTED_V1 captures (BLOODLEDGER_CORRECTED_INTAKE_ENABLED). Off by default. */
+  correctedIntakeEnabled?: boolean;
+  reviewedIntakeEnabled?: boolean;
 }
 
 // Read-time comparison of the printed label with the ledger status; it never changes inventory.
@@ -352,14 +355,26 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!dependencies.keyring) throw new ApiFailure(503, "V2_KEYS_UNAVAILABLE", "Donation encryption keys are not available.");
     const idempotencyKey = requiredHeader(request);
     const version = contractVersion(request);
-    const capture = validateInboundOcrInput(request.body, dependencies.enabledIssuerInstitutionIds ?? ["INST_MEDIATRIX"], version);
+    // PA-OCR-03: a corrected capture is a separate, opt-in contract; INBOUND_OCR_V1 handling below is unchanged.
+    const reviewedRequest = Boolean(request.body && typeof request.body === "object" && (request.body as Record<string, unknown>).capturePolicyVersion === REVIEWED_OCR_POLICY_VERSION);
+    if (reviewedRequest && !dependencies.reviewedIntakeEnabled) throw new ApiFailure(403, "REVIEWED_INTAKE_DISABLED", "Fully reviewed intake after an OCR attempt is not enabled on this host.");
+    const correctedRequest = Boolean(request.body && typeof request.body === "object" && (request.body as Record<string, unknown>).capturePolicyVersion === CORRECTED_OCR_POLICY_VERSION);
+    if (correctedRequest && !dependencies.correctedIntakeEnabled) throw new ApiFailure(403, "CORRECTED_INTAKE_DISABLED", "Corrected OCR intake is not enabled on this host.");
+    const corrected = reviewedRequest ? validateReviewedInboundInput(request.body, dependencies.enabledIssuerInstitutionIds ?? ["INST_MEDIATRIX"], version) : correctedRequest ? validateCorrectedInboundInput(request.body, dependencies.enabledIssuerInstitutionIds ?? ["INST_MEDIATRIX"], version) : null;
+    const evidencePolicyVersion = reviewedRequest ? REVIEWED_OCR_POLICY_VERSION : CORRECTED_OCR_POLICY_VERSION;
+    const capture = corrected ? corrected.capture : validateInboundOcrInput(request.body, dependencies.enabledIssuerInstitutionIds ?? ["INST_MEDIATRIX"], version);
     if (!dependencies.projection) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Inbound identity reconciliation is not available.");
     const encrypted = encryptDonationNumber(capture.donationNumber, dependencies.keyring);
     const captureId = generatedId("INCAP_", idempotencyKey);
     const componentId = generatedId("COMP_", idempotencyKey);
     const donationId = `DON_${hash(`${capture.issuerInstitutionId}:${encrypted.lookupHmac}`).slice(0, 40)}`;
     const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
-    const registrationSha256 = digest({ capture, captureId, componentId, donationId, custodyInstitutionId: principal.institutionId });
+    // Field provenance stores keyed digests only: never raw OCR text or a Donation No. An unchanged field's OCR
+    // digest equals its final digest; an OCR score is kept for the read, never as evidence for a corrected value.
+    const fieldDigest = (field: string, value: string) => createHmac("sha256", dependencies.keyring!.lookupKey).update(`CAPTURE_FIELD|${field}|${value}`, "utf8").digest("hex");
+    const fieldProvenance = corrected ? corrected.fields.map((entry) => ({ field: entry.field, source: entry.corrected ? "OPERATOR_CORRECTED" : "OCR_LABEL", ocrValueDigest: entry.ocrValue === null ? null : fieldDigest(entry.field, entry.ocrValue), ocrConfidence: entry.ocrConfidence, correctionReason: entry.reason, finalValueDigest: fieldDigest(entry.field, String(capture[entry.field])) })) : null;
+    const uncorrectedConfidence = (field: string, value: number) => corrected ? (corrected.fields.find((entry) => entry.field === field)!.corrected ? null : value) : value;
+    const registrationSha256 = digest({ ...(reviewedRequest ? { capturePolicyVersion: evidencePolicyVersion, ocrAttempted: true } : {}), capture, captureId, componentId, donationId, custodyInstitutionId: principal.institutionId, ...(fieldProvenance ? { fieldProvenance } : {}) });
     const receiptRequestSha256 = digest({ operation: "RECEIVE_INBOUND_COMPONENT", capture, captureId, custodyInstitutionId: principal.institutionId });
     // A retry returns the command its key created, before identity resolution can report the unit's later state.
     const previous = await dependencies.store.get(generatedId("CMD_", idempotencyKey), principal.institutionId, principal.userId);
@@ -372,7 +387,8 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
       return enqueue(request, reply, "INBOUND_CAPTURE", captureId, previous.operation, previous.payload, principal, previous.payloadSha256);
     }
     // J5: only new captures are held to OCR_LABEL evidence; the replay above keeps earlier captures retryable.
-    requireOcrLabelEvidence(capture);
+    // A corrected capture derives OPERATOR_CONFIRMED for corrected fields on the server (PA-OCR-03).
+    if (!corrected) requireOcrLabelEvidence(capture);
     const existing = await dependencies.projection.findComponentByIdentity(capture.issuerInstitutionId, encrypted.lookupHmac, capture.componentType);
     if (existing) {
       if (existing.institutionId !== principal.institutionId) {
@@ -384,8 +400,8 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
       if (existing.inventoryStatus === "IN_TRANSIT") throw new ApiFailure(409, "INBOUND_RECEIPT_REQUIRED", "The matching in-transit component requires its transfer receipt workflow: verify every unit, then receive the reservation.");
       return reply.status(200).send({ captureId, resolution: "ALREADY_REGISTERED", componentId: existing.componentId, status: existing.inventoryStatus, classification: "SIMULATION_ONLY" as const });
     }
-    const captureEvidenceDigest = createHash("sha256").update(JSON.stringify({ captureId, donationDigest: encrypted.lookupHmac, ocrEvidence: capture.ocrEvidence, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt }), "utf8").digest("hex");
-    const payload = { captureMethod: "OCR", captureEvidenceDigest, captureId, componentId, donationId, issuerInstitutionId: capture.issuerInstitutionId, donationNoCiphertext: encrypted.ciphertext, donationNoNonce: encrypted.nonce, donationNoAuthTag: encrypted.authTag, donationNoEncryptionKeyVersion: encrypted.encryptionKeyVersion, donationNoLookupHmac: encrypted.lookupHmac, componentType: capture.componentType, bloodType: capture.bloodType, collectedAt: capture.collectedAt, expiresAt: capture.expiresAt, custodyInstitutionId: principal.institutionId, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: capture.eventTime, correlationId: capture.correlationId, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt, bloodTypeEvidenceSource: capture.bloodTypeEvidence.source, componentEvidenceSource: capture.componentEvidence.source, ocrEngine: capture.ocrEvidence.engine, ocrEngineVersion: capture.ocrEvidence.engineVersion, donationNumberConfidence: capture.ocrEvidence.fieldConfidence.donationNumber, bloodTypeConfidence: capture.ocrEvidence.fieldConfidence.bloodType, policyVersion: selectCorePolicy(principal, version) };
+    const captureEvidenceDigest = createHash("sha256").update(JSON.stringify({ captureId, donationDigest: encrypted.lookupHmac, ocrEvidence: capture.ocrEvidence, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt, ...(fieldProvenance ? { capturePolicyVersion: evidencePolicyVersion, ...(reviewedRequest ? { ocrAttempted: true } : {}), fieldProvenance } : {}) }), "utf8").digest("hex");
+    const payload = { captureMethod: "OCR", captureEvidenceDigest, captureId, componentId, donationId, issuerInstitutionId: capture.issuerInstitutionId, donationNoCiphertext: encrypted.ciphertext, donationNoNonce: encrypted.nonce, donationNoAuthTag: encrypted.authTag, donationNoEncryptionKeyVersion: encrypted.encryptionKeyVersion, donationNoLookupHmac: encrypted.lookupHmac, componentType: capture.componentType, bloodType: capture.bloodType, collectedAt: capture.collectedAt, expiresAt: capture.expiresAt, custodyInstitutionId: principal.institutionId, actorUserId: principal.userId, actorInstitutionId: principal.institutionId, eventTime: capture.eventTime, correlationId: capture.correlationId, capturedAt: capture.capturedAt, confirmedAt: capture.confirmedAt, bloodTypeEvidenceSource: capture.bloodTypeEvidence.source, componentEvidenceSource: capture.componentEvidence.source, ocrEngine: capture.ocrEvidence.engine, ocrEngineVersion: capture.ocrEvidence.engineVersion, donationNumberConfidence: uncorrectedConfidence("donationNumber", capture.ocrEvidence.fieldConfidence.donationNumber), bloodTypeConfidence: uncorrectedConfidence("bloodType", capture.ocrEvidence.fieldConfidence.bloodType), policyVersion: selectCorePolicy(principal, version), ...(fieldProvenance ? { capturePolicyVersion: evidencePolicyVersion, ...(reviewedRequest ? { ocrAttempted: true } : {}), fieldProvenance } : {}) };
     await assertCommandTimes(request, principal, [capture.eventTime]);
     await dependencies.projection.recordInboundCapture?.(captureId, payload, dependencies.clock().toISOString());
     return enqueue(request, reply, "INBOUND_CAPTURE", captureId, "REGISTER_INBOUND_COMPONENT", payload, principal, registrationSha256);

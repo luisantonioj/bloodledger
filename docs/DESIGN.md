@@ -1231,3 +1231,33 @@ compact, consistent gaps between review fields.
 when preview fields are shown, including incomplete and edited drafts. Disable
 it and explain the required unchanged five-field OCR verification until that
 gate passes. Confirmation and operator authorization rules remain unchanged.
+
+
+2026-10-19 scanner/reporting follow-up: remove the local October 15 example stock
+records. Checkpoint cards show only real saved records, with Not captured for
+missing records and a distinct indication of an uncaptured reached slot today.
+Keep the existing compact saved-list/details arrangement and right-side Copy
+icons. Automatic PA-DEF-07 matrices have four components; current inventory keeps
+five. Corrected OCR review is prepared behind the default-off
+VITE_BLOODLEDGER_CORRECTED_INTAKE_READY flag: show the original value and engine
+score beside the editable final value, explain the derived correction reason,
+and require repeated entry for a corrected Donation No. Edits clear confirmation.
+Fully manual and experimental-profile drafts cannot submit. This presentation
+change enables no host policy, migration, deployment or live write.
+
+
+2026-10-19 PA-OCR-04: with the separately enabled reviewed-intake flag, an OCR
+attempt may be followed by operator review of every field, even when nothing
+was recognized. Keep the original read/score visible separately and require
+re-entry of a corrected Donation No. Once final values validate, enable the
+review checkbox; any edit clears confirmation. Label all-field review as
+Operator-reviewed intake, never verified OCR. The scanner-free Manual tab and
+experimental extraction remain drafts. Existing compact scanner layout remains.
+
+
+2026-10-19 scanner closure: a terminal command notification (Committed, Failed
+or Conflict) no longer requires Dismiss before closing the mobile scanner.
+Keep the notification visible and completed action forms locked while open;
+only release the close/navigation lock. Queued, submitting, retrying,
+projection-pending and ambiguous outcomes retain close protection. Apply this
+to bank intake, outgoing transfer actions and incoming bank/requester receipts.

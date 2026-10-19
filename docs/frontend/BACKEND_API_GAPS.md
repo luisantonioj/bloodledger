@@ -303,3 +303,129 @@ integrated scanner (PR #77). Requests and fixtures are synthetic.
 - **Unchanged.** The reservation-level requester `receive` action without
   evidence is untouched. `RECEIVED` stock is still not usable (`RQ-10`). No
   manual/corrected intake (`RQ-19`), retained-host change or live write.
+
+### Scanner and stock-checkpoint follow-up — 2026-10-19
+
+This update supersedes the October 16 frontend sample fallback and the earlier
+claim that corrected OCR has no published contract. It does not record a host rollout.
+
+- PRs #90 (scanner) and #91 (PA-DEF-07) are merged in fetched main `7c4f296`.
+  Reporting no longer manufactures October 15 records. Missing checkpoints show
+  **Not captured**; an older real record remains copyable with its actual date
+  and an explicit indication when today's reached slot has not been captured.
+  `SYNTHETIC_STOCK_CHECKPOINT_V1` matrices contain eight blood groups and four
+  V2 components (32 counts, no cryoprecipitate). Existing V2.1 saved matrices
+  retain five-component compatibility. The current inventory matrix stays V2.1.
+- PR #92's `INBOUND_OCR_CORRECTED_V1` schema was inspected at branch
+  `codex/jopia-corrected-ocr-intake`, commit
+  `99aef31d1c167e1573121306b40b78595792c132`; it was not on fetched main at this
+  check. The frontend is prepared behind default-off
+  `VITE_BLOODLEDGER_CORRECTED_INTAKE_READY`. It preserves immutable original
+  normalized values and engine scores, derives the contract's correction reason,
+  repeats a corrected Donation No., and requires an unchanged high-score OCR
+  field. Unknown layouts and experimental field-region results remain drafts.
+  Unchanged strict captures still use V1. PIN verification, frozen attempts,
+  original-command recovery and queued-versus-committed handling are retained.
+- GAP-17: frontend sample fallback removed; real automatic records depend on the
+  separately authorized checkpoint migration, enabled policy and scheduler.
+- GAP-19/RQ-19: the scoped corrected-OCR direction is published as PA-OCR-03 /
+  ADR-050 in PR #92; frontend preparation does not close fully manual intake,
+  CSV import, real-label or other outstanding policy requirements.
+- Neither new migration nor server/UI readiness flag was applied on Lat's host.
+  No checkpoint capture or live intake was performed. PR #92 merge and an
+  explicitly authorized host rollout remain activation prerequisites.
+
+Validation commands: `npm run check:web`, `npm run test:web`, and the affected
+Playwright specs with `--workers=1`. The unit suite includes design-token checks;
+corrected-intake browser cases use the separate flag-enabled fixture config
+`apps/web/playwright-corrected-intake.config.ts`. All mutation responses in those
+cases are synthetic; they provide no physical-device or real-label evidence.
+
+### Corrected-intake retained-host activation — 2026-10-19
+
+The user explicitly authorized the scoped rollout in this chat ("YEAH GO")
+after the two migrations and PR #92 deployment were explained. This supersedes
+the preceding no-rollout statement for corrected intake only.
+
+- A private custom-format backup was validated before either migration. Both
+  additive migrations ran in filename order: checkpoint-policy allowance first,
+  corrected-intake/provenance second. Status: **38 applied, 0 pending**. All
+  protected counts stayed unchanged; provenance rows remain zero.
+- The retained API uses a separately built integration of fetched main
+  `7c4f296` and PR #92 branch `99aef31`. Production files merged cleanly; the
+  disposable database-probe conflict was resolved by retaining both probes.
+  Build artifacts are mounted read-only from the private rollout directory,
+  preserving the user's uncommitted frontend and previous stopped containers.
+- Both `BLOODLEDGER_CORRECTED_INTAKE_ENABLED` and
+  `VITE_BLOODLEDGER_CORRECTED_INTAKE_READY` are now true. Receipt readiness is
+  preserved; outbound/experimental extraction flags remain off. **Automatic
+  stock capture stays disabled**, despite its prerequisite constraint migration.
+- Actual-host browser verification used fictional label input: editing the OCR
+  preview enabled the review checkbox and Confirm button. All API domain writes
+  were blocked; Submit was never pressed. Bank/requester reservation reads
+  returned 200; health is READY. Guarded worker resumed after zero queue/lock
+  checks; the general sync-worker remains stopped.
+- Corrected intake uses only recognized, allowlisted original field values.
+  Unrelated border noise is discarded, never sent as evidence. At least one
+  field must remain an unchanged OCR read with engine score >=90. The earlier
+  full-frame supplied photo yielded no supported headings in the diagnostic:
+  filling all its fields manually still cannot qualify. The UI now says
+  **No readable OCR fields · Scan again**, with a close-up/rescan instruction.
+  Experimental profiles and fully manual intake remain non-submittable.
+
+Private backup, artifact hashes, counts and self-validation notes are in
+`build/corrected-intake-rollout-private-20261019/` (gitignored). No live intake,
+receipt, outbound command, automatic checkpoint, census/forecast rerun, reset,
+account change or Fabric change was performed. This is simulation-only evidence.
+
+### All-field operator review after OCR — 2026-10-19
+
+Supersedes the preceding unchanged-field blocker only for the newly authorized
+PA-OCR-04 / ADR-051 path. User acting as Jopia requested implementation in this
+chat. `INBOUND_OCR_CORRECTED_V2` allows all five fields to be operator-corrected
+after OCR ran, including when no headings were recognized. It adds an explicit
+`ocrAttempted: true` workflow attestation and retains the same per-field original
+reads/scores/reasons, exact final-value validation, repeated Donation No., bank
+capability/PIN verification, frozen idempotent retries and command polling.
+No OCR score is assigned to an edited final value. The UI identifies all-field
+review as **Operator-reviewed intake · Final values entered by operator**.
+Scanner-free Manual mode, CSV import, experimental layouts and requester
+registration remain disabled. Existing OCR V1/corrected V1 rules are unchanged.
+The legacy ledger/history OCR method denotes scanner workflow origin, not final
+recognition accuracy; policy/provenance distinguish operator input off-chain.
+
+Retained-host activation completed after a fresh validated private backup and
+one additive migration: **39 applied, 0 pending**; all protected counts unchanged.
+Server `BLOODLEDGER_REVIEWED_INTAKE_ENABLED` and web
+`VITE_BLOODLEDGER_REVIEWED_INTAKE_READY` are true on this host, default-off in
+source. Existing corrected V1 and receipt flags are preserved. Automatic stock
+capture, outbound and experimental extraction stay disabled. The guarded worker
+was restored only after zero pending queues/lock; general sync-worker is stopped.
+
+Actual-host verification used the user's earlier full-frame photo that failed
+OCR. After entering the final five fields and repeating the Donation No., the
+checkbox was enabled and checked, and Confirm was enabled. **Confirm was not
+pressed**; all domain API mutations were blocked by the harness, with zero page
+errors. Tests: check:web, 468 web unit/design-token tests, 229 API unit tests,
+2 new reviewed-intake browser tests with one worker, and JSON formatting passed.
+Private backup/counts/artifact hashes and actual-photo evidence stay gitignored
+under `build/reviewed-intake-rollout-private-20261019/`. Self-validation only.
+No live intake, receipt, outbound action, reset, account or Fabric change occurred.
+
+### Printed-border preview extraction — 2026-10-19
+
+The previously supplied full-frame photo's OCR lines had leading `|` or `~~`
+artifacts. Exact-heading preview parsing discarded all five fields although the
+engine returned them; a prior cropped diagnostic had worked. The OCR engine,
+assets and strict `parseInboundOcrLines` are unchanged. Preview-only parsing now
+accepts these limited leading border characters before the same five headings
+and applies the already approved PA-OCR-02 printed-value normalization. It does
+not repair identifier characters, select duplicate fields, raise scores or make
+border-decorated lines verified OCR. Prohibited-text checks remain in place.
+
+Actual original-photo browser OCR recheck: five preview fields populated;
+original engine scores 65/78/74/70/75 retained; strict verification false.
+Actual-host review/checkbox/Confirm-button check passed with zero domain writes.
+The PA-OCR-04 route handles operator review of these low-score suggestions.
+470 web unit/design-token tests and check:web passed. Private OCR output remains
+outside Git. No engine training, model change or three-bank accuracy claim.
