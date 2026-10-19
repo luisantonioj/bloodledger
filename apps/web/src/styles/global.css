@@ -194,7 +194,7 @@
 .inventory-overview-axis{height:292px;position:relative;font-size:11px;line-height:1;color:var(--ink-muted);text-align:right}.inventory-overview-axis>span{position:absolute;right:0;top:calc(var(--tick-index) * 20%);transform:translateY(-50%)}
 .inventory-overview-chart{height:330px;background:repeating-linear-gradient(to bottom,var(--line-subtle) 0,var(--line-subtle) 1px,var(--surface) 1px,var(--surface) 58.4px);background-size:100% 293px;background-repeat:no-repeat}
 .inventory-overview-bar{grid-template-rows:minmax(0,1fr) 32px 6px}.stock-critical .inventory-overview-fill{background:var(--critical)}.stock-low .inventory-overview-fill{background:var(--warning)}.stock-adequate .inventory-overview-fill{background:var(--success)}.stock-surplus .inventory-overview-fill{background:var(--success)}.inventory-overview-fill>i{background:var(--information)}
-.dashboard-refresh{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}.dashboard-refresh:disabled{opacity:.65;cursor:wait}
+.dashboard-refresh{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}.button.dashboard-refresh:disabled{opacity:1;cursor:pointer}
 .dashboard-stats{grid-template-columns:repeat(4,minmax(0,1fr))}@media(max-width:1180px){.dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.dashboard-stats{grid-template-columns:1fr}}
 
 .dashboard-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px}.dashboard-updated{color:var(--ink-muted);font-size:11px;line-height:1.5}.dashboard-updated time{font-variant-numeric:tabular-nums}@media(max-width:760px){.dashboard-actions{justify-content:flex-start;gap:8px 12px}}
@@ -269,7 +269,7 @@
 .requester-workflow-help-intro,.requester-workflow-help-step{display:block}.requester-workflow-help-step{margin-top:10px}.requester-workflow-help-step strong{font-weight:600}.requester-workflow .request-form-help-tooltip{width:min(360px,calc(100vw - 100px))}
 
 /* Neutral Refresh hover treatment across every dashboard account and requester transfers. */
-.dashboard-refresh{transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease}.dashboard-refresh:not(:disabled){cursor:pointer}.dashboard-refresh:not(:disabled):hover,.dashboard-refresh:not(:disabled):focus-visible{background:var(--surface-subtle);border-color:var(--line-strong);color:var(--ink)}@media(prefers-reduced-motion:reduce){.dashboard-refresh{transition:none}}
+.dashboard-refresh{transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease}.dashboard-refresh:not(:disabled){cursor:pointer}.button.dashboard-refresh:hover,.button.dashboard-refresh:focus-visible{background:var(--surface-subtle);border-color:var(--line-strong);color:var(--ink)}@media(prefers-reduced-motion:reduce){.dashboard-refresh{transition:none}}
 
 /* Shared form interaction rule: focused fields use BloodLedger red across accounts. */
 :is(input,select,textarea):not(:disabled):focus{border-color:var(--focus-ring);outline:3px solid var(--focus-ring);outline-offset:2px}

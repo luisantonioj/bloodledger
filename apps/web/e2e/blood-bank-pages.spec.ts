@@ -108,3 +108,16 @@ test("mobile scanner starts with direction choices and returns without mounting 
  await page.keyboard.press("Escape");await expect(dialog).toHaveCount(0);await page.getByRole("button",{name:"Open Mobile Scanner",exact:true}).click();await expect(dialog.getByRole("heading",{name:"Choose transaction direction",exact:true})).toBeVisible();
 });
 test("offline banner appears on network loss and clears on reconnect (TC-O03)",async({page,context})=>{await setup(page);await page.goto("/");await expect(page.getByRole("heading",{name:"Redistribution",exact:true})).toBeVisible();await expect(page.locator(".offline-banner")).toHaveCount(0);await context.setOffline(true);await expect(page.locator(".offline-banner")).toContainText("showing last confirmed data");await expect(page.getByRole("heading",{name:"Redistribution",exact:true})).toBeVisible();await context.setOffline(false);await expect(page.locator(".offline-banner")).toHaveCount(0);});
+
+// Tab badges use the shared transfer read, independently of the selected panel.
+test("blood request count stays visible across PRC and transfer tabs",async({page})=>{
+ await setup(page);await page.goto("/transfers");
+ const requests=page.getByRole("tab",{name:"Blood Requests 1",exact:true});
+ await expect(requests).toBeVisible();
+ await page.getByRole("tab",{name:/PRC Supply Requests/}).click();
+ await expect(page.getByRole("heading",{name:"PRC Supply Requests",exact:true})).toBeVisible();
+ await expect(requests).toBeVisible();
+ await page.getByRole("tab",{name:"Transfers",exact:true}).click();
+ await expect(requests).toBeVisible();await requests.click();
+ await expect(page.getByRole("button",{name:"Open request TRF_SYNTH_BANK",exact:true})).toBeVisible();
+});

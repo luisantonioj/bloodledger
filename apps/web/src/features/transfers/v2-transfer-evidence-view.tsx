@@ -54,7 +54,7 @@ export function V2TransferEvidenceView({ principal }: { principal: Principal }) 
   useEffect(()=>{if(formOpen){const frame=requestAnimationFrame(scrollToForm);return()=>cancelAnimationFrame(frame);}},[formOpen]);
   function openBloodRequest(){if(formOpen)requestAnimationFrame(scrollToForm);else setFormOpen(true);}
   const [search,setSearch]=useState(""),[status,setStatus]=useState("ALL");
-  const state=useLiveData<{requests:BankRequestRow[];reservations:BankReservationRow[];scope?:string;transferSummary?:{status:string;transfer_count:number;unit_count:number}[]}>(tab==="prc"?null:"/api/v2/transfers");
+  const state=useLiveData<{requests:BankRequestRow[];reservations:BankReservationRow[];scope?:string;transferSummary?:{status:string;transfer_count:number;unit_count:number}[]}>("/api/v2/transfers");
   const requests=state.data?.requests??[],reservations=state.data?.reservations??[];
   const invalidUrgency=requests.some(row=>row.urgency!==undefined&&!URGENCIES.includes(row.urgency as typeof URGENCIES[number]));
   const query=search.trim().toLowerCase();

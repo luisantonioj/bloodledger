@@ -3,5 +3,5 @@ export function RefreshIcon() {
 }
 
 export function RefreshButton({busy=false,onRefresh}:{busy?:boolean;onRefresh:()=>void}) {
-  return <button className="button compact dashboard-refresh" type="button" onClick={onRefresh} disabled={busy} aria-busy={busy}><RefreshIcon/>{busy ? "Refreshing…" : "Refresh"}</button>;
+  return <button className="button compact dashboard-refresh" type="button" onClick={onRefresh} disabled={busy} aria-busy={busy}><RefreshIcon/>Refresh</button>;
 }
