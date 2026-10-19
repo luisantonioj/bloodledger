@@ -68,38 +68,41 @@ test("PA-S6-02 extracts a synthetic inbound label on device without external req
   await generator.close();
 });
 
-test("NFR-05 keeps exact Donation No. volatile and blocks offline V2 submission", async ({ page, context }) => {
+test("NFR-05/TC-O01 queues a confirmed capture encrypted offline and sends it exactly once on reconnect", async ({ page, context }) => {
   await restoreCaptureSession(page);
-  let submissions = 0;
+  const keys: string[] = [];
   await page.route("**/api/v2/inbound-captures", (route) => {
-    submissions += 1;
-    return route.abort();
+    const request = route.request(), body = request.postDataJSON() as Record<string, unknown>;
+    keys.push(String(request.headers()["idempotency-key"]));
+    expect(body).not.toHaveProperty("image");
+    expect(body).not.toHaveProperty("rawText");
+    return route.fulfill({ status: 202, contentType: "application/json", body: JSON.stringify({ commandId: "CMD_SYNTH_OFFLINE_001", resourceType: "INBOUND_CAPTURE", resourceId: "INCAP_SYNTH_OFFLINE_001", status: "QUEUED", statusUrl: "/api/v2/commands/CMD_SYNTH_OFFLINE_001", acceptedAt: "2026-09-18T00:00:00.000Z", correlationId: body.correlationId, safeErrorCode: null, classification: "SIMULATION_ONLY", replayed: false }) });
   });
+  await page.route("**/api/v2/commands/CMD_SYNTH_OFFLINE_001", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ commandId: "CMD_SYNTH_OFFLINE_001", resourceType: "INBOUND_CAPTURE", resourceId: "INCAP_SYNTH_OFFLINE_001", status: "QUEUED", statusUrl: "/api/v2/commands/CMD_SYNTH_OFFLINE_001", acceptedAt: "2026-09-18T00:00:00.000Z", correlationId: "CORR_X", safeErrorCode: null, classification: "SIMULATION_ONLY", replayed: false }) }));
   await page.goto("/capture/");
   const generator = await context.newPage();
   await recognize(page, await labelImage(generator, labels[1]), "offline-v2.png");
   await generator.close();
   await context.setOffline(true);
-  await expect(page.getByText("Offline V2 submission is disabled", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "I confirm every field" })).toBeDisabled();
-  expect(submissions).toBe(0);
-  const persisted = await page.evaluate(async () => {
-    const names = await indexedDB.databases();
-    const request = indexedDB.open("bloodledger-inbound-command-status-v2", 1);
-    const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    const values = await new Promise<unknown[]>((resolve, reject) => {
-      const query = database.transaction("command-receipts").objectStore("command-receipts").getAll();
-      query.onsuccess = () => resolve(query.result);
-      query.onerror = () => reject(query.error);
-    });
+  await expect(page.getByText("Offline — captures are saved on this device", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "I confirm every field — save offline" }).click();
+  await expect(page.getByTestId("offline-queue-count").first()).toHaveText("1");
+  expect(keys).toEqual([]);
+  const stored = await page.evaluate(async () => {
+    const request = indexedDB.open("bloodledger-offline-capture-v1", 1);
+    const database = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const values = await new Promise<Array<{ ciphertext: ArrayBuffer }>>((resolve, reject) => { const query = database.transaction("captures").objectStore("captures").getAll(); query.onsuccess = () => resolve(query.result); query.onerror = () => reject(query.error); });
     database.close();
-    return { names: names.map((item) => item.name), values };
+    return values.map(value => new TextDecoder().decode(new Uint8Array(value.ciphertext)) + JSON.stringify({ ...value, ciphertext: undefined, iv: undefined }));
   });
-  expect(persisted.names).not.toContain("bloodledger-synthetic-capture-v1");
-  expect(JSON.stringify(persisted)).not.toContain(labels[1].donationNumber);
+  expect(stored).toHaveLength(1);
+  expect(stored.join("")).not.toContain(labels[1].donationNumber);
+  await context.setOffline(false);
+  await page.getByRole("button", { name: "Send queued captures" }).click();
+  await expect(page.getByText("Sent 1 queued capture with their original request keys.", { exact: true })).toBeVisible();
+  expect(keys).toHaveLength(1);
+  expect(keys[0]).toMatch(/^IDEM_INBOUND_/);
+  await expect(page.getByRole("button", { name: "Send queued captures" })).toHaveCount(0);
 });
 
 test("FR-01 tracks one accepted V2 command to commitment without resubmission or sensitive storage", async ({ page, context }) => {
