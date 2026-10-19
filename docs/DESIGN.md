@@ -1118,6 +1118,8 @@ coverage for unrelated rows and for closing details without automatic reopening.
 
 2026-10-15 Requests & Transfers: remove the standalone Request priority (RPS) panel, including its ranking filters and breakdown table, at the user’s request. Blood Requests, request detail approval and the dashboard redistribution shortcut retain their existing behavior.
 
+2026-10-19 Requests & Transfers (TC-T01/TC-T02 remediation): Blood Requests adds an inline **RPS rank** column for supplier ROLE-01/ROLE-02 only, showing `#rank of N · score` per request within its blood type/component series from `/api/v2/coordination/priority`. The tooltip shows the urgency and wait contributions and policy version and states that the ranking is advisory; approval stays with the supplier. Unranked or unavailable rows show `—` or `Unavailable`, never an inferred score. The standalone RPS panel removed on 2026-10-15 is not restored. No API or custody mutation changed.
+
 2026-10-15 ADR-045 Activity History: bank ROLE-02 explicitly negotiates V2, with V1 fallback only on 400 ACTIVITY_CONTRACT_UNSUPPORTED. Contract changes clear loaded rows and cursors. PRC off-chain events are included by default, filterable by source, and link to their own PRC detail in the Activity cell. Eight table/PDF headers remain; PRC IDs never populate scan, blood-request, transfer or blockchain cells. Actors identify their institution and label roles as current. Cancellation uses a neutral badge; PRC Supply Requests belongs to Operations in the sidebar.
 
 2026-10-15 Analytics header cleanup: move the introductory description into existing page information help; remove the page’s Simulation preview / Read only badge and the two question eyebrows. Expected blood demand and Estimated excess stock each place Refresh before an information hover/focus button at the far right. Existing state indicators, evidence/provenance and simulation classification elsewhere remain.
@@ -1223,5 +1225,3 @@ compact, consistent gaps between review fields.
 when preview fields are shown, including incomplete and edited drafts. Disable
 it and explain the required unchanged five-field OCR verification until that
 gate passes. Confirmation and operator authorization rules remain unchanged.
-
-2026-10-19 Requests & Transfers (TC-T01/TC-T02 remediation): Blood Requests adds an inline **RPS rank** column for supplier ROLE-01/ROLE-02 only, showing `#rank of N · score` per request within its blood type/component series from `/api/v2/coordination/priority`. The tooltip shows the urgency and wait contributions and policy version and states that the ranking is advisory; approval stays with the supplier. Unranked or unavailable rows show `—` or `Unavailable`, never an inferred score. The standalone RPS panel removed on 2026-10-15 is not restored. No API or custody mutation changed.
