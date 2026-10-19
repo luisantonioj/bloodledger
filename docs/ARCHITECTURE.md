@@ -221,6 +221,9 @@ retry, and displays scan synchronization state.
 - Reconciles committed events into the PostgreSQL read model.
 - Invokes or reads forecast/recommendation outputs.
 - Runs scheduled expiry evaluation; chaincode itself is never a scheduler.
+  Implemented on 2026-10-19 as an opt-in worker job (`V2_EXPIRY_EVALUATOR_ENABLED`, `PA-TC-03`, Proposed) that queues
+  `EVALUATE_COMPONENT_EXPIRY` as the non-login `USR_SERVICE_EXPIRY` actor. The same worker purges V2 checkpoint
+  locations after their 30-day retention (`PA-TC-04`).
 
 ### 5.3 PostgreSQL
 

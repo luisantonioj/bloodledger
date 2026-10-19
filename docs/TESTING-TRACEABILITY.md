@@ -72,3 +72,27 @@ whole requirements complete. PASS always refers to the stated slice.
 The [local pre-handoff review](frontend/LAT-PRE-HANDOFF-REVIEW.md) owns the
 remaining task disposition. TP-G01–06 and human UAT remain open; BL-TST-01
 and TP-09 phase acceptance remain incomplete.
+
+## System test-case remediation (2026-10-19, `codex/jopia-tc-remediation`)
+
+The 15 non-PASS system cases now have implementation and automated evidence on
+this branch. **None is reclassified as PASS until it is re-tested live.** The
+live chaincode upgrade and the latency run were deferred so the defense-demo
+ledger stayed untouched. Results stay empty until that evidence exists.
+
+| Case | Change | Automated evidence (branch) | Live re-test |
+|---|---|---|---|
+| TC-T01, TC-T02 | Inline advisory RPS rank in Blood Requests | `request-priority.test.ts`; `defense-analytics.spec.ts` inline RPS test | Pending |
+| TC-E02 | Simulation-only note on dashboard BROA card | `blood-bank-pages.spec.ts` redistribution test | Pending |
+| TC-O03 | Global offline banner | `blood-bank-pages.spec.ts` offline banner test | Pending |
+| TC-E04 | Expiry alert card on requestor, PRC and DOH dashboards | `dashboard-alerts.spec.ts` (four roles) | Pending |
+| TC-E01 | `PA-TC-01` near-expiry advisory alerts | `near-expiry-policy.test.ts`; `dashboard-alerts.spec.ts` | Pending |
+| TC-S01 | NFR-06 probe `scripts/validation/nfr06-latency.mjs` | Syntax only; not run | Pending (writes one synthetic unit) |
+| TC-T04, TC-G01 | `PA-TC-04` checkpoint location on V2 dispatch/receipt | Chaincode location tests; `reservation-delay-location.test.ts`; `uat-workflows.spec.ts` dispatch/receive body | Pending chaincode upgrade |
+| TC-G03 | Location audit read and web table | `reservation-delay-location.test.ts` audit scope | Pending chaincode upgrade |
+| TC-T07 | `DELAYED` with coded reasons, resume, delayed receipt | Chaincode delay tests; API delay/resume tests; `uat-workflows.spec.ts` delay/resume | Pending chaincode upgrade |
+| TC-E05 | `PA-TC-03` scheduled expiry evaluator | Chaincode service-actor test; evaluator tests; migration applied to a scratch database | Pending chaincode upgrade |
+| TC-S05, TC-O01 | `PA-TC-02` encrypted offline capture queue | `offline-capture-queue.test.ts`; capture e2e written but not runnable on this host (OCR confidence fails on `main` too) | Pending |
+
+All `PA-TC-*` assumptions are **Proposed**. They need owner acceptance before
+the live re-test, and they do not resolve `RQ-03`.
