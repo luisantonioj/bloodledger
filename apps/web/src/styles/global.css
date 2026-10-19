@@ -1275,3 +1275,15 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 @media(max-width:620px){.blood-bank-audit .audit-record-filter-controls:has(>.table-view-bar){grid-template-columns:minmax(0,1fr)}}
 
 .session-profile strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.receipt-camera-stage:has(.receipt-live-camera){padding:12px}
+.receipt-live-camera{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;min-width:0}
+.receipt-live-camera video{display:block;width:100%;max-height:300px;object-fit:contain;border-radius:var(--radius-sm);background:var(--chrome)}
+.receipt-camera-buttons{display:flex;justify-content:center;flex-wrap:wrap;gap:8px}
+.receipt-camera-error{margin:0;color:var(--on-chrome);font-size:12px;line-height:1.5}
+
+.receipt-auto-capture-actions{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.receipt-auto-capture-actions>.button:nth-child(n+3){grid-column:1/-1}
+
+.receipt-inbound-preview .scan-review-fields{gap:10px;padding:8px 0}
+.receipt-inbound-preview .scan-review-fields>label{margin:0;gap:4px}
