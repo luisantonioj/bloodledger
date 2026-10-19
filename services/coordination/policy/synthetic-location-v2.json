@@ -2,7 +2,7 @@
   "classification": "SYNTHETIC_DATA",
   "policyVersion": "SYNTHETIC_LOCATION_V2",
   "supersedes": "SYNTHETIC_LOCATION_V1",
-  "status": "Proposed",
+  "status": "Accepted",
   "maximumAccuracyMetres": 1000,
   "facilityMatchRadiusMetres": 500,
   "retentionDays": 30,

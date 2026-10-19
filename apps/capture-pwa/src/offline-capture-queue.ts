@@ -1,4 +1,4 @@
-// TC-S05/TC-O01 remediation: SYNTHETIC_OFFLINE_CAPTURE_V1 (Proposed).
+// TC-S05/TC-O01 remediation: SYNTHETIC_OFFLINE_CAPTURE_V1 (Accepted 2026-10-19).
 // While offline, an operator-confirmed capture may wait on this device:
 // - only the allowlisted confirmed fields, never the label image or raw OCR text;
 // - encrypted with AES-GCM under a non-extractable WebCrypto key kept in IndexedDB;

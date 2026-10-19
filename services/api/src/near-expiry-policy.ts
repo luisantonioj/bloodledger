@@ -1,4 +1,4 @@
-// TC-E01 remediation: SYNTHETIC_NEAR_EXPIRY_V1 (Proposed). Off-chain advisory lead times only; the ledger is unchanged.
+// TC-E01 remediation: SYNTHETIC_NEAR_EXPIRY_V1 (Accepted 2026-10-19). Off-chain advisory lead times only; the ledger is unchanged.
 // Red-cell and platelet leads reuse PA-S2-02 (12 h and 6 h); plasma and cryoprecipitate use a 24 h synthetic lead.
 // These values are not clinical thresholds. RQ-03 stays open for any clinical or operational interpretation.
 export const NEAR_EXPIRY_POLICY_VERSION = "SYNTHETIC_NEAR_EXPIRY_V1" as const;

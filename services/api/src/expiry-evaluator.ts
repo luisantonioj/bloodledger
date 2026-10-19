@@ -1,5 +1,5 @@
 // TC-E05 remediation: scheduled off-chain expiry evaluation (ARCHITECTURE: scheduled expiry evaluation runs off-chain).
-// The worker queues EVALUATE_COMPONENT_EXPIRY with server time as USR_SERVICE_EXPIRY (PA-TC-03, Proposed); the chaincode
+// The worker queues EVALUATE_COMPONENT_EXPIRY with server time as USR_SERVICE_EXPIRY (PA-TC-03, Accepted 2026-10-19); the chaincode
 // still validates the printed label expiry, so nothing expires early. Only AVAILABLE stock is evaluated, matching the
 // staff route: reserved stock must be cancelled first. One idempotency key per component and printed expiry.
 import { createHash } from "node:crypto";

@@ -94,5 +94,5 @@ ledger stayed untouched. Results stay empty until that evidence exists.
 | TC-E05 | `PA-TC-03` scheduled expiry evaluator | Chaincode service-actor test; evaluator tests; migration applied to a scratch database | Pending chaincode upgrade |
 | TC-S05, TC-O01 | `PA-TC-02` encrypted offline capture queue | `offline-capture-queue.test.ts`; capture e2e written but not runnable on this host (OCR confidence fails on `main` too) | Pending |
 
-All `PA-TC-*` assumptions are **Proposed**. They need owner acceptance before
-the live re-test, and they do not resolve `RQ-03`.
+All `PA-TC-*` assumptions were **Accepted** by Jopia on 2026-10-19 for simulation use before
+the live re-test; they do not resolve `RQ-03`.

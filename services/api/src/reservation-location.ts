@@ -1,4 +1,4 @@
-// TC-T04/TC-G01/TC-G03 remediation: V2 reservation checkpoint location (SYNTHETIC_LOCATION_V2, Proposed).
+// TC-T04/TC-G01/TC-G03 remediation: V2 reservation checkpoint location (SYNTHETIC_LOCATION_V2, Accepted 2026-10-19).
 // Exact points stay off-chain and are purged after delete_after; the ledger receives only the summary below.
 import type { Pool } from "pg";
 import { ApiFailure } from "./errors.js";

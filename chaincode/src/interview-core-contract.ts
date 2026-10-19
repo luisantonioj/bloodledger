@@ -29,7 +29,7 @@ const EVIDENCE_ID_PATTERN = /^EVD_[A-Z0-9_-]{1,56}$/;
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
 const REASON_PATTERN = /^[A-Z][A-Z0-9_]{2,63}$/;
 const LOCATION_ID_PATTERN = /^LOC_[A-Z0-9_-]{1,56}$/;
-// PA-TC-03 (Proposed): the off-chain scheduled expiry evaluator acts as this service actor, for EvaluateComponentExpiry only.
+// PA-TC-03 (Accepted 2026-10-19): the off-chain scheduled expiry evaluator acts as this service actor, for EvaluateComponentExpiry only.
 const EXPIRY_SERVICE_ACTOR_ID = "USR_SERVICE_EXPIRY";
 const DELAY_REASON_CODES = ["VEHICLE_DELAY", "TRAFFIC", "WEATHER", "HANDOVER_PENDING", "OTHER_OPERATIONAL"];
 

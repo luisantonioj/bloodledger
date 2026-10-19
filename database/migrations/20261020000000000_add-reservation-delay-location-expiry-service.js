@@ -1,7 +1,7 @@
-// TC-T04/TC-G01/TC-G03/TC-T07/TC-E05 remediation (Proposed; SIMULATION_ONLY).
+// TC-T04/TC-G01/TC-G03/TC-T07/TC-E05 remediation (PA-TC-03/04 Accepted 2026-10-19; SIMULATION_ONLY).
 // Adds the staff-recorded DELAYED reservation state, the on-chain location summaries projected beside the reservation,
 // and an access-controlled off-chain table for exact checkpoint points (SYNTHETIC_LOCATION_V2, purged after 30 days).
-// It also registers USR_SERVICE_EXPIRY (PA-TC-03, Proposed) as a non-login INTERNAL actor that the scheduled expiry
+// It also registers USR_SERVICE_EXPIRY (PA-TC-03, Accepted 2026-10-19) as a non-login INTERNAL actor that the scheduled expiry
 // evaluator attributes its commands to: SUSPENDED status and an all-zero verifier mean it can never sign in. A database
 // bootstrapped without INST_MEDIATRIX gets no actor, and the evaluator then stays idle.
 // Existing rows and constraints otherwise stay unchanged.
