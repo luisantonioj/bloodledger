@@ -590,6 +590,7 @@ withdrawal creates a new `SUBMITTED` application linked to the prior record.
 
 | PA-OCR-01 | Accepted prototype assumption | `SYNTHETIC_LABEL_LAYOUT_V1` | Jopia / 2026-10-17 | Three fictional label layouts (`MEDIATRIX`, `MEDIX`, `NLVILLA`) and their field semantics, used only to collect, review and benchmark the private OCR research corpus. They copy no real hospital label and use the existing synthetic Donation No. grammars. Extraction stays preview-only and non-submittable. `INBOUND_OCR_V1`, issuer policy and both OCR flags are unchanged. See [the decision](#pa-ocr-01--synthetic-label-layouts-for-the-ocr-corpus-2026-10-17). Not Mediatrix, Medix or N.L. Villa policy. | Approved institution label references for each bank and resolution of `RQ-02`, `RQ-03` and `RQ-19` |
 | PA-OCR-02 | Accepted prototype assumption | `SYNTHETIC_CAPTURE_LABEL_V2` | Jopia / 2026-10-18 | The synthetic five-line capture label may also print readable value forms: blood type and component with spaces instead of underscores, and dates as `YYYY-MM-DD`, meaning 00:00 UTC on that date. The device parser maps each form to exactly one V1 value, so the API payload, `INBOUND_OCR_V1`, the 90% per-field gate and operator confirmation are unchanged. Fictional labels only. See [the decision](#pa-ocr-02--readable-synthetic-capture-label-2026-10-18). | Approved real label structures and `RQ-02` resolution |
+| PA-OCR-03 | Accepted prototype assumption | `INBOUND_OCR_CORRECTED_V1` | Jopia / 2026-10-19 | An OCR intake may carry operator corrections: every field states what OCR read and its score; uncorrected fields must equal that read at ≥ 90; corrected fields need a reason and keep no confidence; at least one field stays an unchanged OCR read; a corrected Donation No. is entered twice. Off by default. Implements ADR-050 and resolves `RQ-19` for corrected OCR capture only. See [the decision](#pa-ocr-03--corrected-ocr-intake-2026-10-19). | Approved correction authority, audit retention and any manual or import path under a further decision |
 
 Prototype-assumption versions are immutable. A replacement adds a new version,
 marks the earlier one superseded for new operations, preserves historical
@@ -618,7 +619,7 @@ sprint:
 | RQ-15 | Who may authorize emergency suspension while a transfer is dispatched or in transit, and how is safe receipt/custody resolution assigned? | Before operational in-transit suspension |
 | RQ-16 | What institutionally approved minimum-stock and safe-stock levels, shortage rule and surplus indicator replace the unavailable `FR-04` dashboard classification (Critical, Low, Adequate, Surplus)? This covers unit of measure, institution, blood-group and component scope, boundary comparisons, zero and missing-coverage handling, freshness tolerance, and the owner, approver, effective date and audit reference. The `SYNTHETIC_OPTIMIZATION_V1` and V2.1 surplus safety allowance and minimum reserve are not stock-classification thresholds. | Before operational dashboard stock classification or full `FR-04` acceptance; accepted project-only demonstration exception is recorded under FR-04 |
 | RQ-18 | Which request decisions beyond approval are allowed, and with what rules? Rejection by the supplying ROLE-02 (reason codes, terminal state), cancellation of a still-pending request by its requester, and partial offers (allowed at all, and how the remainder is handled). The ledger request asset has no reject or cancel transition today; enabling them needs new chaincode functions and a lifecycle upgrade. | Before any request reject, cancel or partial-offer control |
-| RQ-19 | Should any intake path other than confirmed OCR capture exist: manual Donation No. entry or bulk CSV import? ADR-035 currently forbids unverified manual or system-import records. A new path needs its verification evidence, operator authority, confidence and confirmation rules and an ADR superseding ADR-035. | Before enabling manual intake or Inventory CSV import |
+| RQ-19 | Should any intake path other than confirmed OCR capture exist: manual Donation No. entry or bulk CSV import? ADR-035 currently forbids unverified manual or system-import records. A new path needs its verification evidence, operator authority, confidence and confirmation rules and an ADR superseding ADR-035. **Partly resolved for simulation on 2026-10-19:** operator correction of an OCR capture is allowed by ADR-050 / `PA-OCR-03`. Fully manual entry and CSV import stay open. | Before enabling fully manual intake or Inventory CSV import |
 
 Unanswered questions must not be guessed by a coding agent. The relevant task is
 blocked or implemented behind an explicitly approved prototype assumption.
@@ -725,6 +726,30 @@ ROLE-02) and `prc-supply:respond` (PRC reviewer). The additive migration
 `20261015000000000_create-prc-supply-requests.js` and
 `services/api/openapi-v2.json` are authoritative for the exact shape and error
 codes.
+
+## PA-OCR-03 — Corrected OCR intake (2026-10-19)
+
+**Accepted by Jopia; SIMULATION_ONLY.** Implements ADR-050 under `RQ-19`. Lat's
+scanner lets operators review and correct OCR fields, but any edit made the
+draft unsubmittable. This contract lets a reviewed correction be submitted
+without treating an OCR score as evidence for a value the operator typed.
+
+| Rule | Decision |
+|---|---|
+| Contract | `capturePolicyVersion: INBOUND_OCR_CORRECTED_V1`, schema in [`contracts/inbound-ocr-corrected-v1.schema.json`](../contracts/inbound-ocr-corrected-v1.schema.json), on the existing `POST /api/v2/inbound-captures`. `INBOUND_OCR_V1` is unchanged. Off unless `BLOODLEDGER_CORRECTED_INTAKE_ENABLED=true`; otherwise `403 CORRECTED_INTAKE_DISABLED`. |
+| Values | The top-level values are the final, operator-confirmed values and pass every `INBOUND_OCR_V1` value rule (issuer format, enums, UTC times, expiry after collection). |
+| Per field | Each of the five fields reports `ocrValue`, `ocrConfidence` and `corrected`. An uncorrected field must equal its OCR read at ≥ 90. A corrected field needs a reason: `OCR_MISREAD` (read differs), `OCR_NOT_READ` (no read) or `OCR_LOW_CONFIDENCE` (read matches but scored below 90). |
+| OCR anchor | At least one field is corrected (otherwise use `INBOUND_OCR_V1`) and at least one stays an unchanged OCR read. Fully manual entry stays unsupported. |
+| Donation No. | A corrected Donation No. is entered twice (`donationNumberConfirmation`) and must match; an unchanged one carries no confirmation. |
+| Evidence | The server, not the client, sets `OPERATOR_CONFIRMED` for a corrected blood type or component, and `OCR_LABEL` otherwise. A corrected field keeps no confidence in the capture record. |
+| Provenance | Per field: source (`OCR_LABEL`/`OPERATOR_CORRECTED`), keyed HMAC digests of the OCR read and the final value, the original OCR score and the reason, in the insert-only `app.v2_capture_field_provenance` (updates and deletes refused). Raw OCR text and Donation No. values are never stored. The provenance is bound into the capture evidence digest recorded on the ledger. |
+| Authority and audit | The same bank roles and PIN-verified operator as any intake, with idempotency, correlation and the command audit trail. A retry with the same key and body replays; a different correction under the same key is `409 V2_IDEMPOTENCY_CONFLICT`. |
+| Not changed | Chaincode, the 90% gate for OCR-sourced values, J5 for `INBOUND_OCR_V1` (clients still cannot claim `OPERATOR_CONFIRMED` there), and `RQ-02`. |
+
+Implemented in `services/api/src/inbound-ocr-policy.ts`
+(`validateCorrectedInboundInput`), the capture route, the projection and the
+additive migration `20261019010000000_allow-corrected-ocr-intake.js`, with route
+tests and a disposable-database probe. The web client wiring is Lat's.
 
 ## PA-OCR-02 — Readable synthetic capture label (2026-10-18)
 
