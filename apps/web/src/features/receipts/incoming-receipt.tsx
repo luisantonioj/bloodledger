@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from "react";
+import { captureCheckpointLocation, type CheckpointLocation } from "../transfers/checkpoint-location";
 import type {Principal} from "../../auth/permissions";
 import {usePagedRead} from "../../hooks/use-paged-read";
 import {useValidatedRead} from "../../hooks/use-validated-read";
@@ -72,7 +73,7 @@ function ReceiptVerification({reservation,scannedRecognition,onAccepted,onLockCh
  const [evidence,setEvidence]=useState<Evidence>(),[verifyFrozen,setVerifyFrozen]=useState(false),[receiveFrozen,setReceiveFrozen]=useState(false);
  const active=useRef(true),controller=useRef<AbortController|null>(null),timeRejects=useRef(0);
  const verifyAttempt=useRef<{keys:ReturnType<typeof newMutationKeys>;body:{expectedVersion:number;correlationId:string;scannedLabels:ScannedLabel[]}}|null>(null);
- const receiveAttempt=useRef<{keys:ReturnType<typeof newMutationKeys>;body:{correlationId:string;eventTime:string;expectedVersion:number;receiptEvidenceId:string;receiptEvidenceDigest:string}}|null>(null);
+ const receiveAttempt=useRef<{keys:ReturnType<typeof newMutationKeys>;body:{location:CheckpointLocation;correlationId:string;eventTime:string;expectedVersion:number;receiptEvidenceId:string;receiptEvidenceDigest:string}}|null>(null);
  const members=reservation.components.length,locked=busy||verifyFrozen||receiveFrozen;
  useEffect(()=>{active.current=true;return()=>{active.current=false;controller.current?.abort();};},[]);
  useEffect(()=>{onLockChange(locked);},[locked,onLockChange]);
@@ -107,8 +108,9 @@ function ReceiptVerification({reservation,scannedRecognition,onAccepted,onLockCh
  }
  async function receive(){
   if(busy||!evidence)return;
-  if(!receiveAttempt.current){const keys=newMutationKeys();receiveAttempt.current={keys,body:{correlationId:keys.correlationId,eventTime:new Date().toISOString(),expectedVersion:reservation.version,receiptEvidenceId:evidence.evidenceId,receiptEvidenceDigest:evidence.evidenceDigest}};}
-  const saved=receiveAttempt.current;setBusy(true);setError("");
+  // TC-G01: one receipt checkpoint reading, captured once per attempt so a retry resends the same body.
+  if(!receiveAttempt.current){setBusy(true);const location=await captureCheckpointLocation();const keys=newMutationKeys();receiveAttempt.current={keys,body:{location,correlationId:keys.correlationId,eventTime:new Date().toISOString(),expectedVersion:reservation.version,receiptEvidenceId:evidence.evidenceId,receiptEvidenceDigest:evidence.evidenceDigest}};}
+  const saved=receiveAttempt.current!;setBusy(true);setError("");
   try{
    const command=parseV2Command(await requestJson<unknown>(`/api/v2/reservations/${encodeURIComponent(reservation.reservationId)}/receive`,{method:"POST",headers:{"Idempotency-Key":saved.keys.idempotencyKey,...contractHeaders},body:JSON.stringify(saved.body)}));
    if(command.resourceType!=="TRANSFER"||command.resourceId!==reservation.reservationId||command.correlationId!==saved.body.correlationId||command.statusUrl!=="/api/v2/commands/"+command.commandId)throw Error("Command identity mismatch");
