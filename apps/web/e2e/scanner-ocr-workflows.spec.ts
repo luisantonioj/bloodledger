@@ -31,7 +31,7 @@ const V1_LABEL=["DONATION NO: MM26-01-0001","BLOOD TYPE: A_POSITIVE","COMPONENT:
 async function scan(page:Page,direction:"Inbound"|"Outbound",label=V1_LABEL,font="bold 48px monospace"){
  await page.goto("/transactions");await page.getByRole("button",{name:"Open Mobile Scanner",exact:true}).click();await page.getByRole("button",{name:direction,exact:true}).click();const dialog=page.getByRole("dialog",{name:"Mobile blood unit scanner",exact:true});
  const data=await page.evaluate(([label,font])=>{const canvas=document.createElement("canvas");canvas.width=1600;canvas.height=600;const ctx=canvas.getContext("2d")!;ctx.fillStyle="white";ctx.fillRect(0,0,1600,600);ctx.fillStyle="black";ctx.font=font;label.forEach((line,index)=>ctx.fillText(line,70,90+index*90));return canvas.toDataURL("image/png");},[label,font] as const);
- await dialog.getByLabel(direction==="Outbound"?"Outbound blood-unit label image":"Blood-unit label image",{exact:true}).setInputFiles({name:"synthetic-label.png",mimeType:"image/png",buffer:Buffer.from(data.split(",")[1],"base64")});await dialog.getByRole("button",{name:"Run OCR",exact:true}).click();await expect(dialog.getByLabel("Donation No. / Unit ID",{exact:true})).toHaveValue("MM26-01-0001",{timeout:90000});return dialog;
+ await dialog.getByLabel(direction==="Outbound"?"Outbound blood-unit label image":"Blood-unit label image",{exact:true}).setInputFiles({name:"synthetic-label.png",mimeType:"image/png",buffer:Buffer.from(data.split(",")[1],"base64")});await expect(dialog.getByLabel("Donation No. / Unit ID",{exact:true})).toHaveValue("MM26-01-0001",{timeout:90000});return dialog;
 }
 test("bank verified intake binds operator, freezes ambiguous body and polls queued command",async({page,context})=>{
  test.setTimeout(120000);const state=await fixture(page,context);const dialog=await scan(page,"Inbound");await expect(dialog.getByRole("button",{name:"Confirm inbound transaction",exact:true})).toBeDisabled();await dialog.getByLabel("I checked all five fields against the label.").check();await dialog.getByRole("button",{name:"Confirm inbound transaction",exact:true}).click();await page.getByRole("button",{name:"Cancel verification",exact:true}).click();await expect(dialog.getByText("Operator verification cancelled. No intake was sent.",{exact:true})).toBeVisible();await expect(dialog.getByRole("button",{name:"Close mobile scanner",exact:true})).toBeEnabled();await dialog.getByLabel("I checked all five fields against the label.").check();await dialog.getByRole("button",{name:"Confirm inbound transaction",exact:true}).click();await page.getByLabel("Operator PIN",{exact:true}).fill("12345678");await page.getByRole("button",{name:"Verify and submit",exact:true}).click();await expect(dialog.getByRole("button",{name:"Retry same intake",exact:true})).toBeEnabled();await expect(dialog.getByLabel("Donation No. / Unit ID",{exact:true})).toBeDisabled();await expect(dialog.getByRole("button",{name:"Close mobile scanner",exact:true})).toBeDisabled();
@@ -45,7 +45,7 @@ test("PA-OCR-02 readable printed label is read, mapped to exact values and submi
  await dialog.getByLabel("I checked all five fields against the label.").check();await expect(dialog.getByRole("button",{name:"Confirm inbound transaction",exact:true})).toBeEnabled();expect(state.writes).toHaveLength(0);
 });
 test("editing recognized intake blocks submission; outbound offers scoped transfer dispatch rather than stock removal",async({page,context})=>{
- test.setTimeout(120000);const state=await fixture(page,context);let dialog=await scan(page,"Inbound");await dialog.getByLabel("Donation No. / Unit ID",{exact:true}).fill("MM26-01-0002");await expect(dialog.getByText("Edited or incomplete OCR draft · Not verified",{exact:true})).toBeVisible();await expect(dialog.getByRole("button",{name:"Confirm inbound transaction",exact:true})).toBeDisabled();await dialog.getByRole("button",{name:"Change direction",exact:true}).click();await dialog.getByRole("button",{name:"Outbound",exact:true}).click();await expect(dialog.getByRole("button",{name:"Run OCR",exact:true})).toBeDisabled();await dialog.getByRole("button",{name:"Change direction",exact:true}).click();await dialog.getByRole("button",{name:"Close mobile scanner",exact:true}).click();
+ test.setTimeout(120000);const state=await fixture(page,context);let dialog=await scan(page,"Inbound");await dialog.getByLabel("Donation No. / Unit ID",{exact:true}).fill("MM26-01-0002");await expect(dialog.getByText("Edited or incomplete OCR draft · Not verified",{exact:true})).toBeVisible();await expect(dialog.getByRole("button",{name:"Confirm inbound transaction",exact:true})).toBeDisabled();await dialog.getByRole("button",{name:"Change direction",exact:true}).click();await dialog.getByRole("button",{name:"Outbound",exact:true}).click();await expect(dialog.getByRole("button",{name:"Run OCR",exact:true})).toHaveCount(0);await dialog.getByRole("button",{name:"Change direction",exact:true}).click();await dialog.getByRole("button",{name:"Close mobile scanner",exact:true}).click();
  dialog=await scan(page,"Outbound");await expect(dialog.getByLabel("Approved outgoing transfer",{exact:true}).locator("option")).toHaveCount(2);await dialog.getByLabel("Approved outgoing transfer",{exact:true}).selectOption("RES_SCANNER");await expect(dialog.getByRole("button",{name:"Dispatch reservation",exact:true})).toBeVisible();await expect(dialog.getByRole("button",{name:"Confirm outbound transaction",exact:true})).toHaveCount(0);expect(state.writes).toHaveLength(0);
 });
 
@@ -63,3 +63,35 @@ for(const recovery of ["found","empty","wrongIdentity","oldReplay","cancelRetry"
   expect(state.writes).toHaveLength(postsBefore);expect(state.apiReads.filter(path=>path==="/api/v2/commands")).toHaveLength(1);
  });
 }
+
+test("camera photo automatically recognizes a printed label and allows only unchanged reviewed intake",async({page,context})=>{
+ test.setTimeout(120000);const state=await fixture(page,context);
+ // A fictional printed form streamed through the same video -> JPEG -> OCR path as a camera.
+ await page.addInitScript(lines=>{
+  navigator.mediaDevices.getUserMedia=async()=>{
+   const canvas=document.createElement("canvas");canvas.width=1600;canvas.height=600;
+   const ctx=canvas.getContext("2d")!;ctx.fillStyle="white";ctx.fillRect(0,0,1600,600);ctx.fillStyle="black";ctx.font="bold 48px monospace";lines.forEach((line,index)=>ctx.fillText(line,70,90+index*90));
+   const stream=canvas.captureStream(10),track=stream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack;
+   const timer=setInterval(()=>{if(track.readyState==="ended")clearInterval(timer);else track.requestFrame();},100);
+   return stream;
+  };
+ },V1_LABEL);
+ await page.goto("/transactions");await page.getByRole("button",{name:"Open Mobile Scanner",exact:true}).click();await page.getByRole("button",{name:"Inbound",exact:true}).click();
+ const dialog=page.getByRole("dialog",{name:"Mobile blood unit scanner",exact:true});
+ await dialog.getByRole("button",{name:"Take photo",exact:true}).click();await dialog.getByRole("button",{name:"Capture photo",exact:true}).click();
+ await expect(dialog.getByText("OCR label read · Review every field",{exact:true})).toBeVisible({timeout:90000});
+ await expect(dialog.getByLabel("Donation No. / Unit ID",{exact:true})).toHaveValue("MM26-01-0001");
+ await dialog.getByLabel("I checked all five fields against the label.").check();
+ await expect(dialog.getByRole("button",{name:"Confirm inbound transaction",exact:true})).toBeEnabled();
+ await dialog.getByLabel("I checked all five fields against the label.").scrollIntoViewIfNeeded();
+ await dialog.screenshot({path:"/tmp/lat-inbound-checkbox.png"});
+ await dialog.getByLabel("Donation No. / Unit ID",{exact:true}).fill("MM26-01-0002");
+ await expect(dialog.getByLabel("I checked all five fields against the label.")).toBeVisible();
+ await expect(dialog.getByLabel("I checked all five fields against the label.")).toBeDisabled();
+ await expect(dialog.getByLabel("I checked all five fields against the label.")).not.toBeChecked();
+ await expect(dialog.getByRole("button",{name:"Confirm inbound transaction",exact:true})).toBeDisabled();
+ await expect(dialog.getByText("Edited or incomplete OCR draft · Not verified",{exact:true})).toBeVisible();
+ await dialog.getByLabel("Donation No. / Unit ID",{exact:true}).fill("MM26-01-0001");
+ await dialog.getByLabel("I checked all five fields against the label.").check();
+ await expect(dialog.getByRole("button",{name:"Confirm inbound transaction",exact:true})).toBeEnabled();expect(state.writes).toEqual([]);
+});

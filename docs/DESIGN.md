@@ -1197,3 +1197,29 @@ the right; other table pagination stays unchanged.
 the generic account display name. Existing hospital, PRC and DOH accounts use
 their full facility labels; omit Synthetic from the visible name. Keep the
 name on one line with an ellipsis and the full value in its hover title.
+
+### 2026-10-19 Separate camera and image selection
+
+The shared inbound/outbound scanner has separate Take photo and Choose image
+buttons. Take photo opens a browser-local live camera preview, preferring the
+rear camera on phones; Capture photo creates an in-memory JPEG for the existing
+OCR review. Choose image opens the gallery/file picker without a capture hint.
+Permission denial and missing cameras show actionable errors. Cancel, capture,
+direction/mode/account changes and scanner closure release camera tracks,
+including permissions that resolve after closure. Recognition, verification and
+submission rules are unchanged. Physical camera-device evidence remains pending.
+
+2026-10-19 automatic scanner recognition: Take photo and Choose image share
+one row. A captured or selected image starts OCR automatically; remove the
+shared scanner's Run OCR button. Image adjustments trigger debounced recognition;
+replacement, clearing, mode changes and closure cancel obsolete work. Results
+still require review and operator confirmation. No automatic transaction or
+receipt is submitted. Reservation-specific verification panels are unchanged.
+
+2026-10-19 inbound preview density: remove inherited label margins and use
+compact, consistent gaps between review fields.
+
+2026-10-19 inbound review visibility: keep the bank review checkbox visible
+when preview fields are shown, including incomplete and edited drafts. Disable
+it and explain the required unchanged five-field OCR verification until that
+gate passes. Confirmation and operator authorization rules remain unchanged.

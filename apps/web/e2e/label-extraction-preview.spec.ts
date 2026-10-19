@@ -20,14 +20,14 @@ async function setup(page:Page,context:BrowserContext){
 test("profile extraction keeps partial values, date precision and edited fields through a guided recapture",async({page,context})=>{
  const {dialog,writes}=await setup(page,context);
  await dialog.getByText("Adjust image and field selection",{exact:true}).click();await dialog.getByLabel("Label layout",{exact:true}).selectOption("MEDIATRIX_BAG_PREVIEW");
- await dialog.getByRole("button",{name:"Run OCR",exact:true}).click();
+
  await expect(dialog.getByLabel("Donation No. / Unit ID",{exact:true})).toHaveValue("MM26-10-7001",{timeout:90000});
  await expect(dialog.getByLabel("Review blood type",{exact:true})).toHaveValue("B_POSITIVE");await expect(dialog.getByLabel("Review component",{exact:true})).toHaveValue("");
  await expect(dialog.getByLabel("Collection time (UTC)",{exact:true})).toHaveValue("");await expect(dialog.getByLabel("Expiration time (UTC)",{exact:true})).toHaveValue("2026-11-01");
  await expect(dialog.getByText("Suggestions are not verified capture evidence.",{exact:true})).toBeVisible();await expect(dialog.getByRole("button",{name:"Confirm inbound transaction",exact:true})).toBeDisabled();
  await dialog.getByLabel("Donation No. / Unit ID",{exact:true}).fill("MM26-10-7002");
  await dialog.getByLabel("Read region as",{exact:true}).selectOption("bloodType");await dialog.getByLabel("Crop height",{exact:true}).fill("8");await dialog.getByLabel("Crop y",{exact:true}).fill("42");await dialog.getByLabel("Crop width",{exact:true}).fill("70");await dialog.getByLabel("Crop x",{exact:true}).fill("4");
- await dialog.getByRole("button",{name:"Run OCR",exact:true}).click();await expect(dialog.getByRole("button",{name:"Run OCR",exact:true})).toBeEnabled({timeout:90000});
+ await expect(dialog.getByRole("status").filter({hasText:"Reading label"})).toHaveCount(0,{timeout:90000});
  await expect(dialog.getByLabel("Review blood type",{exact:true})).toHaveValue("B_POSITIVE");await expect(dialog.getByLabel("Donation No. / Unit ID",{exact:true})).toHaveValue("MM26-10-7002");await expect(dialog.getByText(/Edited · Engine score/)).toBeVisible();
  await expect(dialog.getByText("Inspect field crop",{exact:true}).first()).toBeVisible();expect(writes).toEqual([]);
  await dialog.getByRole("button",{name:"Close mobile scanner",exact:true}).click();await page.getByRole("button",{name:"Open Mobile Scanner",exact:true}).click();await page.getByRole("button",{name:"Inbound",exact:true}).click();await expect(dialog.getByAltText("Selected blood-unit label preview",{exact:true})).toHaveCount(0);await expect(dialog.getByLabel("Donation No. / Unit ID",{exact:true})).toHaveCount(0);
