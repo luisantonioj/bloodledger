@@ -629,7 +629,7 @@ export class FabricGatewayInventory implements InventoryLedger {
 export function interviewCorePayload(command: Pick<V2Command, "operation" | "payload" | "idempotencyKey">): Record<string, unknown> {
   const rawPayload: Record<string, unknown> = command.operation === "REGISTER_INBOUND_COMPONENT"
     ? (() => {
-      const { captureId: _captureId, donationNoCiphertext: _ciphertext, donationNoNonce: _nonce, donationNoAuthTag: _authTag, donationNoEncryptionKeyVersion: _keyVersion, capturedAt: _capturedAt, confirmedAt: _confirmedAt, ocrEngine: _engine, ocrEngineVersion: _engineVersion, donationNumberConfidence: _donationConfidence, bloodTypeConfidence: _bloodConfidence, donationNoLookupHmac, ...safe } = command.payload;
+      const { captureId: _captureId, donationNoCiphertext: _ciphertext, donationNoNonce: _nonce, donationNoAuthTag: _authTag, donationNoEncryptionKeyVersion: _keyVersion, capturedAt: _capturedAt, confirmedAt: _confirmedAt, ocrEngine: _engine, ocrEngineVersion: _engineVersion, donationNumberConfidence: _donationConfidence, bloodTypeConfidence: _bloodConfidence, capturePolicyVersion: _capturePolicy, fieldProvenance: _fieldProvenance, donationNoLookupHmac, ...safe } = command.payload;
       return { ...safe, donationNoDigest: donationNoLookupHmac };
     })()
     : command.operation === "RESERVE_COMPONENTS"
