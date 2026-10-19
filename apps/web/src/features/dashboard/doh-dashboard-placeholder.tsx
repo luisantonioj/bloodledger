@@ -9,7 +9,7 @@ export function DohDashboardPlaceholder({ principal }: { principal: Principal })
       <div className="doh-placeholder-message"><strong>Awaiting reporting data</strong><span>No compliance report data displayed yet.</span></div><RecordPagination total={0} ready={false} label="Compliance reports"/>
     </section>
     <section className="doh-dashboard-card" aria-labelledby="doh-alerts-heading">
-      <header><div><h2 id="doh-alerts-heading">Alerts</h2></div>{can(principal, "alerts:read") && <a className="doh-dashboard-link" href="/alerts">View all alerts →</a>}</header>
+      <header><div><h2 id="doh-alerts-heading">Alerts</h2></div></header>
       <div className="doh-placeholder-message"><strong>Awaiting alert data</strong><span>No compliance alert data displayed yet.</span></div>
     </section>
   </div>;

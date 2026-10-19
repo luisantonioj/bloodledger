@@ -36,7 +36,8 @@ test("former DOH tabs show the hospital dashboard and failed reads never imply m
  const state=await setup(page,{unavailable:true});
  for(const path of ["/transfers","/alerts","/audit","/analytics","/consortium","/reporting"]){await page.goto(path);await expect(page.getByRole("heading",{name:"Dashboard",exact:true})).toBeVisible();await expect(page.getByRole("heading",{name:"Hospital Reports",exact:true})).toBeVisible();}
  await expect(page.getByText("Reports unavailable",{exact:true})).toBeVisible();await expect(page.locator(".doh-hospital-report-table").getByText("Unavailable",{exact:true})).toHaveCount(6);await expect(page.getByText("No report recorded",{exact:true})).toHaveCount(0);
- expect(state.reads.some(path=>/\/(alerts|audit|activity-history|transfers|analytics|consortium)(\/|$)/.test(path))).toBe(false);expect(state.writes).toHaveLength(0);
+ expect(state.reads.filter(path=>path!=="/api/v2/alerts").some(path=>/\/(alerts|audit|activity-history|transfers|analytics|consortium)(\/|$)/.test(path))).toBe(false);// TC-E04: only the city-aggregate expiry alert count is read.
+ expect(state.writes).toHaveLength(0);
 });
 test("duplicate captures require an explicit recorded-version choice before displaying stock",async({page})=>{
  const state=await setup(page,{duplicate:true});await page.goto("/");await page.getByLabel("Reporting date",{exact:true}).fill("2026-10-16");await expect(page.getByText("Multiple records · Review",{exact:true})).toBeVisible();await page.getByRole("button",{name:"View reports for Mary Mediatrix Medical Center",exact:true}).click();

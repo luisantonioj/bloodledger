@@ -8,6 +8,7 @@ import type { Principal } from "../../auth/permissions";
 import { isRequester } from "./requester-dashboard-data";
 import { RequesterDashboard, type RequesterRequestsState } from "./requester-dashboard";
 import { dashboardSummary } from "./dashboard-summary";
+import { DashboardAlertSummary } from "./dashboard-alert-summary";
 
 export function DashboardView({data,principal,refreshError,onRetry,requests,loading=false}:{data:Dashboard;principal:Principal;refreshError:string;onRetry:()=>void;requests:RequesterRequestsState;loading?:boolean}) {
   if(data.composition==="ADMINISTRATIVE")return <div className="empty dashboard-empty"><img className="bloodledger-logo empty-logo" src="/bloodledger-logo-updated.png" alt=""/><strong>Non-clinical workspace</strong>This account has no inventory, custody, transfer, or regulatory dashboard authority.</div>;
@@ -19,6 +20,7 @@ export function DashboardView({data,principal,refreshError,onRetry,requests,load
       </article>)}
     </div>}
     {refreshError&&<DashboardReadState error={refreshError} retained={hasProjection} onRetry={onRetry}/>}
+    {(isRequester(principal) || principal.accountCategory === "PRC") && <DashboardAlertSummary principal={principal}/>}
     {principal.accountCategory === "DOH" && <DohDashboardPlaceholder principal={principal}/>}
     {principal.accountCategory === "PRC" && <PrcDashboardPlaceholder data={data} loading={loading}/>}
     {isRequester(principal) && <RequesterDashboard data={data} principal={principal} requests={requests}/>}

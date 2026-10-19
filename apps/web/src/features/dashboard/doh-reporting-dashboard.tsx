@@ -1,3 +1,4 @@
+import { DashboardAlertSummary } from "./dashboard-alert-summary";
 import {useEffect,useState} from "react";
 import type {Principal} from "../../auth/permissions";
 import {can} from "../../auth/permissions";
@@ -47,7 +48,7 @@ export function DohReportingDashboard({principal}:{principal:Principal}){
   const matches=matchingReports(index,id,date,hour);
   return matches.length===1?<div className="doh-report-checkpoint"><span className="doh-report-status recorded">Recorded</span><small>{captureTime(matches[0].capturedAt)}</small></div>:matches.length>1?<span className="doh-report-status review">Multiple records · Review</span>:<span className="doh-report-status">No report recorded</span>;
  }
- return <div className="doh-reporting-dashboard">
+ return <div className="doh-reporting-dashboard"><DashboardAlertSummary principal={principal}/>
   <header className="page-head doh-reporting-header"><h1 className="page-title">Dashboard</h1><div className="doh-reporting-tools"><label>Reporting date<input type="date" aria-label="Reporting date" required value={date} onChange={event=>{if(event.target.value){setDate(event.target.value);setRecordId("");}}}/></label><RefreshButton busy={busy} onRefresh={()=>setRetry(value=>value+1)}/></div></header>
   <section className="bank-record-card doh-hospital-reports">
    <header className="bank-section-heading"><h2>Hospital Reports</h2><InformationHelp label="Hospital Reports">The three configured simulation blood banks and saved 9 AM/4 PM census captures for the selected Manila date. These are saved records, not confirmed regulatory submissions. Missing records do not establish noncompliance. The configured list is not an official licensing or reporting roster.</InformationHelp></header>
