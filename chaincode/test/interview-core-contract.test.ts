@@ -364,3 +364,34 @@ test("TC-E05 expiry service actor may only evaluate expiry, deterministically", 
   assert.match(first, /"status":"EXPIRED"/);
   assert.equal(await run(), first);
 });
+
+test("TC-T07/TC-G01 blood-bank receipt accepts a delayed in-transit reservation with a receipt location summary",async()=>{
+  async function run(){
+    const ctx=new MockContext(),contract=new InterviewCoreContract();
+    const banks=[['INST_MEDIATRIX','USR_SYNTH_REVIEW_ROLE01','USR_SYNTH_REVIEW_ROLE02'],['INST_SYNTH_MEDIX','USR_OP_6F506CBEB691D1F2F7C946A678C97A5E','USR_OP_BA806C9407FF05B6F3ECDA4D9CF4FCD9'],['INST_SYNTH_NLVILLA','USR_OP_B5115DC956C435754793A206CE37267C','USR_OP_019748F191695C0648054E1DEAB1CFD5']];
+    for(const [institution,tech] of banks){
+      const input={actorInstitutionId:institution,actorUserId:tech,bloodType:'A_POSITIVE',bloodTypeEvidenceSource:'OCR_LABEL',captureEvidenceDigest:digest('c'),captureMethod:'OCR',componentEvidenceSource:'BAG_TYPE',componentId:`COMP_${institution}`,componentType:'PACKED_RED_BLOOD_CELLS',correlationId:`CORR_${institution}`,custodyInstitutionId:institution,donationId:`DON_${institution}`,donationNoDigest:digest('d'),eventTime:'2026-09-02T00:00:00.000Z',expiresAt:'2026-09-30T00:00:00.000Z',idempotencyKey:`IDEM_${institution}`,issuerInstitutionId:institution,policyVersion:accountVersion,collectedAt:'2026-09-01T00:00:00.000Z'};
+      const first=await contract.RegisterInboundComponent(asContext(ctx),JSON.stringify(input));assert.equal(await contract.RegisterInboundComponent(asContext(ctx),JSON.stringify(input)),first);
+      await assert.rejects(contract.RegisterInboundComponent(asContext(ctx),JSON.stringify({...input,actorUserId:'USR_OP_655989F204F82E3BE56E4A6E95F4A625',idempotencyKey:'IDEM_PRC_DENIAL'})),/CORE_NOT_AUTHORIZED/);
+      if(institution!=='INST_MEDIATRIX')await assert.rejects(contract.RegisterInboundComponent(asContext(ctx),JSON.stringify({...input,policyVersion:developmentVersion})),/CORE_NOT_AUTHORIZED/);
+      const asset=JSON.parse(await contract.ReadComponent(asContext(ctx),JSON.stringify({actorUserId:tech,componentId:input.componentId})));assert.equal(asset.custodyInstitutionId,institution);
+    }
+    const request={...retainedTransfer(),sourceInstitutionId:'INST_SYNTH_MEDIX',destinationInstitutionId:'INST_SYNTH_NLVILLA',actorUserId:'USR_OP_019748F191695C0648054E1DEAB1CFD5',componentType:'PACKED_RED_BLOOD_CELLS',transferId:'TRF_ACCOUNT_BANK',idempotencyKey:'IDEM_ACCOUNT_BANK',policyVersion:accountVersion};
+    await contract.SubmitTransferRequest(asContext(ctx),JSON.stringify(request));
+    await assert.rejects(contract.SubmitTransferRequest(asContext(ctx),JSON.stringify({...request,actorUserId:'USR_OP_BA806C9407FF05B6F3ECDA4D9CF4FCD9',idempotencyKey:'IDEM_WRONG_BANK'})),/TRANSFER_NOT_AUTHORIZED/);
+    await contract.ReserveComponents(asContext(ctx),JSON.stringify(reservation('RES_ACCOUNT_BANK',['COMP_INST_SYNTH_MEDIX'],[1],'TRANSFER',{actorUserId:'USR_OP_BA806C9407FF05B6F3ECDA4D9CF4FCD9',sourceInstitutionId:'INST_SYNTH_MEDIX',destinationInstitutionId:'INST_SYNTH_NLVILLA',policyVersion:accountVersion})));
+    await contract.PrepareReservation(asContext(ctx),JSON.stringify(action('RES_ACCOUNT_BANK',1,'USR_OP_6F506CBEB691D1F2F7C946A678C97A5E',{policyVersion:accountVersion,preparedAt:'2026-09-02T00:10:00.000Z',preparedEvidenceDigest:digest('e'),preparedEvidenceId:'EVD_ACCOUNT_BANK'})));
+    await contract.DispatchReservation(asContext(ctx),JSON.stringify(action('RES_ACCOUNT_BANK',2,'USR_OP_6F506CBEB691D1F2F7C946A678C97A5E',{policyVersion:accountVersion,idempotencyKey:'IDEM_ACCOUNT_DISPATCH'})));
+    await contract.StartReservationTransit(asContext(ctx),JSON.stringify(action('RES_ACCOUNT_BANK',3,'USR_OP_6F506CBEB691D1F2F7C946A678C97A5E',{policyVersion:accountVersion,idempotencyKey:'IDEM_ACCOUNT_TRANSIT'})));
+    await contract.MarkReservationDelayed(asContext(ctx),JSON.stringify(action('RES_ACCOUNT_BANK',4,'USR_OP_B5115DC956C435754793A206CE37267C',{policyVersion:accountVersion,idempotencyKey:'IDEM_ACCOUNT_DELAY',reasonCode:'WEATHER'})));
+    const receipt={...action('RES_ACCOUNT_BANK',5,'USR_OP_B5115DC956C435754793A206CE37267C',{policyVersion:accountVersion,idempotencyKey:'IDEM_ACCOUNT_RECEIPT'}),actorInstitutionId:'INST_SYNTH_NLVILLA',captureEvidenceDigest:digest('f'),locationEvidence:location('RECEIPT')};
+    await assert.rejects(contract.RecordInboundReceipt(asContext(ctx),JSON.stringify({...receipt,locationEvidence:location('DISPATCH'),idempotencyKey:'IDEM_BAD_LOC'})),/RESERVATION_LOCATION_INVALID/);
+    const received=await contract.RecordInboundReceipt(asContext(ctx),JSON.stringify(receipt));assert.equal(await contract.RecordInboundReceipt(asContext(ctx),JSON.stringify(receipt)),received);
+    const asset=JSON.parse(await contract.ReadComponent(asContext(ctx),JSON.stringify({actorUserId:'USR_OP_B5115DC956C435754793A206CE37267C',componentId:'COMP_INST_SYNTH_MEDIX'})));
+    assert.equal(asset.issuerInstitutionId,'INST_SYNTH_MEDIX');assert.equal(asset.custodyInstitutionId,'INST_SYNTH_NLVILLA');assert.equal(asset.status,'RECEIVED');
+    const stored=await read(ctx,'reservation:asset:RES_ACCOUNT_BANK');assert.equal((stored.receiptLocationEvidence as Record<string,unknown>).phase,'RECEIPT');assert.equal(stored.delayedFromStatus,undefined);
+    return [...ctx.state].map(([key,value])=>[key,value.toString('utf8')]);
+  }
+  assert.deepEqual(await run(),await run());
+});
+

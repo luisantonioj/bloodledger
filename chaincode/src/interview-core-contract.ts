@@ -299,15 +299,18 @@ export class InterviewCoreContract extends Contract {
   @Transaction()
   @Returns("string")
   public async RecordInboundReceipt(ctx: Context, inputJson: string): Promise<string> {
-    const input = this.parseExactObject<Record<string, unknown>>(inputJson, ["actorInstitutionId", "actorUserId", "captureEvidenceDigest", "correlationId", "eventTime", "expectedVersion", "idempotencyKey", "policyVersion", "reservationId"]);
+    const withLocation = this.hasKey(inputJson, "locationEvidence");
+    const input = this.parseExactObject<Record<string, unknown>>(inputJson, ["actorInstitutionId", "actorUserId", "captureEvidenceDigest", "correlationId", "eventTime", "expectedVersion", "idempotencyKey", "policyVersion", "reservationId", ...(withLocation ? ["locationEvidence"] : [])]);
+    const location = withLocation ? this.assertLocation(input.locationEvidence, "RECEIPT", String(input.eventTime)) : undefined;
     this.assertCommon(input); this.assertGateway(ctx); this.assertId(String(input.reservationId), RESERVATION_ID_PATTERN, "RESERVATION_INPUT_INVALID"); this.assertHash(input.captureEvidenceDigest, "COMPONENT_CAPTURE_EVIDENCE_INVALID");
     if (!Number.isSafeInteger(input.expectedVersion) || Number(input.expectedVersion) < 1) this.fail("RESERVATION_VERSION_INVALID");
     const reservation = await this.readReservation(ctx, String(input.reservationId)); const actor = this.assertActor(input.actorUserId);
     if (!(actor.role === "ROLE_01" || actor.role === "ROLE_02") || actor.institutionId !== reservation.destinationInstitutionId || input.actorInstitutionId !== reservation.destinationInstitutionId || reservation.purpose !== "TRANSFER") this.fail("RESERVATION_NOT_AUTHORIZED");
     const prior = await this.readIdempotent(ctx, String(input.idempotencyKey), "RECEIVE_INBOUND_COMPONENT", this.digest(input)); if (prior !== undefined) return prior;
-    if (reservation.status !== "IN_TRANSIT" || reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
+    const receivable = reservation.status === "IN_TRANSIT" || (reservation.status === "DELAYED" && reservation.delayedFromStatus === "IN_TRANSIT");
+    if (!receivable || reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
     for (const id of reservation.selectedComponentIds) { const component = await this.readComponent(ctx, id); if (component.status !== "IN_TRANSIT" || component.reservationId !== reservation.reservationId) this.fail("COMPONENT_STATE_CONFLICT"); await ctx.stub.putState(this.componentKey(id), Buffer.from(this.serialize({ ...component, status: "RECEIVED", ...(input.policyVersion===INSTITUTION_POLICY_VERSION?{custodyInstitutionId:actor.institutionId}:{}), version: component.version + 1, actorUserId: String(input.actorUserId), updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID() } satisfies ComponentAsset), "utf8")); }
-    const updated = { ...reservation, status: "RECEIVED" as const, version: reservation.version + 1, actorUserId: String(input.actorUserId), updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID() };
+    const updated: ReservationAsset = { ...reservation, ...(location ? { receiptLocationEvidence: location } : {}), status: "RECEIVED", delayedFromStatus: undefined, version: reservation.version + 1, actorUserId: String(input.actorUserId), updatedAt: String(input.eventTime), correlationId: String(input.correlationId), lastTransactionId: ctx.stub.getTxID() };
     const response = this.serialize(updated); await ctx.stub.putState(this.reservationKey(reservation.reservationId), Buffer.from(response, "utf8")); await this.writeIdempotent(ctx, String(input.idempotencyKey), "RECEIVE_INBOUND_COMPONENT", this.digest(input), response); this.emit(ctx, "InboundReceiptRecorded", { reservationId: reservation.reservationId, status: updated.status, version: updated.version, eventTime: updated.updatedAt, correlationId: updated.correlationId }); return response;
   }
 
@@ -427,7 +430,11 @@ export class InterviewCoreContract extends Contract {
   public async MarkReservationDelayed(ctx: Context, inputJson: string): Promise<string> {
     const input = this.parseReservationAction(inputJson, ["reasonCode"]);
     const reservation = await this.readReservation(ctx, input.reservationId);
-    this.assertReservationActor(input.actorUserId, reservation, ["ROLE_01", "ROLE_02", "ROLE_03"]);
+    // Either side of the transfer may record a delay: source bank staff, or any receiving role at the destination.
+    const actor = this.assertActor(input.actorUserId);
+    const source = (actor.role === "ROLE_01" || actor.role === "ROLE_02") && actor.institutionId === reservation.sourceInstitutionId;
+    const destination = ["ROLE_01", "ROLE_02", "ROLE_03"].includes(actor.role) && actor.institutionId === reservation.destinationInstitutionId;
+    if (!source && !destination) this.fail("RESERVATION_NOT_AUTHORIZED");
     if (reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
     if (!DELAY_REASON_CODES.includes(input.reasonCode)) this.fail("RESERVATION_DELAY_REASON_INVALID");
     if (reservation.purpose !== "TRANSFER" || (reservation.status !== "DISPATCHED" && reservation.status !== "IN_TRANSIT")) this.fail("RESERVATION_TRANSITION_INVALID");
