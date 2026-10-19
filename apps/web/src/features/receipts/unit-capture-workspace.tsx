@@ -86,6 +86,9 @@ export function UnitCaptureWorkspace({principal,direction,onBack,onLockChange}:{
   finally{if(active.current)setBusy(false);}
  }
  return <>
+ {/* Outbound starts by choosing the approved transfer; its Prepare step scans each unit. Keep it first so it is
+     visible without scrolling inside the scanner dialog on phones. */}
+ {direction==="Outbound"&&<ScannerTransferActions principal={principal} review={verified?review:undefined} onLockChange={setTransferLocked}/>}
  <section className="receipt-input-card"><header className={onBack?"bank-scanner-input-heading":undefined}>{onBack&&<button className="button compact bank-scanner-back" type="button" aria-label="Change direction" title="Back to direction selection" disabled={locked} onClick={onBack}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>}<h3>{direction} Blood Unit Input</h3><InformationHelp label={direction+" blood unit input"}>Scan a supported synthetic label or enter a manual review draft. OCR runs on this device. Corrections remain separate from original confidence evidence; Scanner-free manual intake remains unavailable. After OCR, an enabled reviewed-intake policy permits operator-entered final values without claiming OCR verification. Outbound follows an authorized transfer.</InformationHelp></header>
  <div className="receipt-mode-tabs" role="tablist" aria-label="Blood unit input method">{(["Scan","Manual"] as const).map(item=><button type="button" role="tab" key={item} aria-selected={mode===item} tabIndex={mode===item?0:-1} disabled={locked} aria-controls="unit-capture-panel" id={"unit-capture-"+item} onClick={()=>{reset();setImage(undefined);setImageUrl(undefined);setExtractionOptions(defaultExtractionOptions());setMode(item);}} onKeyDown={event=>{if(["ArrowLeft","ArrowRight","Home","End"].includes(event.key)){event.preventDefault();const next=event.key==="Home"?"Scan":event.key==="End"?"Manual":mode==="Scan"?"Manual":"Scan";reset();setImage(undefined);setImageUrl(undefined);setExtractionOptions(defaultExtractionOptions());setMode(next);document.getElementById("unit-capture-"+next)?.focus();}}}>{item}</button>)}</div>
  <div id="unit-capture-panel" role="tabpanel" aria-labelledby={"unit-capture-"+mode}>
@@ -109,7 +112,6 @@ export function UnitCaptureWorkspace({principal,direction,onBack,onLockChange}:{
  {frozen&&<div className="receipt-confirm-footer"><button className="button compact" type="button" disabled={busy||Boolean(status.command)} onClick={()=>void recover()}>Look up saved intake</button></div>}
  {duplicate&&<p className="receipt-preview-note" role="status">Already registered by another request. No duplicate unit was created.</p>}{error&&<p className="receipt-image-error" role="alert">{error}</p>}
  </section>
- {direction==="Outbound"&&<ScannerTransferActions principal={principal} review={verified?review:undefined} onLockChange={setTransferLocked}/>}
  {direction==="Inbound"&&<IncomingReceipt principal={principal} scannedRecognition={verified?review?.verified:undefined} onLockChange={setTransferLocked}/>}
  {status.command&&<CommandStatusCard command={status.command} pollError={status.pollError} onClear={()=>{status.clear();reset();}}/>}
  </>;

@@ -701,9 +701,14 @@ export async function buildApp(
     app.get("/capture/*", (_request, reply) => reply.sendFile("index.html", captureDist));
   }
   if (webDist) {
-    for (const route of ["/inventory", "/alerts", "/transfers", "/consortium", "/audit", "/reporting", "/profile", "/analytics"]) {
-      app.get(route, (_request, reply) => reply.sendFile("index.html", webDist));
-    }
+    // Single-page app fallback: any browser page GET that is not an API, health, capture or file request returns the
+    // web app, so a refresh or shared link on a route such as /transactions works. Everything else stays a JSON 404.
+    app.setNotFoundHandler((request, reply) => {
+      const path = request.url.split("?")[0];
+      const page = (request.method === "GET" || request.method === "HEAD") && !/^\/(api|capture|healthz)(\/|$)/.test(path) && !/\.[A-Za-z0-9]+$/.test(path);
+      if (page) return reply.type("text/html").sendFile("index.html", webDist);
+      return reply.status(404).send({ message: `Route ${request.method}:${request.url} not found`, error: "Not Found", statusCode: 404 });
+    });
   }
 
   return app;
