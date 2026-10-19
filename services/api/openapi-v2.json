@@ -218,7 +218,7 @@
     "/inbound-captures": {
       "post": {
         "operationId": "acceptInboundOcrCapture",
-        "description": "Accept a confirmed OCR capture. The receiving custody institution is derived from the authenticated session; raw OCR text and images are not accepted. A retry with the same Idempotency-Key and capture returns the command that key created (202, replayed true), even after the unit was registered or received; the same key with a different capture returns 409 V2_IDEMPOTENCY_CONFLICT. ADR-049: a capture that matches an in-transit unit no longer receives its reservation; it returns 409 INBOUND_RECEIPT_REQUIRED. Verify every unit with POST /reservations/{reservationId}/receipt-verifications, then receive the reservation. Receipts accepted here before ADR-049 still replay with their original key.",
+        "description": "Accept a confirmed OCR capture. The receiving custody institution is derived from the authenticated session; raw OCR text and images are not accepted. A retry with the same Idempotency-Key and capture returns the command that key created (202, replayed true), even after the unit was registered or received; the same key with a different capture returns 409 V2_IDEMPOTENCY_CONFLICT. ADR-049: a capture that matches an in-transit unit no longer receives its reservation; it returns 409 INBOUND_RECEIPT_REQUIRED. Verify every unit with POST /reservations/{reservationId}/receipt-verifications, then receive the reservation. Receipts accepted here before ADR-049 still replay with their original key. PA-OCR-03: when the host sets BLOODLEDGER_CORRECTED_INTAKE_ENABLED=true, the body may instead follow contracts/inbound-ocr-corrected-v1.schema.json (capturePolicyVersion INBOUND_OCR_CORRECTED_V1): operator-corrected fields with per-field OCR provenance, at least one unchanged OCR field, and a twice-entered corrected Donation No. Corrected blood type/component evidence is recorded as OPERATOR_CONFIRMED and corrected fields carry no confidence. Otherwise 403 CORRECTED_INTAKE_DISABLED. PA-OCR-04 adds opt-in INBOUND_OCR_CORRECTED_V2 after a completed OCR attempt, permitting all-field corrections with PIN verification and double-entry Donation No. Every corrected value is operator evidence, never an OCR confidence claim. INBOUND_OCR_V1 and corrected V1 are unchanged. V2 disabled: 403 REVIEWED_INTAKE_DISABLED.",
         "parameters": [
           {
             "$ref": "#/components/parameters/ContractVersion"
@@ -255,7 +255,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/InboundOcrCapture"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/InboundOcrCapture"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InboundCorrectedCaptureV1"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InboundCorrectedCaptureV2"
+                  }
+                ]
               }
             }
           }
@@ -380,10 +390,13 @@
     "/reports/doh-census/catch-up": {
       "post": {
         "operationId": "captureDohCensusCatchUp",
-        "description": "Manual authorized catch-up. The report policy and blood-type column order must be approved before this route is enabled.",
+        "description": "Manual authorized catch-up. The report policy and blood-type column order must be approved before this route is enabled. Under SYNTHETIC_STOCK_CHECKPOINT_V1 (PA-DEF-07) scheduledFor must be a 09:00 or 16:00 Asia/Manila slot whose 30-minute capture window is open; the first capture of a slot stands.",
         "responses": {
           "201": {
             "$ref": "#/components/responses/Census"
+          },
+          "409": {
+            "description": "CHECKPOINT_WINDOW_CLOSED: the time is not an open checkpoint slot, so present stock is not recorded under a past slot."
           },
           "503": {
             "$ref": "#/components/responses/PolicyDisabled"
@@ -9088,6 +9101,292 @@
           },
           "classification": {
             "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "InboundCorrectionField": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ocrValue",
+          "ocrConfidence",
+          "corrected"
+        ],
+        "properties": {
+          "ocrValue": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "What OCR read, in the normalized form the client parsed. Used only to derive a keyed digest; never stored."
+          },
+          "ocrConfidence": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100
+          },
+          "corrected": {
+            "type": "boolean"
+          },
+          "reason": {
+            "enum": [
+              "OCR_MISREAD",
+              "OCR_NOT_READ",
+              "OCR_LOW_CONFIDENCE"
+            ],
+            "description": "Required when corrected. OCR_NOT_READ: ocrValue and ocrConfidence null. OCR_MISREAD: ocrValue differs from the final value. OCR_LOW_CONFIDENCE: ocrValue equals the final value with ocrConfidence below 90."
+          }
+        }
+      },
+      "InboundCorrectedCaptureV1": {
+        "title": "BloodLedger corrected OCR inbound capture V1 (PA-OCR-03, RQ-19, SIMULATION_ONLY)",
+        "description": "An OCR capture in which the operator corrected some fields. Top-level values are the final, operator-confirmed values and follow every INBOUND_OCR_V1 value rule. Server rules beyond this schema: at least one field corrected and at least one uncorrected; an uncorrected field's ocrValue equals the final value with ocrConfidence >= 90; donationNumberConfirmation is required and equal to donationNumber only when donationNumber is corrected. Enabled only when the host sets BLOODLEDGER_CORRECTED_INTAKE_ENABLED=true.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "captureMethod",
+          "capturePolicyVersion",
+          "issuerInstitutionId",
+          "donationNumber",
+          "bloodType",
+          "componentType",
+          "collectedAt",
+          "expiresAt",
+          "capturedAt",
+          "confirmedAt",
+          "eventTime",
+          "correlationId",
+          "ocrEvidence",
+          "fields"
+        ],
+        "properties": {
+          "captureMethod": {
+            "const": "OCR"
+          },
+          "issuerInstitutionId": {
+            "type": "string",
+            "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+          },
+          "donationNumber": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "bloodType": {
+            "$ref": "#/components/schemas/BloodType"
+          },
+          "componentType": {
+            "$ref": "#/components/schemas/ComponentType"
+          },
+          "collectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "capturePolicyVersion": {
+            "const": "INBOUND_OCR_CORRECTED_V1"
+          },
+          "donationNumberConfirmation": {
+            "type": "string",
+            "description": "The corrected Donation No. entered a second time."
+          },
+          "ocrEvidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "engine",
+              "engineVersion"
+            ],
+            "properties": {
+              "engine": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "engineVersion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              }
+            }
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "donationNumber",
+              "bloodType",
+              "componentType",
+              "collectedAt",
+              "expiresAt"
+            ],
+            "properties": {
+              "donationNumber": {
+                "$ref": "#/components/schemas/InboundCorrectionField"
+              },
+              "bloodType": {
+                "$ref": "#/components/schemas/InboundCorrectionField"
+              },
+              "componentType": {
+                "$ref": "#/components/schemas/InboundCorrectionField"
+              },
+              "collectedAt": {
+                "$ref": "#/components/schemas/InboundCorrectionField"
+              },
+              "expiresAt": {
+                "$ref": "#/components/schemas/InboundCorrectionField"
+              }
+            }
+          }
+        }
+      },
+      "InboundCorrectedCaptureV2": {
+        "title": "BloodLedger fully reviewed OCR-attempt intake V2 (PA-OCR-04, SIMULATION_ONLY)",
+        "description": "After a completed OCR attempt the operator may correct any or all five fields. At least one correction is required; no unchanged OCR field is required. Final values keep the V1 value rules. Each original read/score is immutable; unread fields carry null/null and OCR_NOT_READ. A corrected Donation No. must be entered twice. No automatic submission, no scanner-free manual intake. Default-off BLOODLEDGER_REVIEWED_INTAKE_ENABLED.",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "captureMethod",
+          "capturePolicyVersion",
+          "issuerInstitutionId",
+          "donationNumber",
+          "bloodType",
+          "componentType",
+          "collectedAt",
+          "expiresAt",
+          "capturedAt",
+          "confirmedAt",
+          "eventTime",
+          "correlationId",
+          "ocrEvidence",
+          "fields",
+          "ocrAttempted"
+        ],
+        "properties": {
+          "captureMethod": {
+            "const": "OCR"
+          },
+          "issuerInstitutionId": {
+            "type": "string",
+            "pattern": "^INST_[A-Z0-9_-]{1,59}$"
+          },
+          "donationNumber": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "bloodType": {
+            "$ref": "#/components/schemas/BloodType"
+          },
+          "componentType": {
+            "$ref": "#/components/schemas/ComponentType"
+          },
+          "collectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "capturePolicyVersion": {
+            "const": "INBOUND_OCR_CORRECTED_V2"
+          },
+          "donationNumberConfirmation": {
+            "type": "string",
+            "description": "The corrected Donation No. entered a second time."
+          },
+          "ocrEvidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "engine",
+              "engineVersion"
+            ],
+            "properties": {
+              "engine": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "engineVersion": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              }
+            }
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "donationNumber",
+              "bloodType",
+              "componentType",
+              "collectedAt",
+              "expiresAt"
+            ],
+            "properties": {
+              "donationNumber": {
+                "$ref": "#/components/schemas/InboundCorrectionField"
+              },
+              "bloodType": {
+                "$ref": "#/components/schemas/InboundCorrectionField"
+              },
+              "componentType": {
+                "$ref": "#/components/schemas/InboundCorrectionField"
+              },
+              "collectedAt": {
+                "$ref": "#/components/schemas/InboundCorrectionField"
+              },
+              "expiresAt": {
+                "$ref": "#/components/schemas/InboundCorrectionField"
+              }
+            }
+          },
+          "ocrAttempted": {
+            "const": true,
+            "description": "Operator workflow attests that OCR ran before review. This is not proof of recognition accuracy."
           }
         }
       }

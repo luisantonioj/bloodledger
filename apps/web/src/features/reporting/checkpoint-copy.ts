@@ -12,15 +12,19 @@ export function checkpointRecord(rows:CensusSnapshot[],institutionId:string,date
   });
   return {record:matches.length===1?matches[0]:undefined,ambiguous:matches.length>1};
 }
+// PA-DEF-07 uses the four V2 census components, without cryoprecipitate.
+export const CHECKPOINT_COMPONENTS=V2_COMPONENT_TYPES.filter(type=>type!=="CRYOPRECIPITATE");
+export function checkpointComponents(policy:string){return policy.endsWith("V2_1")?V2_COMPONENT_TYPES:CHECKPOINT_COMPONENTS;}
 export function checkpointClipboard(value:unknown,selected:CensusSnapshot){
   const groups=parseComplianceStock(value,selected);
-  if(groups.length!==V2_COMPONENT_TYPES.length||V2_COMPONENT_TYPES.some(type=>!groups.some(group=>group.componentType===type)))throw Error("All five components are required to copy this checkpoint.");
+  const components=checkpointComponents(selected.reportPolicyVersion);
+  if(groups.length!==components.length||components.some(type=>!groups.some(group=>group.componentType===type)))throw Error("The saved checkpoint component coverage is incomplete.");
   const rows=CENSUS_ORDER.map(type=>{
-    const counts=V2_COMPONENT_TYPES.map(component=>groups.find(group=>group.componentType===component)!.bloodTypes.find(row=>row.bloodType===type)!.reportableCount);
+    const counts=components.map(component=>groups.find(group=>group.componentType===component)!.bloodTypes.find(row=>row.bloodType===type)!.reportableCount);
     const total=counts.reduce((sum,count)=>sum+count,0);if(!Number.isSafeInteger(total))throw Error("Report total is invalid.");
     return [formatBloodType(type),...counts.map(String),String(total)].join("\t");
   });
-  return [["Blood type",...V2_COMPONENT_TYPES.map(componentLabel),"Total"].join("\t"),...rows].join("\r\n")+"\r\n";
+  return [["Blood type",...components.map(componentLabel),"Total"].join("\t"),...rows].join("\r\n")+"\r\n";
 }
 
 // Retain the last saved morning/afternoon record across midnight until a newer

@@ -3,6 +3,25 @@ import type { Pool, PoolClient } from "pg";
 import { createHash } from "node:crypto";
 import { V2_1_COMPONENT_TYPES, V2_COMPONENT_TYPES, buildCensusSnapshot, censusTsv, type CensusInventoryRow, type CensusSnapshot, type V2BloodType, type V2ComponentType } from "./census.js";
 
+// PA-DEF-07 SYNTHETIC_STOCK_CHECKPOINT_V1: blood-bank stock is recorded at 09:00 and 16:00 Asia/Manila, only while a
+// slot's capture window is open. A missed slot stays missing: current stock is never labelled with a past slot time.
+export const STOCK_CHECKPOINT_POLICY_VERSION = "SYNTHETIC_STOCK_CHECKPOINT_V1";
+export const STOCK_CHECKPOINT_HOURS = [9, 16] as const;
+export const STOCK_CHECKPOINT_WINDOW_MS = 30 * 60_000;
+
+/** The 09:00 and 16:00 Asia/Manila slots of the Manila calendar day containing `now`. */
+export function checkpointSlots(now: Date): Date[] {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  return STOCK_CHECKPOINT_HOURS.map((hour) => new Date(`${values.year}-${values.month}-${values.day}T${String(hour).padStart(2, "0")}:00:00.000+08:00`));
+}
+
+/** True only for an exact checkpoint slot whose capture window [slot, slot + window) contains `now`. */
+export function checkpointWindowOpen(scheduledFor: Date, now: Date, windowMs = STOCK_CHECKPOINT_WINDOW_MS): boolean {
+  const isSlot = checkpointSlots(scheduledFor).some((slot) => slot.getTime() === scheduledFor.getTime());
+  return isSlot && now.getTime() >= scheduledFor.getTime() && now.getTime() < scheduledFor.getTime() + windowMs;
+}
+
 export interface CensusStore {
   capture(institutionId: string, scheduledFor: Date, triggerType: "SCHEDULED" | "MANUAL", now: Date): Promise<CensusSnapshot>;
   get(snapshotId: string, institutionId?: string): Promise<CensusSnapshot | null>;
@@ -28,12 +47,19 @@ export class PostgresCensusStore implements CensusStore {
   constructor(private readonly pool: Pool, private readonly reportPolicyVersion: string, private readonly bloodTypeOrder?: readonly V2BloodType[]) {}
   async capture(institutionId: string, scheduledFor: Date, triggerType: "SCHEDULED" | "MANUAL", now: Date): Promise<CensusSnapshot> {
     if (!this.bloodTypeOrder) throw new Error("DISABLED_UNAPPROVED_REPORT_FORMAT");
+    const checkpoint = this.reportPolicyVersion === STOCK_CHECKPOINT_POLICY_VERSION;
+    if (checkpoint && !checkpointWindowOpen(scheduledFor, now)) throw new Error("CHECKPOINT_WINDOW_CLOSED");
     const id = snapshotId(institutionId, scheduledFor, this.reportPolicyVersion);
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
       await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`CENSUS|${institutionId}|${scheduledFor.toISOString()}|${this.reportPolicyVersion}`]);
-      const rows = await client.query<Record<string, unknown>>(`SELECT component_type,blood_type,inventory_status,COUNT(*)::int AS count,COUNT(*) FILTER (WHERE expires_at > $2)::int AS forecast_eligible_count FROM app.v2_components WHERE institution_id=$1 AND inventory_status IN ('AVAILABLE','RESERVED') GROUP BY component_type,blood_type,inventory_status`, [institutionId, now.toISOString()]);
+      // The first capture of a checkpoint slot stands; a later run in the same window returns it unchanged.
+      if (checkpoint && (await client.query("SELECT 1 FROM app.v2_census_snapshots WHERE snapshot_id=$1 AND institution_id=$2", [id, institutionId])).rowCount) {
+        await client.query("COMMIT");
+        return (await this.get(id, institutionId)) as CensusSnapshot;
+      }
+      const rows = await client.query<Record<string, unknown>>(`SELECT component_type,blood_type,inventory_status,COUNT(*)::int AS count,COUNT(*) FILTER (WHERE expires_at > $2)::int AS forecast_eligible_count FROM app.v2_components WHERE institution_id=$1 AND inventory_status IN ('AVAILABLE','RESERVED') AND ($3::boolean IS FALSE OR expires_at > $2) GROUP BY component_type,blood_type,inventory_status`, [institutionId, now.toISOString(), checkpoint]);
       const useV21 = this.reportPolicyVersion.endsWith("V2_1");
       const snapshot = buildCensusSnapshot({ snapshotId: id, scheduledFor: scheduledFor.toISOString(), capturedAt: now.toISOString(), reportPolicyVersion: this.reportPolicyVersion, componentTypes: useV21 ? V2_1_COMPONENT_TYPES : V2_COMPONENT_TYPES, bloodTypeOrder: this.bloodTypeOrder, rows: rows.rows.map((row) => ({ componentType: String(row.component_type) as CensusInventoryRow["componentType"], bloodType: String(row.blood_type) as CensusInventoryRow["bloodType"], inventoryStatus: String(row.inventory_status), count: Number(row.count), forecastEligibleCount: Number(row.forecast_eligible_count) })) });
       const inserted = await client.query(`INSERT INTO app.v2_census_snapshots(snapshot_id,institution_id,scheduled_for,captured_at,timezone,report_policy_version,trigger_type,classification,source_projection_digest) VALUES($1,$2,$3,$4,'Asia/Manila',$5,$6,'SIMULATION_ONLY',$7) ON CONFLICT(institution_id,scheduled_for,report_policy_version) DO NOTHING RETURNING snapshot_id`, [id, institutionId, scheduledFor.toISOString(), now.toISOString(), this.reportPolicyVersion, triggerType, snapshot.sourceProjectionDigest]);
@@ -227,15 +253,19 @@ export class PostgresMlInventorySnapshotStore {
 }
 
 export class CensusWorker {
-  constructor(private readonly store: CensusStore, private readonly institutionIds: readonly string[]) {}
+  constructor(private readonly store: CensusStore, private readonly institutionIds: readonly string[], private readonly windowMs?: number) {}
   async runSlot(scheduledFor: Date, now = new Date()): Promise<CensusSnapshot[]> { const snapshots: CensusSnapshot[] = []; for (const institutionId of this.institutionIds) snapshots.push(await this.store.capture(institutionId, scheduledFor, "SCHEDULED", now)); return snapshots; }
+  /** Without a window every slot already due today is captured; with one, only a slot whose window is open. */
   async runDueSlots(now = new Date()): Promise<CensusSnapshot[]> {
-    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
-    const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
-    const slots = [9, 16].map((hour) => new Date(`${values.year}-${values.month}-${values.day}T${String(hour).padStart(2, "0")}:00:00.000+08:00`));
-    const due = slots.filter((slot) => now.getTime() >= slot.getTime());
+    const due = checkpointSlots(now).filter((slot) => this.windowMs === undefined ? now.getTime() >= slot.getTime() : checkpointWindowOpen(slot, now, this.windowMs));
     const snapshots: CensusSnapshot[] = [];
     for (const slot of due) snapshots.push(...await this.runSlot(slot, now));
     return snapshots;
   }
+}
+
+/** Active blood-bank institutions; requesters and regulators hold no stock to record. */
+export async function checkpointInstitutionIds(pool: Pool): Promise<string[]> {
+  const result = await pool.query<{ institution_id: string }>("SELECT institution_id FROM app.institutions WHERE status='ACTIVE' AND account_category='BLOOD_BANK' ORDER BY institution_id");
+  return result.rows.map((row) => row.institution_id);
 }

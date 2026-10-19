@@ -90,3 +90,78 @@ export function validateInboundOcrInput(value: unknown, enabledIssuerIds: readon
   const correlationId = stringField(body, "correlationId"); if (!CORRELATION.test(correlationId)) throw new ApiFailure(400, "V2_CORRELATION_INVALID", "Correlation ID is invalid.");
   return { captureMethod: "OCR", capturePolicyVersion: INBOUND_OCR_POLICY_VERSION, issuerInstitutionId, donationNumber, bloodType, bloodTypeEvidence, componentType, componentEvidence, collectedAt, expiresAt, capturedAt, confirmedAt, eventTime, correlationId, ocrEvidence: { engine: o.engine, engineVersion: o.engineVersion, fieldConfidence: { donationNumber: Number(c.donationNumber), bloodType: Number(c.bloodType), collectedAt: Number(c.collectedAt), expiresAt: Number(c.expiresAt) } } };
 }
+
+// PA-OCR-03 INBOUND_OCR_CORRECTED_V1 (RQ-19, simulation only): an OCR capture in which the operator corrected some
+// fields. Every field reports what OCR read and its score; an uncorrected field must equal that read at >= 90, and a
+// corrected field states why. At least one field stays OCR-verified, so fully manual entry remains unsupported.
+// An OCR score is never evidence for a corrected value.
+export const CORRECTED_OCR_POLICY_VERSION = "INBOUND_OCR_CORRECTED_V1" as const;
+export const REVIEWED_OCR_POLICY_VERSION = "INBOUND_OCR_CORRECTED_V2" as const;
+const MINIMUM_FIELD_CONFIDENCE = 90;
+export const CAPTURE_FIELDS = ["donationNumber", "bloodType", "componentType", "collectedAt", "expiresAt"] as const;
+export type CaptureField = typeof CAPTURE_FIELDS[number];
+export const CORRECTION_REASONS = ["OCR_MISREAD", "OCR_NOT_READ", "OCR_LOW_CONFIDENCE"] as const;
+export type CorrectionReason = typeof CORRECTION_REASONS[number];
+export interface CorrectedFieldEvidence { field: CaptureField; ocrValue: string | null; ocrConfidence: number | null; corrected: boolean; reason: CorrectionReason | null }
+export interface CorrectedInboundInput { capture: InboundOcrInput; fields: CorrectedFieldEvidence[] }
+
+const correctedInvalid = (code = "CORRECTED_CAPTURE_INVALID", message = "The corrected OCR capture is invalid.") => new ApiFailure(400, code, message);
+
+export function validateCorrectedInboundInput(value: unknown, enabledIssuerIds: readonly string[] = ["INST_MEDIATRIX"], contractVersion: "V2" | "V2.1" = "V2", policyVersion: typeof CORRECTED_OCR_POLICY_VERSION | typeof REVIEWED_OCR_POLICY_VERSION = CORRECTED_OCR_POLICY_VERSION): CorrectedInboundInput {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw correctedInvalid();
+  const body = value as Record<string, unknown>;
+  const required = ["bloodType", "captureMethod", "capturePolicyVersion", "capturedAt", "collectedAt", "componentType", "confirmedAt", "correlationId", "donationNumber", "eventTime", "expiresAt", "fields", "issuerInstitutionId", "ocrEvidence"];
+  const reviewed = policyVersion === REVIEWED_OCR_POLICY_VERSION;
+  if (reviewed) required.push("ocrAttempted");
+  const keys = Object.keys(body).filter((key) => key !== "donationNumberConfirmation").sort();
+  if (keys.join(",") !== required.sort().join(",")) throw correctedInvalid();
+  if (body.captureMethod !== INBOUND_CAPTURE_METHOD || body.capturePolicyVersion !== policyVersion || (reviewed && body.ocrAttempted !== true)) throw new ApiFailure(400, "INBOUND_OCR_POLICY_MISMATCH", "The inbound capture policy is not supported.");
+  const ocr = body.ocrEvidence as Record<string, unknown> | null;
+  if (!ocr || typeof ocr !== "object" || Array.isArray(ocr) || Object.keys(ocr).sort().join(",") !== "engine,engineVersion") throw new ApiFailure(400, "INBOUND_OCR_EVIDENCE_INVALID", "OCR engine evidence is invalid.");
+  // The final values pass exactly the INBOUND_OCR_V1 value rules; the placeholder evidence is discarded below.
+  const { fields: rawFields, donationNumberConfirmation, ocrAttempted: _ocrAttempted, ...values } = body;
+  const checked = validateInboundOcrInput({ ...values, capturePolicyVersion: INBOUND_OCR_POLICY_VERSION, bloodTypeEvidence: { source: "OCR_LABEL", confirmed: true }, componentEvidence: { source: "OCR_LABEL", confirmed: true },
+    ocrEvidence: { engine: ocr.engine, engineVersion: ocr.engineVersion, fieldConfidence: { donationNumber: 100, bloodType: 100, collectedAt: 100, expiresAt: 100 } } }, enabledIssuerIds, contractVersion);
+  if (!rawFields || typeof rawFields !== "object" || Array.isArray(rawFields) || Object.keys(rawFields).sort().join(",") !== [...CAPTURE_FIELDS].sort().join(",")) throw correctedInvalid();
+  const finalValue = (field: CaptureField) => String(checked[field]);
+  const fields = CAPTURE_FIELDS.map((field): CorrectedFieldEvidence => {
+    const entry = (rawFields as Record<string, unknown>)[field] as Record<string, unknown> | null;
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw correctedInvalid();
+    const entryKeys = Object.keys(entry).sort().join(",");
+    if (entryKeys !== "corrected,ocrConfidence,ocrValue" && entryKeys !== "corrected,ocrConfidence,ocrValue,reason") throw correctedInvalid();
+    const { ocrValue, ocrConfidence, corrected, reason } = entry;
+    if (typeof corrected !== "boolean") throw correctedInvalid();
+    if (ocrValue !== null && (typeof ocrValue !== "string" || ocrValue.length < 1 || ocrValue.length > 128)) throw correctedInvalid();
+    if (ocrConfidence !== null && (!Number.isInteger(ocrConfidence) || Number(ocrConfidence) < 0 || Number(ocrConfidence) > 100)) throw correctedInvalid();
+    if (!corrected) {
+      // An uncorrected field is the OCR read itself and still needs the >= 90 score.
+      if (reason !== undefined || ocrValue !== finalValue(field)) throw correctedInvalid("CORRECTED_CAPTURE_FIELD_MISMATCH", "An uncorrected field must equal its OCR read.");
+      if (ocrConfidence === null || Number(ocrConfidence) < MINIMUM_FIELD_CONFIDENCE) throw new ApiFailure(400, "INBOUND_OCR_CONFIDENCE_LOW", "All OCR fields require at least 90 percent confidence.");
+      return { field, ocrValue, ocrConfidence: Number(ocrConfidence), corrected, reason: null };
+    }
+    if (!(CORRECTION_REASONS as readonly unknown[]).includes(reason)) throw correctedInvalid("CORRECTION_REASON_REQUIRED", "Each corrected field needs a correction reason.");
+    const consistent = reason === "OCR_NOT_READ" ? ocrValue === null && ocrConfidence === null
+      : reason === "OCR_MISREAD" ? ocrValue !== null && ocrValue !== finalValue(field)
+      : ocrValue !== null && ocrValue === finalValue(field) && ocrConfidence !== null && Number(ocrConfidence) < MINIMUM_FIELD_CONFIDENCE;
+    if (!consistent) throw correctedInvalid("CORRECTION_REASON_INCONSISTENT", "The correction reason does not match the OCR read.");
+    return { field, ocrValue: ocrValue as string | null, ocrConfidence: ocrConfidence === null ? null : Number(ocrConfidence), corrected, reason: reason as CorrectionReason };
+  });
+  if (!fields.some((field) => field.corrected)) throw correctedInvalid("CORRECTED_CAPTURE_WITHOUT_CORRECTION", "Use INBOUND_OCR_V1 when no field was corrected.");
+  if (!reviewed && fields.every((field) => field.corrected)) throw correctedInvalid("CORRECTED_CAPTURE_REQUIRES_OCR_FIELD", "At least one field must remain an unchanged OCR read; manual entry is not supported.");
+  // A corrected Donation No. is typed twice; an unchanged one carries no confirmation.
+  const donationCorrected = fields.find((field) => field.field === "donationNumber")!.corrected;
+  if (donationCorrected ? donationNumberConfirmation !== checked.donationNumber : donationNumberConfirmation !== undefined) throw correctedInvalid("CORRECTED_DONATION_CONFIRMATION_MISMATCH", "A corrected Donation No. must be entered twice and match.");
+  const evidenceFor = (field: CaptureField): "OCR_LABEL" | "OPERATOR_CONFIRMED" => fields.find((entry) => entry.field === field)!.corrected ? "OPERATOR_CONFIRMED" : "OCR_LABEL";
+  const confidenceFor = (field: CaptureField) => fields.find((entry) => entry.field === field)!.ocrConfidence;
+  const capture: InboundOcrInput = { ...checked, capturePolicyVersion: INBOUND_OCR_POLICY_VERSION,
+    bloodTypeEvidence: { source: evidenceFor("bloodType"), confirmed: true }, componentEvidence: { source: evidenceFor("componentType"), confirmed: true },
+    ocrEvidence: { engine: checked.ocrEvidence.engine, engineVersion: checked.ocrEvidence.engineVersion, fieldConfidence: { donationNumber: confidenceFor("donationNumber") ?? 0, bloodType: confidenceFor("bloodType") ?? 0, collectedAt: confidenceFor("collectedAt") ?? 0, expiresAt: confidenceFor("expiresAt") ?? 0 } } };
+  return { capture, fields };
+}
+
+/** PA-OCR-04: completed OCR attempt followed by operator review of any/all fields.
+ * V1 retains its unchanged-OCR-field requirement. No score is assigned to an edited final value.
+ */
+export function validateReviewedInboundInput(value: unknown, enabledIssuerIds: readonly string[] = ["INST_MEDIATRIX"], contractVersion: "V2" | "V2.1" = "V2"): CorrectedInboundInput {
+  return validateCorrectedInboundInput(value, enabledIssuerIds, contractVersion, REVIEWED_OCR_POLICY_VERSION);
+}

@@ -586,10 +586,13 @@ withdrawal creates a new `SUBMITTED` application linked to the prior record.
 | PA-DEF-04 | Accepted prototype assumption | `TRANSFER_SUMMARY_READ_V1` | Jopia / 2026-10-15 | The Transfers table reads one row per reservation in the existing reservation scope, including local releases flagged `LOCAL_RELEASE` with destination `NOT_APPLICABLE`. Product and requested units come from the linked request (or the local-release reserve command); allocated units come from the committed selection snapshot; current unit-status counts are shown separately. Priority is the recorded request urgency (`ROUTINE`, `URGENT`, `CRITICAL`). Missing linkage is `UNAVAILABLE`. | Approved transfer-table semantics and reporting rules |
 | PA-DEF-05 | Accepted prototype assumption | `ACTIVITY_HISTORY_READ_V1` | Jopia / 2026-10-15 | ROLE-02 Activity History lists every V2 command and off-chain acknowledgement its institution recorded, newest first and paged. Request, Transfer, Scan and Blockchain IDs come only from recorded command fields and foreign-key projections. The actor is shown by kind, opaque reference, the DB-constrained synthetic display name and current role (not proof of role at the event); unknown actors stay `UNKNOWN`. Off-chain events are `OFF_CHAIN_RECORDED` with ledger `NOT_APPLICABLE`. | Privacy review of operator display identity and an approved audit retention policy |
 | PA-DEF-06 | Accepted prototype assumption | `SYNTHETIC_PRC_SUPPLY_V1` | Jopia / 2026-10-15 | Resolves `RQ-17` for simulation only. A blood-bank ROLE-02 operator records one off-chain PRC supply request per product line. The synthetic PRC account acknowledges it in-system with a PRC-entered reference, then fulfils or declines it; the requester may cancel before acknowledgement. Requests never change inventory; supplied units enter only through confirmed inbound OCR capture. See [the decision](#pa-def-06--synthetic-prc-supply-requests-2026-10-15). Not PRC or Mediatrix policy. | Approved PRC supply procedure, reference format, deadlines and visibility, or a real PRC integration |
+| PA-DEF-07 | Accepted prototype assumption | `SYNTHETIC_STOCK_CHECKPOINT_V1` | Jopia / 2026-10-19 | Each active blood bank's stock is recorded automatically at 09:00 and 16:00 Asia/Manila through the existing census store, as a complete blood-type × component matrix of label-valid (unexpired) `AVAILABLE`/`RESERVED` units, in the synthetic `DOH_CENSUS_COLUMN_ORDER_V1` column order. A slot is recorded only within 30 minutes of its time; the first capture stands and a missed slot stays missing. See [the decision](#pa-def-07--automatic-stock-checkpoints-2026-10-19). Not a DOH-approved format or a regulatory submission. | Approved DOH report format and order, near-expiry/eligibility rules under `RQ-03`, and an operational schedule |
 | PA-ACCOUNT-03 | Accepted prototype assumption | `SYNTHETIC_PUBLIC_APPLICATION_V1` | User via Lat handoff; implemented by Jopia / 2026-10-16 | Public synthetic Blood Bank and Requestor applications without an invitation; complete four-step synthetic form; ten-facility synthetic Fill Up catalog `SYNTHETIC_FACILITY_CATALOG_V1` with server-side claims; non-destructive deregistration releases a sample. PRC review, approval and separate activation remain. See [the decision](#pa-account-03--public-synthetic-applications-and-sample-facilities-2026-10-16). Resolves `RQ-13` for simulation only. | Approved applicant verification, abuse-prevention and recovery controls, real document handling and `RQ-14` retention |
 
 | PA-OCR-01 | Accepted prototype assumption | `SYNTHETIC_LABEL_LAYOUT_V1` | Jopia / 2026-10-17 | Three fictional label layouts (`MEDIATRIX`, `MEDIX`, `NLVILLA`) and their field semantics, used only to collect, review and benchmark the private OCR research corpus. They copy no real hospital label and use the existing synthetic Donation No. grammars. Extraction stays preview-only and non-submittable. `INBOUND_OCR_V1`, issuer policy and both OCR flags are unchanged. See [the decision](#pa-ocr-01--synthetic-label-layouts-for-the-ocr-corpus-2026-10-17). Not Mediatrix, Medix or N.L. Villa policy. | Approved institution label references for each bank and resolution of `RQ-02`, `RQ-03` and `RQ-19` |
 | PA-OCR-02 | Accepted prototype assumption | `SYNTHETIC_CAPTURE_LABEL_V2` | Jopia / 2026-10-18 | The synthetic five-line capture label may also print readable value forms: blood type and component with spaces instead of underscores, and dates as `YYYY-MM-DD`, meaning 00:00 UTC on that date. The device parser maps each form to exactly one V1 value, so the API payload, `INBOUND_OCR_V1`, the 90% per-field gate and operator confirmation are unchanged. Fictional labels only. See [the decision](#pa-ocr-02--readable-synthetic-capture-label-2026-10-18). | Approved real label structures and `RQ-02` resolution |
+| PA-OCR-03 | Accepted prototype assumption | `INBOUND_OCR_CORRECTED_V1` | Jopia / 2026-10-19 | An OCR intake may carry operator corrections: every field states what OCR read and its score; uncorrected fields must equal that read at ≥ 90; corrected fields need a reason and keep no confidence; at least one field stays an unchanged OCR read; a corrected Donation No. is entered twice. Off by default. Implements ADR-050 and resolves `RQ-19` for corrected OCR capture only. See [the decision](#pa-ocr-03--corrected-ocr-intake-2026-10-19). | Approved correction authority, audit retention and any manual or import path under a further decision |
+| PA-OCR-04 | Accepted prototype assumption | `INBOUND_OCR_CORRECTED_V2` | User acting as Jopia / 2026-10-19 | Operator may review all five fields after an OCR attempt, including no recognized fields. Original evidence and correction reasons stay separate; Donation No. double-entry and bank operator PIN are required. Separate opt-in and additive migration; V1 contracts unchanged. See the PA-OCR-04 decision below. | Scanner-free Manual mode, CSV import, real-label and institutional authority remain unresolved |
 
 Prototype-assumption versions are immutable. A replacement adds a new version,
 marks the earlier one superseded for new operations, preserves historical
@@ -618,7 +621,7 @@ sprint:
 | RQ-15 | Who may authorize emergency suspension while a transfer is dispatched or in transit, and how is safe receipt/custody resolution assigned? | Before operational in-transit suspension |
 | RQ-16 | What institutionally approved minimum-stock and safe-stock levels, shortage rule and surplus indicator replace the unavailable `FR-04` dashboard classification (Critical, Low, Adequate, Surplus)? This covers unit of measure, institution, blood-group and component scope, boundary comparisons, zero and missing-coverage handling, freshness tolerance, and the owner, approver, effective date and audit reference. The `SYNTHETIC_OPTIMIZATION_V1` and V2.1 surplus safety allowance and minimum reserve are not stock-classification thresholds. | Before operational dashboard stock classification or full `FR-04` acceptance; accepted project-only demonstration exception is recorded under FR-04 |
 | RQ-18 | Which request decisions beyond approval are allowed, and with what rules? Rejection by the supplying ROLE-02 (reason codes, terminal state), cancellation of a still-pending request by its requester, and partial offers (allowed at all, and how the remainder is handled). The ledger request asset has no reject or cancel transition today; enabling them needs new chaincode functions and a lifecycle upgrade. | Before any request reject, cancel or partial-offer control |
-| RQ-19 | Should any intake path other than confirmed OCR capture exist: manual Donation No. entry or bulk CSV import? ADR-035 currently forbids unverified manual or system-import records. A new path needs its verification evidence, operator authority, confidence and confirmation rules and an ADR superseding ADR-035. | Before enabling manual intake or Inventory CSV import |
+| RQ-19 | Should any intake path other than confirmed OCR capture exist: manual Donation No. entry or bulk CSV import? ADR-035 currently forbids unverified manual or system-import records. A new path needs its verification evidence, operator authority, confidence and confirmation rules and an ADR superseding ADR-035. **Partly resolved for simulation on 2026-10-19:** operator correction of an OCR capture is allowed by ADR-050 / `PA-OCR-03`. PA-OCR-04 additionally permits all-field review after OCR for simulation. Scanner-free manual entry and CSV import stay open. | Before enabling fully manual intake or Inventory CSV import |
 
 Unanswered questions must not be guessed by a coding agent. The relevant task is
 blocked or implemented behind an explicitly approved prototype assumption.
@@ -693,6 +696,32 @@ It is not a real-institution onboarding or data-collection authorization.
 abuse controls, credential recovery and real institutional evidence are still
 required before any real facility applies.
 
+## PA-DEF-07 — Automatic stock checkpoints (2026-10-19)
+
+**Accepted by Jopia; SIMULATION_ONLY.** Lat's Compliance Reports page needs
+saved stock records instead of its October 15 design examples. The census store
+already persisted 09:00/16:00 snapshots, but stayed disabled pending an approved
+DOH report format, and nothing scheduled it. This assumption enables it for
+simulation under `SYNTHETIC_STOCK_CHECKPOINT_V1`.
+
+| Rule | Decision |
+|---|---|
+| Schedule | 09:00 and 16:00 Asia/Manila (01:00 and 08:00 UTC) every day, run by the command worker. |
+| Who | Every institution with `status = ACTIVE` and `account_category = BLOOD_BANK`. Requesters, PRC and DOH hold no stock and are not recorded. |
+| Eligible stock | `AVAILABLE` and `RESERVED` units whose printed expiry is after the capture time. Units past expiry but not yet evaluated are excluded; so are dispatched, in-transit, received, released, compromised and expired units. |
+| Content | The complete 8 blood types × 4 V2 component types matrix (whole blood, packed red cells, fresh frozen plasma, platelets; zero-filled; cryoprecipitate is not part of the census), the actual `capturedAt`, the slot's `scheduledFor`, the policy version and a source digest. Column order is the synthetic `DOH_CENSUS_COLUMN_ORDER_V1` (O, A, B, AB positive, then negative), which is not a DOH-approved order. |
+| Duplicates | One record per institution, slot and policy. The first capture of a slot stands; a later run in the same window returns it unchanged. |
+| Missed or late runs | A slot is recorded only between its time and 30 minutes after it. After that it stays missing: present stock is never labelled with a past slot. The manual catch-up route follows the same window and otherwise returns `409 CHECKPOINT_WINDOW_CLOSED`. |
+| Reads | The existing `GET /api/v2/reports/doh-census`, detail and TSV copy routes, in the existing role scopes. Copy uses the saved matrix, never current inventory. |
+| Activation | `BLOODLEDGER_DOH_REPORT_POLICY_VERSION=SYNTHETIC_STOCK_CHECKPOINT_V1` and `BLOODLEDGER_DOH_BLOOD_TYPE_ORDER` set to the eight types in that order, on the API and the worker. Without both, the feature stays disabled as before. |
+| Boundary | Automatic recording is not regulatory submission, verification or a DOH-approved report. `RQ-03` stays open. |
+
+Implemented in `services/api/src/census-worker.ts` (`checkpointSlots`,
+`checkpointWindowOpen`, `checkpointInstitutionIds`), `worker-main.ts` and the
+catch-up route, with unit tests and a disposable-database probe. The additive
+migration `20261019000000000_allow-synthetic-stock-checkpoint-policy.js` widens
+the census policy check to this one version. Census records stay immutable.
+
 ## PA-DEF-06 — Synthetic PRC supply requests (2026-10-15)
 
 **Accepted by Jopia; SIMULATION_ONLY.** Resolves `RQ-17` for the prototype
@@ -725,6 +754,30 @@ ROLE-02) and `prc-supply:respond` (PRC reviewer). The additive migration
 `20261015000000000_create-prc-supply-requests.js` and
 `services/api/openapi-v2.json` are authoritative for the exact shape and error
 codes.
+
+## PA-OCR-03 — Corrected OCR intake (2026-10-19)
+
+**Accepted by Jopia; SIMULATION_ONLY.** Implements ADR-050 under `RQ-19`. Lat's
+scanner lets operators review and correct OCR fields, but any edit made the
+draft unsubmittable. This contract lets a reviewed correction be submitted
+without treating an OCR score as evidence for a value the operator typed.
+
+| Rule | Decision |
+|---|---|
+| Contract | `capturePolicyVersion: INBOUND_OCR_CORRECTED_V1`, schema in [`contracts/inbound-ocr-corrected-v1.schema.json`](../contracts/inbound-ocr-corrected-v1.schema.json), on the existing `POST /api/v2/inbound-captures`. `INBOUND_OCR_V1` is unchanged. Off unless `BLOODLEDGER_CORRECTED_INTAKE_ENABLED=true`; otherwise `403 CORRECTED_INTAKE_DISABLED`. |
+| Values | The top-level values are the final, operator-confirmed values and pass every `INBOUND_OCR_V1` value rule (issuer format, enums, UTC times, expiry after collection). |
+| Per field | Each of the five fields reports `ocrValue`, `ocrConfidence` and `corrected`. An uncorrected field must equal its OCR read at ≥ 90. A corrected field needs a reason: `OCR_MISREAD` (read differs), `OCR_NOT_READ` (no read) or `OCR_LOW_CONFIDENCE` (read matches but scored below 90). |
+| OCR anchor | At least one field is corrected (otherwise use `INBOUND_OCR_V1`) and at least one stays an unchanged OCR read. Fully manual entry stays unsupported. |
+| Donation No. | A corrected Donation No. is entered twice (`donationNumberConfirmation`) and must match; an unchanged one carries no confirmation. |
+| Evidence | The server, not the client, sets `OPERATOR_CONFIRMED` for a corrected blood type or component, and `OCR_LABEL` otherwise. A corrected field keeps no confidence in the capture record. |
+| Provenance | Per field: source (`OCR_LABEL`/`OPERATOR_CORRECTED`), keyed HMAC digests of the OCR read and the final value, the original OCR score and the reason, in the insert-only `app.v2_capture_field_provenance` (updates and deletes refused). Raw OCR text and Donation No. values are never stored. The provenance is bound into the capture evidence digest recorded on the ledger. |
+| Authority and audit | The same bank roles and PIN-verified operator as any intake, with idempotency, correlation and the command audit trail. A retry with the same key and body replays; a different correction under the same key is `409 V2_IDEMPOTENCY_CONFLICT`. |
+| Not changed | Chaincode, the 90% gate for OCR-sourced values, J5 for `INBOUND_OCR_V1` (clients still cannot claim `OPERATOR_CONFIRMED` there), and `RQ-02`. |
+
+Implemented in `services/api/src/inbound-ocr-policy.ts`
+(`validateCorrectedInboundInput`), the capture route, the projection and the
+additive migration `20261019010000000_allow-corrected-ocr-intake.js`, with route
+tests and a disposable-database probe. The web client wiring is Lat's.
 
 ## PA-OCR-02 — Readable synthetic capture label (2026-10-18)
 
@@ -772,3 +825,32 @@ When approved institution references arrive, it is superseded, not edited.
 | Negative cases | The plan's six classes (`missing_field`, `conflicting_dates`, `duplicate_identifier`, `manufacturer_barcode`, `unknown_layout`, `prohibited_personal_text`) are reported separately from the 180 planned labels, and each case stays within one split. `prohibited_personal_text` uses an obviously fictional placeholder such as `PATIENT: TEST`, never a real name or detail. |
 | Writers and privacy | People write fictional values by hand and are recorded only by opaque code (`WRITER_01` to `WRITER_05`), with no names, signatures or employee IDs. Handwriting samples, photographs, transcriptions and predictions are private research data under Buno's custody process and stay out of Git. Never photograph a real issued blood unit or label. |
 | Activation | Nothing under this assumption activates a profile, supports a claim for any hospital or feeds the application. Activation still needs an accepted real profile and contract, camera-device evidence and a held-out report. |
+
+## PA-OCR-04 — Fully reviewed intake after an OCR attempt (2026-10-19)
+
+**Accepted for simulation by the user acting as Jopia in this chat.** The user
+requested implementation after the unchanged-OCR-field rule blocked a fully
+corrected preview. This additive decision under RQ-19 does not change PA-OCR-03.
+
+`INBOUND_OCR_CORRECTED_V2` permits correction of all five fields after OCR ran,
+including when none were recognized. It requires `ocrAttempted: true`, a workflow
+attestation rather than proof of image content or accuracy. At least one field
+is corrected; no unchanged OCR field is required. Unchanged fields still need
+>=90 engine scores. Corrected fields retain original values/scores or null/null
+when unread, with exact reasons and operator provenance, never a score assigned
+to an edited final value. Corrected Donation No. double-entry, exact UTC dates,
+issuer/product rules, bank ROLE-01/02, capability/PIN, idempotency, frozen retry,
+version/state and queued-versus-committed rules remain in force.
+
+Default-off flags: `BLOODLEDGER_REVIEWED_INTAKE_ENABLED` and
+`VITE_BLOODLEDGER_REVIEWED_INTAKE_READY`. An additive policy-constraint migration
+is required. Images/crops/unrestricted text remain volatile. The legacy ledger
+`captureMethod: OCR` denotes the scanner workflow, not recognition of final
+values; V2 policy and per-field provenance explicitly distinguish operator
+review. History V1 vocabulary is unchanged. No Fabric change is required.
+
+Scanner-free Manual mode, CSV import, requester registration, real-label and
+institutional/clinical authority remain outside this decision. V1 contracts are
+unchanged. The user's instruction to resolve this local blocker authorizes its
+scoped retained-host activation with backup and protected-count checks. No live
+intake is authorized as part of implementation/validation.
