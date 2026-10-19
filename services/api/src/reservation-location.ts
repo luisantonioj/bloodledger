@@ -3,7 +3,7 @@
 import type { Pool } from "pg";
 import { ApiFailure } from "./errors.js";
 import { sha256 } from "./hash.js";
-import { captureSyntheticLocationEvidence, type LocationEvidence } from "./location-evidence.js";
+import { captureSyntheticLocationEvidence, facilityPoint, type LocationEvidence } from "./location-evidence.js";
 
 export const RESERVATION_LOCATION_POLICY = "SYNTHETIC_LOCATION_V2" as const;
 const FALLBACK_REASONS = ["DEVICE_UNAVAILABLE", "PERMISSION_DENIED", "SIGNAL_UNAVAILABLE"];
@@ -18,8 +18,13 @@ const utc = (value: unknown) => typeof value === "string" && Number.isFinite(Dat
 /** Validates the browser/device checkpoint input and derives the deterministic evidence ID from the command idempotency key. */
 export function captureReservationLocation(value: unknown, input: { institutionId: string; reservationId: string; phase: "DISPATCH" | "RECEIPT"; idempotencyKey: string; eventTime: string }): ReservationLocation {
   if (!value || typeof value !== "object" || Array.isArray(value)) invalid();
-  const location = value as Record<string, unknown>, keys = Object.keys(location).sort();
+  const location = { ...(value as Record<string, unknown>) }, keys = Object.keys(location).sort();
   if (keys.length !== LOCATION_KEYS.length || keys.some((key, index) => key !== LOCATION_KEYS[index])) invalid();
+  // A fallback may omit the point (null); the server then records the institution's synthetic facility point.
+  if (location.source === "FACILITY_FALLBACK" && location.latitude === null && location.longitude === null) {
+    const point = facilityPoint(input.institutionId, RESERVATION_LOCATION_POLICY); if (!point) invalid();
+    location.latitude = point.latitude; location.longitude = point.longitude;
+  }
   if (typeof location.latitude !== "number" || typeof location.longitude !== "number" || typeof location.accuracyMetres !== "number") invalid();
   if (location.source !== "DEVICE" && location.source !== "FACILITY_FALLBACK") invalid();
   if (!(location.fallbackReason === null || FALLBACK_REASONS.includes(String(location.fallbackReason)))) invalid();

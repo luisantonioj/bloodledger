@@ -55,6 +55,12 @@ function distanceMetres(leftLat:number,leftLon:number,rightLat:number,rightLon:n
   return 6_371_000*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
+/** The synthetic facility point used for an explicit fallback; undefined when the institution has none. */
+export function facilityPoint(institutionId:string,policyVersion:LocationPolicyVersion):{latitude:number;longitude:number}|undefined {
+  const facility=policies[policyVersion].facilities.find(item=>item.institutionId===institutionId);
+  return facility?{latitude:facility.latitude,longitude:facility.longitude}:undefined;
+}
+
 export function captureSyntheticLocationEvidence<P extends "DISPATCH"|"RECEIPT",V extends LocationPolicyVersion="SYNTHETIC_LOCATION_V1">(input:LocationCaptureInput<P>,evidenceId:string,policyVersion:V=("SYNTHETIC_LOCATION_V1" as V)):LocationEvidence<P,V> {
   const policy=policies[policyVersion];
   if(policy.policyVersion!==policyVersion||policy.classification!=="SYNTHETIC_DATA"||policy.retentionDays!==30)invalid();

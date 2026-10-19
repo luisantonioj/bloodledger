@@ -94,6 +94,9 @@ test("TC-G01 fallback must sit on the facility and carry a reason; evidence ID i
   assert.equal(fallback.fallback, true);
   assert.equal(captureReservationLocation({ ...device }, input).evidenceId, captureReservationLocation({ ...device }, input).evidenceId);
   assert.throws(() => captureReservationLocation({ latitude: 0, longitude: 0.01, accuracyMetres: 500, source: "FACILITY_FALLBACK", fallbackReason: "PERMISSION_DENIED", capturedAt: now }, input));
+  const omitted = captureReservationLocation({ latitude: null, longitude: null, accuracyMetres: 500, source: "FACILITY_FALLBACK", fallbackReason: "SIGNAL_UNAVAILABLE", capturedAt: now }, input);
+  assert.deepEqual([omitted.latitude, omitted.longitude, omitted.facilityMatched], [0, 0, true]);
+  assert.throws(() => captureReservationLocation({ latitude: null, longitude: null, accuracyMetres: 20, source: "DEVICE", fallbackReason: null, capturedAt: now }, input));
   const far = captureReservationLocation({ ...device, longitude: 0.5 }, input);
   assert.equal(far.facilityMatched, false);
 });
