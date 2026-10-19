@@ -109,7 +109,9 @@ test("TC-E05 scheduled expiry queues one service-actor command per component and
   assert.equal(first.payload.evaluationTime, now);
   // v2_commands.correlation_id is varchar(42); found in the live re-test.
   assert.match(first.correlationId, /^CORR_[0-9A-F]{32}$/); // v2_commands_hash2 check constraint
-  assert.ok(first.idempotencyKey.length <= 64 && first.commandId.length <= 64);
+  // Mirrors the v2_commands_id and v2_commands_idempotency check constraints.
+  assert.match(first.commandId, /^CMD_[A-Z0-9_-]{1,56}$/);
+  assert.match(first.idempotencyKey, /^IDEM_[A-Z0-9_-]{1,59}$/);
   assert.notEqual(expiryCommand({ ...candidate, expiresAt: "2026-10-08T00:00:00.000Z" }, new Date(now)).idempotencyKey, first.idempotencyKey);
   const store = new InMemoryV2CommandStore();
   const evaluator = new ScheduledExpiryEvaluator({} as never, store, 60_000);
