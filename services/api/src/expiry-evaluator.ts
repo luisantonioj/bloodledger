@@ -26,6 +26,10 @@ export class ScheduledExpiryEvaluator {
   private nextRun = 0;
   constructor(private readonly pool: Pool, private readonly store: Pick<V2CommandStore, "enqueue" | "get">, private readonly intervalMs = 60_000, private readonly batch = 20) {}
 
+  async actorRegistered(): Promise<boolean> {
+    return ((await this.pool.query("SELECT 1 FROM app.application_users WHERE user_id=$1", [EXPIRY_SERVICE_ACTOR_ID])).rowCount ?? 0) > 0;
+  }
+
   async candidates(now: Date): Promise<ExpiryCandidate[]> {
     // Policy follows the component's own registration so the ledger asset and the command agree.
     const rows = await this.pool.query<Record<string, unknown>>(`SELECT c.component_id,c.institution_id,c.expires_at,c.ledger_version,
@@ -41,6 +45,7 @@ export class ScheduledExpiryEvaluator {
   async runDue(now: Date): Promise<number> {
     if (now.getTime() < this.nextRun) return 0;
     this.nextRun = now.getTime() + this.intervalMs;
+    if (!(await this.actorRegistered())) return 0;
     let queued = 0;
     for (const candidate of await this.candidates(now)) {
       const command = expiryCommand(candidate, now);

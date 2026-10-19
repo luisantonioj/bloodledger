@@ -108,6 +108,7 @@ test("TC-E05 scheduled expiry queues one service-actor command per component and
   const store = new InMemoryV2CommandStore();
   const evaluator = new ScheduledExpiryEvaluator({} as never, store, 60_000);
   evaluator.candidates = async () => [candidate];
+  evaluator.actorRegistered = async () => true;
   assert.equal(await evaluator.runDue(new Date(now)), 1);
   assert.equal(await evaluator.runDue(new Date("2026-10-10T02:00:30.000Z")), 0, "interval not yet due");
   assert.equal(await evaluator.runDue(new Date("2026-10-10T02:01:00.000Z")), 0, "same key replays, nothing new queued");

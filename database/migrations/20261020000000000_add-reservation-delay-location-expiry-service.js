@@ -2,7 +2,8 @@
 // Adds the staff-recorded DELAYED reservation state, the on-chain location summaries projected beside the reservation,
 // and an access-controlled off-chain table for exact checkpoint points (SYNTHETIC_LOCATION_V2, purged after 30 days).
 // It also registers USR_SERVICE_EXPIRY (PA-TC-03, Proposed) as a non-login INTERNAL actor that the scheduled expiry
-// evaluator attributes its commands to: SUSPENDED status and an all-zero verifier mean it can never sign in.
+// evaluator attributes its commands to: SUSPENDED status and an all-zero verifier mean it can never sign in. A database
+// bootstrapped without INST_MEDIATRIX gets no actor, and the evaluator then stays idle.
 // Existing rows and constraints otherwise stay unchanged.
 exports.up = pgm => pgm.sql(`
   ALTER TABLE app.v2_reservations
@@ -39,7 +40,8 @@ exports.up = pgm => pgm.sql(`
   GRANT SELECT, INSERT, DELETE ON app.v2_location_evidence TO bloodledger_app;
 
   INSERT INTO app.application_users(user_id,username,display_name,institution_id,password_algorithm,password_salt,password_verifier,status,account_kind)
-  VALUES('USR_SERVICE_EXPIRY','synth_service_expiry','Synthetic scheduled expiry evaluator','INST_MEDIATRIX','SCRYPT_V1',repeat('0',32),repeat('0',128),'SUSPENDED','INTERNAL')
+  SELECT 'USR_SERVICE_EXPIRY','synth_service_expiry','Synthetic scheduled expiry evaluator',institution_id,'SCRYPT_V1',repeat('0',32),repeat('0',128),'SUSPENDED','INTERNAL'
+  FROM app.institutions WHERE institution_id='INST_MEDIATRIX'
   ON CONFLICT(user_id) DO NOTHING;
 `);
 exports.down = () => { throw new Error('Retain recorded reservation delay and location evidence'); };
