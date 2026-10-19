@@ -1223,3 +1223,5 @@ compact, consistent gaps between review fields.
 when preview fields are shown, including incomplete and edited drafts. Disable
 it and explain the required unchanged five-field OCR verification until that
 gate passes. Confirmation and operator authorization rules remain unchanged.
+
+2026-10-19 Requests & Transfers (TC-T01/TC-T02 remediation): Blood Requests adds an inline **RPS rank** column for supplier ROLE-01/ROLE-02 only, showing `#rank of N · score` per request within its blood type/component series from `/api/v2/coordination/priority`. The tooltip shows the urgency and wait contributions and policy version and states that the ranking is advisory; approval stays with the supplier. Unranked or unavailable rows show `—` or `Unavailable`, never an inferred score. The standalone RPS panel removed on 2026-10-15 is not restored. No API or custody mutation changed.
