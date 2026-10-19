@@ -41,6 +41,14 @@ test("S5-08 serves web, capture, and API from their required same-origin paths",
     assert.equal(analytics.statusCode, 200);
     assert.match(analytics.body, /SPRINT5_WEB/);
     assert.equal((await app.inject({ method: "GET", url: "/assets/web.js" })).body, "WEB_ASSET");
+    // Deep links and refreshes on any app route return the web app (live defense 404 on /transactions, 2026-10-20).
+    for (const url of ["/transactions", "/requests", "/compliance-reports?tab=saved", "/activity-history"]) {
+      const page = await app.inject({ method: "GET", url });
+      assert.equal(page.statusCode, 200, url); assert.match(page.body, /SPRINT5_WEB/, url);
+    }
+    // A missing file and a non-GET stay 404 rather than returning the app.
+    assert.equal((await app.inject({ method: "GET", url: "/assets/missing.js" })).statusCode, 404);
+    assert.equal((await app.inject({ method: "POST", url: "/transactions" })).statusCode, 404);
     assert.match((await app.inject({ method: "GET", url: "/capture/" })).body, /SPRINT4_CAPTURE/);
     assert.match((await app.inject({ method: "GET", url: "/capture/offline" })).body, /SPRINT4_CAPTURE/);
     assert.equal((await app.inject({ method: "GET", url: "/capture/assets/capture.js" })).body, "CAPTURE_ASSET");
