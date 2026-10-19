@@ -294,3 +294,73 @@ test("FR-03/08/12 three institution banks have separate custody and deterministi
   }
   assert.deepEqual(await run(),await run());
 });
+
+// TC-T04/TC-G01/TC-T07/TC-E05 remediation: checkpoint location summaries, staff-recorded delay, scheduled expiry actor.
+function location(phase: "DISPATCH" | "RECEIPT", overrides: Record<string, unknown> = {}) {
+  return { evidenceId: `LOC_${phase}_001`, evidenceDigest: digest(phase === "DISPATCH" ? "a" : "b"), phase, capturedAt: "2026-09-02T00:09:00.000Z", source: "DEVICE", facilityMatched: true, fallback: false, policyVersion: "SYNTHETIC_LOCATION_V1", ...overrides };
+}
+async function dispatched(context: MockContext, contract: InterviewCoreContract, suffix: string) {
+  await register(contract, context, component(`COMP_LOC_${suffix}`, `DON_LOC_${suffix}`, digest("9"), "2026-09-09T00:00:00.000Z"));
+  await contract.ReserveComponents(asContext(context), JSON.stringify(reservation(`RES_LOC_${suffix}`, [`COMP_LOC_${suffix}`], [1])));
+  await contract.PrepareReservation(asContext(context), JSON.stringify(action(`RES_LOC_${suffix}`, 1, "USR_MEDIATRIX_TECH", { preparedEvidenceDigest: digest("e"), preparedEvidenceId: `EVD_LOC_${suffix}`, preparedAt: "2026-09-02T00:05:00.000Z" })));
+  await contract.DispatchReservation(asContext(context), JSON.stringify(action(`RES_LOC_${suffix}`, 2, "USR_MEDIATRIX_TECH", { locationEvidence: location("DISPATCH") })));
+  await contract.StartReservationTransit(asContext(context), JSON.stringify(action(`RES_LOC_${suffix}`, 3)));
+}
+
+test("TC-T04/TC-G01 records validated dispatch and receipt location summaries and rejects invalid evidence", async () => {
+  const context = new MockContext(), contract = new InterviewCoreContract();
+  await register(contract, context, component("COMP_LOC_BAD", "DON_LOC_BAD", digest("8"), "2026-09-09T00:00:00.000Z"));
+  await contract.ReserveComponents(asContext(context), JSON.stringify(reservation("RES_LOC_BAD", ["COMP_LOC_BAD"], [1])));
+  await contract.PrepareReservation(asContext(context), JSON.stringify(action("RES_LOC_BAD", 1, "USR_MEDIATRIX_TECH", { preparedEvidenceDigest: digest("e"), preparedEvidenceId: "EVD_LOC_BAD", preparedAt: "2026-09-02T00:05:00.000Z" })));
+  for (const bad of [location("RECEIPT"), location("DISPATCH", { source: "DEVICE", fallback: true }), location("DISPATCH", { capturedAt: "2026-09-02T00:11:00.000Z" }), location("DISPATCH", { latitude: 14 }), location("DISPATCH", { evidenceDigest: "x" })])
+    await assert.rejects(contract.DispatchReservation(asContext(context), JSON.stringify(action("RES_LOC_BAD", 2, "USR_MEDIATRIX_TECH", { locationEvidence: bad }))), /RESERVATION_LOCATION_INVALID|CORE_FIELD_NOT_ALLOWED/);
+  await assert.rejects(contract.StartReservationTransit(asContext(context), JSON.stringify(action("RES_LOC_BAD", 2, "USR_MEDIATRIX_TECH", { locationEvidence: location("DISPATCH") }))), /CORE_FIELD_NOT_ALLOWED/);
+
+  await dispatched(context, contract, "001");
+  await contract.RecordReservationReceipt(asContext(context), JSON.stringify(action("RES_LOC_001", 4, "USR_METRO_LIPA", { locationEvidence: location("RECEIPT", { source: "FACILITY_FALLBACK", fallback: true, facilityMatched: false }) })));
+  const stored = await read(context, "reservation:asset:RES_LOC_001");
+  assert.equal(stored.status, "RECEIVED");
+  assert.equal((stored.dispatchLocationEvidence as Record<string, unknown>).phase, "DISPATCH");
+  assert.equal((stored.receiptLocationEvidence as Record<string, unknown>).source, "FACILITY_FALLBACK");
+  assert.equal(JSON.stringify(stored).includes("latitude"), false);
+});
+
+test("TC-T07 delay is staff-recorded, resumable, receivable, idempotent and rejects invalid transitions", async () => {
+  const context = new MockContext(), contract = new InterviewCoreContract();
+  await dispatched(context, contract, "002");
+  await assert.rejects(contract.MarkReservationDelayed(asContext(context), JSON.stringify(action("RES_LOC_002", 4, "USR_MEDIATRIX_TECH", { reasonCode: "FREE_TEXT" }))), /RESERVATION_DELAY_REASON_INVALID/);
+  await assert.rejects(contract.MarkReservationDelayed(asContext(context), JSON.stringify(action("RES_LOC_002", 3, "USR_MEDIATRIX_TECH", { reasonCode: "TRAFFIC" }))), /RESERVATION_VERSION_CONFLICT/);
+  const delay = action("RES_LOC_002", 4, "USR_MEDIATRIX_TECH", { reasonCode: "TRAFFIC" });
+  await contract.MarkReservationDelayed(asContext(context), JSON.stringify(delay));
+  // A stale duplicate cannot apply a second effect; the API returns the original command result.
+  await assert.rejects(contract.MarkReservationDelayed(asContext(context), JSON.stringify(delay)), /RESERVATION_VERSION_CONFLICT/);
+  const delayed = await read(context, "reservation:asset:RES_LOC_002");
+  assert.deepEqual([delayed.status, delayed.delayedFromStatus, delayed.version], ["DELAYED", "IN_TRANSIT", 5]);
+  assert.equal((await read(context, "component:asset:COMP_LOC_002")).status, "IN_TRANSIT");
+  await assert.rejects(contract.MarkReservationDelayed(asContext(context), JSON.stringify(action("RES_LOC_002", 5, "USR_MEDIATRIX_TECH", { reasonCode: "TRAFFIC" }))), /RESERVATION_TRANSITION_INVALID/);
+  await assert.rejects(contract.ResumeReservation(asContext(context), JSON.stringify(action("RES_LOC_002", 5, "USR_METRO_LIPA"))), /RESERVATION_NOT_AUTHORIZED/);
+  await contract.ResumeReservation(asContext(context), JSON.stringify(action("RES_LOC_002", 5)));
+  const resumed = await read(context, "reservation:asset:RES_LOC_002");
+  assert.deepEqual([resumed.status, resumed.delayedFromStatus], ["IN_TRANSIT", undefined]);
+  await contract.MarkReservationDelayed(asContext(context), JSON.stringify(action("RES_LOC_002", 6, "USR_METRO_LIPA", { reasonCode: "HANDOVER_PENDING", idempotencyKey: "IDEM_DELAY_AGAIN" })));
+  await contract.RecordReservationReceipt(asContext(context), JSON.stringify(action("RES_LOC_002", 7, "USR_METRO_LIPA", { locationEvidence: location("RECEIPT") })));
+  assert.equal((await read(context, "component:asset:COMP_LOC_002")).status, "RECEIVED");
+  assert.equal((await read(context, "reservation:asset:RES_LOC_002")).delayedFromStatus, undefined);
+});
+
+test("TC-E05 expiry service actor may only evaluate expiry, deterministically", async () => {
+  const run = async () => {
+    const context = new MockContext(), contract = new InterviewCoreContract();
+    await register(contract, context, component("COMP_SVC_001", "DON_SVC_001", digest("7"), "2026-09-05T00:00:00.000Z"));
+    const input = { componentId: "COMP_SVC_001", expectedVersion: 1, evaluationTime: "2026-09-06T00:00:00.000Z", actorUserId: "USR_SERVICE_EXPIRY", eventTime: "2026-09-06T00:00:00.000Z", correlationId: "CORR_SVC_001", idempotencyKey: "IDEM_SVC_001", policyVersion };
+    await contract.EvaluateComponentExpiry(asContext(context), JSON.stringify(input));
+    await assert.rejects(contract.EvaluateComponentExpiry(asContext(context), JSON.stringify(input)), /COMPONENT_VERSION_CONFLICT/);
+    await assert.rejects(contract.ReserveComponents(asContext(context), JSON.stringify(reservation("RES_SVC_001", ["COMP_SVC_001"], [2], "TRANSFER", { actorUserId: "USR_SERVICE_EXPIRY" }))), /CORE_NOT_AUTHORIZED|RESERVATION_NOT_AUTHORIZED/);
+    await register(contract, context, component("COMP_SVC_002", "DON_SVC_002", digest("6"), "2026-09-05T00:00:00.000Z"));
+    await assert.rejects(contract.PlaceReconciliationHold(asContext(context), JSON.stringify({ componentId: "COMP_SVC_002", caseId: "RECON_SVC_002", reasonCode: "STATUS_MISMATCH", expectedVersion: 1, actorUserId: "USR_SERVICE_EXPIRY", eventTime: "2026-09-02T00:00:00.000Z", correlationId: "CORR_SVC_002", idempotencyKey: "IDEM_SVC_002", policyVersion })), /CORE_NOT_AUTHORIZED/);
+    return [...context.state.entries()].map(([key, value]) => key + "=" + value.toString("utf8")).join("\n");
+  };
+  const first = await run();
+  assert.match(first, /"status":"EXPIRED"/);
+  assert.equal(await run(), first);
+});
