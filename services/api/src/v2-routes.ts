@@ -529,7 +529,13 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!dependencies.census) throw new ApiFailure(503, "DISABLED_UNAPPROVED_REPORT_FORMAT", "The report policy has not been approved.");
     if (!hasKeys(request.body, ["scheduledFor"])) throw new ApiFailure(400, "V2_INPUT_INVALID", "A scheduled census time is required.");
     const scheduledFor = requiredUtc(request.body as Record<string, unknown>, "scheduledFor");
-    const snapshot = await dependencies.census.capture(principal.institutionId, new Date(scheduledFor), "MANUAL", dependencies.clock());
+    let snapshot;
+    try { snapshot = await dependencies.census.capture(principal.institutionId, new Date(scheduledFor), "MANUAL", dependencies.clock()); }
+    catch (error) {
+      // PA-DEF-07: a closed or non-slot time is refused, so present stock is never recorded under a past slot.
+      if (error instanceof Error && error.message === "CHECKPOINT_WINDOW_CLOSED") throw new ApiFailure(409, "CHECKPOINT_WINDOW_CLOSED", "Stock can only be recorded during an open 09:00 or 16:00 checkpoint window.");
+      throw error;
+    }
     return reply.status(201).send(snapshot);
   });
 

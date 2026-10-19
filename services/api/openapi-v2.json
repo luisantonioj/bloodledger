@@ -380,10 +380,13 @@
     "/reports/doh-census/catch-up": {
       "post": {
         "operationId": "captureDohCensusCatchUp",
-        "description": "Manual authorized catch-up. The report policy and blood-type column order must be approved before this route is enabled.",
+        "description": "Manual authorized catch-up. The report policy and blood-type column order must be approved before this route is enabled. Under SYNTHETIC_STOCK_CHECKPOINT_V1 (PA-DEF-07) scheduledFor must be a 09:00 or 16:00 Asia/Manila slot whose 30-minute capture window is open; the first capture of a slot stands.",
         "responses": {
           "201": {
             "$ref": "#/components/responses/Census"
+          },
+          "409": {
+            "description": "CHECKPOINT_WINDOW_CLOSED: the time is not an open checkpoint slot, so present stock is not recorded under a past slot."
           },
           "503": {
             "$ref": "#/components/responses/PolicyDisabled"

@@ -586,6 +586,7 @@ withdrawal creates a new `SUBMITTED` application linked to the prior record.
 | PA-DEF-04 | Accepted prototype assumption | `TRANSFER_SUMMARY_READ_V1` | Jopia / 2026-10-15 | The Transfers table reads one row per reservation in the existing reservation scope, including local releases flagged `LOCAL_RELEASE` with destination `NOT_APPLICABLE`. Product and requested units come from the linked request (or the local-release reserve command); allocated units come from the committed selection snapshot; current unit-status counts are shown separately. Priority is the recorded request urgency (`ROUTINE`, `URGENT`, `CRITICAL`). Missing linkage is `UNAVAILABLE`. | Approved transfer-table semantics and reporting rules |
 | PA-DEF-05 | Accepted prototype assumption | `ACTIVITY_HISTORY_READ_V1` | Jopia / 2026-10-15 | ROLE-02 Activity History lists every V2 command and off-chain acknowledgement its institution recorded, newest first and paged. Request, Transfer, Scan and Blockchain IDs come only from recorded command fields and foreign-key projections. The actor is shown by kind, opaque reference, the DB-constrained synthetic display name and current role (not proof of role at the event); unknown actors stay `UNKNOWN`. Off-chain events are `OFF_CHAIN_RECORDED` with ledger `NOT_APPLICABLE`. | Privacy review of operator display identity and an approved audit retention policy |
 | PA-DEF-06 | Accepted prototype assumption | `SYNTHETIC_PRC_SUPPLY_V1` | Jopia / 2026-10-15 | Resolves `RQ-17` for simulation only. A blood-bank ROLE-02 operator records one off-chain PRC supply request per product line. The synthetic PRC account acknowledges it in-system with a PRC-entered reference, then fulfils or declines it; the requester may cancel before acknowledgement. Requests never change inventory; supplied units enter only through confirmed inbound OCR capture. See [the decision](#pa-def-06--synthetic-prc-supply-requests-2026-10-15). Not PRC or Mediatrix policy. | Approved PRC supply procedure, reference format, deadlines and visibility, or a real PRC integration |
+| PA-DEF-07 | Accepted prototype assumption | `SYNTHETIC_STOCK_CHECKPOINT_V1` | Jopia / 2026-10-19 | Each active blood bank's stock is recorded automatically at 09:00 and 16:00 Asia/Manila through the existing census store, as a complete blood-type × component matrix of label-valid (unexpired) `AVAILABLE`/`RESERVED` units, in the synthetic `DOH_CENSUS_COLUMN_ORDER_V1` column order. A slot is recorded only within 30 minutes of its time; the first capture stands and a missed slot stays missing. See [the decision](#pa-def-07--automatic-stock-checkpoints-2026-10-19). Not a DOH-approved format or a regulatory submission. | Approved DOH report format and order, near-expiry/eligibility rules under `RQ-03`, and an operational schedule |
 | PA-ACCOUNT-03 | Accepted prototype assumption | `SYNTHETIC_PUBLIC_APPLICATION_V1` | User via Lat handoff; implemented by Jopia / 2026-10-16 | Public synthetic Blood Bank and Requestor applications without an invitation; complete four-step synthetic form; ten-facility synthetic Fill Up catalog `SYNTHETIC_FACILITY_CATALOG_V1` with server-side claims; non-destructive deregistration releases a sample. PRC review, approval and separate activation remain. See [the decision](#pa-account-03--public-synthetic-applications-and-sample-facilities-2026-10-16). Resolves `RQ-13` for simulation only. | Approved applicant verification, abuse-prevention and recovery controls, real document handling and `RQ-14` retention |
 
 | PA-OCR-01 | Accepted prototype assumption | `SYNTHETIC_LABEL_LAYOUT_V1` | Jopia / 2026-10-17 | Three fictional label layouts (`MEDIATRIX`, `MEDIX`, `NLVILLA`) and their field semantics, used only to collect, review and benchmark the private OCR research corpus. They copy no real hospital label and use the existing synthetic Donation No. grammars. Extraction stays preview-only and non-submittable. `INBOUND_OCR_V1`, issuer policy and both OCR flags are unchanged. See [the decision](#pa-ocr-01--synthetic-label-layouts-for-the-ocr-corpus-2026-10-17). Not Mediatrix, Medix or N.L. Villa policy. | Approved institution label references for each bank and resolution of `RQ-02`, `RQ-03` and `RQ-19` |
@@ -692,6 +693,32 @@ It is not a real-institution onboarding or data-collection authorization.
 `RQ-14` (real retention) remains open. Approved real applicant verification,
 abuse controls, credential recovery and real institutional evidence are still
 required before any real facility applies.
+
+## PA-DEF-07 — Automatic stock checkpoints (2026-10-19)
+
+**Accepted by Jopia; SIMULATION_ONLY.** Lat's Compliance Reports page needs
+saved stock records instead of its October 15 design examples. The census store
+already persisted 09:00/16:00 snapshots, but stayed disabled pending an approved
+DOH report format, and nothing scheduled it. This assumption enables it for
+simulation under `SYNTHETIC_STOCK_CHECKPOINT_V1`.
+
+| Rule | Decision |
+|---|---|
+| Schedule | 09:00 and 16:00 Asia/Manila (01:00 and 08:00 UTC) every day, run by the command worker. |
+| Who | Every institution with `status = ACTIVE` and `account_category = BLOOD_BANK`. Requesters, PRC and DOH hold no stock and are not recorded. |
+| Eligible stock | `AVAILABLE` and `RESERVED` units whose printed expiry is after the capture time. Units past expiry but not yet evaluated are excluded; so are dispatched, in-transit, received, released, compromised and expired units. |
+| Content | The complete 8 blood types × 4 V2 component types matrix (whole blood, packed red cells, fresh frozen plasma, platelets; zero-filled; cryoprecipitate is not part of the census), the actual `capturedAt`, the slot's `scheduledFor`, the policy version and a source digest. Column order is the synthetic `DOH_CENSUS_COLUMN_ORDER_V1` (O, A, B, AB positive, then negative), which is not a DOH-approved order. |
+| Duplicates | One record per institution, slot and policy. The first capture of a slot stands; a later run in the same window returns it unchanged. |
+| Missed or late runs | A slot is recorded only between its time and 30 minutes after it. After that it stays missing: present stock is never labelled with a past slot. The manual catch-up route follows the same window and otherwise returns `409 CHECKPOINT_WINDOW_CLOSED`. |
+| Reads | The existing `GET /api/v2/reports/doh-census`, detail and TSV copy routes, in the existing role scopes. Copy uses the saved matrix, never current inventory. |
+| Activation | `BLOODLEDGER_DOH_REPORT_POLICY_VERSION=SYNTHETIC_STOCK_CHECKPOINT_V1` and `BLOODLEDGER_DOH_BLOOD_TYPE_ORDER` set to the eight types in that order, on the API and the worker. Without both, the feature stays disabled as before. |
+| Boundary | Automatic recording is not regulatory submission, verification or a DOH-approved report. `RQ-03` stays open. |
+
+Implemented in `services/api/src/census-worker.ts` (`checkpointSlots`,
+`checkpointWindowOpen`, `checkpointInstitutionIds`), `worker-main.ts` and the
+catch-up route, with unit tests and a disposable-database probe. The additive
+migration `20261019000000000_allow-synthetic-stock-checkpoint-policy.js` widens
+the census policy check to this one version. Census records stay immutable.
 
 ## PA-DEF-06 — Synthetic PRC supply requests (2026-10-15)
 
