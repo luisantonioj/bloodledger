@@ -23,6 +23,18 @@ The review did not enable the primary requester submission form or add backend f
 
 Jopia follow-up: establish the routing decision/contract, or coordinate an explicitly accepted source-selection workflow with Lat. Requester/clinical details (GAP-01), authorized pickup (GAP-02), supporting documents (GAP-03) and notes (GAP-04) remain disabled because their supported storage/read, authorization and related policy contracts are missing. Do not enable fields that will be discarded. Publish schemas, safe errors, permissions and synthetic fixtures for Lat to wire after acceptance.
 
+### Required follow-through: make the requester form usable
+
+User clarification: publishing the backend contracts alone is not the requested end result. Jopia should also complete the corresponding frontend wiring, coordinating with Lat and preserving the saved layouts. After each dependency is implemented and accepted, replace the disabled placeholder with a functioning control:
+
+- **Supplier routing:** resolve the supplying bank through the accepted workflow and remove the submission blocker. Show the resolved bank; allow bank selection only if the accepted routing decision permits it. Automatic routing does not require a free-text supplier field.
+- **Requester / clinical details:** enable the requesting-person and other accepted fields so users can enter and edit supported information. Any field whose data scope remains unresolved stays explicitly unavailable, with the remaining decision reported rather than silently omitted or enabled without storage.
+- **Authorized pickup:** enable entry and editing of the accepted representative and authorization-reference fields, with the agreed authority checks.
+- **Supporting documents:** enable actual file selection and authorized upload, linked to the request with the accepted format, size, access and retention rules; selecting a file must not merely simulate an attachment.
+- **Notes:** enable entry and editing of notes within the accepted scope, validation and persistence rules.
+
+Acceptance: the requester can complete the supported form, pass operator verification and submit it to the resolved blood bank. The bank can read the request and the permitted details/document references. Confirm with synthetic tests that entered values persist and reappear in authorized detail reads, unsupported inputs fail clearly, unauthorized access is denied and retries do not create duplicate requests. Preserve the distinction between queued, committed and bank-approved outcomes. Report any still-disabled field and its exact unresolved dependency. This follow-through adds no permission to collect real personal/clinical data or to perform live retained-host submissions; the existing simulation and live-action boundaries still apply.
+
 ## Validation
 
 Node 24.17.0; synthetic fixtures only for browser checks.
