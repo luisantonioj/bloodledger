@@ -21,6 +21,7 @@ export function DashboardRedistribution({principal}: {principal: Principal}) {
   return <section className="requester-dashboard-card dashboard-redistribution" aria-labelledby="dashboard-redistribution-heading">
     <header><h2 id="dashboard-redistribution-heading">Redistribution</h2><button className="button compact dashboard-refresh" type="button" aria-label="Refresh redistribution" disabled={state.busy} aria-busy={state.busy} onClick={state.refresh}><RefreshIcon/>Refresh</button></header>
     <div className="dashboard-redistribution-body">
+      <p className="redistribution-simulation-note" role="note">Simulation only — BROA policy not approved. Suggestions are advisory; staff approve every transfer.</p>
       <div className="redistribution-readonly-fields">
         <label>Suggested matches<span className="requester-select"><select aria-label="Suggested matches" disabled={state.busy || !matches.length} value={match?.key ?? ""} onChange={event=>setSelection(event.target.value)}>{matches.length ? matches.map(row=><option key={row.key} value={row.key}>{row.data.bloodType.replace("_POSITIVE", "+").replace("_NEGATIVE", "−")} · {componentLabel(row.data.componentType)} → {facilityLabel(row.destination.destinationInstitutionId, principal)} · rank {row.destination.rank}</option>) : <option value="">{state.busy ? "Checking matches…" : "No available match"}</option>}</select></span></label>
         <label>Units<input aria-label="Redistribution units" readOnly value={data?.gate.requiredQuantity ?? "—"}/></label>

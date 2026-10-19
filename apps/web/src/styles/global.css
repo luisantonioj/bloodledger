@@ -715,6 +715,7 @@
 
 /* Compact, supplier-only dashboard redistribution ranking. */
 .dashboard-redistribution-body { padding: 20px; display: grid; gap: 16px; }
+.redistribution-simulation-note { margin: 0; padding: 8px 12px; border-radius: 8px; background: var(--warning-container); color: var(--warning); font-size: 0.8125rem; }
 .dashboard-redistribution-filters { display: grid; grid-template-columns: 1fr 1.5fr 76px; gap: 10px; }
 .dashboard-redistribution-filters label { display: grid; gap: 6px; margin: 0; min-width: 0; font-size: 12px; color: var(--ink-muted); }
 .dashboard-redistribution-filters select, .dashboard-redistribution-filters input { width: 100%; min-width: 0; padding: 9px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
