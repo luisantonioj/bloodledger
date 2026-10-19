@@ -1,0 +1,27 @@
+{
+  "classification": "SYNTHETIC_DATA",
+  "policyVersion": "SYNTHETIC_LOCATION_V2",
+  "supersedes": "SYNTHETIC_LOCATION_V1",
+  "status": "Proposed",
+  "maximumAccuracyMetres": 1000,
+  "facilityMatchRadiusMetres": 500,
+  "retentionDays": 30,
+  "allowedFallbackReasons": [
+    "DEVICE_UNAVAILABLE",
+    "PERMISSION_DENIED",
+    "SIGNAL_UNAVAILABLE"
+  ],
+  "facilities": [
+    { "institutionId": "INST_MEDIATRIX", "latitude": 0, "longitude": 0 },
+    { "institutionId": "INST_SYNTH_MEDIX", "latitude": 0, "longitude": 0.018 },
+    { "institutionId": "INST_SYNTH_METROLIPA", "latitude": 0, "longitude": 0.036 },
+    { "institutionId": "INST_SYNTH_NLVILLA", "latitude": 0, "longitude": 0.054 },
+    { "institutionId": "INST_DIVINE_LOVE", "latitude": 0, "longitude": 0.072 }
+  ],
+  "limitations": [
+    "V2 adds the V2 institution-account hospitals; V1 stays unchanged for the V1 transfer contract.",
+    "All facility coordinates are invented software-test fixtures, not hospital locations; a real device reading is expected not to match them and is recorded as facilityMatched=false.",
+    "Only dispatch and receipt checkpoints are captured; continuous tracking is prohibited.",
+    "Exact points stay off-chain for 30 days; the ledger stores only the summary and digest."
+  ]
+}

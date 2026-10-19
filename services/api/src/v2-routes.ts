@@ -17,6 +17,7 @@ import { assembleTransferSummaries, decodeSummaryCursor, type TransferSummaryRea
 import { activityContract, assembleActivityHistory, decodeActivityCursor, type ActivityHistoryReader } from "./activity-history.js";
 import { assembleNetworkAvailability, assembleRequestHistory, assembleSummary, bloodBankRoutes, parseHistoryRange, type BloodBankReader } from "./blood-bank-reads.js";
 import type { PostgresOutboundVerification } from "./outbound-verification.js";
+import { captureReservationLocation, locationSummary, scopeLocationView, type ReservationLocation, type ReservationLocationStore } from "./reservation-location.js";
 import { assertReceiptEvidence, RECEIPT_EVIDENCE_ID_PATTERN, type PostgresReceiptVerification } from "./receipt-verification.js";
 import { isReconciliationReasonCode, RECONCILIATION_POLICY_VERSION, RECONCILIATION_REASONS } from "./reconciliation-policy.js";
 import { COMPROMISE_POLICY_VERSION, COMPROMISE_REASONS, isCompromiseReasonCode } from "./compromise-policy.js";
@@ -54,6 +55,7 @@ export interface V2RouteDependencies {
   bloodBank?: BloodBankReader;
   outboundVerification?: Pick<PostgresOutboundVerification, "verify">;
   receiptVerification?: Pick<PostgresReceiptVerification, "verify" | "findEvidence">;
+  reservationLocation?: ReservationLocationStore;
   webOrigin: string;
   clock: () => Date;
   enabledIssuerInstitutionIds?: readonly string[];
@@ -567,11 +569,22 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     return reply.type("text/tab-separated-values; charset=utf-8").header("content-disposition", `attachment; filename="${request.params.snapshotId}-${request.params.componentType}.tsv"`).send(tsv);
   });
 
+  // TC-G03: read-only checkpoint location audit for the two institutions on the reservation.
+  app.get<{ Params: { reservationId: string } }>("/api/v2/reservations/:reservationId/location-evidence", async (request) => {
+    const { principal } = await restore(request);
+    authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-03"]);
+    if (!RESERVATION_ID_PATTERN.test(request.params.reservationId)) throw new ApiFailure(400, "V2_RESERVATION_ID_INVALID", "Reservation ID is invalid.");
+    if (!dependencies.projection?.getReservation || !dependencies.reservationLocation) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Checkpoint location evidence is not available.");
+    const reservation = await dependencies.projection.getReservation(request.params.reservationId, principal.institutionId, principal.roleId);
+    if (!reservation) throw new ApiFailure(404, "V2_RESERVATION_NOT_FOUND", "The reservation was not found in the authorized scope.");
+    const evidence = scopeLocationView(await dependencies.reservationLocation.list(request.params.reservationId), principal.institutionId);
+    return { reservationId: request.params.reservationId, policyVersion: "SYNTHETIC_LOCATION_V2", evidence, coordinateVisibility: "CAPTURING_INSTITUTION_ONLY", classification: "SIMULATION_ONLY" as const };
+  });
+
   app.post<{ Params: { reservationId: string; action: string } }>("/api/v2/reservations/:reservationId/:action", async (request, reply) => {
     sameOrigin(request); const { principal } = await restore(request);
     if (!RESERVATION_ID_PATTERN.test(request.params.reservationId)) throw new ApiFailure(400, "V2_RESERVATION_ID_INVALID", "Reservation ID is invalid.");
     const action = request.params.action.toLowerCase();
-    const body = request.body;
     const allowedActionKeys: Record<string, readonly string[]> = {
       prepare: ["correlationId", "eventTime", "expectedVersion", "preparedAt", "preparedEvidenceDigest", "preparedEvidenceId"],
       compromise: ["correlationId", "eventTime", "expectedVersion", "reasonCode"],
@@ -580,23 +593,38 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
       transit: ["correlationId", "eventTime", "expectedVersion"],
       receive: ["correlationId", "eventTime", "expectedVersion"],
       "local-release-complete": ["correlationId", "eventTime", "expectedVersion"],
+      delay: ["correlationId", "eventTime", "expectedVersion", "reasonCode"],
+      resume: ["correlationId", "eventTime", "expectedVersion"],
     };
+    // TC-T04/TC-G01: dispatch and receipt may carry one checkpoint location; it is validated and split before queuing.
+    const rawBody = request.body;
+    const withLocation = (action === "dispatch" || action === "receive") && !!rawBody && typeof rawBody === "object" && !Array.isArray(rawBody) && Object.prototype.hasOwnProperty.call(rawBody, "location");
+    const locationInput = withLocation ? (rawBody as Record<string, unknown>).location : undefined;
+    const body = withLocation ? (({ location: _location, ...rest }) => rest)(rawBody as Record<string, unknown>) : rawBody;
     // ADR-049: receive may also reference receipt evidence; both evidence fields travel together.
     const receiptEvidenceKeys = ["correlationId", "eventTime", "expectedVersion", "receiptEvidenceDigest", "receiptEvidenceId"];
     const withReceiptEvidence = action === "receive" && hasKeys(body, receiptEvidenceKeys);
     if (!withReceiptEvidence && !hasKeys(body, allowedActionKeys[action] ?? [])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Reservation action input is invalid.");
     if (!Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1) throw new ApiFailure(400, "V2_VERSION_INVALID", "Expected version is invalid.");
     // BL-DEC-S6-2026-09-23-01: enforced here before queuing; the independent chaincode check is deferred until after UAT.
+    if (action === "delay" && !["VEHICLE_DELAY", "TRAFFIC", "WEATHER", "HANDOVER_PENDING", "OTHER_OPERATIONAL"].includes(String(body.reasonCode))) throw new ApiFailure(400, "DELAY_REASON_INVALID", "The delay reason is not supported.");
     if (action === "compromise" && !isCompromiseReasonCode(body.reasonCode)) throw new ApiFailure(400, "COMPROMISE_REASON_INVALID", "The incident reason is not supported by the active synthetic policy.");
-    const roleMap: Record<string, readonly WebPrincipal["roleId"][]> = { prepare: ["ROLE-01", "ROLE-02"], dispatch: ["ROLE-01", "ROLE-02"], transit: ["ROLE-01", "ROLE-02"], receive: ["ROLE-01", "ROLE-02", "ROLE-03"], cancel: ["ROLE-01", "ROLE-02", "ROLE-03"], "local-release-complete": ["ROLE-01", "ROLE-02"], compromise: ["ROLE-01", "ROLE-02", "ROLE-03"] };
+    const roleMap: Record<string, readonly WebPrincipal["roleId"][]> = { prepare: ["ROLE-01", "ROLE-02"], dispatch: ["ROLE-01", "ROLE-02"], transit: ["ROLE-01", "ROLE-02"], receive: ["ROLE-01", "ROLE-02", "ROLE-03"], cancel: ["ROLE-01", "ROLE-02", "ROLE-03"], "local-release-complete": ["ROLE-01", "ROLE-02"], compromise: ["ROLE-01", "ROLE-02", "ROLE-03"], delay: ["ROLE-01", "ROLE-02", "ROLE-03"], resume: ["ROLE-01", "ROLE-02"] };
     const roles = roleMap[action]; if (!roles) throw new ApiFailure(404, "V2_ACTION_NOT_FOUND", "Reservation action is not supported."); authorized(principal, roles);
     if (!dependencies.projection?.getReservation) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "The reservation projection is not available.");
     const scopedReservation = await dependencies.projection.getReservation(request.params.reservationId, principal.institutionId, principal.roleId);
     if (!scopedReservation) throw new ApiFailure(404, "V2_RESERVATION_NOT_FOUND", "The reservation was not found in the authorized scope.");
     const version = contractVersion(request);
     requireReservationContract(version, [scopedReservation]);
-    const operationByAction: Record<string, string> = { prepare: "PREPARE_RESERVATION", dispatch: "DISPATCH_RESERVATION", transit: "START_RESERVATION_TRANSIT", receive: "RECEIVE_RESERVATION", cancel: "CANCEL_RESERVATION", compromise: "COMPROMISE_RESERVATION", "local-release-complete": "COMPLETE_LOCAL_RELEASE" };
+    const operationByAction: Record<string, string> = { prepare: "PREPARE_RESERVATION", dispatch: "DISPATCH_RESERVATION", transit: "START_RESERVATION_TRANSIT", receive: "RECEIVE_RESERVATION", cancel: "CANCEL_RESERVATION", compromise: "COMPROMISE_RESERVATION", "local-release-complete": "COMPLETE_LOCAL_RELEASE", delay: "DELAY_RESERVATION", resume: "RESUME_RESERVATION" };
     const payload: Record<string, unknown> = { reservationId: request.params.reservationId, expectedVersion: Number(body.expectedVersion), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: selectCorePolicy(principal, version) };
+    let location: ReservationLocation | undefined;
+    if (withLocation) {
+      if (!dependencies.reservationLocation) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Checkpoint location storage is not available.");
+      location = captureReservationLocation(locationInput, { institutionId: principal.institutionId, reservationId: request.params.reservationId, phase: action === "dispatch" ? "DISPATCH" : "RECEIPT", idempotencyKey: requiredHeader(request), eventTime: String(payload.eventTime) });
+      payload.locationEvidence = locationSummary(location);
+    }
+    const recordLocation = async () => { if (location) await dependencies.reservationLocation!.record(request.params.reservationId, location); };
     if (action === "receive") {
       const bank = principal.roleId !== "ROLE-03";
       // Only the destination receives; a source bank sees its reservation but cannot receive it.
@@ -611,13 +639,15 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
         if (bank) {
           // RecordInboundReceipt is the chaincode receipt for blood-bank destinations; its capture digest is the receipt evidence digest.
           const { reservationId, expectedVersion, actorUserId, eventTime, correlationId, policyVersion } = payload;
-          return enqueue(request, reply, "TRANSFER", request.params.reservationId, "RECEIVE_INBOUND_COMPONENT", { reservationId, expectedVersion, actorUserId, actorInstitutionId: principal.institutionId, eventTime, correlationId, policyVersion, captureEvidenceDigest: evidenceDigest, receiptEvidenceId: evidenceId }, principal);
+          await recordLocation();
+          return enqueue(request, reply, "TRANSFER", request.params.reservationId, "RECEIVE_INBOUND_COMPONENT", { reservationId, expectedVersion, actorUserId, actorInstitutionId: principal.institutionId, eventTime, correlationId, policyVersion, captureEvidenceDigest: evidenceDigest, receiptEvidenceId: evidenceId, ...(payload.locationEvidence ? { locationEvidence: payload.locationEvidence } : {}) }, principal);
         }
         payload.receiptEvidenceId = evidenceId; payload.receiptEvidenceDigest = evidenceDigest;
       }
     }
     for (const key of ["preparedEvidenceDigest", "preparedEvidenceId", "preparedAt", "reasonCode"] as const) if (body[key] !== undefined) payload[key] = body[key];
     if (action === "compromise") payload.compromisePolicyVersion = COMPROMISE_POLICY_VERSION;
+    await recordLocation();
     return enqueue(request, reply, "TRANSFER", request.params.reservationId, operationByAction[action], payload, principal);
   });
 }

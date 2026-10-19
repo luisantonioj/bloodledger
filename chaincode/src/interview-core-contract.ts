@@ -45,7 +45,7 @@ type ComponentStatus =
 type ReservationPurpose = "TRANSFER" | "LOCAL_RELEASE";
 type ReservationStatus = "ACTIVE" | "DISPATCHED" | "IN_TRANSIT" | "DELAYED" | "RECEIVED" | "COMPLETED" | "CANCELLED" | "COMPROMISED";
 // SYNTHETIC_LOCATION_V1 checkpoint summary; exact coordinates stay off-chain (TC-T04/TC-G01).
-interface LocationEvidenceSummary { evidenceId: string; evidenceDigest: string; phase: "DISPATCH" | "RECEIPT"; capturedAt: string; source: "DEVICE" | "FACILITY_FALLBACK"; facilityMatched: boolean; fallback: boolean; policyVersion: "SYNTHETIC_LOCATION_V1"; }
+interface LocationEvidenceSummary { evidenceId: string; evidenceDigest: string; phase: "DISPATCH" | "RECEIPT"; capturedAt: string; source: "DEVICE" | "FACILITY_FALLBACK"; facilityMatched: boolean; fallback: boolean; policyVersion: "SYNTHETIC_LOCATION_V1" | "SYNTHETIC_LOCATION_V2"; }
 type Role = "ROLE_01" | "ROLE_02" | "ROLE_03" | "ROLE_04";
 
 interface ActorPolicy { institutionId: string; role: Role; }
@@ -629,9 +629,9 @@ export class InterviewCoreContract extends Contract {
     const evidence = value as LocationEvidenceSummary;
     if (typeof evidence.evidenceId !== "string" || !LOCATION_ID_PATTERN.test(evidence.evidenceId)) this.fail("RESERVATION_LOCATION_INVALID");
     this.assertHash(evidence.evidenceDigest, "RESERVATION_LOCATION_INVALID");
-    if (evidence.phase !== phase || evidence.policyVersion !== "SYNTHETIC_LOCATION_V1" || !["DEVICE", "FACILITY_FALLBACK"].includes(evidence.source) || typeof evidence.facilityMatched !== "boolean" || typeof evidence.fallback !== "boolean" || (evidence.source === "DEVICE") === evidence.fallback) this.fail("RESERVATION_LOCATION_INVALID");
+    if (evidence.phase !== phase || (evidence.policyVersion !== "SYNTHETIC_LOCATION_V1" && evidence.policyVersion !== "SYNTHETIC_LOCATION_V2") || !["DEVICE", "FACILITY_FALLBACK"].includes(evidence.source) || typeof evidence.facilityMatched !== "boolean" || typeof evidence.fallback !== "boolean" || (evidence.source === "DEVICE") === evidence.fallback) this.fail("RESERVATION_LOCATION_INVALID");
     if (this.parseUtc(evidence.capturedAt) > this.parseUtc(eventTime)) this.fail("RESERVATION_LOCATION_INVALID");
-    return { evidenceId: evidence.evidenceId, evidenceDigest: evidence.evidenceDigest, phase, capturedAt: evidence.capturedAt, source: evidence.source, facilityMatched: evidence.facilityMatched, fallback: evidence.fallback, policyVersion: "SYNTHETIC_LOCATION_V1" };
+    return { evidenceId: evidence.evidenceId, evidenceDigest: evidence.evidenceDigest, phase, capturedAt: evidence.capturedAt, source: evidence.source, facilityMatched: evidence.facilityMatched, fallback: evidence.fallback, policyVersion: evidence.policyVersion };
   }
 
   private parseComponentAction(inputJson: string, extra: string[], allowExpiryService = false): Record<string, string> & { expectedVersion: number } {

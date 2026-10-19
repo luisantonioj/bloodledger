@@ -137,7 +137,7 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
   async project(command: V2Command, committed?: { transactionId: string; result: unknown | null }): Promise<void> {
     const transactionId = committed?.transactionId ?? command.ledgerTransactionId;
     if (!transactionId) throw new Error("V2_PROJECTION_COMMITMENT_MISSING");
-    const operations = ["REGISTER_COMPONENT", "REGISTER_INBOUND_COMPONENT", "RECEIVE_INBOUND_COMPONENT", "RESERVE_COMPONENTS", "RESERVE_LOCAL_RELEASE", "PREPARE_RESERVATION", "DISPATCH_RESERVATION", "START_RESERVATION_TRANSIT", "RECEIVE_RESERVATION", "COMPLETE_LOCAL_RELEASE", "CANCEL_RESERVATION", "PLACE_RECONCILIATION_HOLD", "RESOLVE_RECONCILIATION_HOLD", "EVALUATE_COMPONENT_EXPIRY", "COMPROMISE_RESERVATION", "SUBMIT_TRANSFER"];
+    const operations = ["REGISTER_COMPONENT", "REGISTER_INBOUND_COMPONENT", "RECEIVE_INBOUND_COMPONENT", "RESERVE_COMPONENTS", "RESERVE_LOCAL_RELEASE", "PREPARE_RESERVATION", "DISPATCH_RESERVATION", "START_RESERVATION_TRANSIT", "RECEIVE_RESERVATION", "COMPLETE_LOCAL_RELEASE", "CANCEL_RESERVATION", "PLACE_RECONCILIATION_HOLD", "RESOLVE_RECONCILIATION_HOLD", "EVALUATE_COMPONENT_EXPIRY", "COMPROMISE_RESERVATION", "SUBMIT_TRANSFER", "DELAY_RESERVATION", "RESUME_RESERVATION"];
     if (!operations.includes(command.operation)) throw new Error("V2_PROJECTION_OPERATION_UNSUPPORTED");
     const payload = command.payload;
     const componentId = typeof payload.componentId === "string" ? payload.componentId : undefined;
@@ -186,11 +186,28 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
       if (command.operation === "RECEIVE_INBOUND_COMPONENT") {
         if (!reservationId) throw new Error("V2_PROJECTION_INPUT_INVALID");
         const expected = Number(payload.expectedVersion);
-        const reservation = await client.query<Record<string, unknown>>("SELECT status,version FROM app.v2_reservations WHERE reservation_id=$1 FOR UPDATE", [reservationId]);
-        if (!reservation.rows[0] || reservation.rows[0].status !== "IN_TRANSIT" || Number(reservation.rows[0].version) !== expected) throw new Error("V2_PROJECTION_STATE_CONFLICT");
+        const reservation = await client.query<Record<string, unknown>>("SELECT status,version,delayed_from_status FROM app.v2_reservations WHERE reservation_id=$1 FOR UPDATE", [reservationId]);
+        const receivable = reservation.rows[0] && (reservation.rows[0].status === "IN_TRANSIT" || (reservation.rows[0].status === "DELAYED" && reservation.rows[0].delayed_from_status === "IN_TRANSIT"));
+        if (!receivable || Number(reservation.rows[0].version) !== expected) throw new Error("V2_PROJECTION_STATE_CONFLICT");
         const received = await client.query("UPDATE app.v2_components SET inventory_status='RECEIVED',institution_id=$2,ledger_transaction_id=$3,last_projection_command_id=$4,updated_at=$5,ledger_version=ledger_version+1 WHERE reservation_id=$1 AND inventory_status='IN_TRANSIT'", [reservationId, command.actorInstitutionId, transactionId, command.commandId, command.acceptedAt]);
         if (!received.rowCount) throw new Error("V2_PROJECTION_STATE_CONFLICT");
-        await client.query("UPDATE app.v2_reservations SET status='RECEIVED',last_projection_command_id=$2,updated_at=$3,version=version+1 WHERE reservation_id=$1 AND status='IN_TRANSIT' AND version=$4", [reservationId, command.commandId, command.acceptedAt, expected]);
+        await client.query("UPDATE app.v2_reservations SET status='RECEIVED',delayed_from_status=NULL,receipt_location_summary=COALESCE($5::jsonb,receipt_location_summary),last_projection_command_id=$2,updated_at=$3,version=version+1 WHERE reservation_id=$1 AND status IN ('IN_TRANSIT','DELAYED') AND version=$4", [reservationId, command.commandId, command.acceptedAt, expected, payload.locationEvidence ? JSON.stringify(payload.locationEvidence) : null]);
+        await finish();
+        return;
+      }
+      // TC-T07: delay and resume change only the reservation; component custody status is unchanged.
+      if (command.operation === "DELAY_RESERVATION" || command.operation === "RESUME_RESERVATION") {
+        if (!reservationId) throw new Error("V2_PROJECTION_INPUT_INVALID");
+        const expected = Number(payload.expectedVersion);
+        const current = (await client.query<Record<string, unknown>>("SELECT status,version,delayed_from_status FROM app.v2_reservations WHERE reservation_id=$1 FOR UPDATE", [reservationId])).rows[0];
+        if (!current || Number(current.version) !== expected) throw new Error("V2_PROJECTION_STATE_CONFLICT");
+        if (command.operation === "DELAY_RESERVATION") {
+          if (!["DISPATCHED", "IN_TRANSIT"].includes(String(current.status)) || typeof payload.reasonCode !== "string") throw new Error("V2_PROJECTION_STATE_CONFLICT");
+          await client.query("UPDATE app.v2_reservations SET status='DELAYED',delayed_from_status=$2,delay_reason_code=$3,delayed_at=$4,last_projection_command_id=$5,updated_at=$4,version=version+1 WHERE reservation_id=$1 AND version=$6", [reservationId, current.status, payload.reasonCode, command.acceptedAt, command.commandId, expected]);
+        } else {
+          if (current.status !== "DELAYED" || !current.delayed_from_status) throw new Error("V2_PROJECTION_STATE_CONFLICT");
+          await client.query("UPDATE app.v2_reservations SET status=delayed_from_status,delayed_from_status=NULL,last_projection_command_id=$2,updated_at=$3,version=version+1 WHERE reservation_id=$1 AND version=$4", [reservationId, command.commandId, command.acceptedAt, expected]);
+        }
         await finish();
         return;
       }
@@ -216,10 +233,10 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
         PREPARE_RESERVATION: { status: "RESERVED", expectedComponentStatus: "RESERVED", expectedReservationStatus: "ACTIVE", reservationStatus: "ACTIVE" },
         DISPATCH_RESERVATION: { status: "DISPATCHED", expectedComponentStatus: "RESERVED", expectedReservationStatus: "ACTIVE", reservationStatus: "DISPATCHED", incrementComponentVersion: true },
         START_RESERVATION_TRANSIT: { status: "IN_TRANSIT", expectedComponentStatus: "DISPATCHED", expectedReservationStatus: "DISPATCHED", reservationStatus: "IN_TRANSIT", incrementComponentVersion: true },
-        RECEIVE_RESERVATION: { status: "RECEIVED", expectedComponentStatus: "IN_TRANSIT", expectedReservationStatus: "IN_TRANSIT", reservationStatus: "RECEIVED", incrementComponentVersion: true },
+        RECEIVE_RESERVATION: { status: "RECEIVED", expectedComponentStatus: "IN_TRANSIT", expectedReservationStatus: ["IN_TRANSIT", "DELAYED"], reservationStatus: "RECEIVED", incrementComponentVersion: true },
         COMPLETE_LOCAL_RELEASE: { status: "RELEASED", clearReservation: true, expectedComponentStatus: "RESERVED", expectedReservationStatus: "ACTIVE", reservationStatus: "COMPLETED", incrementComponentVersion: true },
         CANCEL_RESERVATION: { status: "AVAILABLE", clearReservation: true, expectedComponentStatus: "RESERVED", expectedReservationStatus: "ACTIVE", reservationStatus: "CANCELLED", incrementComponentVersion: true },
-        COMPROMISE_RESERVATION: { status: "COMPROMISED", clearReservation: false, expectedComponentStatus: ["DISPATCHED", "IN_TRANSIT", "RECEIVED"], expectedReservationStatus: ["DISPATCHED", "IN_TRANSIT", "RECEIVED"], reservationStatus: "COMPROMISED", incrementComponentVersion: true },
+        COMPROMISE_RESERVATION: { status: "COMPROMISED", clearReservation: false, expectedComponentStatus: ["DISPATCHED", "IN_TRANSIT", "RECEIVED"], expectedReservationStatus: ["DISPATCHED", "IN_TRANSIT", "DELAYED", "RECEIVED"], reservationStatus: "COMPROMISED", incrementComponentVersion: true },
         EVALUATE_COMPONENT_EXPIRY: { status: "EXPIRED", clearReservation: true, expectedComponentStatus: ["AVAILABLE", "RESERVED"], incrementComponentVersion: true },
         PLACE_RECONCILIATION_HOLD: { status: "RECONCILIATION_HOLD", expectedComponentStatus: ["AVAILABLE", "RESERVED"], incrementComponentVersion: true },
         RESOLVE_RECONCILIATION_HOLD: { status: "AVAILABLE", clearReservation: true, expectedComponentStatus: "RECONCILIATION_HOLD", incrementComponentVersion: true },
@@ -292,8 +309,12 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
         const reservationParams: unknown[] = [reservationId, current.reservationStatus, command.commandId, command.acceptedAt];
         if (preparing) reservationParams.push(payload.preparedAt ?? command.acceptedAt, command.actorUserId, payload.preparedEvidenceDigest, payload.preparedEvidenceId);
         else if (command.operation === "COMPLETE_LOCAL_RELEASE") reservationParams.push(payload.preparedAt ?? command.acceptedAt, command.actorUserId);
+        const locationColumn = command.operation === "DISPATCH_RESERVATION" ? "dispatch_location_summary" : command.operation === "RECEIVE_RESERVATION" ? "receipt_location_summary" : null;
+        let locationFields = "";
+        if (locationColumn && payload.locationEvidence) { reservationParams.push(JSON.stringify(payload.locationEvidence)); locationFields = `,${locationColumn}=$${reservationParams.length}::jsonb`; }
+        const delayFields = ["RECEIVE_RESERVATION", "COMPROMISE_RESERVATION"].includes(command.operation) ? ",delayed_from_status=NULL" : "";
         reservationParams.push(version);
-        const reservationUpdate = await client.query(`UPDATE app.v2_reservations SET status=$2,last_projection_command_id=$3,updated_at=$4,version=version+1${preparedFields}${completedFields} WHERE reservation_id=$1 AND version=$${reservationParams.length}`, reservationParams);
+        const reservationUpdate = await client.query(`UPDATE app.v2_reservations SET status=$2,last_projection_command_id=$3,updated_at=$4,version=version+1${preparedFields}${completedFields}${locationFields}${delayFields} WHERE reservation_id=$1 AND version=$${reservationParams.length}`, reservationParams);
         if (!reservationUpdate.rowCount) throw new Error("V2_PROJECTION_STATE_CONFLICT");
       }
       await finish();
