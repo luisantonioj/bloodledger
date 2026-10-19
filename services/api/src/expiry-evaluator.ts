@@ -17,8 +17,8 @@ export function expiryCommand(candidate: ExpiryCandidate, now: Date) {
   return {
     commandId: `CMD_${createHash("sha256").update(idempotencyKey, "utf8").digest("hex").slice(0, 40)}`,
     idempotencyKey, resourceType: "COMPONENT" as const, resourceId: candidate.componentId, operation: "EVALUATE_COMPONENT_EXPIRY",
-    payload: { componentId: candidate.componentId, expectedVersion: candidate.ledgerVersion, evaluationTime, eventTime: evaluationTime, actorUserId: EXPIRY_SERVICE_ACTOR_ID, correlationId: `CORR_EXP_${hash(idempotencyKey).slice(0, 32)}`, policyVersion: candidate.policyVersion },
-    correlationId: `CORR_EXP_${hash(idempotencyKey).slice(0, 32)}`, actorUserId: EXPIRY_SERVICE_ACTOR_ID, actorInstitutionId: candidate.institutionId, acceptedAt: evaluationTime,
+    payload: { componentId: candidate.componentId, expectedVersion: candidate.ledgerVersion, evaluationTime, eventTime: evaluationTime, actorUserId: EXPIRY_SERVICE_ACTOR_ID, correlationId: `CORR_${hash(`expiry|${idempotencyKey}`).slice(0, 32)}`, policyVersion: candidate.policyVersion },
+    correlationId: `CORR_${hash(`expiry|${idempotencyKey}`).slice(0, 32)}`, actorUserId: EXPIRY_SERVICE_ACTOR_ID, actorInstitutionId: candidate.institutionId, acceptedAt: evaluationTime,
   };
 }
 
