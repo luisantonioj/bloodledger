@@ -213,6 +213,9 @@ export class PostgresOnboarding {
     if(action==="reset-pin"&&(typeof body.pin!=="string"||!validOperatorPin(body.pin)))fail("OPERATOR_INPUT_INVALID",400);
     const auditBody={...body};delete auditBody.pin;
     return identityTransaction(this.pool,client=>this.audited(client,principal,action.toUpperCase(),id,auditBody,idem,now,async()=>{
+      const subject=(await client.query<Row>("SELECT institution_id FROM app.institution_operators WHERE operator_id=$1",[id])).rows[0];if(!subject)fail("ONB_NOT_FOUND",404);
+      // PRC's legacy cross-institution action must serialize on the target too.
+      await client.query("SELECT institution_id FROM app.institutions WHERE institution_id=$1 FOR UPDATE",[subject.institution_id]);
       const rows=await client.query<Row>("SELECT * FROM app.institution_operators WHERE operator_id=$1 FOR UPDATE",[id]);const operator=rows.rows[0];if(!operator)fail("ONB_NOT_FOUND",404);
       if(principal.accountCategory!=="PRC"&&operator.institution_id!==principal.institutionId)fail("ONB_NOT_AUTHORIZED",403);
       if(principal.accountCategory==="PRC"&&operator.institution_id===principal.institutionId&&id!==principal.userId)fail("ONB_NOT_AUTHORIZED",403);
@@ -220,7 +223,14 @@ export class PostgresOnboarding {
       if(operator.status!=="ACTIVE")fail("ONB_TRANSITION_INVALID");
       if(action==="reset-pin"){
         const salt=randomBytes(16).toString("hex");await client.query("UPDATE app.institution_operators SET pin_salt=$2,pin_verifier=$3,version=version+1,failed_attempts=0,locked_until=NULL WHERE operator_id=$1",[id,salt,await deriveVerifier(body.pin as string,salt)]);
-      }else await client.query("UPDATE app.institution_operators SET status='REVOKED',version=version+1 WHERE operator_id=$1",[id]);
+      }else {
+        if(operator.capability_profile==="INSTITUTION_ADMIN"){
+          // All administrative entry points now serialize on this institution.
+          const count=await client.query("SELECT count(*) AS n FROM app.institution_operators WHERE institution_id=$1 AND capability_profile='INSTITUTION_ADMIN' AND status='ACTIVE'",[operator.institution_id]);
+          if(Number(count.rows[0].n)<=1)fail("STAFF_LAST_ADMINISTRATOR");
+        }
+        await client.query("UPDATE app.institution_operators SET status='REVOKED',version=version+1 WHERE operator_id=$1",[id]);
+      }
       await client.query("UPDATE app.operator_verifications SET revoked_at=COALESCE(revoked_at,$2) WHERE operator_id=$1",[id,now]);
       await client.query("UPDATE app.application_sessions SET revoked_at=COALESCE(revoked_at,$2),safe_revocation_reason=COALESCE(safe_revocation_reason,'SECURITY_REVOCATION') WHERE user_id=$1",[operator.account_id,now]);
       return {operatorId:id,status:action==="revoke"?"REVOKED":"ACTIVE",version:Number(operator.version)+1,classification:"SIMULATION_ONLY"};

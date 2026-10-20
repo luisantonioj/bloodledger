@@ -1271,3 +1271,25 @@ User-authorized frontend alignment: blood-bank institution accounts with `transf
 ### Blood-request demonstration Fill Up — 2026-10-20
 
 The shared requester/blood-bank request form places a secondary `Fill Up` button immediately before Cancel and Submit request. Each click replaces only requester/clinical details, authorized pickup, notes and both supporting documents with fresh fictional values and readable synthetic PDFs. The manually chosen supplying bank, blood type, component, quantity and urgency remain unchanged. Required time is generated in the future and shown in Manila time; existing synthetic reference patterns apply. Patient / Case Reference stays disabled under RQ-20. Files remain in browser memory until the user submits; generated documents identify themselves as simulation-only and unverified. Fill Up makes no API mutation, skips no validation or PIN verification, and is disabled while the form is locked by a pending/accepted submission. Footer actions can wrap on narrow screens.
+
+### Institution staff management — PA-STAFF-01 (2026-10-21)
+
+Blood-bank and requester Staff Accounts use **Add staff** and an **Add
+institutional staff** editor aligned on the right below the directory. A required
+job title is a display label; Administration and Role permissions remain distinct
+access profiles. Permission sets are limited to the existing facility roles.
+Administration changes require an existing administrator's individual operator
+PIN. PRC retains its existing controls; DOH has no staff-management workflow.
+
+Active and revoked rows retain Reset PIN. Revoked rows also expose Restore;
+resetting a PIN preserves revoked status. The last active administrator's Revoke
+button is disabled, backed by the server's serialized check. Reset PIN first
+asks for administrator verification, then opens matching replacement-PIN inputs.
+The approval expires after two minutes. An uncertain outcome freezes the attempt
+for an explicit retry with identical data; it never auto-retries. Successful
+changes refresh both the directory and the session's authorized operator list.
+See ADR-052 and the additive staff OpenAPI routes for the server boundary.
+
+Staff summary cards use the same current status and search filters as the staff
+table, counting the full filtered dataset across pages. The institution-wide
+last-active-administrator guard always uses the unfiltered roster.

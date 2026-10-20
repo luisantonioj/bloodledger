@@ -882,3 +882,17 @@ institutional/clinical authority remain outside this decision. V1 contracts are
 unchanged. The user's instruction to resolve this local blocker authorizes its
 scoped retained-host activation with backup and protected-count checks. No live
 intake is authorized as part of implementation/validation.
+
+## PA-STAFF-01 — Synthetic institution staff management (2026-10-21)
+
+User accepted for implementation; SIMULATION_ONLY, blood banks and requester
+hospitals only. Add staff with required free-text job title, explicit existing
+permission set and individual PIN, approved by an existing institution
+administrator's PIN. Job title is display metadata, never a permission grant.
+Active/revoked staff support reset PIN; revoked staff support restore; revoking
+the final active administrator is refused atomically. Administrator approval
+precedes replacement PIN entry; resetting a revoked PIN does not restore access.
+Preserve audit/history, session isolation, expected versions and original-result
+replay. Connect new operational actors through the scoped gateway authorization
+in ADR-052. PRC/DOH changes are deferred. No institutional or clinical validation
+claim follows from these synthetic administrative workflows.

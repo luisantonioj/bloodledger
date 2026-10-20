@@ -8,6 +8,7 @@ import { operatorPrincipal, type OperatorProfile } from "./institution-access.js
 
 export interface VerificationInput { operatorId: string; pin: string; action: string; payload: unknown; idempotencyKey: string }
 export function allowedOperatorAction(principal: WebPrincipal, operator: OperatorProfile, action: string): boolean {
+  if(action==="POST /api/v2/staff"||/^POST \/api\/v2\/staff\/USR_[A-Z0-9_-]+\/(revoke|restore|reset-pin-approval)$/.test(action))return ["BLOOD_BANK","REQUESTOR"].includes(String(principal.accountCategory))&&operator.capabilityProfile==="INSTITUTION_ADMIN";
   // PA-DEF-06: blood-bank ROLE-02 submits/cancels PRC supply requests; the PRC reviewer responds.
   if (action === "POST /api/v2/prc-supply-requests" || /^POST \/api\/v2\/prc-supply-requests\/PRCSR_[A-Z0-9]{40}\/cancel$/.test(action)) return principal.accountCategory === "BLOOD_BANK" && operator.capabilityProfile === "ROLE" && operator.roleId === "ROLE-02";
   if (/^POST \/api\/v2\/prc-supply-requests\/PRCSR_[A-Z0-9]{40}\/(acknowledge|fulfil|decline)$/.test(action)) return principal.accountCategory === "PRC" && operator.capabilityProfile === "PRC_REVIEWER";

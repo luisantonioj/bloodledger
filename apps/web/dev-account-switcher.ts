@@ -43,7 +43,7 @@ toggle.addEventListener('click',()=>setCollapsed(!controls.hidden));
 
 let previous='';
 try {
-  const response=await fetch('${endpoint}',{credentials:'same-origin'});
+  const response=await fetch('${endpoint}',{credentials:'same-origin',signal:AbortSignal.timeout(10000)});
   if(!response.ok)throw Error();
   const accounts=await response.json();
   select.replaceChildren(new Option('Choose an account…',''));
@@ -52,10 +52,10 @@ try {
     for(const account of accounts.filter(a=>a.category===category))group.append(new Option(account.label,account.accountId));
     select.append(group);
   }
-  const session=await fetch('/api/v1/auth/session',{credentials:'same-origin'});
+  const session=await fetch('/api/v1/auth/session',{credentials:'same-origin',signal:AbortSignal.timeout(10000)});
   if(session.ok){const {principal}=await session.json();previous=principal.accountId??principal.userId;select.value=previous;}
   select.disabled=false;
-}catch{status.textContent='Local account switcher unavailable.';}
+}catch{select.replaceChildren(new Option('Accounts unavailable — refresh to retry',''));status.textContent='Local account switcher unavailable. Refresh to retry.';}
 select.addEventListener('change',async()=>{
   if(!select.value)return;
   select.disabled=true;status.textContent='Switching account…';
@@ -87,17 +87,24 @@ export function localAccountSwitcher(): Plugin {
           res.end("Private local artifacts are unavailable.");
           return;
         }
+        // Canonicalize only same-origin requests from the explicitly enabled
+        // loopback review host. The API retains its configured origin policy.
+        if (enabled && path?.startsWith("/api/") && req.headers.host === "localhost:5174"
+          && req.headers.origin === "http://localhost:5174"
+          && (!req.headers["sec-fetch-site"] || req.headers["sec-fetch-site"] === "same-origin")) {
+          req.headers.origin = origin;
+        }
         if (!path?.startsWith(endpoint)) return next();
         res.setHeader("Cache-Control", "no-store");
         const send = (code: number, value: unknown) => { res.statusCode = code; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(value)); };
-        if (!enabled || req.headers.host !== "127.0.0.1:5174") return send(404, { error: "LOCAL_SWITCHER_UNAVAILABLE" });
+        if (!enabled || !["127.0.0.1:5174", "localhost:5174"].includes(req.headers.host ?? "")) return send(404, { error: "LOCAL_SWITCHER_UNAVAILABLE" });
         if (req.headers["sec-fetch-site"] && req.headers["sec-fetch-site"] !== "same-origin") return send(403, { error: "ORIGIN_FORBIDDEN" });
         if (path === endpoint + "/toolbar.js" && req.method === "GET") { res.setHeader("Content-Type", "text/javascript"); res.end(script); return; }
         try {
           const accounts = (JSON.parse(readFileSync(policyPath, "utf8")) as { accounts: Account[] }).accounts;
           if (path === endpoint && req.method === "GET") return send(200, accounts.map(a => ({ accountId: a.accountId, label: labels[a.institutionId] ?? a.institutionId, category: categories[a.category] ?? a.category })));
           if (path !== endpoint + "/switch" || req.method !== "POST") return send(405, { error: "METHOD_NOT_ALLOWED" });
-          if (req.headers.origin !== origin || req.headers["content-type"] !== "application/json") return send(403, { error: "ORIGIN_FORBIDDEN" });
+          if (req.headers.origin !== "http://" + req.headers.host || req.headers["content-type"] !== "application/json") return send(403, { error: "ORIGIN_FORBIDDEN" });
           let body = "";
           for await (const chunk of req) { body += chunk; if (body.length > 1024) return send(413, { error: "REQUEST_TOO_LARGE" }); }
           const { accountId } = JSON.parse(body);

@@ -625,3 +625,45 @@ rows. Policy, per-field provenance and `ocrAttempted` are bound into the digest;
 the latter is a workflow attestation, stripped before the unchanged ledger call.
 Legacy ledger/history `OCR` denotes scanner origin, not recognition accuracy.
 No Fabric change, scanner-free manual entry or import. ADR-050/V1 stay unchanged.
+
+## ADR-052 — Institution-scoped staff management (2026-10-21)
+
+Accepted for SIMULATION_ONLY implementation by the user acting for Lat with
+Jopia access in the 2026-10-21 conversation (PA-STAFF-01). Implementation and
+self-validation do not imply independent review or institutional approval.
+PRC and DOH changes are explicitly deferred.
+
+BLOOD_BANK and REQUESTOR administrators may create staff with a nonblank,
+80-character job title and either INSTITUTION_ADMIN or ROLE capabilities. Job
+titles never determine authority. Banks choose existing ROLE-01 or ROLE-02;
+requesters choose ROLE-03. Administrative staff use ROLE-06. The existing
+institution account remains the interactive login; every operator has an
+individual PIN. Six digits apply on the selected synthetic six-digit host;
+legacy eight-digit hosts retain their explicit PIN policy.
+
+Create, revoke and restore are PIN-verified, institution-scoped, versioned,
+idempotent and audited. A database institution lock serializes all changes,
+including the final-active-administrator guard. Existing legacy revocation must
+respect that guard too. Restore increments the version and never revives old
+sessions or verification grants. Resetting a revoked operator's PIN leaves the
+operator revoked. Reset is staged: PIN-verified administrator authorization
+bound to subject/version/account/session for two minutes, then new PIN entry;
+the grant accepts only its first final payload/key and an exact replay.
+
+New operational actors use the USR_STAFF_ namespace. Existing static actor
+policies remain unchanged. To avoid impersonating a pre-existing operator,
+the existing organizational gateway submits a transient institution_staff_v1
+attestation for the exact serialized proposal, with actor ID, role, institution,
+operator version and SYNTHETIC_INSTITUTION_STAFF_V1. The worker checks and holds
+shared locks on active staff/institution/account rows during endorsement/commit.
+Chaincode authenticates the gateway and validates the actor namespace,
+proposal digest and role/institution pair against existing supported actors.
+It grants no new regulatory role or institution. Job title/PIN never enter
+transient evidence or ledger assets; existing opaque actor attribution remains.
+This explicitly extends the former fixed-actor-only boundary for the approved
+staff namespace; it is not a silent replacement of a historical policy file.
+
+Additive database migration, API/worker and compatible chaincode are runtime
+prerequisites. A browser-only deployment must not claim that an older API or
+ledger supports new operational actors. No real staff names/contact metadata,
+new Fabric identities, membership changes or PHI are introduced.

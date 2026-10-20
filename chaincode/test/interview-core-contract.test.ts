@@ -395,3 +395,37 @@ test("TC-T07/TC-G01 blood-bank receipt accepts a delayed in-transit reservation 
   assert.deepEqual(await run(),await run());
 });
 
+
+// PA-STAFF-01: no extra membership/identity; gateway-bound transient evidence.
+test("PA-STAFF-01 dynamic staff preserve actor attribution and reject forged, foreign or replayed-proposal grants",async()=>{
+ const contract=new InterviewCoreContract(),ctx=new MockContext(),actor="USR_STAFF_"+"A".repeat(32);
+ const input=retainedTransfer({actorUserId:actor,policyVersion:"SYNTHETIC_INSTITUTION_CORE_V1",destinationInstitutionId:"INST_SYNTH_METROLIPA",transferId:"TRF_STAFF_001",idempotencyKey:"IDEM_STAFF_001"});
+ const attestation={actorUserId:actor,institutionId:"INST_SYNTH_METROLIPA",role:"ROLE_03",operatorVersion:1,payloadSha256:createHash("sha256").update(JSON.stringify(input)).digest("hex"),policyVersion:"SYNTHETIC_INSTITUTION_STAFF_V1"};
+ const transient=new Map<string,Buffer>(),stub=ctx.stub as typeof ctx.stub&{getTransient:()=>Map<string,Buffer>;getStringArgs:()=>string[]};
+ stub.getTransient=()=>transient;stub.getStringArgs=()=>["InterviewCoreContract:SubmitTransferRequest",JSON.stringify(input)];
+ await assert.rejects(contract.SubmitTransferRequest(asContext(ctx),JSON.stringify(input)),/CORE_NOT_AUTHORIZED/);
+ const set=(change:Record<string,unknown>={})=>transient.set("institution_staff_v1",Buffer.from(JSON.stringify({...attestation,...change})));
+ for(const change of [{role:"ROLE_04"},{institutionId:"INST_FOREIGN"},{actorUserId:"USR_OTHER"},{operatorVersion:0},{payloadSha256:"0".repeat(64)},{extra:true}]){set(change);await assert.rejects(contract.SubmitTransferRequest(asContext(ctx),JSON.stringify(input)),/CORE_NOT_AUTHORIZED/);}
+ set();ctx.mspId="ForeignMSP";await assert.rejects(contract.SubmitTransferRequest(asContext(ctx),JSON.stringify(input)),/CORE_NOT_AUTHORIZED/);ctx.mspId="MediatrixMSP";
+ set();const result=JSON.parse(await contract.SubmitTransferRequest(asContext(ctx),JSON.stringify(input)));assert.equal(result.actorUserId,actor);assert.equal(result.destinationInstitutionId,"INST_SYNTH_METROLIPA");
+ const replay=await contract.SubmitTransferRequest(asContext(ctx),JSON.stringify(input));assert.deepEqual(JSON.parse(replay),result);
+ const changed={...input,quantity:2};stub.getStringArgs=()=>["InterviewCoreContract:SubmitTransferRequest",JSON.stringify(changed)];await assert.rejects(contract.SubmitTransferRequest(asContext(ctx),JSON.stringify(changed)),/CORE_NOT_AUTHORIZED/);
+});
+
+test("PA-STAFF-01 new bank operators retain separate custody at all three supported institutions",async()=>{
+ const run=async()=>{
+  const ctx=new MockContext(),contract=new InterviewCoreContract(),stub=ctx.stub as typeof ctx.stub&{getTransient:()=>Map<string,Buffer>;getStringArgs:()=>string[]};
+  let input:Record<string,unknown>={},attestation:Record<string,unknown>={};
+  stub.getStringArgs=()=>["InterviewCoreContract:RegisterInboundComponent",JSON.stringify(input)];
+  stub.getTransient=()=>new Map([["institution_staff_v1",Buffer.from(JSON.stringify({...attestation,payloadSha256:createHash("sha256").update(JSON.stringify(input)).digest("hex")}))]]);
+  for(const [index,institution] of ['INST_MEDIATRIX','INST_SYNTH_MEDIX','INST_SYNTH_NLVILLA'].entries()){
+   const actor="USR_STAFF_"+String(index+1).repeat(32);
+   input={actorInstitutionId:institution,actorUserId:actor,bloodType:'A_POSITIVE',bloodTypeEvidenceSource:'OCR_LABEL',captureEvidenceDigest:digest('c'),captureMethod:'OCR',componentEvidenceSource:'OCR_LABEL',componentId:`COMP_STAFF_${index}`,componentType:'PACKED_RED_BLOOD_CELLS',correlationId:`CORR_STAFF_${index}`,custodyInstitutionId:institution,donationId:`DON_STAFF_${index}`,donationNoDigest:digest('d'),eventTime:'2026-09-02T00:00:00.000Z',expiresAt:'2026-09-30T00:00:00.000Z',idempotencyKey:`IDEM_STAFF_${index}`,issuerInstitutionId:institution,policyVersion:accountVersion,collectedAt:'2026-09-01T00:00:00.000Z'};
+   attestation={actorUserId:actor,institutionId:institution,role:'ROLE_01',operatorVersion:1,policyVersion:'SYNTHETIC_INSTITUTION_STAFF_V1'};
+   const first=await contract.RegisterInboundComponent(asContext(ctx),JSON.stringify(input));assert.equal(await contract.RegisterInboundComponent(asContext(ctx),JSON.stringify(input)),first);
+   assert.equal(JSON.parse(first).custodyInstitutionId,institution);assert.equal(JSON.parse(first).actorUserId,actor);
+  }
+  return [...ctx.state].map(([key,value])=>[key,value.toString()]);
+ };
+ assert.deepEqual(await run(),await run());
+});

@@ -170,7 +170,7 @@ export class InterviewCoreContract extends Contract {
     this.assertGateway(ctx);
     this.assertId(String(input.actorUserId), ACTOR_ID_PATTERN, "CORE_INPUT_INVALID");
     const active = this.policyFor(input);
-    const actor = active.actors[String(input.actorUserId)];
+    const actor = active.actors[String(input.actorUserId)]??(input.policyVersion===INSTITUTION_POLICY_VERSION?this.assertActor(ctx,input.actorUserId):undefined);
     if (!actor) this.fail("CORE_NOT_AUTHORIZED");
     return this.serialize({ userId: input.actorUserId, ...actor, policyVersion: active.policyVersion, policySha256: this.digest(active), classification: "SIMULATION_ONLY" });
   }
@@ -179,10 +179,10 @@ export class InterviewCoreContract extends Contract {
   @Returns("string")
   public async SubmitTransferRequest(ctx: Context, inputJson: string): Promise<string> {
     const input = this.parseExactObject<Record<string, unknown>>(inputJson, ["actorUserId", "bloodType", "componentType", "correlationId", "destinationInstitutionId", "eventTime", "idempotencyKey", "policyVersion", "quantity", "requestTime", "sourceInstitutionId", "transferId", "urgency"]);
-    this.assertGateway(ctx); this.assertCommon(input);
+    this.assertGateway(ctx); this.assertCommon(ctx, input);
     this.assertId(String(input.transferId), /^TRF_[A-Z0-9_-]{1,56}$/, "TRANSFER_INPUT_INVALID");
-    this.assertActor(input.actorUserId);
-    const actor = this.assertActor(input.actorUserId);
+    this.assertActor(ctx, input.actorUserId);
+    const actor = this.assertActor(ctx, input.actorUserId);
     if ((input.policyVersion === INSTITUTION_POLICY_VERSION ? !["ROLE_02","ROLE_03"].includes(actor.role) : actor.role !== "ROLE_03") || actor.institutionId !== String(input.destinationInstitutionId) || (input.policyVersion === INSTITUTION_POLICY_VERSION ? !institutionPolicy.allowedIssuerInstitutionIds.includes(String(input.sourceInstitutionId)) : input.sourceInstitutionId !== "INST_MEDIATRIX")) this.fail("TRANSFER_NOT_AUTHORIZED");
     if (!this.policyFor(input).bloodTypes.includes(input.bloodType as BloodType) || !this.policyFor(input).componentTypes.includes(input.componentType as ComponentType)) this.fail("TRANSFER_INPUT_INVALID");
     if (!Number.isSafeInteger(input.quantity) || Number(input.quantity) < 1 || !["ROUTINE", "URGENT", "CRITICAL"].includes(String(input.urgency))) this.fail("TRANSFER_INPUT_INVALID");
@@ -208,12 +208,12 @@ export class InterviewCoreContract extends Contract {
       "eventTime", "expiresAt", "idempotencyKey", "issuerInstitutionId", "policyVersion",
     ]);
     this.assertGateway(ctx);
-    this.assertCommon(input);
+    this.assertCommon(ctx, input);
     if(input.policyVersion===INSTITUTION_POLICY_VERSION)this.fail("CORE_CONFIRMED_OCR_REQUIRED");
     this.assertId(String(input.componentId), COMPONENT_ID_PATTERN, "COMPONENT_INPUT_INVALID");
     this.assertId(String(input.donationId), DONATION_ID_PATTERN, "COMPONENT_INPUT_INVALID");
     this.assertHash(input.donationNoDigest, "COMPONENT_DONATION_REFERENCE_INVALID");
-    this.assertActorForInstitution(input.actorUserId, input.issuerInstitutionId, ["ROLE_01", "ROLE_02"]);
+    this.assertActorForInstitution(ctx, input.actorUserId, input.issuerInstitutionId, ["ROLE_01", "ROLE_02"]);
     if (!this.policyFor(input).allowedIssuerInstitutionIds.includes(String(input.issuerInstitutionId))) this.fail("COMPONENT_ISSUER_UNAPPROVED");
     if (input.custodyInstitutionId !== input.issuerInstitutionId) this.fail("COMPONENT_INSTITUTION_INVALID");
     if (!policy.bloodTypes.includes(input.bloodType as BloodType)) this.fail("COMPONENT_BLOOD_TYPE_UNSUPPORTED");
@@ -262,12 +262,12 @@ export class InterviewCoreContract extends Contract {
       "actorInstitutionId", "actorUserId", "bloodType", "bloodTypeEvidenceSource", "captureEvidenceDigest", "captureMethod", "componentEvidenceSource", "componentId", "componentType", "correlationId", "custodyInstitutionId", "donationId", "donationNoDigest", "eventTime", "expiresAt", "idempotencyKey", "issuerInstitutionId", "policyVersion", "collectedAt",
     ]);
     this.assertGateway(ctx);
-    this.assertCommon(input);
+    this.assertCommon(ctx, input);
     this.assertId(String(input.componentId), COMPONENT_ID_PATTERN, "COMPONENT_INPUT_INVALID");
     this.assertId(String(input.donationId), DONATION_ID_PATTERN, "COMPONENT_INPUT_INVALID");
     this.assertHash(input.donationNoDigest, "COMPONENT_DONATION_REFERENCE_INVALID");
     this.assertHash(input.captureEvidenceDigest, "COMPONENT_CAPTURE_EVIDENCE_INVALID");
-    this.assertActorForInstitution(input.actorUserId, input.custodyInstitutionId, ["ROLE_01", "ROLE_02"]);
+    this.assertActorForInstitution(ctx, input.actorUserId, input.custodyInstitutionId, ["ROLE_01", "ROLE_02"]);
     if (input.actorInstitutionId !== input.custodyInstitutionId || input.captureMethod !== "OCR") this.fail("INBOUND_CAPTURE_INVALID");
     if (!this.policyFor(input).allowedIssuerInstitutionIds.includes(String(input.issuerInstitutionId))) this.fail("COMPONENT_ISSUER_UNAPPROVED");
     if (!policy.bloodTypes.includes(input.bloodType as BloodType)) this.fail("COMPONENT_BLOOD_TYPE_UNSUPPORTED");
@@ -292,7 +292,7 @@ export class InterviewCoreContract extends Contract {
     const input = this.parseExactObject<Record<string, unknown>>(inputJson, ["actorUserId", "componentType", "donationNoDigest", "issuerInstitutionId"]);
     // FR-01/12: this read has no policyVersion field; inspect every accepted
     // component type while retaining the installed actor/gateway checks.
-    this.assertGateway(ctx); this.assertActor(input.actorUserId); this.assertHash(input.donationNoDigest, "COMPONENT_DONATION_REFERENCE_INVALID"); if (!institutionPolicy.componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
+    this.assertGateway(ctx); this.assertActor(ctx, input.actorUserId); this.assertHash(input.donationNoDigest, "COMPONENT_DONATION_REFERENCE_INVALID"); if (!institutionPolicy.componentTypes.includes(input.componentType as ComponentType)) this.fail("COMPONENT_TYPE_UNSUPPORTED");
     const key = this.identityKey(String(input.issuerInstitutionId), String(input.donationNoDigest), String(input.componentType)); const stored = await ctx.stub.getState(key); return stored.length === 0 ? "" : Buffer.from(stored).toString("utf8");
   }
 
@@ -302,9 +302,9 @@ export class InterviewCoreContract extends Contract {
     const withLocation = this.hasKey(inputJson, "locationEvidence");
     const input = this.parseExactObject<Record<string, unknown>>(inputJson, ["actorInstitutionId", "actorUserId", "captureEvidenceDigest", "correlationId", "eventTime", "expectedVersion", "idempotencyKey", "policyVersion", "reservationId", ...(withLocation ? ["locationEvidence"] : [])]);
     const location = withLocation ? this.assertLocation(input.locationEvidence, "RECEIPT", String(input.eventTime)) : undefined;
-    this.assertCommon(input); this.assertGateway(ctx); this.assertId(String(input.reservationId), RESERVATION_ID_PATTERN, "RESERVATION_INPUT_INVALID"); this.assertHash(input.captureEvidenceDigest, "COMPONENT_CAPTURE_EVIDENCE_INVALID");
+    this.assertCommon(ctx, input); this.assertGateway(ctx); this.assertId(String(input.reservationId), RESERVATION_ID_PATTERN, "RESERVATION_INPUT_INVALID"); this.assertHash(input.captureEvidenceDigest, "COMPONENT_CAPTURE_EVIDENCE_INVALID");
     if (!Number.isSafeInteger(input.expectedVersion) || Number(input.expectedVersion) < 1) this.fail("RESERVATION_VERSION_INVALID");
-    const reservation = await this.readReservation(ctx, String(input.reservationId)); const actor = this.assertActor(input.actorUserId);
+    const reservation = await this.readReservation(ctx, String(input.reservationId)); const actor = this.assertActor(ctx, input.actorUserId);
     if (!(actor.role === "ROLE_01" || actor.role === "ROLE_02") || actor.institutionId !== reservation.destinationInstitutionId || input.actorInstitutionId !== reservation.destinationInstitutionId || reservation.purpose !== "TRANSFER") this.fail("RESERVATION_NOT_AUTHORIZED");
     const prior = await this.readIdempotent(ctx, String(input.idempotencyKey), "RECEIVE_INBOUND_COMPONENT", this.digest(input)); if (prior !== undefined) return prior;
     const receivable = reservation.status === "IN_TRANSIT" || (reservation.status === "DELAYED" && reservation.delayedFromStatus === "IN_TRANSIT");
@@ -321,7 +321,7 @@ export class InterviewCoreContract extends Contract {
     this.assertGateway(ctx);
     this.assertId(String(input.componentId), COMPONENT_ID_PATTERN, "COMPONENT_INPUT_INVALID");
     const asset = await this.readComponent(ctx, String(input.componentId));
-    const actor = this.assertActor(input.actorUserId);
+    const actor = this.assertActor(ctx, input.actorUserId);
     const canSee = actor.role === "ROLE_01" || actor.role === "ROLE_02"
       ? actor.institutionId === asset.custodyInstitutionId
       : actor.role === "ROLE_03" && actor.institutionId === (await this.destinationForReservation(ctx, asset.reservationId));
@@ -337,15 +337,15 @@ export class InterviewCoreContract extends Contract {
       "eventTime", "expectedComponentVersions", "idempotencyKey", "policyVersion", "purpose",
       "quantity", "reservationId", "sourceInstitutionId", "selectedComponentIds",
     ]);
-    this.assertGateway(ctx); this.assertCommon(input);
+    this.assertGateway(ctx); this.assertCommon(ctx, input);
     this.assertId(String(input.reservationId), RESERVATION_ID_PATTERN, "RESERVATION_INPUT_INVALID");
     if(input.policyVersion===INSTITUTION_POLICY_VERSION && input.purpose==="TRANSFER" && !institutionPolicyJson.operationalDestinationInstitutionIds.includes(String(input.destinationInstitutionId)))this.fail("RESERVATION_NOT_AUTHORIZED");
     const purpose = input.purpose as ReservationPurpose;
     if (purpose !== "TRANSFER" && purpose !== "LOCAL_RELEASE") this.fail("RESERVATION_PURPOSE_INVALID");
     if (purpose === "TRANSFER" && typeof input.destinationInstitutionId !== "string") this.fail("RESERVATION_INSTITUTION_INVALID");
     if (purpose === "LOCAL_RELEASE" && input.destinationInstitutionId !== undefined && input.destinationInstitutionId !== null) this.fail("RESERVATION_INSTITUTION_INVALID");
-    if (input.sourceInstitutionId !== this.actorInstitution(input.actorUserId)) this.fail("RESERVATION_NOT_AUTHORIZED");
-    const actor = this.assertActor(input.actorUserId);
+    if (input.sourceInstitutionId !== this.actorInstitution(ctx, input.actorUserId)) this.fail("RESERVATION_NOT_AUTHORIZED");
+    const actor = this.assertActor(ctx, input.actorUserId);
     if (purpose === "TRANSFER" && actor.role !== "ROLE_02") this.fail("RESERVATION_NOT_AUTHORIZED");
     if (purpose === "LOCAL_RELEASE" && !["ROLE_01", "ROLE_02"].includes(actor.role)) this.fail("RESERVATION_NOT_AUTHORIZED");
     if (!policy.bloodTypes.includes(input.bloodType as BloodType)) this.fail("COMPONENT_BLOOD_TYPE_UNSUPPORTED");
@@ -394,9 +394,9 @@ export class InterviewCoreContract extends Contract {
   @Transaction()
   @Returns("string")
   public async PrepareReservation(ctx: Context, inputJson: string): Promise<string> {
-    const input = this.parseReservationAction(inputJson, ["preparedEvidenceDigest", "preparedEvidenceId", "preparedAt"]);
+    const input = this.parseReservationAction(ctx, inputJson, ["preparedEvidenceDigest", "preparedEvidenceId", "preparedAt"]);
     const reservation = await this.readReservation(ctx, input.reservationId);
-    this.assertReservationActor(input.actorUserId, reservation, ["ROLE_01", "ROLE_02"]);
+    this.assertReservationActor(ctx, input.actorUserId, reservation, ["ROLE_01", "ROLE_02"]);
     if (reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
     if (reservation.status !== "ACTIVE") this.fail("RESERVATION_TRANSITION_INVALID");
     this.assertHash(input.preparedEvidenceDigest, "RESERVATION_EVIDENCE_INVALID");
@@ -428,10 +428,10 @@ export class InterviewCoreContract extends Contract {
   @Transaction()
   @Returns("string")
   public async MarkReservationDelayed(ctx: Context, inputJson: string): Promise<string> {
-    const input = this.parseReservationAction(inputJson, ["reasonCode"]);
+    const input = this.parseReservationAction(ctx, inputJson, ["reasonCode"]);
     const reservation = await this.readReservation(ctx, input.reservationId);
     // Either side of the transfer may record a delay: source bank staff, or any receiving role at the destination.
-    const actor = this.assertActor(input.actorUserId);
+    const actor = this.assertActor(ctx, input.actorUserId);
     const source = (actor.role === "ROLE_01" || actor.role === "ROLE_02") && actor.institutionId === reservation.sourceInstitutionId;
     const destination = ["ROLE_01", "ROLE_02", "ROLE_03"].includes(actor.role) && actor.institutionId === reservation.destinationInstitutionId;
     if (!source && !destination) this.fail("RESERVATION_NOT_AUTHORIZED");
@@ -445,9 +445,9 @@ export class InterviewCoreContract extends Contract {
   @Transaction()
   @Returns("string")
   public async ResumeReservation(ctx: Context, inputJson: string): Promise<string> {
-    const input = this.parseReservationAction(inputJson, []);
+    const input = this.parseReservationAction(ctx, inputJson, []);
     const reservation = await this.readReservation(ctx, input.reservationId);
-    this.assertReservationActor(input.actorUserId, reservation, ["ROLE_01", "ROLE_02"]);
+    this.assertReservationActor(ctx, input.actorUserId, reservation, ["ROLE_01", "ROLE_02"]);
     if (reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
     if (reservation.status !== "DELAYED" || reservation.delayedFromStatus === undefined) this.fail("RESERVATION_TRANSITION_INVALID");
     const updated: ReservationAsset = { ...reservation, status: reservation.delayedFromStatus, delayedFromStatus: undefined, version: reservation.version + 1, actorUserId: input.actorUserId, updatedAt: input.eventTime, correlationId: input.correlationId, lastTransactionId: ctx.stub.getTxID() };
@@ -457,9 +457,9 @@ export class InterviewCoreContract extends Contract {
   @Transaction()
   @Returns("string")
   public async CompleteLocalRelease(ctx: Context, inputJson: string): Promise<string> {
-    const input = this.parseReservationAction(inputJson, []);
+    const input = this.parseReservationAction(ctx, inputJson, []);
     const reservation = await this.readReservation(ctx, input.reservationId);
-    this.assertReservationActor(input.actorUserId, reservation, ["ROLE_01", "ROLE_02"]);
+    this.assertReservationActor(ctx, input.actorUserId, reservation, ["ROLE_01", "ROLE_02"]);
     if (reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
     if (reservation.purpose !== "LOCAL_RELEASE" || reservation.status !== "ACTIVE" || reservation.preparedEvidenceDigest === undefined) this.fail("RELEASE_PREPARATION_REQUIRED");
     const prior = await this.readIdempotent(ctx, input.idempotencyKey, "COMPLETE_LOCAL_RELEASE", this.digest(input));
@@ -476,9 +476,9 @@ export class InterviewCoreContract extends Contract {
   @Transaction()
   @Returns("string")
   public async CancelReservation(ctx: Context, inputJson: string): Promise<string> {
-    const input = this.parseReservationAction(inputJson, []);
+    const input = this.parseReservationAction(ctx, inputJson, []);
     const reservation = await this.readReservation(ctx, input.reservationId);
-    this.assertReservationActor(input.actorUserId, reservation, ["ROLE_01", "ROLE_02", "ROLE_03"]);
+    this.assertReservationActor(ctx, input.actorUserId, reservation, ["ROLE_01", "ROLE_02", "ROLE_03"]);
     if (reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
     if (reservation.status !== "ACTIVE") this.fail("RESERVATION_TRANSITION_INVALID");
     const prior = await this.readIdempotent(ctx, input.idempotencyKey, "CANCEL_RESERVATION", this.digest(input));
@@ -496,10 +496,10 @@ export class InterviewCoreContract extends Contract {
   @Transaction()
   @Returns("string")
   public async PlaceReconciliationHold(ctx: Context, inputJson: string): Promise<string> {
-    const input = this.parseComponentAction(inputJson, ["caseId", "reasonCode"]);
+    const input = this.parseComponentAction(ctx, inputJson, ["caseId", "reasonCode"]);
     const component = await this.readComponent(ctx, input.componentId);
     if (component.version !== Number(input.expectedVersion)) this.fail("COMPONENT_VERSION_CONFLICT");
-    this.assertActorForInstitution(input.actorUserId, component.custodyInstitutionId, ["ROLE_01", "ROLE_02"]);
+    this.assertActorForInstitution(ctx, input.actorUserId, component.custodyInstitutionId, ["ROLE_01", "ROLE_02"]);
     if (!["AVAILABLE", "RESERVED"].includes(component.status)) this.fail("RECONCILIATION_TRANSITION_INVALID");
     this.assertId(input.caseId, CASE_ID_PATTERN, "RECONCILIATION_INPUT_INVALID");
     this.assertReconciliationReason(input.reasonCode, component.policyVersion);
@@ -519,12 +519,12 @@ export class InterviewCoreContract extends Contract {
   @Transaction()
   @Returns("string")
   public async ResolveReconciliationHold(ctx: Context, inputJson: string): Promise<string> {
-    const input = this.parseComponentAction(inputJson, ["caseId", "resolutionCode"]);
+    const input = this.parseComponentAction(ctx, inputJson, ["caseId", "resolutionCode"]);
     const caseStored = await ctx.stub.getState(this.caseKey(input.caseId));
     if (caseStored.length === 0) this.fail("RECONCILIATION_NOT_FOUND");
     const caseAsset = this.parseState<ReconciliationCaseAsset>(caseStored, CASE_SCHEMA);
     const component = await this.readComponent(ctx, input.componentId);
-    this.assertActorForInstitution(input.actorUserId, component.custodyInstitutionId, ["ROLE_01", "ROLE_02"]);
+    this.assertActorForInstitution(ctx, input.actorUserId, component.custodyInstitutionId, ["ROLE_01", "ROLE_02"]);
     if (component.version !== Number(input.expectedVersion)) this.fail("COMPONENT_VERSION_CONFLICT");
     if (caseAsset.status !== "OPEN" || caseAsset.componentId !== component.componentId || component.status !== "RECONCILIATION_HOLD") this.fail("RECONCILIATION_TRANSITION_INVALID");
     this.assertReason(input.resolutionCode);
@@ -546,9 +546,9 @@ export class InterviewCoreContract extends Contract {
   @Transaction()
   @Returns("string")
   public async EvaluateComponentExpiry(ctx: Context, inputJson: string): Promise<string> {
-    const input = this.parseComponentAction(inputJson, ["evaluationTime"], true);
+    const input = this.parseComponentAction(ctx, inputJson, ["evaluationTime"], true);
     const component = await this.readComponent(ctx, input.componentId);
-    if (input.actorUserId !== EXPIRY_SERVICE_ACTOR_ID) this.assertActorForInstitution(input.actorUserId, component.custodyInstitutionId, ["ROLE_01", "ROLE_02"]);
+    if (input.actorUserId !== EXPIRY_SERVICE_ACTOR_ID) this.assertActorForInstitution(ctx, input.actorUserId, component.custodyInstitutionId, ["ROLE_01", "ROLE_02"]);
     const expectedVersion = Number(input.expectedVersion);
     if (!Number.isSafeInteger(expectedVersion) || component.version !== expectedVersion) this.fail("COMPONENT_VERSION_CONFLICT");
     const evaluationMs = this.parseUtc(input.evaluationTime);
@@ -565,9 +565,9 @@ export class InterviewCoreContract extends Contract {
   @Transaction()
   @Returns("string")
   public async MarkReservationCompromised(ctx: Context, inputJson: string): Promise<string> {
-    const input = this.parseReservationAction(inputJson, ["reasonCode"]);
+    const input = this.parseReservationAction(ctx, inputJson, ["reasonCode"]);
     const reservation = await this.readReservation(ctx, input.reservationId);
-    this.assertReservationActor(input.actorUserId, reservation, ["ROLE_01", "ROLE_02", "ROLE_03"]);
+    this.assertReservationActor(ctx, input.actorUserId, reservation, ["ROLE_01", "ROLE_02", "ROLE_03"]);
     if (reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
     this.assertReason(input.reasonCode);
     if (!["DISPATCHED", "IN_TRANSIT", "DELAYED", "RECEIVED"].includes(reservation.status)) this.fail("RESERVATION_TRANSITION_INVALID");
@@ -586,10 +586,10 @@ export class InterviewCoreContract extends Contract {
   private async transitionReservation(ctx: Context, inputJson: string, operation: string, next: ReservationStatus, allowed: ReservationStatus[], roles: Role[], eventName: string): Promise<string> {
     const phase = next === "DISPATCHED" ? "DISPATCH" : next === "RECEIVED" ? "RECEIPT" : undefined;
     const withLocation = phase !== undefined && this.hasKey(inputJson, "locationEvidence");
-    const input = this.parseReservationAction(inputJson, [], withLocation ? ["locationEvidence"] : []);
+    const input = this.parseReservationAction(ctx, inputJson, [], withLocation ? ["locationEvidence"] : []);
     const location = withLocation ? this.assertLocation(input.locationEvidence as unknown, phase!, input.eventTime) : undefined;
     const reservation = await this.readReservation(ctx, input.reservationId);
-    this.assertReservationActor(input.actorUserId, reservation, roles);
+    this.assertReservationActor(ctx, input.actorUserId, reservation, roles);
     if (reservation.version !== Number(input.expectedVersion)) this.fail("RESERVATION_VERSION_CONFLICT");
     if (!allowed.includes(reservation.status)) this.fail("RESERVATION_TRANSITION_INVALID");
     const current = reservation.status === "DELAYED" ? reservation.delayedFromStatus : reservation.status;
@@ -610,9 +610,9 @@ export class InterviewCoreContract extends Contract {
     return this.applyAction(ctx, input, operation, updated, eventName);
   }
 
-  private parseReservationAction(inputJson: string, extra: string[], objects: string[] = []): Record<string, string> {
+  private parseReservationAction(ctx: Context, inputJson: string, extra: string[], objects: string[] = []): Record<string, string> {
     const input = this.parseExactObject<Record<string, unknown>>(inputJson, ["actorUserId", "correlationId", "eventTime", "expectedVersion", "idempotencyKey", "policyVersion", "reservationId", ...extra, ...objects]);
-    this.assertCommon(input); this.assertId(String(input.reservationId), RESERVATION_ID_PATTERN, "RESERVATION_INPUT_INVALID");
+    this.assertCommon(ctx, input); this.assertId(String(input.reservationId), RESERVATION_ID_PATTERN, "RESERVATION_INPUT_INVALID");
     if (!Number.isSafeInteger(input.expectedVersion) || Number(input.expectedVersion) < 1) this.fail("RESERVATION_VERSION_INVALID");
     for (const key of extra) if (typeof input[key] !== "string") this.fail("RESERVATION_INPUT_INVALID");
     return input as Record<string, string>;
@@ -634,9 +634,9 @@ export class InterviewCoreContract extends Contract {
     return { evidenceId: evidence.evidenceId, evidenceDigest: evidence.evidenceDigest, phase, capturedAt: evidence.capturedAt, source: evidence.source, facilityMatched: evidence.facilityMatched, fallback: evidence.fallback, policyVersion: evidence.policyVersion };
   }
 
-  private parseComponentAction(inputJson: string, extra: string[], allowExpiryService = false): Record<string, string> & { expectedVersion: number } {
+  private parseComponentAction(ctx: Context, inputJson: string, extra: string[], allowExpiryService = false): Record<string, string> & { expectedVersion: number } {
     const input = this.parseExactObject<Record<string, unknown>>(inputJson, ["actorUserId", "componentId", "correlationId", "eventTime", "expectedVersion", "idempotencyKey", "policyVersion", ...extra]);
-    this.assertCommon(input, allowExpiryService); this.assertId(String(input.componentId), COMPONENT_ID_PATTERN, "COMPONENT_INPUT_INVALID");
+    this.assertCommon(ctx, input, allowExpiryService); this.assertId(String(input.componentId), COMPONENT_ID_PATTERN, "COMPONENT_INPUT_INVALID");
     if (!Number.isSafeInteger(input.expectedVersion) || Number(input.expectedVersion) < 1) this.fail("COMPONENT_VERSION_INVALID");
     for (const key of extra) if (typeof input[key] !== "string") this.fail("COMPONENT_INPUT_INVALID");
     return input as Record<string, string> & { expectedVersion: number };
@@ -653,8 +653,8 @@ export class InterviewCoreContract extends Contract {
     return response;
   }
 
-  private assertReservationActor(actorUserId: string, reservation: ReservationAsset, roles: Role[]): void {
-    const actor = this.assertActor(actorUserId);
+  private assertReservationActor(ctx: Context, actorUserId: string, reservation: ReservationAsset, roles: Role[]): void {
+    const actor = this.assertActor(ctx, actorUserId);
     if (!roles.includes(actor.role)) this.fail("RESERVATION_NOT_AUTHORIZED");
     if (actor.role === "ROLE_03") {
       if (reservation.purpose !== "TRANSFER" || actor.institutionId !== reservation.destinationInstitutionId) this.fail("RESERVATION_NOT_AUTHORIZED");
@@ -708,12 +708,25 @@ export class InterviewCoreContract extends Contract {
     if (identity.getMSPID() !== AUTHORIZED_MSP_ID || identity.getAttributeValue("hf.EnrollmentID") !== AUTHORIZED_ENROLLMENT_ID || identity.getAttributeValue("hf.Type") !== AUTHORIZED_IDENTITY_TYPE || identity.getAttributeValue(ROLE_ATTRIBUTE) !== AUTHORIZED_ROLE || identity.getAttributeValue(INSTITUTION_ATTRIBUTE) !== "INST_MEDIATRIX") this.fail("CORE_NOT_AUTHORIZED");
   }
 
-  private assertActorForInstitution(actorUserId: unknown, institutionId: unknown, roles: Role[]): ActorPolicy {
-    const actor = this.assertActor(actorUserId); if (!roles.includes(actor.role) || actor.institutionId !== String(institutionId)) this.fail("CORE_NOT_AUTHORIZED"); return actor;
+  private assertActorForInstitution(ctx: Context, actorUserId: unknown, institutionId: unknown, roles: Role[]): ActorPolicy {
+    const actor = this.assertActor(ctx, actorUserId); if (!roles.includes(actor.role) || actor.institutionId !== String(institutionId)) this.fail("CORE_NOT_AUTHORIZED"); return actor;
   }
 
-  private assertActor(actorUserId: unknown): ActorPolicy { this.assertId(String(actorUserId), ACTOR_ID_PATTERN, "CORE_INPUT_INVALID"); const actor = institutionPolicy.actors[String(actorUserId)]; if (actor === undefined) this.fail("CORE_NOT_AUTHORIZED"); return actor; }
-  private actorInstitution(actorUserId: unknown): string { return this.assertActor(actorUserId).institutionId; }
+  private assertActor(ctx: Context, actorUserId: unknown): ActorPolicy { this.assertId(String(actorUserId), ACTOR_ID_PATTERN, "CORE_INPUT_INVALID"); const actor = institutionPolicy.actors[String(actorUserId)]; if(actor)return actor;
+    // PA-STAFF-01: only the existing authenticated gateway may attest a new staff
+    // actor for this exact proposal. Titles never reach this permission boundary.
+    this.assertGateway(ctx);
+    const raw=ctx.stub.getTransient?.().get("institution_staff_v1");
+    if(!raw||!/^USR_STAFF_[0-9A-F]{32}$/.test(String(actorUserId)))this.fail("CORE_NOT_AUTHORIZED");
+    let a:Record<string,unknown>;try{a=JSON.parse(Buffer.from(raw).toString("utf8"));}catch{this.fail("CORE_NOT_AUTHORIZED");}
+    const args=ctx.stub.getStringArgs?.();
+    if(Object.keys(a).sort().join(",")!=="actorUserId,institutionId,operatorVersion,payloadSha256,policyVersion,role"||a.actorUserId!==actorUserId||a.policyVersion!=="SYNTHETIC_INSTITUTION_STAFF_V1"||!Number.isSafeInteger(a.operatorVersion)||Number(a.operatorVersion)<1||!args?.length||this.digest(JSON.parse(args[args.length-1]))!==a.payloadSha256)this.fail("CORE_NOT_AUTHORIZED");
+    // A new staff actor can hold only an existing operational role at a supported
+    // institution; no dynamic admin, regulatory, system or new-institution grant.
+    const supported=Object.values(institutionPolicy.actors).some(existing=>existing.institutionId===a.institutionId&&existing.role===a.role);
+    if(!supported||!["ROLE_01","ROLE_02","ROLE_03"].includes(String(a.role)))this.fail("CORE_NOT_AUTHORIZED");
+    return {institutionId:String(a.institutionId),role:a.role as Role}; }
+  private actorInstitution(ctx: Context, actorUserId: unknown): string { return this.assertActor(ctx, actorUserId).institutionId; }
 
   private policyFor(input: Record<string, unknown>): typeof policy | typeof policyV21 {
     if (input.policyVersion === INSTITUTION_POLICY_VERSION) return institutionPolicy;
@@ -722,12 +735,13 @@ export class InterviewCoreContract extends Contract {
     if (input.policyVersion === undefined || input.policyVersion === POLICY_VERSION) return policy;
     this.fail("CORE_POLICY_MISMATCH");
   }
-  private assertCommon(input: Record<string, unknown>, allowExpiryService = false): void {
+  private assertCommon(ctx: Context, input: Record<string, unknown>, allowExpiryService = false): void {
     this.assertId(String(input.actorUserId), ACTOR_ID_PATTERN, "CORE_INPUT_INVALID");
     this.assertId(String(input.correlationId), CORRELATION_ID_PATTERN, "CORE_INPUT_INVALID");
     this.assertId(String(input.idempotencyKey), IDEMPOTENCY_KEY_PATTERN, "CORE_INPUT_INVALID");
     this.parseUtc(input.eventTime); if (input.policyVersion !== POLICY_VERSION && input.policyVersion !== POLICY_VERSION_V21 && input.policyVersion !== DEVELOPMENT_POLICY_VERSION && input.policyVersion !== INSTITUTION_POLICY_VERSION) this.fail("CORE_POLICY_MISMATCH");
     if (allowExpiryService && input.actorUserId === EXPIRY_SERVICE_ACTOR_ID) return;
+    if(/^USR_STAFF_[0-9A-F]{32}$/.test(String(input.actorUserId))&&input.policyVersion===INSTITUTION_POLICY_VERSION){this.assertActor(ctx,input.actorUserId);return;}
     if (!this.policyFor(input).actors[String(input.actorUserId)] || input.policyVersion===INSTITUTION_POLICY_VERSION && !institutionPolicyJson.institutionAccountActorIds.includes(String(input.actorUserId))) this.fail("CORE_NOT_AUTHORIZED");
   }
   private assertReason(value: string): void { this.assertId(value, REASON_PATTERN, "CORE_REASON_INVALID"); }

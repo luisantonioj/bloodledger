@@ -92,3 +92,13 @@ it("does not add retries to a POST command when context changes in flight", asyn
   await rejected;
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
+
+// PA-STAFF-01: the approved second PIN-reset step is narrowly scoped.
+it("uses a staff reset approval only for the exact reset route, without skipping other PIN verification",async()=>{
+ const verify=vi.fn().mockResolvedValue("VFY_STAFF_TEST");setCommandVerifier(verify);
+ vi.stubGlobal("fetch",vi.fn().mockImplementation(()=>Promise.resolve(new Response(JSON.stringify({classification:"SIMULATION_ONLY"}),{status:200}))));
+ const init={method:"POST",headers:{"Idempotency-Key":"IDEM_STAFF_TEST","Staff-Reset-Approval":"SPA_"+"B".repeat(40)},body:JSON.stringify({expectedVersion:1,correlationId:"CORR_"+"A".repeat(32),pin:"123456"})};
+ await requestJson("/api/v2/staff/USR_STAFF_TEST/reset-pin",init);expect(verify).not.toHaveBeenCalled();
+ await requestJson("/api/v2/staff/USR_STAFF_TEST/revoke",init);expect(verify).toHaveBeenCalledTimes(1);
+ await requestJson("/api/v2/staff/USR_STAFF_TEST/reset-pin",{...init,headers:{"Idempotency-Key":"IDEM_STAFF_TEST"}});expect(verify).toHaveBeenCalledTimes(2);
+});

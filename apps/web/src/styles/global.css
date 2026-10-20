@@ -1328,3 +1328,10 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .outbound-label-verification>fieldset{min-width:0;margin:0;padding:0;border:0}
 .outbound-label-verification>fieldset>label{display:flex;align-items:flex-start;gap:8px;font:400 12px/1.5 var(--font-sans)}
 .outbound-label-verification>.button{margin-top:10px}
+
+.institution-staff-editor{max-width:620px;margin-left:auto;scroll-margin-top:20px}
+.institution-staff-editor .auth-form{padding:18px}
+.institution-staff-editor fieldset{display:grid;gap:16px;min-width:0;padding:0;margin:0;border:0}
+.institution-staff-editor select{width:100%;padding:10px 30px 10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);font:400 13px var(--font-sans);color:var(--ink);appearance:none}
+.staff-row-actions{display:flex;gap:8px;flex-wrap:wrap}
+.staff-action-subject{margin:0;overflow-wrap:anywhere;font:500 13px/1.5 var(--font-sans)}

@@ -21,7 +21,7 @@ export function registerAccountAdministration(app:FastifyInstance,pool:Pool,rest
     if(principal.institutionId!==r.params.id && (principal.accountCategory!=="PRC"||!principal.administrativeCapabilities?.includes("onboarding:read")))throw new ApiFailure(403,"ONB_NOT_AUTHORIZED","Institution profile is outside the account scope.");
     const rows=await pool.query("SELECT institution_id,display_name,account_category,status,version FROM app.institutions WHERE institution_id=$1 AND account_model='INSTITUTION_V1'",[r.params.id]);
     if(!rows.rows[0])throw new ApiFailure(404,"ONB_NOT_FOUND","Institution profile not found.");
-    const operators=await pool.query("SELECT operator_id,role_id,capability_profile,status,version FROM app.institution_operators WHERE institution_id=$1 ORDER BY operator_id",[r.params.id]);
+    const operators=await pool.query("SELECT operator_id,role_id,capability_profile,status,version,job_title FROM app.institution_operators WHERE institution_id=$1 ORDER BY operator_id",[r.params.id]);
     // PUBLIC_APPLICATION_V1 linkage: retained facility profile and application record timestamps only.
     const linked=(await pool.query<Row>("SELECT p.application_id,p.schema_version,CASE WHEN p.purge_after<=CURRENT_TIMESTAMP THEN NULL ELSE p.profile END profile,p.submitted_at,p.approved_at,p.activated_at,p.deregistered_at FROM app.institution_profiles p WHERE p.institution_id=$1",[r.params.id])).rows[0];
     const application=linked?{applicationId:linked.application_id,schemaVersion:linked.schema_version,submittedAt:isoTimestamp(linked.submitted_at),approvedAt:isoTimestamp(linked.approved_at),activatedAt:isoTimestamp(linked.activated_at),deregisteredAt:nullableIsoTimestamp(linked.deregistered_at)}:null;

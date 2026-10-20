@@ -441,3 +441,21 @@ publishing that coverage and reconciling the transfer submission's optional
 not a reason to claim the accepted routes are unavailable or to invent a second
 wire format. See the combined evening handoff. Patient/case data remains RQ-20;
 real document retention remains RQ-14.
+
+### Staff management — PA-STAFF-01 / ADR-052 (2026-10-21)
+
+Blood-bank/requester Add staff, display job title, fixed role permissions,
+versioned revoke/restore and staged administrator-approved PIN reset are
+implemented in source with additive `/api/v2/staff` routes. Reset does not
+reactivate a revoked operator. Last-administrator protection is enforced in the
+backend. New operational staff use their own actor identity through a
+proposal-bound gateway attestation; they never borrow an existing actor.
+Deployment requires the staff migration and matching API/worker and chaincode.
+PRC and DOH expansion is deferred. Runtime and test evidence belongs in
+`docs/validation/lat-institution-staff-2026-10-21/README.md`.
+
+Local staff activation completed under explicit user authorization on 2026-10-21:
+42 migrations applied / 0 pending, matching API/worker and institution-staff-v1
+at sequence 8. Ordinary login/profile reads passed for all six accounts; live
+staff-screen checks passed for the three banks and requester. No live staff or
+domain mutation was used for validation. See the staff validation README above.

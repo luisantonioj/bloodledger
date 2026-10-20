@@ -1,3 +1,4 @@
+import {InstitutionStaff,registerInstitutionStaff} from "./institution-staff.js";
 import { PostgresOnboarding, registerOnboardingRoutes } from "./onboarding.js";
 import { PostgresPrcSupply, registerPrcSupplyRoutes } from "./prc-supply.js";
 import { primaryPrincipal } from "./institution-access.js";
@@ -227,6 +228,7 @@ export async function buildApp(
     restoreWebSession = restore;
     if (accountAccess) {
       registerOnboardingRoutes(app,new PostgresOnboarding(accountAccess.pool),restore,webOrigin,clock,secureCookie);
+      registerInstitutionStaff(app,accountAccess.pool,restore,clock,config.jwtSecret);
       registerPrcSupplyRoutes(app,new PostgresPrcSupply(accountAccess.pool),restore,webOrigin,clock);
       app.addHook("preHandler", async request => {
         if(request.method==='GET' && /^\/api\/v1\/(dashboard|inventory|transfers|alerts|audit|reports)(\/|\?|$)/.test(request.url)){
@@ -242,6 +244,8 @@ export async function buildApp(
         requireSameOrigin(request,webOrigin);
         // Primary accounts never mutate through the retired V1 actor path.
         if (path!.startsWith("/api/v1/")) throw new ApiFailure(409,"V2_1_CONTRACT_REQUIRED","Institution accounts require the current V2 contract.");
+        const staffReset=/^\/api\/v2\/staff\/(USR_[A-Z0-9_-]+)\/reset-pin$/.exec(path!);
+        if(staffReset){requireSameOrigin(request,webOrigin);const verified=await new InstitutionStaff(accountAccess.pool,config.jwtSecret).consumeReset(active.principal,active.claims.sessionId,staffReset[1],request.headers["staff-reset-approval"],request.body as Record<string,unknown>,request.headers["idempotency-key"],clock());verifiedPrincipals.set(request,verified);return;}
         const verified=await accountAccess.consume(active.principal,active.claims,request.headers["operator-verification"],`${request.method} ${path}`,operatorBoundPayload(request.body),request.headers["idempotency-key"],clock());
         verifiedPrincipals.set(request,verified);
       });

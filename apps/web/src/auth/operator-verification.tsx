@@ -15,7 +15,7 @@ export function OperatorVerification({principal, children}: {principal: Principa
   const boundOperators = useRef(new Map<string, string>());
   const isPrc = (action: string) => action.startsWith("POST /api/v2/prc-supply-requests");
   const isOnboarding = (action:string) => /^POST \/api\/v2\/onboarding\/(applications\/[^/]+\/(review|approve|reject|activate)|institutions\/[^/]+\/deregister)$/.test(action);
-  const actorBound = (action:string) => isPrc(action)||isOnboarding(action)||action==="POST /api/v2/inbound-captures"||/^POST \/api\/v2\/reservations\/[^/]+\/outbound-verifications$/.test(action);
+  const actorBound = (action:string) => isPrc(action)||isOnboarding(action)||action.startsWith("POST /api/v2/staff")||action==="POST /api/v2/inbound-captures"||/^POST \/api\/v2\/reservations\/[^/]+\/outbound-verifications$/.test(action);
   const pendingActionMessage=(action:string)=>action==="POST /api/v2/inbound-captures"?"The original intake operator is no longer authorized. Keep this attempt frozen and ask for review.":"The original operator is no longer authorized. Review the reservation before continuing.";
   // Bind the account epoch before descendants start protected reads on a deep link.
   useLayoutEffect(() => {
@@ -52,7 +52,7 @@ export function OperatorVerification({principal, children}: {principal: Principa
     <header><div><h2 id="operator-verification-title">Verify operator</h2><p>{facilityName} · Authorize this action</p></div><button aria-label="Cancel verification" onClick={cancel}>×</button></header>
     <form className="preview-modal-body auth-form" onSubmit={event => void verify(event)}>
       <div className="operator-verification-fields">
-        <label>Operator<span className="requester-select"><select aria-label="Operator" value={operatorId} disabled={busy || Boolean(pending && actorBound(pending.action) && boundOperators.current.has(pending.idempotencyKey))} onChange={event => setOperatorId(event.target.value)}>{eligibleOperators(principal.operators ?? [], pending.action).map(operator => <option key={operator.operatorId} value={operator.operatorId}>{operator.roleId} · {operator.operatorId}</option>)}</select></span></label>
+        <label>Operator<span className="requester-select"><select aria-label="Operator" value={operatorId} disabled={busy || Boolean(pending && actorBound(pending.action) && boundOperators.current.has(pending.idempotencyKey))} onChange={event => setOperatorId(event.target.value)}>{eligibleOperators(principal.operators ?? [], pending.action).map(operator => <option key={operator.operatorId} value={operator.operatorId}>{operator.jobTitle??operator.roleId} · {operator.operatorId}</option>)}</select></span></label>
         <label>Operator PIN<input type="password" inputMode="numeric" pattern={`[0-9]{${principal.operatorPinLength ?? 8}}`} minLength={principal.operatorPinLength ?? 8} maxLength={principal.operatorPinLength ?? 8} autoComplete="off" value={pin} disabled={busy} onChange={event => setPin(event.target.value)} required/></label>
       </div>
       {error && <p role="alert">{error}</p>}
