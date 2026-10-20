@@ -43,7 +43,14 @@ export class PostgresCoordinationReader implements CoordinationReader {
 
   async pendingRequests(input: { bloodType: string; componentType: string; sourceInstitutionId?: string }): Promise<PendingRequestRow[]> {
     const result = await this.pool.query<Record<string, unknown>>(
-      "SELECT transfer_id,source_institution_id,destination_institution_id,urgency,request_time,quantity FROM app.v2_transfer_requests WHERE status='PENDING' AND blood_type=$1 AND component_type=$2 AND ($3::text IS NULL OR source_institution_id=$3) ORDER BY request_time,transfer_id",
+      // ADR-046: raw PENDING survives approval. Any recorded reservation means the request
+      // has already had its decision; cancelling that reservation does not reopen the request.
+      `SELECT t.transfer_id,t.source_institution_id,t.destination_institution_id,t.urgency,t.request_time,t.quantity
+       FROM app.v2_transfer_requests t
+       WHERE t.status='PENDING' AND t.blood_type=$1 AND t.component_type=$2
+         AND ($3::text IS NULL OR t.source_institution_id=$3)
+         AND NOT EXISTS (SELECT 1 FROM app.v2_reservations r WHERE r.transfer_id=t.transfer_id)
+       ORDER BY t.request_time,t.transfer_id`,
       [input.bloodType, input.componentType, input.sourceInstitutionId ?? null]);
     return result.rows.map((row) => ({
       transferId: String(row.transfer_id), sourceInstitutionId: String(row.source_institution_id),

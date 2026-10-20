@@ -1286,8 +1286,8 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .receipt-auto-capture-actions{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .receipt-auto-capture-actions>.button:nth-child(n+3){grid-column:1/-1}
 
-.receipt-inbound-preview .scan-review-fields{gap:10px;padding:8px 0}
-.receipt-inbound-preview .scan-review-fields>label{margin:0;gap:4px}
+.receipt-unit-preview .scan-review-fields{gap:10px;padding:8px 0}
+.receipt-unit-preview .scan-review-fields>label{margin:0;gap:4px}
 .offline-banner { margin: 12px 28px 0; padding: 10px 14px; border-radius: 6px; color: var(--warning); background: var(--warning-container); font-size: 13px; }
 .dashboard-alert-summary { margin-top: 16px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .dashboard-alert-summary header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
@@ -1310,3 +1310,21 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 @media(max-width:600px){.request-detail-panel dl{grid-template-columns:minmax(0,1fr);gap:4px}.request-detail-panel dd{margin-bottom:8px}}
 
 .requester-submit-footer .requester-submit-actions{flex-wrap:wrap;max-width:100%}
+
+/* Outbound uses the scanner's compact card, field and button styling. */
+.scanner-transfer-actions .scanner-transfer-controls{padding:0;gap:10px}
+.scanner-transfer-actions .v2-operation-card{padding:14px 0 0;font:400 12px/1.5 var(--font-sans)}
+.scanner-transfer-actions .v2-operation-card h3{margin:0 0 12px;font:600 14px/1.5 var(--font-sans)}
+.scanner-transfer-actions .bank-detail-action-buttons{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.scanner-transfer-actions .v2-operation-card>form>fieldset{display:grid;gap:10px;margin:0;padding:0;border:0}
+.scanner-transfer-actions .v2-operation-card legend{padding:0 0 10px;font:600 12px/1.5 var(--font-sans)}
+.scanner-transfer-actions .v2-operation-card label{display:grid;gap:4px;margin:0;font:500 11px/1.5 var(--font-sans);color:var(--ink-secondary)}
+.scanner-transfer-actions .v2-operation-card input:not([type=checkbox]),.scanner-transfer-actions .v2-operation-card select{min-height:38px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px/1.5 var(--font-sans)}
+.scanner-transfer-actions .v2-operation-card label:has(>input[type=checkbox]){display:flex;align-items:flex-start;gap:8px}
+.scanner-transfer-actions .button{min-height:38px;padding:8px 10px;font:500 12px/1.5 var(--font-sans)}
+.scanner-transfer-actions .v2-operation-card>form>.button{margin-top:12px}
+.outbound-label-verification{padding:12px;font:400 12px/1.5 var(--font-sans)}
+.outbound-label-verification>h4{margin:0 0 12px;font:600 13px/1.5 var(--font-sans)}
+.outbound-label-verification>fieldset{min-width:0;margin:0;padding:0;border:0}
+.outbound-label-verification>fieldset>label{display:flex;align-items:flex-start;gap:8px;font:400 12px/1.5 var(--font-sans)}
+.outbound-label-verification>.button{margin-top:10px}

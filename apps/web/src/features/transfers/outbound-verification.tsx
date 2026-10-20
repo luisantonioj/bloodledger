@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from "react";
+import {CameraPhotoCapture} from "../receipts/camera-photo-capture";
 import {ApiRequestError,requestJson} from "../../services/api/client";
 import {newMutationKeys} from "../../services/api/mutation-keys";
 import {parseOutboundVerification} from "../../services/api/blood-bank-completion";
@@ -29,20 +30,31 @@ export function outboundFailure(reason:unknown){
 export function OutboundVerification({reservation,onVerified,onLockChange,scannedRecognition}:{scannedRecognition?:ReceiptRecognition;reservation:ReservationDetail;onVerified:(result:ReturnType<typeof parseOutboundVerification>)=>void;onLockChange:(locked:boolean)=>void}){
   // Operations must explicitly enable this after the separately approved host migration.
   const enabled=import.meta.env.VITE_BLOODLEDGER_OUTBOUND_VERIFICATION_READY==="true";
+  const [cameraOpen,setCameraOpen]=useState(false),[imageUrl,setImageUrl]=useState<string>(),[progress,setProgress]=useState(0);
+  const chooser=useRef<HTMLInputElement>(null);
   const [image,setImage]=useState<File>(),[recognition,setRecognition]=useState<ReceiptRecognition>(),[labels,setLabels]=useState<ScannedLabel[]>([]),[confirmed,setConfirmed]=useState(false),[reading,setReading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[done,setDone]=useState(false),[ambiguous,setAmbiguous]=useState(false);
   const active=useRef(true),controller=useRef<AbortController|null>(null),attempt=useRef<{keys:ReturnType<typeof newMutationKeys>;body:{policyVersion:"OUTBOUND_LABEL_VERIFICATION_V2";expectedVersion:number;correlationId:string;scannedLabels:ScannedLabel[]}}|null>(null);
   useEffect(()=>{active.current=true;return()=>{active.current=false;controller.current?.abort();};},[]);
   const locked=busy||ambiguous;
-  const componentMatches=outboundComponentMatches(recognition,reservation);
-  useEffect(()=>{if(!locked&&!done){controller.current?.abort();setRecognition(scannedRecognition);setConfirmed(false);setError("");}},[scannedRecognition]);
-  useEffect(()=>{onLockChange(locked);},[locked,onLockChange]);
-  async function ocr(){
-    if(!image||locked||reading)return;const abort=new AbortController();controller.current=abort;setReading(true);setError("");setRecognition(undefined);setConfirmed(false);
-    try{const {recognizeReceiptLabel}=await import("../receipts/receipt-ocr");const value=await recognizeReceiptLabel(image,abort.signal,()=>{});if(active.current)setRecognition(value);}
-    catch{if(active.current&&!abort.signal.aborted)setError("The label could not be read confidently. Use a clear image of the supported five-field label.");}
-    finally{if(active.current)setReading(false);}
+  useEffect(()=>()=>{if(imageUrl)URL.revokeObjectURL(imageUrl);},[imageUrl]);
+  useEffect(()=>{if(locked||done)setCameraOpen(false);},[locked,done]);
+  useEffect(()=>{if(!image)return;void ocr(image);return()=>controller.current?.abort();},[image]);
+  function changeImage(file?:File){
+    if(locked||done)return;controller.current?.abort();setReading(false);setCameraOpen(false);setRecognition(undefined);setConfirmed(false);setError("");setImage(undefined);setImageUrl(undefined);setProgress(0);
+    if(!file)return;
+    if(!["image/png","image/jpeg"].includes(file.type)||file.size>10*1024*1024){setError("Choose a JPG or PNG image up to 10 MB.");return;}
+    setImage(file);setImageUrl(URL.createObjectURL(file));
   }
-  function add(){if(!recognition||!confirmed||locked||!outboundComponentMatches(recognition,reservation))return;const label={donationNumber:recognition.label.donationNumber,componentType:recognition.label.componentType};if(labels.some(entry=>entry.donationNumber===label.donationNumber&&entry.componentType===label.componentType)){setError("This label has already been added.");return;}setLabels([...labels,label]);setRecognition(undefined);setImage(undefined);setConfirmed(false);setError("");}
+  const componentMatches=outboundComponentMatches(recognition,reservation);
+  useEffect(()=>{if(!locked&&!done){controller.current?.abort();setReading(false);setRecognition(scannedRecognition);setConfirmed(false);setError("");}},[scannedRecognition]);
+  useEffect(()=>{onLockChange(locked);},[locked,onLockChange]);
+  async function ocr(file:File){
+    if(locked||done)return;const abort=new AbortController();controller.current=abort;setReading(true);setError("");setRecognition(undefined);setConfirmed(false);
+    try{const {recognizeReceiptLabel}=await import("../receipts/receipt-ocr");const value=await recognizeReceiptLabel(file,abort.signal,value=>{if(active.current&&!abort.signal.aborted)setProgress(value);});if(active.current&&!abort.signal.aborted)setRecognition(value);}
+    catch{if(active.current&&!abort.signal.aborted)setError("The label could not be read confidently. Use a clear image of the supported five-field label.");}
+    finally{if(active.current&&controller.current===abort)setReading(false);}
+  }
+  function add(){if(!recognition||!confirmed||locked||!outboundComponentMatches(recognition,reservation))return;const label={donationNumber:recognition.label.donationNumber,componentType:recognition.label.componentType};if(labels.some(entry=>entry.donationNumber===label.donationNumber&&entry.componentType===label.componentType)){setError("This label has already been added.");return;}setLabels([...labels,label]);setRecognition(undefined);setImage(undefined);setImageUrl(undefined);setConfirmed(false);setError("");}
   async function verify(){
     if(!enabled||busy||done||(!ambiguous&&labels.length!==reservation.components.length))return;
     if(!attempt.current){const keys=newMutationKeys();attempt.current={keys,body:{policyVersion:"OUTBOUND_LABEL_VERIFICATION_V2",expectedVersion:reservation.version,correlationId:keys.correlationId,scannedLabels:[...labels]}};}
@@ -54,13 +66,15 @@ export function OutboundVerification({reservation,onVerified,onLockChange,scanne
     }catch(reason){if(active.current){setError(outboundFailure(reason));const uncertain=!(reason instanceof ApiRequestError)||reason.status>=500;setAmbiguous(uncertain);if(!uncertain)attempt.current=null;}}
     finally{if(active.current)setBusy(false);}
   }
-  return <section className="bank-record-card" aria-label="Outbound label verification">
+  return <section className="bank-record-card outbound-label-verification" aria-label="Outbound label verification">
     <h4>Scan reserved units</h4>
     {reservation.components.length>50&&<p role="status">This reservation exceeds the contract’s 50-label verification limit. Ask Jopia to review the supported workflow; labels cannot be split into partial verification attempts.</p>}
     {!enabled&&<p role="status">Outbound verification is disabled for this host. Migration and runtime readiness must be confirmed before enabling it. Existing reviewed preparation evidence remains supported.</p>}
     <fieldset disabled={!enabled||locked||done}>
-      <label>Reserved-unit label image<input type="file" accept="image/png,image/jpeg" capture="environment" disabled={reading} onChange={event=>{const file=event.target.files?.[0];controller.current?.abort();setRecognition(undefined);setConfirmed(false);setError("");setImage(undefined);if(file&&["image/png","image/jpeg"].includes(file.type)&&file.size<=10*1024*1024)setImage(file);else if(file)setError("Choose a JPG or PNG image up to 10 MB.");event.target.value="";}}/></label>
-      <button className="button compact" type="button" disabled={!image||reading} onClick={()=>void ocr()}>{reading?"Reading…":"Run OCR"}</button>
+      <div className="receipt-camera-stage">{cameraOpen?<CameraPhotoCapture onCapture={changeImage} onClose={()=>setCameraOpen(false)}/>:imageUrl?<img src={imageUrl} alt="Selected reserved-unit label preview"/>:<><strong>Capture a reserved-unit label</strong><span>Take a photo with this device or choose an image.</span></>}</div>
+      <input ref={chooser} type="file" accept="image/png,image/jpeg" hidden aria-label="Reserved-unit label image" disabled={reading} onChange={event=>{changeImage(event.target.files?.[0]);event.target.value="";}}/>
+      <div className="receipt-capture-actions receipt-auto-capture-actions"><button className="button primary compact" type="button" disabled={reading||cameraOpen} onClick={()=>{setConfirmed(false);setCameraOpen(true);}}>Take photo</button><button className="button compact" type="button" disabled={reading} onClick={()=>{setCameraOpen(false);chooser.current?.click();}}>Choose image</button>{image&&<button className="button compact" type="button" onClick={()=>changeImage()}>Clear image</button>}</div>
+      {reading&&<p className="receipt-preview-note" role="status">Reading label · {progress}%</p>}
       {recognition&&!componentMatches&&<p role="alert">The OCR-read component does not match this reservation. Rescan the correct component; this unit has not been added.</p>}
       {recognition&&componentMatches&&<><p>Five label fields passed OCR checks. The label value is not displayed or persisted.</p><label><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)}/>I checked the recognized label against this reserved unit.</label><button className="button compact" type="button" disabled={!confirmed||labels.length>=Math.min(50,reservation.components.length)} onClick={add}>Add scanned unit</button></>}
       <p>{done?"All reserved units verified · Off-chain evidence returned":`${labels.length} of ${reservation.components.length} reserved units scanned`}</p>
