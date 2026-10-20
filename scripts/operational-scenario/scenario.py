@@ -1,4 +1,4 @@
-"""V3 successor after the missed V2 window; external-only and never submits commands."""
+"""V5 defense-host successor after V4 OCR rejection; V3/V4 remain historical; external-only and never submits commands."""
 
 import argparse
 import hashlib
@@ -11,11 +11,11 @@ from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 
-VERSION = "SYNTHETIC_OPERATIONAL_STOCK_522_V3"
+VERSION = "SYNTHETIC_OPERATIONAL_STOCK_522_V5"
 SCHEMA = "OPERATIONAL_SCENARIO_V1"
 SOURCE_SHA = "5c5997bd4df26f6f0d52d7ea13dde0172706faaa15308ebc87f241f44c241ddb"
-BASELINE = "bf70eff50ec7235626150d0f1678aaf40508b476"
-DATE_POLICY = "SYNTHETIC_522_DATES_V3"
+BASELINE = "5a624d9deae056a892c0d5bb5af556530756cec5"
+DATE_POLICY = "SYNTHETIC_522_DATES_V5"
 BLOOD = dict(
     zip(
         ["A+", "B+", "O+", "AB+"],
@@ -38,10 +38,10 @@ COMPONENT = dict(
 )
 # Deliberately technical intervals, not clinical shelf lives. Relative to T0.
 HOURS = dict(zip(COMPONENT.values(), [120, 144, 168, 96, 192], strict=True))
-# Frozen V3 window (Asia/Manila Sun 14:00, Sun 23:30, Mon 07:00); never renewed or backdated.
-POPULATION_NOT_BEFORE = "2026-10-11T06:00:00Z"
-T0 = "2026-10-11T15:30:00Z"
-VERIFICATION_END = "2026-10-11T23:00:00Z"
+# Frozen V5 window; same relative offsets as V3, never renewed or backdated.
+POPULATION_NOT_BEFORE = "2026-10-20T04:30:00Z"
+T0 = "2026-10-21T00:00:00Z"
+VERIFICATION_END = "2026-10-21T03:00:00Z"
 NS = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 
 
@@ -312,7 +312,7 @@ def validate(data):
         "execution window",
     )
     require(
-        instant(data["generatedAt"]) <= instant(data["populationNotBefore"]),
+        instant(data["generatedAt"]) < instant(data["populationNotBefore"]),
         "generation must precede the population window",
     )
     require(
