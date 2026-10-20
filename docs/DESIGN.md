@@ -1118,6 +1118,14 @@ coverage for unrelated rows and for closing details without automatic reopening.
 
 2026-10-15 Requests & Transfers: remove the standalone Request priority (RPS) panel, including its ranking filters and breakdown table, at the user’s request. Blood Requests, request detail approval and the dashboard redistribution shortcut retain their existing behavior.
 
+2026-10-19 Requests & Transfers (TC-T01/TC-T02 remediation): Blood Requests adds an inline **RPS rank** column for supplier ROLE-01/ROLE-02 only, showing `#rank of N · score` per request within its blood type/component series from `/api/v2/coordination/priority`. The tooltip shows the urgency and wait contributions and policy version and states that the ranking is advisory; approval stays with the supplier. Unranked or unavailable rows show `—` or `Unavailable`, never an inferred score. The standalone RPS panel removed on 2026-10-15 is not restored. No API or custody mutation changed.
+
+2026-10-19 Shell and dashboard (TC-O03/TC-E02 remediation): the signed-in shell shows a warning-tone `Offline — showing last confirmed data` status banner while the browser reports no network and removes it on reconnect; pages keep their last confirmed data and do not present it as live. The dashboard Redistribution card shows a `Simulation only — BROA policy not approved` note above its fields. No API or custody mutation changed.
+
+2026-10-19 Requestor, PRC and DOH dashboards (TC-E04 remediation): each adds an **Expiry alerts** card that reads the existing `/api/v2/alerts` scope. The requestor sees its own institution's expired units and how many are unacknowledged. PRC and DOH see only the city-aggregate count. Requestor and PRC link to Alerts; DOH has no link, because DOH `/alerts` resolves to the dashboard, and the dead DOH placeholder link was removed. No API or custody mutation changed.
+
+2026-10-19 Reservation actions (TC-T04/TC-G01/TC-G03/TC-T07 remediation): opening Dispatch or Receive takes one checkpoint location reading and shows `Device location captured (±N m)` or `Facility fallback — <reason>`. Bank receipt takes the same reading. In-transit transfers offer **Record delay** with a coded reason select (no free text), and delayed ones offer **Resume transfer**. A delayed reservation shows `Delayed — follow up with the other facility`. Transfer reservations from dispatch onward show a read-only **Checkpoint locations** table; exact points appear only to the capturing facility, and others see `Restricted to capturing facility`.
+
 2026-10-15 ADR-045 Activity History: bank ROLE-02 explicitly negotiates V2, with V1 fallback only on 400 ACTIVITY_CONTRACT_UNSUPPORTED. Contract changes clear loaded rows and cursors. PRC off-chain events are included by default, filterable by source, and link to their own PRC detail in the Activity cell. Eight table/PDF headers remain; PRC IDs never populate scan, blood-request, transfer or blockchain cells. Actors identify their institution and label roles as current. Cancellation uses a neutral badge; PRC Supply Requests belongs to Operations in the sidebar.
 
 2026-10-15 Analytics header cleanup: move the introductory description into existing page information help; remove the page’s Simulation preview / Read only badge and the two question eyebrows. Expected blood demand and Estimated excess stock each place Refresh before an information hover/focus button at the far right. Existing state indicators, evidence/provenance and simulation classification elsewhere remain.
@@ -1223,3 +1231,33 @@ compact, consistent gaps between review fields.
 when preview fields are shown, including incomplete and edited drafts. Disable
 it and explain the required unchanged five-field OCR verification until that
 gate passes. Confirmation and operator authorization rules remain unchanged.
+
+
+2026-10-19 scanner/reporting follow-up: remove the local October 15 example stock
+records. Checkpoint cards show only real saved records, with Not captured for
+missing records and a distinct indication of an uncaptured reached slot today.
+Keep the existing compact saved-list/details arrangement and right-side Copy
+icons. Automatic PA-DEF-07 matrices have four components; current inventory keeps
+five. Corrected OCR review is prepared behind the default-off
+VITE_BLOODLEDGER_CORRECTED_INTAKE_READY flag: show the original value and engine
+score beside the editable final value, explain the derived correction reason,
+and require repeated entry for a corrected Donation No. Edits clear confirmation.
+Fully manual and experimental-profile drafts cannot submit. This presentation
+change enables no host policy, migration, deployment or live write.
+
+
+2026-10-19 PA-OCR-04: with the separately enabled reviewed-intake flag, an OCR
+attempt may be followed by operator review of every field, even when nothing
+was recognized. Keep the original read/score visible separately and require
+re-entry of a corrected Donation No. Once final values validate, enable the
+review checkbox; any edit clears confirmation. Label all-field review as
+Operator-reviewed intake, never verified OCR. The scanner-free Manual tab and
+experimental extraction remain drafts. Existing compact scanner layout remains.
+
+
+2026-10-19 scanner closure: a terminal command notification (Committed, Failed
+or Conflict) no longer requires Dismiss before closing the mobile scanner.
+Keep the notification visible and completed action forms locked while open;
+only release the close/navigation lock. Queued, submitting, retrying,
+projection-pending and ambiguous outcomes retain close protection. Apply this
+to bank intake, outgoing transfer actions and incoming bank/requester receipts.

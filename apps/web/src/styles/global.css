@@ -715,6 +715,7 @@
 
 /* Compact, supplier-only dashboard redistribution ranking. */
 .dashboard-redistribution-body { padding: 20px; display: grid; gap: 16px; }
+.redistribution-simulation-note { margin: 0; padding: 8px 12px; border-radius: 8px; background: var(--warning-container); color: var(--warning); font-size: 0.8125rem; }
 .dashboard-redistribution-filters { display: grid; grid-template-columns: 1fr 1.5fr 76px; gap: 10px; }
 .dashboard-redistribution-filters label { display: grid; gap: 6px; margin: 0; min-width: 0; font-size: 12px; color: var(--ink-muted); }
 .dashboard-redistribution-filters select, .dashboard-redistribution-filters input { width: 100%; min-width: 0; padding: 9px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
@@ -1287,3 +1288,10 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 
 .receipt-inbound-preview .scan-review-fields{gap:10px;padding:8px 0}
 .receipt-inbound-preview .scan-review-fields>label{margin:0;gap:4px}
+.offline-banner { margin: 12px 28px 0; padding: 10px 14px; border-radius: 6px; color: var(--warning); background: var(--warning-container); font-size: 13px; }
+.dashboard-alert-summary { margin-top: 16px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.dashboard-alert-summary header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.dashboard-alert-summary h2 { margin: 0; font-size: 14px; }
+.dashboard-alert-summary a { font-size: 13px; }
+.dashboard-alert-summary p { margin: 8px 0 0; font-size: 13px; }
+.dashboard-alert-summary strong { font-size: 20px; color: var(--critical); }

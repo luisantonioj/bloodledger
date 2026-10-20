@@ -8,6 +8,8 @@ import { PostgresV2Projector } from "./database-v2.js";
 import { V2CommandWorker } from "./v2-worker.js";
 import { CensusWorker, PostgresCensusStore, STOCK_CHECKPOINT_POLICY_VERSION, STOCK_CHECKPOINT_WINDOW_MS, checkpointInstitutionIds } from "./census-worker.js";
 import { readDohReportPolicy } from "./report-policy.js";
+import { ScheduledExpiryEvaluator } from "./expiry-evaluator.js";
+import { PostgresReservationLocation } from "./reservation-location.js";
 
 if (process.env.FABRIC_SYNC_ENABLED !== "true") {
   throw new Error("FABRIC_SYNC_ENABLED=true is required to start the Sprint 4 worker");
@@ -38,10 +40,23 @@ async function runCheckpoints(now: Date): Promise<void> {
   if (recorded.length) console.info(JSON.stringify({ level: "info", msg: "stock checkpoint recorded", slots: [...new Set(recorded.map((snapshot) => snapshot.scheduledFor))], institutions: recorded.length }));
 }
 
+// TC-E05: opt-in scheduled expiry evaluation; TC-G01: purge exact checkpoint points after their retention window.
+const expiryEvaluator = v2Worker && process.env.V2_EXPIRY_EVALUATOR_ENABLED === "true" ? new ScheduledExpiryEvaluator(pool, new PostgresV2CommandStore(pool)) : null;
+const reservationLocation = new PostgresReservationLocation(pool);
+let nextPurge = 0;
+async function runScheduledEvaluations(now: Date): Promise<void> {
+  const queued = expiryEvaluator ? await expiryEvaluator.runDue(now) : 0;
+  let purged = 0;
+  if (now.getTime() >= nextPurge) { nextPurge = now.getTime() + 60_000; purged = await reservationLocation.purgeExpired(now); }
+  if (queued || purged) console.info(JSON.stringify({ level: "info", msg: "scheduled evaluation", expiryCommandsQueued: queued, locationEvidencePurged: purged }));
+}
+
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 while (!stopping) {
   try { await runCheckpoints(new Date()); }
   catch (error) { console.error(JSON.stringify({ level: "warn", msg: "stock checkpoint failed", safeErrorCode: error instanceof Error ? error.message.slice(0, 64) : "CHECKPOINT_FAILED" })); }
+  try { await runScheduledEvaluations(new Date()); }
+  catch (error) { console.error(JSON.stringify({ level: "warn", msg: "scheduled evaluation failed", safeErrorCode: error instanceof Error ? error.message.slice(0, 64) : "SCHEDULED_EVALUATION_FAILED" })); }
   try {
     const result = await worker.runOnce();
     const v2Result = v2Worker ? await v2Worker.runOnce() : { status: "IDLE" as const };

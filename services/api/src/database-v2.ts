@@ -104,7 +104,11 @@ export class PostgresV2ProjectionReader implements V2ProjectionReader {
   }
 
   async recordInboundCapture(captureId: string, payload: Record<string, unknown>, acceptedAt: string): Promise<void> {
-    await this.pool.query(`INSERT INTO app.v2_inbound_captures(capture_id,issuer_institution_id,custody_institution_id,donation_number_lookup_hmac,component_type,blood_type,capture_method,capture_policy_version,blood_type_evidence_source,component_evidence_source,ocr_engine,ocr_engine_version,donation_number_confidence,blood_type_confidence,collected_at,expires_at,captured_at,confirmed_at,event_time,status,resolution,correlation_id,classification,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,'OCR','INBOUND_OCR_V1',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'QUEUED','REGISTERED',$18,'SIMULATION_ONLY',$19,$19) ON CONFLICT(capture_id) DO NOTHING`, [captureId, payload.issuerInstitutionId, payload.custodyInstitutionId, payload.donationNoLookupHmac, payload.componentType, payload.bloodType, payload.bloodTypeEvidenceSource, payload.componentEvidenceSource, payload.ocrEngine, payload.ocrEngineVersion, payload.donationNumberConfidence, payload.bloodTypeConfidence, payload.collectedAt, payload.expiresAt, payload.capturedAt, payload.confirmedAt, payload.eventTime, payload.correlationId, acceptedAt]);
+    await this.pool.query(`INSERT INTO app.v2_inbound_captures(capture_id,issuer_institution_id,custody_institution_id,donation_number_lookup_hmac,component_type,blood_type,capture_method,capture_policy_version,blood_type_evidence_source,component_evidence_source,ocr_engine,ocr_engine_version,donation_number_confidence,blood_type_confidence,collected_at,expires_at,captured_at,confirmed_at,event_time,status,resolution,correlation_id,classification,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,'OCR',$20,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'QUEUED','REGISTERED',$18,'SIMULATION_ONLY',$19,$19) ON CONFLICT(capture_id) DO NOTHING`, [captureId, payload.issuerInstitutionId, payload.custodyInstitutionId, payload.donationNoLookupHmac, payload.componentType, payload.bloodType, payload.bloodTypeEvidenceSource, payload.componentEvidenceSource, payload.ocrEngine, payload.ocrEngineVersion, payload.donationNumberConfidence, payload.bloodTypeConfidence, payload.collectedAt, payload.expiresAt, payload.capturedAt, payload.confirmedAt, payload.eventTime, payload.correlationId, acceptedAt, payload.capturePolicyVersion ?? "INBOUND_OCR_V1"]);
+    // PA-OCR-03: per-field provenance of a corrected capture, recorded once (insert-only, immutable table).
+    if (Array.isArray(payload.fieldProvenance)) for (const entry of payload.fieldProvenance as Record<string, unknown>[]) {
+      await this.pool.query("INSERT INTO app.v2_capture_field_provenance(capture_id,field_name,source,ocr_value_digest,ocr_confidence,correction_reason,final_value_digest,recorded_at,classification) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'SIMULATION_ONLY') ON CONFLICT(capture_id,field_name) DO NOTHING", [captureId, entry.field, entry.source, entry.ocrValueDigest, entry.ocrConfidence, entry.correctionReason, entry.finalValueDigest, acceptedAt]);
+    }
   }
 
   async listInboundIntake(institutionId?: string): Promise<Record<string, number>> {
@@ -141,7 +145,7 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
   async project(command: V2Command, committed?: { transactionId: string; result: unknown | null }): Promise<void> {
     const transactionId = committed?.transactionId ?? command.ledgerTransactionId;
     if (!transactionId) throw new Error("V2_PROJECTION_COMMITMENT_MISSING");
-    const operations = ["REGISTER_COMPONENT", "REGISTER_INBOUND_COMPONENT", "RECEIVE_INBOUND_COMPONENT", "RESERVE_COMPONENTS", "RESERVE_LOCAL_RELEASE", "PREPARE_RESERVATION", "DISPATCH_RESERVATION", "START_RESERVATION_TRANSIT", "RECEIVE_RESERVATION", "COMPLETE_LOCAL_RELEASE", "CANCEL_RESERVATION", "PLACE_RECONCILIATION_HOLD", "RESOLVE_RECONCILIATION_HOLD", "EVALUATE_COMPONENT_EXPIRY", "COMPROMISE_RESERVATION", "SUBMIT_TRANSFER"];
+    const operations = ["REGISTER_COMPONENT", "REGISTER_INBOUND_COMPONENT", "RECEIVE_INBOUND_COMPONENT", "RESERVE_COMPONENTS", "RESERVE_LOCAL_RELEASE", "PREPARE_RESERVATION", "DISPATCH_RESERVATION", "START_RESERVATION_TRANSIT", "RECEIVE_RESERVATION", "COMPLETE_LOCAL_RELEASE", "CANCEL_RESERVATION", "PLACE_RECONCILIATION_HOLD", "RESOLVE_RECONCILIATION_HOLD", "EVALUATE_COMPONENT_EXPIRY", "COMPROMISE_RESERVATION", "SUBMIT_TRANSFER", "DELAY_RESERVATION", "RESUME_RESERVATION"];
     if (!operations.includes(command.operation)) throw new Error("V2_PROJECTION_OPERATION_UNSUPPORTED");
     const payload = command.payload;
     const componentId = typeof payload.componentId === "string" ? payload.componentId : undefined;
@@ -179,7 +183,7 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
       }
       if (["REGISTER_COMPONENT", "REGISTER_INBOUND_COMPONENT"].includes(command.operation)) {
         if (command.operation === "REGISTER_INBOUND_COMPONENT") {
-          await client.query(`INSERT INTO app.v2_inbound_captures(capture_id,issuer_institution_id,custody_institution_id,donation_number_lookup_hmac,component_type,blood_type,capture_method,capture_policy_version,blood_type_evidence_source,component_evidence_source,ocr_engine,ocr_engine_version,donation_number_confidence,blood_type_confidence,collected_at,expires_at,captured_at,confirmed_at,event_time,status,resolution,correlation_id,classification,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,'OCR','INBOUND_OCR_V1',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'COMMITTED','REGISTERED',$18,'SIMULATION_ONLY',$19,$19) ON CONFLICT(capture_id) DO NOTHING`, [payload.captureId, payload.issuerInstitutionId, payload.custodyInstitutionId, payload.donationNoLookupHmac, payload.componentType, payload.bloodType, payload.bloodTypeEvidenceSource, payload.componentEvidenceSource, payload.ocrEngine, payload.ocrEngineVersion, payload.donationNumberConfidence, payload.bloodTypeConfidence, payload.collectedAt, payload.expiresAt, payload.capturedAt, payload.confirmedAt, payload.eventTime, command.correlationId, command.acceptedAt]);
+          await client.query(`INSERT INTO app.v2_inbound_captures(capture_id,issuer_institution_id,custody_institution_id,donation_number_lookup_hmac,component_type,blood_type,capture_method,capture_policy_version,blood_type_evidence_source,component_evidence_source,ocr_engine,ocr_engine_version,donation_number_confidence,blood_type_confidence,collected_at,expires_at,captured_at,confirmed_at,event_time,status,resolution,correlation_id,classification,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,'OCR',$20,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'COMMITTED','REGISTERED',$18,'SIMULATION_ONLY',$19,$19) ON CONFLICT(capture_id) DO NOTHING`, [payload.captureId, payload.issuerInstitutionId, payload.custodyInstitutionId, payload.donationNoLookupHmac, payload.componentType, payload.bloodType, payload.bloodTypeEvidenceSource, payload.componentEvidenceSource, payload.ocrEngine, payload.ocrEngineVersion, payload.donationNumberConfidence, payload.bloodTypeConfidence, payload.collectedAt, payload.expiresAt, payload.capturedAt, payload.confirmedAt, payload.eventTime, command.correlationId, command.acceptedAt, payload.capturePolicyVersion ?? "INBOUND_OCR_V1"]);
         }
         await client.query(`INSERT INTO app.v2_donations(donation_id,issuer_institution_id,donation_number_ciphertext,donation_number_nonce,donation_number_auth_tag,donation_number_key_version,donation_number_lookup_hmac,created_by_user_id,created_at,updated_at,classification) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,'SIMULATION_ONLY') ON CONFLICT(donation_id) DO UPDATE SET updated_at=EXCLUDED.updated_at`, [payload.donationId, payload.issuerInstitutionId, payload.donationNoCiphertext, payload.donationNoNonce, payload.donationNoAuthTag, payload.donationNoEncryptionKeyVersion, payload.donationNoLookupHmac, command.actorUserId, command.acceptedAt]);
         await client.query(`INSERT INTO app.v2_components(component_id,donation_id,issuer_institution_id,donation_number_lookup_hmac,component_type,blood_type,collected_at,expires_at,institution_id,inventory_status,ledger_version,ledger_transaction_id,correlation_id,policy_version,created_at,updated_at,classification,inbound_capture_id,capture_method,blood_type_evidence_source,component_evidence_source,last_projection_command_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'AVAILABLE',1,$10,$11,$12,$13,$13,'SIMULATION_ONLY',$14,'OCR',$15,$16,$17) ON CONFLICT(component_id) DO UPDATE SET last_projection_command_id=EXCLUDED.last_projection_command_id`, [payload.componentId, payload.donationId, payload.issuerInstitutionId, payload.donationNoLookupHmac, payload.componentType, payload.bloodType, payload.collectedAt, payload.expiresAt, payload.custodyInstitutionId ?? payload.issuerInstitutionId, transactionId, command.correlationId, payload.policyVersion ?? "INTERVIEW_DERIVED_CORE_V2", command.acceptedAt, payload.captureId ?? null, payload.bloodTypeEvidenceSource ?? null, payload.componentEvidenceSource ?? null, command.commandId]);
@@ -190,11 +194,28 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
       if (command.operation === "RECEIVE_INBOUND_COMPONENT") {
         if (!reservationId) throw new Error("V2_PROJECTION_INPUT_INVALID");
         const expected = Number(payload.expectedVersion);
-        const reservation = await client.query<Record<string, unknown>>("SELECT status,version FROM app.v2_reservations WHERE reservation_id=$1 FOR UPDATE", [reservationId]);
-        if (!reservation.rows[0] || reservation.rows[0].status !== "IN_TRANSIT" || Number(reservation.rows[0].version) !== expected) throw new Error("V2_PROJECTION_STATE_CONFLICT");
+        const reservation = await client.query<Record<string, unknown>>("SELECT status,version,delayed_from_status FROM app.v2_reservations WHERE reservation_id=$1 FOR UPDATE", [reservationId]);
+        const receivable = reservation.rows[0] && (reservation.rows[0].status === "IN_TRANSIT" || (reservation.rows[0].status === "DELAYED" && reservation.rows[0].delayed_from_status === "IN_TRANSIT"));
+        if (!receivable || Number(reservation.rows[0].version) !== expected) throw new Error("V2_PROJECTION_STATE_CONFLICT");
         const received = await client.query("UPDATE app.v2_components SET inventory_status='RECEIVED',institution_id=$2,ledger_transaction_id=$3,last_projection_command_id=$4,updated_at=$5,ledger_version=ledger_version+1 WHERE reservation_id=$1 AND inventory_status='IN_TRANSIT'", [reservationId, command.actorInstitutionId, transactionId, command.commandId, command.acceptedAt]);
         if (!received.rowCount) throw new Error("V2_PROJECTION_STATE_CONFLICT");
-        await client.query("UPDATE app.v2_reservations SET status='RECEIVED',last_projection_command_id=$2,updated_at=$3,version=version+1 WHERE reservation_id=$1 AND status='IN_TRANSIT' AND version=$4", [reservationId, command.commandId, command.acceptedAt, expected]);
+        await client.query("UPDATE app.v2_reservations SET status='RECEIVED',delayed_from_status=NULL,receipt_location_summary=COALESCE($5::jsonb,receipt_location_summary),last_projection_command_id=$2,updated_at=$3,version=version+1 WHERE reservation_id=$1 AND status IN ('IN_TRANSIT','DELAYED') AND version=$4", [reservationId, command.commandId, command.acceptedAt, expected, payload.locationEvidence ? JSON.stringify(payload.locationEvidence) : null]);
+        await finish();
+        return;
+      }
+      // TC-T07: delay and resume change only the reservation; component custody status is unchanged.
+      if (command.operation === "DELAY_RESERVATION" || command.operation === "RESUME_RESERVATION") {
+        if (!reservationId) throw new Error("V2_PROJECTION_INPUT_INVALID");
+        const expected = Number(payload.expectedVersion);
+        const current = (await client.query<Record<string, unknown>>("SELECT status,version,delayed_from_status FROM app.v2_reservations WHERE reservation_id=$1 FOR UPDATE", [reservationId])).rows[0];
+        if (!current || Number(current.version) !== expected) throw new Error("V2_PROJECTION_STATE_CONFLICT");
+        if (command.operation === "DELAY_RESERVATION") {
+          if (!["DISPATCHED", "IN_TRANSIT"].includes(String(current.status)) || typeof payload.reasonCode !== "string") throw new Error("V2_PROJECTION_STATE_CONFLICT");
+          await client.query("UPDATE app.v2_reservations SET status='DELAYED',delayed_from_status=$2,delay_reason_code=$3,delayed_at=$4,last_projection_command_id=$5,updated_at=$4,version=version+1 WHERE reservation_id=$1 AND version=$6", [reservationId, current.status, payload.reasonCode, command.acceptedAt, command.commandId, expected]);
+        } else {
+          if (current.status !== "DELAYED" || !current.delayed_from_status) throw new Error("V2_PROJECTION_STATE_CONFLICT");
+          await client.query("UPDATE app.v2_reservations SET status=delayed_from_status,delayed_from_status=NULL,last_projection_command_id=$2,updated_at=$3,version=version+1 WHERE reservation_id=$1 AND version=$4", [reservationId, command.commandId, command.acceptedAt, expected]);
+        }
         await finish();
         return;
       }
@@ -220,10 +241,10 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
         PREPARE_RESERVATION: { status: "RESERVED", expectedComponentStatus: "RESERVED", expectedReservationStatus: "ACTIVE", reservationStatus: "ACTIVE" },
         DISPATCH_RESERVATION: { status: "DISPATCHED", expectedComponentStatus: "RESERVED", expectedReservationStatus: "ACTIVE", reservationStatus: "DISPATCHED", incrementComponentVersion: true },
         START_RESERVATION_TRANSIT: { status: "IN_TRANSIT", expectedComponentStatus: "DISPATCHED", expectedReservationStatus: "DISPATCHED", reservationStatus: "IN_TRANSIT", incrementComponentVersion: true },
-        RECEIVE_RESERVATION: { status: "RECEIVED", expectedComponentStatus: "IN_TRANSIT", expectedReservationStatus: "IN_TRANSIT", reservationStatus: "RECEIVED", incrementComponentVersion: true },
+        RECEIVE_RESERVATION: { status: "RECEIVED", expectedComponentStatus: "IN_TRANSIT", expectedReservationStatus: ["IN_TRANSIT", "DELAYED"], reservationStatus: "RECEIVED", incrementComponentVersion: true },
         COMPLETE_LOCAL_RELEASE: { status: "RELEASED", clearReservation: true, expectedComponentStatus: "RESERVED", expectedReservationStatus: "ACTIVE", reservationStatus: "COMPLETED", incrementComponentVersion: true },
         CANCEL_RESERVATION: { status: "AVAILABLE", clearReservation: true, expectedComponentStatus: "RESERVED", expectedReservationStatus: "ACTIVE", reservationStatus: "CANCELLED", incrementComponentVersion: true },
-        COMPROMISE_RESERVATION: { status: "COMPROMISED", clearReservation: false, expectedComponentStatus: ["DISPATCHED", "IN_TRANSIT", "RECEIVED"], expectedReservationStatus: ["DISPATCHED", "IN_TRANSIT", "RECEIVED"], reservationStatus: "COMPROMISED", incrementComponentVersion: true },
+        COMPROMISE_RESERVATION: { status: "COMPROMISED", clearReservation: false, expectedComponentStatus: ["DISPATCHED", "IN_TRANSIT", "RECEIVED"], expectedReservationStatus: ["DISPATCHED", "IN_TRANSIT", "DELAYED", "RECEIVED"], reservationStatus: "COMPROMISED", incrementComponentVersion: true },
         EVALUATE_COMPONENT_EXPIRY: { status: "EXPIRED", clearReservation: true, expectedComponentStatus: ["AVAILABLE", "RESERVED"], incrementComponentVersion: true },
         PLACE_RECONCILIATION_HOLD: { status: "RECONCILIATION_HOLD", expectedComponentStatus: ["AVAILABLE", "RESERVED"], incrementComponentVersion: true },
         RESOLVE_RECONCILIATION_HOLD: { status: "AVAILABLE", clearReservation: true, expectedComponentStatus: "RECONCILIATION_HOLD", incrementComponentVersion: true },
@@ -296,8 +317,12 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
         const reservationParams: unknown[] = [reservationId, current.reservationStatus, command.commandId, command.acceptedAt];
         if (preparing) reservationParams.push(payload.preparedAt ?? command.acceptedAt, command.actorUserId, payload.preparedEvidenceDigest, payload.preparedEvidenceId);
         else if (command.operation === "COMPLETE_LOCAL_RELEASE") reservationParams.push(payload.preparedAt ?? command.acceptedAt, command.actorUserId);
+        const locationColumn = command.operation === "DISPATCH_RESERVATION" ? "dispatch_location_summary" : command.operation === "RECEIVE_RESERVATION" ? "receipt_location_summary" : null;
+        let locationFields = "";
+        if (locationColumn && payload.locationEvidence) { reservationParams.push(JSON.stringify(payload.locationEvidence)); locationFields = `,${locationColumn}=$${reservationParams.length}::jsonb`; }
+        const delayFields = ["RECEIVE_RESERVATION", "COMPROMISE_RESERVATION"].includes(command.operation) ? ",delayed_from_status=NULL" : "";
         reservationParams.push(version);
-        const reservationUpdate = await client.query(`UPDATE app.v2_reservations SET status=$2,last_projection_command_id=$3,updated_at=$4,version=version+1${preparedFields}${completedFields} WHERE reservation_id=$1 AND version=$${reservationParams.length}`, reservationParams);
+        const reservationUpdate = await client.query(`UPDATE app.v2_reservations SET status=$2,last_projection_command_id=$3,updated_at=$4,version=version+1${preparedFields}${completedFields}${locationFields}${delayFields} WHERE reservation_id=$1 AND version=$${reservationParams.length}`, reservationParams);
         if (!reservationUpdate.rowCount) throw new Error("V2_PROJECTION_STATE_CONFLICT");
       }
       await finish();

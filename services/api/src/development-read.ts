@@ -1,3 +1,4 @@
+import { NEAR_EXPIRY_LEAD_HOURS, NEAR_EXPIRY_POLICY_VERSION, nearExpiryLeadParameter, nearExpiryLeadSql } from "./near-expiry-policy.js";
 import type { Pool } from "pg";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { WebPrincipal } from "./session.js";
@@ -25,7 +26,8 @@ export class PostgresDevelopmentReader implements DevelopmentReader {
       }
       if(kind==="alerts"){
         const rows=await this.pool.query<Row>("SELECT institution_id,blood_type,component_type,COUNT(*)::int count FROM app.v2_components WHERE inventory_status='EXPIRED' GROUP BY institution_id,blood_type,component_type");
-        return {scope:"CITY_AGGREGATE",alerts:[],aggregates:rows.rows,classification};
+        const near=await this.pool.query<Row>(`SELECT institution_id,blood_type,component_type,COUNT(*)::int count FROM app.v2_components c WHERE inventory_status IN ('AVAILABLE','RESERVED') AND expires_at>now() AND expires_at<=now()+${nearExpiryLeadSql("c.component_type","$1")} GROUP BY institution_id,blood_type,component_type`,[nearExpiryLeadParameter()]);
+        return {scope:"CITY_AGGREGATE",alerts:[],aggregates:rows.rows,nearExpiryAggregates:near.rows,nearExpiryEligibility:NEAR_EXPIRY_POLICY_VERSION,classification};
       }
       const rows=await this.pool.query<Row>("SELECT c.command_id,c.operation,c.resource_type,c.status,c.correlation_id,c.ledger_transaction_id,c.accepted_at,i.display_name FROM app.v2_commands c JOIN app.institutions i ON i.institution_id=c.actor_institution_id ORDER BY c.accepted_at DESC LIMIT 200");
       return {scope:"CITY_AGGREGATE",events:rows.rows.map(r=>({auditEventId:r.command_id,institutionDisplayName:r.display_name,actionCode:r.operation,targetType:r.resource_type,outcome:r.status,correlationId:r.correlation_id,ledgerTransactionId:r.ledger_transaction_id,eventTime:iso(r.accepted_at)})),classification};
@@ -60,7 +62,11 @@ export class PostgresDevelopmentReader implements DevelopmentReader {
     }
     if (kind === "alerts") {
       const rows = await this.pool.query<Row>(`SELECT c.component_id,c.blood_type,c.component_type,c.expires_at,c.updated_at,EXISTS(SELECT 1 FROM app.v2_alert_acknowledgements a WHERE a.component_id=c.component_id AND (a.actor_user_id=$2 OR a.actor_user_id IN (SELECT operator_id FROM app.institution_operators WHERE account_id=$2 AND institution_id=$1))) AS acknowledged FROM app.v2_components c WHERE c.institution_id=$1 AND c.inventory_status='EXPIRED' ORDER BY c.component_id`, [institution, principal.userId]);
-      return { scope: "INSTITUTION", alerts: rows.rows.map(r => ({ alertId: `V2EXP_${r.component_id}`, alertType: "EXPIRED", severity: "CRITICAL", unitId: r.component_id, bloodType: r.blood_type, component: r.component_type, expiresAt: iso(r.expires_at), evaluatedAt: iso(r.updated_at), status: "OPEN", acknowledged: r.acknowledged })), aggregates: [], nearExpiryEligibility: "DISABLED_UNAPPROVED_POLICY", evidence: "OFF_CHAIN_ALERT_FROM_LEDGER_PROJECTION", classification };
+      // TC-E01: advisory near-expiry alerts from the projection, never acknowledged or written to the ledger.
+      const near = await this.pool.query<Row>(`SELECT c.component_id,c.blood_type,c.component_type,c.expires_at FROM app.v2_components c WHERE c.institution_id=$1 AND c.inventory_status IN ('AVAILABLE','RESERVED') AND c.expires_at>now() AND c.expires_at<=now()+${nearExpiryLeadSql("c.component_type", "$2")} ORDER BY c.expires_at,c.component_id LIMIT 200`, [institution, nearExpiryLeadParameter()]);
+      const evaluatedAt = new Date().toISOString();
+      const nearAlerts = near.rows.map(r => ({ alertId: `V2NEAR_${r.component_id}`, alertType: "NEAR_EXPIRY", severity: "WARNING", unitId: r.component_id, bloodType: r.blood_type, component: r.component_type, expiresAt: iso(r.expires_at), evaluatedAt, status: "ADVISORY", acknowledged: false }));
+      return { scope: "INSTITUTION", alerts: [...rows.rows.map(r => ({ alertId: `V2EXP_${r.component_id}`, alertType: "EXPIRED", severity: "CRITICAL", unitId: r.component_id, bloodType: r.blood_type, component: r.component_type, expiresAt: iso(r.expires_at), evaluatedAt: iso(r.updated_at), status: "OPEN", acknowledged: r.acknowledged })), ...nearAlerts], aggregates: [], nearExpiryEligibility: NEAR_EXPIRY_POLICY_VERSION, nearExpiryLeadHours: NEAR_EXPIRY_LEAD_HOURS, evidence: "OFF_CHAIN_ALERT_FROM_LEDGER_PROJECTION", classification };
     }
     const rows = await this.pool.query<Row>(`SELECT c.command_id,c.operation,c.resource_type,c.status,c.safe_error_code,c.correlation_id,c.ledger_transaction_id,c.accepted_at,i.display_name FROM app.v2_commands c JOIN app.institutions i ON i.institution_id=c.actor_institution_id WHERE c.actor_institution_id=$1 ORDER BY c.accepted_at DESC,c.command_id DESC LIMIT 200`, [institution]);
     const acknowledgements = await this.pool.query<Row>("SELECT a.idempotency_key,a.correlation_id,a.acknowledged_at,i.display_name FROM app.v2_alert_acknowledgement_commands a JOIN app.institutions i ON i.institution_id=a.actor_institution_id WHERE a.actor_institution_id=$1 ORDER BY a.acknowledged_at DESC LIMIT 100", [institution]);

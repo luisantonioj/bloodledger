@@ -15,6 +15,9 @@ import {
   contractVersionFor,
 } from "./capture-policy";
 import { listStoredCommands, saveStoredCommand } from "./offline-queue";
+import { indexedDbOfflineStorage, OfflineCaptureQueue, OfflineQueueError } from "./offline-capture-queue";
+
+const offlineQueue = new OfflineCaptureQueue(indexedDbOfflineStorage);
 import type { RecognitionResult } from "./recognition";
 import type { InboundOcrCapture, StoredCommandReceipt, V2Command } from "./types";
 
@@ -64,6 +67,7 @@ export function App() {
   const [message, setMessage] = useState("Use approved synthetic Mediatrix labels.");
   const [busy, setBusy] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [queuedCount, setQueuedCount] = useState(0);
 
   const epoch = useRef(0);
   const captureEpoch = useRef(0);
@@ -71,6 +75,8 @@ export function App() {
   const [pin, setPin] = useState("");
   const owner = principal ? {accountId:principal.accountId ?? principal.userId,institutionId:principal.institutionId} : undefined;
   const refreshEvents = async (current=epoch.current) => {const receipts=owner ? await listStoredCommands(owner) : [];if(current===epoch.current)setEvents(receipts);};
+  const refreshQueued = async () => { if (!owner) { setQueuedCount(0); return; } setQueuedCount(await offlineQueue.count(owner).catch(() => 0)); };
+  useEffect(() => { void refreshQueued(); }, [principal, isOnline]);
   function clearCapture() {captureEpoch.current++;setRecognition(undefined);setAttempt(undefined);setImage(undefined);setPin("");setBusy(false);if(imageChooser.current)imageChooser.current.value="";}
   function clearSession() {epoch.current++;clearCapture();setPrincipal(undefined);setEvents([]);setOperatorId("");}
 
@@ -192,7 +198,7 @@ export function App() {
   }
 
   async function confirmAndSubmit() {
-    if (!recognition || !principal || !isOnline) return;
+    if (!recognition || !principal) return;
     const confirmation = attempt ?? {
       idempotencyKey: newEvidenceId("IDEM_INBOUND_"),
       correlationId: newEvidenceId("CORR_"),
@@ -228,6 +234,16 @@ export function App() {
 
     const current=epoch.current, captureCurrent=captureEpoch.current;
     const isCurrent = () => current===epoch.current && captureCurrent===captureEpoch.current;
+    // TC-O01: offline, the confirmed fields wait encrypted on this device; the PIN is entered again when sending.
+    if (!navigator.onLine) {
+      try {
+        await offlineQueue.enqueue({accountId:principal.accountId ?? principal.userId,institutionId:principal.institutionId}, confirmation.idempotencyKey, capture);
+        if(!isCurrent())return;
+        clearCapture(); await refreshQueued();
+        setMessage("Saved offline (encrypted on this device for up to 24 hours). It is not submitted or committed yet.");
+      } catch (error) { setMessage(error instanceof OfflineQueueError ? error.message : "OFFLINE_CAPTURE_STORAGE_FAILED"); }
+      return;
+    }
     const verifiedOperator = principal.verificationRequired ? {operatorId:operatorId || principal.operators?.find(o=>o.actionCapabilities?.includes("inventory:capture"))?.operatorId || "",pin} : undefined;
     if(verifiedOperator && (!verifiedOperator.operatorId || !/^[0-9]{8}$/.test(pin))){setMessage("Choose an authorized operator and enter the eight-digit PIN.");return;}
     setPin("");setBusy(true);
@@ -261,6 +277,35 @@ export function App() {
     }
   }
 
+  async function sendQueued() {
+    if (!principal || !owner || !navigator.onLine) return;
+    const verifiedOperator = principal.verificationRequired ? {operatorId:operatorId || principal.operators?.find(o=>o.actionCapabilities?.includes("inventory:capture"))?.operatorId || "",pin} : undefined;
+    if(verifiedOperator && (!verifiedOperator.operatorId || !/^[0-9]{8}$/.test(pin))){setMessage("Choose an authorized operator and enter the eight-digit PIN to send queued captures.");return;}
+    const current=epoch.current; setPin(""); setBusy(true); let sent = 0;
+    try {
+      for (const item of await offlineQueue.list(owner)) {
+        if (current!==epoch.current || !navigator.onLine) break;
+        // The send time is fixed before the first attempt so a retry after a lost response is byte-identical.
+        const eventTime = item.sendEventTime ?? new Date().toISOString();
+        if (!item.sendEventTime) await offlineQueue.markSending(owner, item.idempotencyKey, eventTime);
+        const capture = { ...item.capture, eventTime };
+        try {
+          const result = await submitInboundCapture(item.idempotencyKey, capture, principal.accountId ? "V2.1" : contractVersionFor(capture.componentType), verifiedOperator, () => current===epoch.current);
+          if ("commandId" in result) await saveStoredCommand(commandReceipt(result, { label: capture } as unknown as RecognitionResult, item.idempotencyKey, principal, verifiedOperator?.operatorId));
+          await offlineQueue.remove(owner, item.idempotencyKey); sent++;
+        } catch (error) {
+          // No command exists yet when the time is rejected, so a fresh send time is safe on the next attempt.
+          if (error instanceof ApiError && error.code === "V2_COMMAND_TIME_OUT_OF_WINDOW") await offlineQueue.markSending(owner, item.idempotencyKey, null);
+          throw error;
+        }
+      }
+      setMessage(sent ? `Sent ${sent} queued capture${sent === 1 ? "" : "s"} with their original request keys.` : "No queued captures to send.");
+    } catch (error) {
+      if(error instanceof ApiError && error.status===401){clearSession();setMessage("Session expired. Sign in again; queued captures stay encrypted on this device.");return;}
+      setMessage((error instanceof ApiError ? error.code : "API_UNAVAILABLE") + `. Sent ${sent}; the rest stay queued and retry with the same request keys.`);
+    } finally { if(current===epoch.current){setBusy(false); await refreshQueued(); await refreshEvents(current);} }
+  }
+
   const captureOperators = principal?.operators?.filter(o=>o.actionCapabilities?.includes("inventory:capture")) ?? [];
   const captureRole = principal && (principal.accountId ? captureOperators.length > 0 : ["ROLE-01", "ROLE-02"].includes(principal.roleId));
 
@@ -285,10 +330,18 @@ export function App() {
         <div className="privacy-badge"><span aria-hidden="true">⌾</span><strong>Volatile label handling</strong><small>Images, raw text, and Donation No. are not stored</small></div>
       </section>
 
+      {isOnline && principal && queuedCount > 0 && (
+        <div className="offline-banner queued-captures" role="status">
+          <span aria-hidden="true">↻</span>
+          <div><strong><span data-testid="offline-queue-count">{queuedCount}</span> queued capture{queuedCount === 1 ? "" : "s"} waiting to send</strong><small>Each is sent once with its original request key.{principal.verificationRequired ? " Enter the operator PIN to send." : ""}</small>
+            {principal.verificationRequired && <label>Operator PIN<input type="password" inputMode="numeric" minLength={8} maxLength={8} autoComplete="off" value={pin} onChange={event=>setPin(event.target.value)}/></label>}
+            <button type="button" disabled={busy} onClick={() => void sendQueued()}>Send queued captures</button></div>
+        </div>
+      )}
       {!isOnline && (
         <div className="offline-banner" role="status">
           <span aria-hidden="true">!</span>
-          <div><strong>Offline V2 submission is disabled</strong><small>You may inspect the screen, but exact Donation No. cannot be queued or replayed until an approved secure retention rule exists.</small></div>
+          <div><strong>Offline — captures are saved on this device</strong><small>Confirmed fields only, encrypted, kept at most 24 hours (up to 20). Images and raw OCR text are never stored. Queued: <span data-testid="offline-queue-count">{queuedCount}</span></small></div>
         </div>
       )}
 
@@ -373,7 +426,7 @@ export function App() {
                 ))}
               </dl>
               <p className="confirmation-policy">Contract: {principal?.accountId ? "V2.1" : contractVersionFor(recognition.label.componentType)}. Fields cannot be edited; recapture if any value is wrong.</p>
-              <div className="confirmation-actions">{principal?.verificationRequired && <div className="form-grid"><label>Operator<select value={operatorId || captureOperators[0]?.operatorId || ""} onChange={event=>setOperatorId(event.target.value)}>{captureOperators.map(operator=><option key={operator.operatorId} value={operator.operatorId}>{operator.roleId} · {operator.operatorId}</option>)}</select></label><label>Operator PIN<input type="password" inputMode="numeric" minLength={8} maxLength={8} autoComplete="off" value={pin} onChange={event=>setPin(event.target.value)}/></label></div>}<button type="button" disabled={busy || !isOnline} onClick={() => void confirmAndSubmit()}>{busy ? "Submitting…" : attempt ? "Retry same confirmed intake" : "I confirm every field"}</button></div>
+              <div className="confirmation-actions">{principal?.verificationRequired && <div className="form-grid"><label>Operator<select value={operatorId || captureOperators[0]?.operatorId || ""} onChange={event=>setOperatorId(event.target.value)}>{captureOperators.map(operator=><option key={operator.operatorId} value={operator.operatorId}>{operator.roleId} · {operator.operatorId}</option>)}</select></label><label>Operator PIN<input type="password" inputMode="numeric" minLength={8} maxLength={8} autoComplete="off" value={pin} onChange={event=>setPin(event.target.value)}/></label></div>}<button type="button" disabled={busy} onClick={() => void confirmAndSubmit()}>{busy ? "Submitting…" : !isOnline ? "I confirm every field — save offline" : attempt ? "Retry same confirmed intake" : "I confirm every field"}</button></div>
             </section>
           )}
         </div>

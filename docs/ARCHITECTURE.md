@@ -221,6 +221,9 @@ retry, and displays scan synchronization state.
 - Reconciles committed events into the PostgreSQL read model.
 - Invokes or reads forecast/recommendation outputs.
 - Runs scheduled expiry evaluation; chaincode itself is never a scheduler.
+  Implemented on 2026-10-19 as an opt-in worker job (`V2_EXPIRY_EVALUATOR_ENABLED`, `PA-TC-03`, Accepted 2026-10-19) that queues
+  `EVALUATE_COMPONENT_EXPIRY` as the non-login `USR_SERVICE_EXPIRY` actor. The same worker purges V2 checkpoint
+  locations after their 30-day retention (`PA-TC-04`).
 
 ### 5.3 PostgreSQL
 
@@ -546,6 +549,7 @@ time, correlation ID, and safe event name without secrets or prohibited data.
 | ADR-047 | Accepted | Outbound scanning maps to the existing preparation evidence. `POST /api/v2/reservations/{id}/outbound-verifications` (`OUTBOUND_LABEL_VERIFICATION_V1`) matches scanned Donation No. values to an active, unprepared reservation's reserved units by keyed lookup (exact set, counts-only mismatch), stores only digests and component IDs, and issues `EVD_` evidence that the unchanged PREPARE_RESERVATION command accepts. PIN-verified ROLE-01/02, idempotent, synchronous and off-chain. Typed evidence remains accepted until enforcement is separately decided. Amended 2026-10-17 (J2): V1 matches on Donation No. alone, so a sibling component of the same donation passes (finding F1). An additive `OUTBOUND_LABEL_VERIFICATION_V2` body names its `policyVersion` and pairs each scanned Donation No. with the component read from the same label; both must match a reserved unit. A label without a readable component is rejected. The V1 shape, digest and replay are frozen, and one key cannot be reused across versions. Migration `20261017000000000_allow-outbound-verification-v2` only widens the stored policy check. | Replaces hand-typed evidence with server-verified label matching, with no chaincode change and no label values stored |
 | ADR-048 | Accepted | Public synthetic institution applications (`SYNTHETIC_PUBLIC_APPLICATION_V1`, PA-ACCOUNT-03) enter through unauthenticated, same-origin `POST /api/v2/onboarding/public-applications` with strict allowlists, persistent rate limits and idempotency, and remain PRC-reviewed applications until the existing separate activation. The Fill Up catalog `SYNTHETIC_FACILITY_CATALOG_V1` lives in a versioned policy file; sample availability is derived from PostgreSQL claim rows (one active claim per sample by partial unique index), never browser storage. Deletion is a non-destructive `DEREGISTERED` institution state that retires access, keeps history and releases the claim. Additive migration `20261016010000000`. | Lets any synthetic facility apply and reuse samples across browsers and hosts without weakening review, inventing deletion that purges history, or collecting real people's or institutions' data |
 | ADR-049 | Accepted | Receipt label verification (J3; closes F2). `POST /api/v2/reservations/{id}/receipt-verifications` (`INBOUND_RECEIPT_LABEL_VERIFICATION_V1`) lets only the destination institution (PIN-verified ROLE-01/02/03) match every unit of an `IN_TRANSIT` transfer by Donation No. and OCR-read component (exact set, counts-only mismatch). It stores only digests and component IDs, registers no stock and issues `RCV_` evidence bound to the reservation version and receiving institution. `receive` may reference that evidence; it binds off-chain in the command payload and never reaches the ledger. A requester may still receive without evidence, recorded as having none. A blood-bank destination must reference evidence and is recorded through the unchanged `RecordInboundReceipt`, with the evidence digest as its capture digest; a source bank cannot receive. `inbound-captures` no longer receives a reservation from one label (`409 INBOUND_RECEIPT_REQUIRED`); receipts accepted there earlier still replay. Additive migration `20261017010000000_create-receipt-verifications`; chaincode unchanged. `RECEIVED` is still not usable stock (`RQ-10`), signature rules stay open (`RQ-09`), and unit history V1 shows these receipts as `WEB_COMMAND` until a negotiated history version. | One scanned label proved a whole shipment and requester receipt carried no label evidence; receipt now proves every unit without a chaincode change |
+| ADR-050 | Accepted (simulation) | Amends ADR-035 under RQ-19: an OCR inbound capture may carry operator corrections under `INBOUND_OCR_CORRECTED_V1` (PA-OCR-03), off unless a host sets `BLOODLEDGER_CORRECTED_INTAKE_ENABLED=true`. The capture stays OCR-anchored: at least one field must be an unchanged OCR read at ≥ 90, and fully manual entry and CSV import remain unsupported. Corrected blood type/component evidence is `OPERATOR_CONFIRMED` (already accepted by the chaincode), corrected fields keep no confidence, and per-field provenance (keyed digests of the OCR read and final value, the original score and a reason) is stored insert-only off-chain and bound into the ledger's capture evidence digest. No chaincode change. Jopia, 2026-10-19. |
 
 ## 16. Sprint 1 architecture gates
 
@@ -595,3 +599,16 @@ and authorize additive migrations only.
 The machine-readable account/capability policy and OpenAPI own executable shapes.
 [Implementation and migration evidence](INSTITUTION-ACCOUNTS.md) owns delivery
 commands, retained-data mapping, validation and Lat's contract handoff.
+
+## ADR-051 — All-field operator review after an OCR attempt (2026-10-19)
+
+**Accepted for simulation by the user acting as Jopia.** PA-OCR-04 introduces
+`INBOUND_OCR_CORRECTED_V2`, separately gated, permitting all-field corrections
+without an unchanged OCR field. Original recognition evidence remains separate;
+corrected finals are operator evidence with no OCR confidence. Donation No.
+double-entry, bank-only PIN/capabilities and frozen idempotent command handling
+remain required. One additive migration admits the policy without changing old
+rows. Policy, per-field provenance and `ocrAttempted` are bound into the digest;
+the latter is a workflow attestation, stripped before the unchanged ledger call.
+Legacy ledger/history `OCR` denotes scanner origin, not recognition accuracy.
+No Fabric change, scanner-free manual entry or import. ADR-050/V1 stay unchanged.
