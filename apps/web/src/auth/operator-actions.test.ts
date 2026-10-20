@@ -25,3 +25,15 @@ describe("PA-ACCOUNT-01 operator visibility",()=>{
     expect(eligibleOperators([...operators, expiryOperator], "POST /api/v2/components/COMP_SYNTH/expiry")).toEqual([expiryOperator]);
   });
 });
+
+it("PA-REQ detail and document writes select request-capable operators only",()=>{
+ const requester:OperatorProfile={operatorId:"USR_SYNTH_REQUESTER",roleId:"ROLE-03",capabilityProfile:"ROLE",version:1,actionCapabilities:["transfer:request"]};
+ const document="DOC_"+"A".repeat(40);
+ for(const action of ["details","documents",`documents/${document}/delete`]){
+  const path=`/api/v2/transfers/TRF_SYNTH_REQUEST/${action}`;
+  expect(actionCapability("POST "+path)).toBe("transfer:request");
+  expect(eligibleOperators([...operators,requester],"POST "+path)).toEqual([requester]);
+  expect(actionCapability("GET "+path)).toBeUndefined();
+ }
+ expect(actionCapability("POST /api/v2/transfers/TRF_SYNTH_REQUEST/documents/INVALID/delete")).toBeUndefined();
+});

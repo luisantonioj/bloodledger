@@ -388,3 +388,16 @@ existing volumes, identities and ledger history. The disposable
 `tests/accounts/postgres-integration.sh` has its own container and tmpfs and
 never resets retained resources. Lat's UI integration and retained-host rerun
 remain separate evidence.
+
+
+## Dedicated stock checkpoints — local activation (2026-10-20)
+
+PA-DEF-07 `SYNTHETIC_STOCK_CHECKPOINT_V1` can run independently of the manually started ledger worker through `npm run stock-checkpoints --workspace @bloodledger/api` after the normal API build. The dedicated process reads projected stock only and writes immutable off-chain census records; it never submits ledger commands or runs forecasts/expiry evaluation. It discovers active blood-bank institutions every minute and isolates individual-bank failures. Empty inventory produces the full zero-filled 8 × 4 matrix.
+
+Configure the API and scheduler with `BLOODLEDGER_DOH_REPORT_POLICY_VERSION=SYNTHETIC_STOCK_CHECKPOINT_V1` and `BLOODLEDGER_DOH_BLOOD_TYPE_ORDER=O_POSITIVE,A_POSITIVE,B_POSITIVE,AB_POSITIVE,O_NEGATIVE,A_NEGATIVE,B_NEGATIVE,AB_NEGATIVE`. Set `BLOODLEDGER_STOCK_CHECKPOINT_WORKER_MODE=dedicated` on the command worker/API environment to leave scheduling to the separate service. Other report policies keep their existing behavior. Without a complete enabled policy the dedicated service refuses to start.
+
+The scheduler uses the app database credential, with `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_APP_USER` and `POSTGRES_APP_PASSWORD` from private runtime configuration. Do not print or commit it. On Lat's authorized retained host the service is `bloodledger-stock-checkpoints`, runs as UID/GID 1000, uses the same pinned Node 24.17.0 image/build snapshot as the API, and has Docker restart policy `unless-stopped`. No migration is added by this change. API/web were also given `unless-stopped` without enabling other schedulers.
+
+Health: `docker inspect --format '{{.State.Health.Status}}' bloodledger-stock-checkpoints`; tick status: `docker exec bloodledger-stock-checkpoints cat /tmp/bloodledger-stock-checkpoint-health.json`. The health probe requires a successful tick less than three minutes old. Startup/restart immediately checks the current window. The service runs only while Docker/host are awake. It does not wake a sleeping laptop or backfill past slots: captures are allowed from 09:00–09:29:59 and 16:00–16:29:59 Asia/Manila. Outside those windows, no record is written. Saved Stock Records polls every 30 seconds in the active bank page.
+
+Validation: `npm run test:api`; the synthetic `stock-checkpoint-scheduler.test.ts` covers policy rejection, both slots, zero stock, institution discovery and failure isolation. `services/api/test/stock-checkpoint-scheduler-database-probe.mjs` requires an isolated empty PostgreSQL 17.10 database named `bloodledger_checkpoint_test`, trust-authenticated inside its disposable container's network namespace, never a retained database. It applies all migrations, creates fictional bank fixtures, verifies six records/192 zero cells, copy output, first-capture immutability and no backfill. Do not run that probe against the retained PostgreSQL service.

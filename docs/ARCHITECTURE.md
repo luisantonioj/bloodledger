@@ -600,6 +600,19 @@ The machine-readable account/capability policy and OpenAPI own executable shapes
 [Implementation and migration evidence](INSTITUTION-ACCOUNTS.md) owns delivery
 commands, retained-data mapping, validation and Lat's contract handoff.
 
+## Requester request details and documents — PA-REQ-01..05 (2026-10-20)
+
+**Accepted for simulation by Jopia and Lat.** Requester details, pickup
+references, notes and supporting-document metadata are application data in
+PostgreSQL, keyed by transfer ID and written before the request command is
+queued. They never enter the ledger payload. Document bytes live on the API
+host under `BLOODLEDGER_REQUEST_DOCUMENT_DIR` (default `.local/request-documents`,
+Git-ignored), named only by a server-generated `DOC_` ID, and are served only
+through an authorized API read. Operator verification binds a document's
+metadata and SHA-256 digest; the route rechecks the digest against the bytes.
+Supplier choice reads the existing network-availability projection. Rules:
+[`REQUIREMENTS.md` PA-REQ-01..05](REQUIREMENTS.md).
+
 ## ADR-051 — All-field operator review after an OCR attempt (2026-10-19)
 
 **Accepted for simulation by the user acting as Jopia.** PA-OCR-04 introduces

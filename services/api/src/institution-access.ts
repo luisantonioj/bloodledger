@@ -1,3 +1,4 @@
+import { operatorPinLength } from "./operator-pin-policy.js";
 import { readFileSync } from "node:fs";
 import { permissionsFor, type Permission, type RoleId } from "./web-access.js";
 import type { CredentialRecord, WebPrincipal } from "./session.js";
@@ -26,7 +27,7 @@ export function primaryPrincipal(record: CredentialRecord): WebPrincipal {
     institutionId: record.institutionId, institutionDisplayName: record.institutionDisplayName,
     institutionCategory: record.institutionCategory, accountCategory: category, accountState: "ACTIVE",
     roleId: record.roleId, roleDisplayName: "Institution account", permissions,
-    operators: (record.operators ?? []).map(o=>({...o,permissions:permissionsFor(o.roleId),actionCapabilities:operatorActions(o)})), verificationRequired: true, authorizationPolicyVersion: ACCOUNT_POLICY_VERSION,
+    operators: (record.operators ?? []).map(o=>({...o,permissions:permissionsFor(o.roleId),actionCapabilities:operatorActions(o)})), verificationRequired: true, operatorPinLength: operatorPinLength(), authorizationPolicyVersion: ACCOUNT_POLICY_VERSION,
     administrativeCapabilities: category === "PRC" ? ["onboarding:read", "onboarding:review"] : [],
     classification: "SIMULATION_ONLY" };
 }

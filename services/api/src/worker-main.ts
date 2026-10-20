@@ -30,7 +30,7 @@ process.on("SIGTERM", () => { stopping = true; });
 
 // PA-DEF-07: 09:00/16:00 Asia/Manila stock checkpoints run only under the approved simulation report policy.
 const reportPolicy = readDohReportPolicy();
-const checkpoints = reportPolicy.copyModeEnabled && reportPolicy.version === STOCK_CHECKPOINT_POLICY_VERSION
+const checkpoints = process.env.BLOODLEDGER_STOCK_CHECKPOINT_WORKER_MODE !== "dedicated" && reportPolicy.copyModeEnabled && reportPolicy.version === STOCK_CHECKPOINT_POLICY_VERSION
   ? new PostgresCensusStore(pool, reportPolicy.version, reportPolicy.bloodTypeOrder) : null;
 let nextCheckpointCheck = 0;
 async function runCheckpoints(now: Date): Promise<void> {

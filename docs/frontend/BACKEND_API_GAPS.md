@@ -10,15 +10,15 @@ Status meanings: **Not supported** means the current consumed contract does not 
 
 | ID | Feature | Frontend state | Dependency / remaining work | Status |
 |---|---|---|---|---|
-| GAP-01 | Requester and clinical details | Disabled placeholders for Requesting Person, Employee / Staff ID, Attending Physician, Patient / Case Reference, Required Date & Time | Current V2 request command carries source, destination, product, quantity, urgency and event time, not these details. Define approved synthetic data scope, validation, permission-scoped storage/reads, retention and detail display. A case reference is not automatically permission to collect clinical information. | Not supported; contract/policy pending |
-| GAP-02 | Authorized pickup | Disabled representative and ID / authorization-reference placeholders | Define authorized representative/reference fields and validation, scoped reads and persistence; do not equate a typed name with verified pickup authority. | Not supported; contract/policy pending |
-| GAP-03 | Supporting documents | Disabled request-form and pickup-document attachment cards; no file input or file storage | Define secure upload/read/delete, allowed formats and sizes, access control, retention, document metadata and request linkage. The HTML’s file-metadata simulation is not an upload service. | Not supported; contract/policy pending |
-| GAP-04 | Request notes | Disabled notes placeholder | Add approved request-note scope, validation, persistence and detail reads before enabling entry. | Not supported |
-| GAP-05 | Automatic supplier routing | Primary requester form now shows read-only Assign automatically with label-side information help. Source-bank dropdown removed; submission disabled until routing is supported. Legacy role fixtures retain their preexisting fixed-source contract. | Define eligible-bank/routing response and human review. Current V2 command requires a source institution, so the placeholder cannot silently choose Mediatrix. Available inventory alone does not establish transfer eligibility; no automatic approval or submission is introduced. | Contract/policy pending; primary requester submission gated |
+| GAP-01 | Requester and clinical details | Editable Requesting Person, SYN-STAFF Staff ID, Attending Physician and Required Date & Time; Patient / Case Reference stays disabled | Connected under PA-REQ-01 (`details` on the request command, detail read/edit). Patient/case reference remains blocked by `RQ-20`. | Connected 2026-10-20 (except RQ-20 field) |
+| GAP-02 | Authorized pickup | Editable representative and SYN-AUTH reference | Connected under PA-REQ-02. A stated reference only; pickup identity is not verified. No "ready for pickup" step exists, so the before-pickup requirement has no enforcement point yet. | Connected 2026-10-20 |
+| GAP-03 | Supporting documents | Real file selection; upload with the request or later from the detail panel; download and remove | Connected under PA-REQ-03: PDF/PNG/JPEG, 5 MB, 3 per request, requester and supplier access only. Real retention blocked by `RQ-14`. | Connected 2026-10-20 |
+| GAP-04 | Request notes | Editable notes, 500 characters | Connected under PA-REQ-04. Supplier reply notes need `RQ-18`. | Connected 2026-10-20 |
+| GAP-05 | Supplier routing | "Supplying blood bank" select from banks with available stock; first preselected, requester confirms or changes | Connected under PA-REQ-05 (`GET /api/v2/eligible-suppliers`). Supplier still decides; fully automatic assignment would need a new eligibility rule. | Connected 2026-10-20 |
 | GAP-06 | Requester page-level PDF export | Removed by user decision on 2026-10-10 | No page-level export planned. A per-transfer handover record or receipt may be considered only after a confirmed user need and approved document content; it is not an active implementation dependency. | Removed from current scope; possible future requirement |
 | GAP-07 | Transfer custody / receipt controls | Actual reservation statuses and verified details are readable; requester custody buttons unavailable | Canonical reservation command services already exist. Connect only after required read inputs, version checks, operator permissions and workflow policy are available and verified. Backend absence has not been established. | Not connected; policy/read-input dependency |
 | GAP-08 | Ordinary request decisions, partial offers and cancellation | Bank AWAITING_DECISION requests use the verified FEFO approval panel; table shows decision_state plus reservation_status, preserving all rows. Requester work remains separate | ADR-046 / PR #67 supplies decision reads; existing reservation bridge approves full requests. Reject, request cancellation and partial offers need approved transitions (RQ-18); reservation cancellation is already separate | Bank approval connected; reject/cancel/partial offers remain disabled under RQ-18 |
-| GAP-09 | Expanded request detail panel | Shows existing verified request projection; new details remain unavailable | Once GAP-01–04 are supported, expose permitted details and document references in the read contract and connect the panel. | Not supported by current request read shape |
+| GAP-09 | Expanded request detail panel | Requester details, document links and (for the requester, while pending) edit, upload and remove | Connected under PA-REQ-01..04 in the record explorer for requester and supplier. | Connected 2026-10-20 |
 
 **Operator authorization is already implemented**, rather than missing from the API: institution sessions requiring verification use the existing operator/PIN dialog and `/api/v2/auth/operator-verifications` before command submission. The form now has a visible “Operator authorization required” section explaining that flow. It does not add a second PIN store or a simulated authorization action. Legacy test fixtures without verification-required sessions follow their existing contract. Embedding operator/PIN controls directly into this form would be an optional frontend change, not a missing backend feature.
 
@@ -429,3 +429,15 @@ Actual-host review/checkbox/Confirm-button check passed with zero domain writes.
 The PA-OCR-04 route handles operator review of these low-score suggestions.
 470 web unit/design-token tests and check:web passed. Private OCR output remains
 outside Git. No engine training, model change or three-bank accuracy claim.
+
+## PA-REQ contract-publication follow-up — 2026-10-20
+
+The PR #99 requester-detail, supporting-document and eligible-supplier routes
+are implemented in `services/api/src/v2-routes.ts`, with the matching typed
+client and synthetic fixtures. Their new path entries and detail/document
+schemas are not yet described in `services/api/openapi-v2.json`. Jopia owns
+publishing that coverage and reconciling the transfer submission's optional
+`details`/`documents` fields with the specification. This is a documentation gap,
+not a reason to claim the accepted routes are unavailable or to invent a second
+wire format. See the combined evening handoff. Patient/case data remains RQ-20;
+real document retention remains RQ-14.

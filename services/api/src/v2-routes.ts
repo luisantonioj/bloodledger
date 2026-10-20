@@ -22,6 +22,7 @@ import { assertReceiptEvidence, RECEIPT_EVIDENCE_ID_PATTERN, type PostgresReceip
 import { isReconciliationReasonCode, RECONCILIATION_POLICY_VERSION, RECONCILIATION_REASONS } from "./reconciliation-policy.js";
 import { COMPROMISE_POLICY_VERSION, COMPROMISE_REASONS, isCompromiseReasonCode } from "./compromise-policy.js";
 import { DOH_CENSUS_DISPLAY_ORDER, DOH_CENSUS_DISPLAY_POLICY_VERSION } from "./report-policy.js";
+import { DOCUMENT_ID_PATTERN, REQUEST_DETAIL_POLICY_VERSION, REQUEST_UPLOAD_BODY_LIMIT, detailDigest, detailView, documentId, isRequestSupplier, validateRequestDetails, validateRequestDocuments, type RequestDetailStore, type RequestDocumentInput } from "./request-details.js";
 import { COORDINATION_BLOOD_TYPES, COORDINATION_COMPONENT_TYPES, priorityView, redistributionView, surplusView, type CoordinationReader } from "./coordination-views.js";
 
 const IDEMPOTENCY_PATTERN = /^IDEM_[A-Z0-9_-]{1,59}$/;
@@ -62,6 +63,8 @@ export interface V2RouteDependencies {
   /** PA-OCR-03: accept INBOUND_OCR_CORRECTED_V1 captures (BLOODLEDGER_CORRECTED_INTAKE_ENABLED). Off by default. */
   correctedIntakeEnabled?: boolean;
   reviewedIntakeEnabled?: boolean;
+  /** PA-REQ-01..04: off-chain requester details and supporting documents. */
+  requestDetails?: RequestDetailStore;
 }
 
 // Read-time comparison of the printed label with the ledger status; it never changes inventory.
@@ -416,17 +419,120 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     return { scope: scope ?? "PERMITTED_INSTITUTIONS", statuses: await projection.listInboundIntake(scope), includedInventoryStatuses: ["AVAILABLE", "RESERVED"], excludedFromInventory: ["QUEUED", "FAILED", "CONFLICT"], classification: "SIMULATION_ONLY" as const };
   });
 
-  app.post("/api/v2/transfers", async (request, reply) => {
+  app.post("/api/v2/transfers", { bodyLimit: REQUEST_UPLOAD_BODY_LIMIT }, async (request, reply) => {
     sameOrigin(request); const { principal } = await restore(request); authorized(principal, principal.accountId ? ["ROLE-02","ROLE-03"] : ["ROLE-03"]);
     const body = request.body;
-    if (!hasKeys(body, ["bloodType", "componentType", "correlationId", "destinationInstitutionId", "eventTime", "quantity", "requestTime", "sourceInstitutionId", "transferId", "urgency"])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Transfer request input is invalid.");
+    const baseKeys = ["bloodType", "componentType", "correlationId", "destinationInstitutionId", "eventTime", "quantity", "requestTime", "sourceInstitutionId", "transferId", "urgency"];
+    // PA-REQ-01..04: optional off-chain details and documents travel with the request; documents require details.
+    const optional = body && typeof body === "object" ? ["details", "documents"].filter(key => key in (body as object)) : [];
+    if (!hasKeys(body, [...baseKeys, ...optional]) || (optional.includes("documents") && !optional.includes("details"))) throw new ApiFailure(400, "V2_INPUT_INVALID", "Transfer request input is invalid.");
     if ((principal.accountId ? !BANK_INSTITUTION_IDS.includes(String(body.sourceInstitutionId)) || body.sourceInstitutionId === principal.institutionId : body.sourceInstitutionId !== "INST_MEDIATRIX") || body.destinationInstitutionId !== principal.institutionId) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Transfer requests must target the authenticated recipient institution.");
     const version = contractVersion(request);
     const transferId = requiredBodyString(body, "transferId", TRANSFER_ID_PATTERN); const bloodType = requiredBodyString(body, "bloodType"); const componentType = requiredBodyString(body, "componentType"); const urgency = requiredBodyString(body, "urgency");
     const supportedComponents = version === "V2.1" ? COMPONENT_TYPES_V21 : COMPONENT_TYPES;
     if (!(BLOOD_TYPES as readonly string[]).includes(bloodType) || !(supportedComponents as readonly string[]).includes(componentType) || !(URGENCIES as readonly string[]).includes(urgency) || !Number.isSafeInteger(body.quantity) || Number(body.quantity) < 1) throw new ApiFailure(400, "V2_INPUT_INVALID", "Transfer request input is invalid.");
     const payload = { transferId, sourceInstitutionId: String(body.sourceInstitutionId), destinationInstitutionId: principal.institutionId, bloodType, componentType, quantity: Number(body.quantity), urgency, requestTime: requiredUtc(body, "requestTime"), actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: selectCorePolicy(principal, version) };
+    if (optional.includes("details")) {
+      const store = dependencies.requestDetails;
+      if (!store) throw new ApiFailure(503, "REQUEST_DETAILS_UNAVAILABLE", "Request details are not available.");
+      const idempotencyKey = requiredHeader(request);
+      await assertCommandTimes(request, principal, [payload.eventTime, payload.requestTime]);
+      const now = dependencies.clock();
+      const replay = await dependencies.store.get(generatedId("CMD_", idempotencyKey), principal.institutionId, principal.userId);
+      // A retry keeps its first validation time, so an accepted required time cannot expire into a rejection.
+      const details = validateRequestDetails(body.details, replay ? new Date(replay.acceptedAt) : now);
+      const documents = validateRequestDocuments(body.documents);
+      const detailSha256 = detailDigest(details, documents);
+      const created = await store.create({ transferId, sourceInstitutionId: payload.sourceInstitutionId, destinationInstitutionId: principal.institutionId, ...details, detailSha256, lastIdempotencyKey: idempotencyKey }, now);
+      if (created === "CONFLICT") throw new ApiFailure(409, "IDEMPOTENCY_CONFLICT", "This request was already submitted with different details.");
+      for (const document of documents) if (await store.addDocument(transferId, documentId(transferId, document), document, principal.userId, now) === "LIMIT") throw new ApiFailure(400, "REQUEST_DOCUMENT_REJECTED", "A request may have at most three documents.", [{ field: "documents", rule: "MAX_3" }]);
+    }
     return enqueue(request, reply, "TRANSFER", transferId, "SUBMIT_TRANSFER", payload, principal);
+  });
+
+  // PA-REQ-05: banks with projected AVAILABLE stock for the product, for the requester to choose from.
+  // Availability alone does not establish transfer eligibility; the chosen bank still approves or rejects.
+  app.get<{ Querystring: { bloodType?: string; componentType?: string; quantity?: string } }>("/api/v2/eligible-suppliers", async (request) => {
+    const { principal } = await restore(request); bloodBankRoutes(principal).network();
+    const { bloodType, componentType, quantity } = request.query;
+    if (!bloodType || !(BLOOD_TYPES as readonly string[]).includes(bloodType) || !componentType || !(COMPONENT_TYPES_V21 as readonly string[]).includes(componentType) || !quantity || !/^\d{1,4}$/.test(quantity) || Number(quantity) < 1) throw new ApiFailure(400, "V2_INPUT_INVALID", "Supplier query is invalid.");
+    if (!dependencies.bloodBank) throw new ApiFailure(503, "ROUTING_UNAVAILABLE", "Supplier routing is not available.");
+    const now = dependencies.clock();
+    const rows = await dependencies.bloodBank.networkAvailability(now);
+    const requested = Number(quantity);
+    const suppliers = rows
+      .filter(row => row.blood_type === bloodType && row.component_type === componentType && isRequestSupplier(String(row.institution_id)) && row.institution_id !== principal.institutionId && Number(row.available_units) > 0)
+      .map(row => ({ institutionId: String(row.institution_id), displayName: String(row.display_name), availableUnits: Number(row.available_units) }))
+      .sort((left, right) => right.availableUnits - left.availableUnits || left.institutionId.localeCompare(right.institutionId))
+      .map(({ institutionId, displayName, availableUnits }) => ({ institutionId, displayName, availabilityBand: availableUnits >= 10 ? "10_OR_MORE" : availableUnits >= 5 ? "5_TO_9" : "1_TO_4", meetsRequestedQuantity: availableUnits >= requested }));
+    return { bloodType, componentType, quantity: requested, suppliers, readAt: now.toISOString(), policyVersion: REQUEST_DETAIL_POLICY_VERSION, eligibilityNote: "AVAILABILITY_ONLY_SUPPLIER_DECIDES", classification: "SIMULATION_ONLY" as const };
+  });
+
+  // PA-REQ-01..04 reads and edits. Only the requesting and the chosen supplying institution see a request's details;
+  // everyone else gets the same not-found response. Only the requester edits, and only before the supplier decides.
+  const requestDetailStore = () => { if (!dependencies.requestDetails) throw new ApiFailure(503, "REQUEST_DETAILS_UNAVAILABLE", "Request details are not available."); return dependencies.requestDetails; };
+  const scopedDetail = async (principal: WebPrincipal, transferId: string) => {
+    if (!TRANSFER_ID_PATTERN.test(transferId)) throw new ApiFailure(400, "V2_TRANSFER_ID_INVALID", "Transfer ID is invalid.");
+    authorized(principal, ["ROLE-01", "ROLE-02", "ROLE-03"]);
+    const record = await requestDetailStore().get(transferId);
+    if (!record || (record.sourceInstitutionId !== principal.institutionId && record.destinationInstitutionId !== principal.institutionId)) throw new ApiFailure(404, "REQUEST_DETAIL_NOT_FOUND", "Request details were not found in the authorized institution scope.");
+    return record;
+  };
+  const requesterEdit = async (request: FastifyRequest, transferId: string) => {
+    sameOrigin(request); const { principal } = await restore(request);
+    const record = await scopedDetail(principal, transferId);
+    if (record.destinationInstitutionId !== principal.institutionId || !["ROLE-02", "ROLE-03"].includes(principal.roleId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Only the requesting institution may change request details.");
+    if (!await requestDetailStore().editable(transferId)) throw new ApiFailure(409, "REQUEST_DETAIL_LOCKED", "Request details cannot change after the supplier has decided.");
+    return { principal, record, idempotencyKey: requiredHeader(request) };
+  };
+  app.get<{ Params: { transferId: string } }>("/api/v2/transfers/:transferId/details", async (request) => {
+    const { principal } = await restore(request);
+    const record = await scopedDetail(principal, request.params.transferId);
+    const store = requestDetailStore();
+    return detailView(record, await store.listDocuments(record.transferId), await store.editable(record.transferId), principal.institutionId);
+  });
+  app.post<{ Params: { transferId: string } }>("/api/v2/transfers/:transferId/details", async (request) => {
+    const { principal, record, idempotencyKey } = await requesterEdit(request, request.params.transferId);
+    const body = request.body as Record<string, unknown> | null;
+    if (!hasKeys(body, ["correlationId", "details", "expectedVersion"]) || !Number.isSafeInteger(body.expectedVersion)) throw new ApiFailure(400, "V2_INPUT_INVALID", "Request detail input is invalid.");
+    requiredBodyString(body, "correlationId", CORRELATION_PATTERN);
+    const now = dependencies.clock();
+    const store = requestDetailStore();
+    const documents = await store.listDocuments(record.transferId);
+    const details = validateRequestDetails(body.details, now);
+    const updated = await store.update(record.transferId, Number(body.expectedVersion), details, detailDigest(details), idempotencyKey, now);
+    if (updated === "STALE") throw new ApiFailure(409, "STALE_STATE", "Request details changed. Reload them before editing.");
+    return detailView(updated, documents, true, principal.institutionId);
+  });
+  app.post<{ Params: { transferId: string } }>("/api/v2/transfers/:transferId/documents", { bodyLimit: REQUEST_UPLOAD_BODY_LIMIT }, async (request) => {
+    const { principal, record } = await requesterEdit(request, request.params.transferId);
+    const body = request.body as Record<string, unknown> | null;
+    if (!hasKeys(body, ["correlationId", "documents"])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Document input is invalid.");
+    requiredBodyString(body, "correlationId", CORRELATION_PATTERN);
+    const documents: RequestDocumentInput[] = validateRequestDocuments(body.documents);
+    if (documents.length === 0) throw new ApiFailure(400, "REQUEST_DOCUMENT_REJECTED", "Select at least one document.", [{ field: "documents", rule: "REQUIRED" }]);
+    const store = requestDetailStore(); const now = dependencies.clock();
+    for (const document of documents) if (await store.addDocument(record.transferId, documentId(record.transferId, document), document, principal.userId, now) === "LIMIT") throw new ApiFailure(400, "REQUEST_DOCUMENT_REJECTED", "A request may have at most three documents.", [{ field: "documents", rule: "MAX_3" }]);
+    return detailView(record, await store.listDocuments(record.transferId), true, principal.institutionId);
+  });
+  app.post<{ Params: { transferId: string; documentId: string } }>("/api/v2/transfers/:transferId/documents/:documentId/delete", async (request) => {
+    const { principal, record } = await requesterEdit(request, request.params.transferId);
+    if (!DOCUMENT_ID_PATTERN.test(request.params.documentId)) throw new ApiFailure(400, "REQUEST_DOCUMENT_ID_INVALID", "Document ID is invalid.");
+    const body = request.body as Record<string, unknown> | null;
+    if (!hasKeys(body, ["correlationId"])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Document input is invalid.");
+    requiredBodyString(body, "correlationId", CORRELATION_PATTERN);
+    const store = requestDetailStore();
+    // A retried delete finds the document already gone and returns the same current list.
+    await store.deleteDocument(record.transferId, request.params.documentId, dependencies.clock());
+    return detailView(record, await store.listDocuments(record.transferId), true, principal.institutionId);
+  });
+  app.get<{ Params: { transferId: string; documentId: string } }>("/api/v2/transfers/:transferId/documents/:documentId", async (request, reply) => {
+    const { principal } = await restore(request);
+    const record = await scopedDetail(principal, request.params.transferId);
+    if (!DOCUMENT_ID_PATTERN.test(request.params.documentId)) throw new ApiFailure(400, "REQUEST_DOCUMENT_ID_INVALID", "Document ID is invalid.");
+    const document = await requestDetailStore().readDocument(record.transferId, request.params.documentId);
+    if (!document) throw new ApiFailure(404, "REQUEST_DOCUMENT_NOT_FOUND", "The document was not found in the authorized institution scope.");
+    return reply.header("Content-Type", document.view.contentType).header("Content-Disposition", `attachment; filename="${document.view.displayName.replace(/"/g, "")}"`).header("X-Content-Type-Options", "nosniff").header("Cache-Control", "private, no-store").send(document.content);
   });
 
   app.post<{ Params: { transferId: string; action: string } }>("/api/v2/transfers/:transferId/:action", async (request, reply) => {

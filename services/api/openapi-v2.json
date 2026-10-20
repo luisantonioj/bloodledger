@@ -5187,7 +5187,8 @@
           },
           "pin": {
             "type": "string",
-            "pattern": "^[0-9]{8}$",
+            "pattern": "^(?:[0-9]{6}|[0-9]{8})$",
+            "description": "Exact length follows the active server PIN policy; the institution session advertises operatorPinLength. Six digits require SYNTHETIC_OPERATOR_PIN_6_V1; baseline hosts require eight.",
             "writeOnly": true
           },
           "action": {
@@ -5536,7 +5537,8 @@
           },
           "operatorPin": {
             "type": "string",
-            "pattern": "^[0-9]{8}$",
+            "pattern": "^(?:[0-9]{6}|[0-9]{8})$",
+            "description": "Exact length follows the active server PIN policy; the institution session advertises operatorPinLength. Six digits require SYNTHETIC_OPERATOR_PIN_6_V1; baseline hosts require eight.",
             "writeOnly": true
           }
         }
@@ -5586,7 +5588,8 @@
           },
           "pin": {
             "type": "string",
-            "pattern": "^[0-9]{8}$",
+            "pattern": "^(?:[0-9]{6}|[0-9]{8})$",
+            "description": "Exact length follows the active server PIN policy; the institution session advertises operatorPinLength. Six digits require SYNTHETIC_OPERATOR_PIN_6_V1; baseline hosts require eight.",
             "writeOnly": true
           }
         }
@@ -5614,7 +5617,8 @@
           },
           "pin": {
             "type": "string",
-            "pattern": "^[0-9]{8}$",
+            "pattern": "^(?:[0-9]{6}|[0-9]{8})$",
+            "description": "Exact length follows the active server PIN policy; the institution session advertises operatorPinLength. Six digits require SYNTHETIC_OPERATOR_PIN_6_V1; baseline hosts require eight.",
             "writeOnly": true
           }
         }

@@ -10,6 +10,7 @@ export function actionCapability(action: string): string | undefined {
   if (/^POST \/api\/v2\/reservations\/[^/]+\/receipt-verifications$/.test(action)) return "transfer:receive";
   if (action === "POST /api/v2/reservations") return "transfer:approve";
   if (action === "POST /api/v2/transfers") return "transfer:request";
+  if (/^POST \/api\/v2\/transfers\/TRF_[A-Z0-9_-]{1,56}\/(details|documents|documents\/DOC_[0-9A-F]{40}\/delete)$/.test(action)) return "transfer:request";
   if (action === "POST /api/v2/local-releases") return "inventory:local-release";
   if (action === "POST /api/v2/inbound-captures") return "inventory:capture";
   if (action === "POST /api/v2/reconciliation") return "inventory:reconcile";

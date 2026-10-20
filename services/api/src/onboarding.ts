@@ -1,3 +1,4 @@
+import { validOperatorPin } from "./operator-pin-policy.js";
 import { registerAccountAdministration } from "./account-administration.js";
 import { randomBytes } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
@@ -142,7 +143,7 @@ export class PostgresOnboarding {
       if(action==="activate"){
         // ADR-039: approval starts the 30-day purge; activating after it needs a new application.
         if(!app.institution_id&&!detail)fail("ONB_APPLICATION_DETAIL_PURGED");
-        if(typeof body.operatorPin!=="string"||! /^[0-9]{8}$/.test(body.operatorPin)||app.institution_id||!detail||typeof body.loginEmail!=="string"||!/^(bloodbank|facility)@[a-z0-9.-]+[.]bloodledger$/.test(body.loginEmail)||typeof body.password!=="string"||body.password.length<12||body.password.length>128)fail("ONB_APPLICATION_INVALID",400);
+        if(typeof body.operatorPin!=="string"||!validOperatorPin(body.operatorPin)||app.institution_id||!detail||typeof body.loginEmail!=="string"||!/^(bloodbank|facility)@[a-z0-9.-]+[.]bloodledger$/.test(body.loginEmail)||typeof body.password!=="string"||body.password.length<12||body.password.length>128)fail("ONB_APPLICATION_INVALID",400);
         // PUBLIC_APPLICATION_V1: the provisioned login must be the identifier the applicant requested.
         const publicDetail=app.schema_version==="PUBLIC_APPLICATION_V1";
         if(publicDetail&&body.loginEmail!==(detail!.primaryAccount as Row|undefined)?.requestedLoginEmail)fail("ONB_LOGIN_EMAIL_MISMATCH",400);
@@ -209,7 +210,7 @@ export class PostgresOnboarding {
   async operator(principal:WebPrincipal,id:string,action:string,body:Row,idem:string,now:Date):Promise<Row>{
     if(!principal.operatorId||!principal.administrativeCapabilities?.includes("operators:manage"))fail("ONB_NOT_AUTHORIZED",403);
     object(body,action==="reset-pin"?["expectedVersion","correlationId","reasonCode","pin"]:["expectedVersion","correlationId","reasonCode"]);reason(body);
-    if(action==="reset-pin"&&(typeof body.pin!=="string"||!/^[0-9]{8}$/.test(body.pin)))fail("OPERATOR_INPUT_INVALID",400);
+    if(action==="reset-pin"&&(typeof body.pin!=="string"||!validOperatorPin(body.pin)))fail("OPERATOR_INPUT_INVALID",400);
     const auditBody={...body};delete auditBody.pin;
     return identityTransaction(this.pool,client=>this.audited(client,principal,action.toUpperCase(),id,auditBody,idem,now,async()=>{
       const rows=await client.query<Row>("SELECT * FROM app.institution_operators WHERE operator_id=$1 FOR UPDATE",[id]);const operator=rows.rows[0];if(!operator)fail("ONB_NOT_FOUND",404);

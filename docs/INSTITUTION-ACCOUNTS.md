@@ -306,3 +306,32 @@ prove protected-data clearing and offline ownership isolation. Seven existing
 web browser tests remained intentionally skipped; no skipped or unavailable
 check is represented as passing acceptance evidence. Clinical, research-data,
 physical-device, privacy/regulatory and production gates remain unchanged.
+
+## Shared development credentials and six-digit transition — 2026-10-20
+
+Accepted by the user acting as Jopia; SIMULATION_ONLY, self-validation.
+Each institution retains a distinct password and each operator a distinct PIN.
+The same identity uses the same secret across participating hosts. This does
+not synchronize blood records or create a shared live database.
+
+The immutable original policy/bootstrap retains its eight-digit baseline.
+The additive runtime selection
+`BLOODLEDGER_OPERATOR_PIN_POLICY_VERSION=SYNTHETIC_OPERATOR_PIN_6_V1`
+requires exactly six digits for verification, activation and PIN administration.
+Unset / `OPERATOR_PIN_8_V1` keeps eight; unknown versions prevent startup.
+Deploy matching API/web code and rotate credentials before selecting six.
+
+The private package is the sole credential source, never committed or posted.
+Hosts store independently salted hashes. Rotation revokes prior sessions/grants
+and preserves roles, identities and domain records. Import refuses mismatched
+rosters, wrong checksums, non-private files or pending commands. Exact replay
+checks the current hashes and adds no audit row. See
+[the procedure](../scripts/institution-accounts/SHARED-CREDENTIALS.md).
+Jopia must import the package on his host before synchronization is complete.
+His host-specific runtime file is not part of the transfer.
+
+The user's same-day follow-up selects exactly 12-character random passwords in
+`SYNTHETIC_ACCOUNT_PASSWORD_12_V1` shared packages. The replacement package
+preserves all six-digit PIN values; already matching PIN verifiers and operator
+versions are unchanged. Use the revised checksum and discard superseded transfer
+copies. The ordinary application password contract remains 12–128 characters.

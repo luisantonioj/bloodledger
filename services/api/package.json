@@ -10,7 +10,8 @@
     "test": "npm run build && node --test --test-isolation=none build/test/*.test.js",
     "start": "node build/src/server.js",
     "worker": "node build/src/worker-main.js",
-    "provision:synthetic-account": "npm run build && node build/src/provision-synthetic-account.js"
+    "provision:synthetic-account": "npm run build && node build/src/provision-synthetic-account.js",
+    "stock-checkpoints": "node build/src/stock-checkpoint-main.js"
   },
   "dependencies": {
     "@bloodledger/coordination": "0.1.0",

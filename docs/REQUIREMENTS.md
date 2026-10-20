@@ -626,6 +626,7 @@ sprint:
 | RQ-16 | What institutionally approved minimum-stock and safe-stock levels, shortage rule and surplus indicator replace the unavailable `FR-04` dashboard classification (Critical, Low, Adequate, Surplus)? This covers unit of measure, institution, blood-group and component scope, boundary comparisons, zero and missing-coverage handling, freshness tolerance, and the owner, approver, effective date and audit reference. The `SYNTHETIC_OPTIMIZATION_V1` and V2.1 surplus safety allowance and minimum reserve are not stock-classification thresholds. | Before operational dashboard stock classification or full `FR-04` acceptance; accepted project-only demonstration exception is recorded under FR-04 |
 | RQ-18 | Which request decisions beyond approval are allowed, and with what rules? Rejection by the supplying ROLE-02 (reason codes, terminal state), cancellation of a still-pending request by its requester, and partial offers (allowed at all, and how the remainder is handled). The ledger request asset has no reject or cancel transition today; enabling them needs new chaincode functions and a lifecycle upgrade. | Before any request reject, cancel or partial-offer control |
 | RQ-19 | Should any intake path other than confirmed OCR capture exist: manual Donation No. entry or bulk CSV import? ADR-035 currently forbids unverified manual or system-import records. A new path needs its verification evidence, operator authority, confidence and confirmation rules and an ADR superseding ADR-035. **Partly resolved for simulation on 2026-10-19:** operator correction of an OCR capture is allowed by ADR-050 / `PA-OCR-03`. PA-OCR-04 additionally permits all-field review after OCR for simulation. Scanner-free manual entry and CSV import stay open. | Before enabling fully manual intake or Inventory CSV import |
+| RQ-20 | May a requester record a patient/case reference? If so, in what format, who may access it, and how long is it retained? `PA-REQ-01` keeps the field disabled; see `docs/frontend/REQUESTER-FORM-DECISIONS.md`. | Before collecting any patient/case reference |
 
 Unanswered questions must not be guessed by a coding agent. The relevant task is
 blocked or implemented behind an explicitly approved prototype assumption.
@@ -658,8 +659,12 @@ roles or change Fabric policy. Internal maintenance remains separate.
 
 Every privileged command needs operator PIN verification bound to session,
 institution, action, canonical body digest and idempotency key. Synthetic PINs
-are eight random digits, salted/hashed off-chain; five failed attempts lock for
-15 minutes. Verification expires after two minutes; retries preserve original
+use the eight-digit baseline unless the explicitly selected
+`SYNTHETIC_OPERATOR_PIN_6_V1` policy is enabled after coordinated credential
+rotation (user acting as Jopia, accepted 2026-10-20). That version requires
+exactly six random digits, including possible leading zeros; a host accepts
+only its selected length. The session advertises `operatorPinLength`. PINs stay
+salted/hashed off-chain; five failed attempts lock for 15 minutes. Verification expires after two minutes; retries preserve original
 actors and durable results. No real staff identifiers or plaintext PIN fixtures.
 Normal suspension is additionally refused while requests, reservations or queued
 mutations are unresolved. RQ-12/15 emergency behavior remains deferred.
@@ -700,6 +705,25 @@ It is not a real-institution onboarding or data-collection authorization.
 abuse controls, credential recovery and real institutional evidence are still
 required before any real facility applies.
 
+## PA-REQ-01..05 — Requester form details, documents and supplier choice (2026-10-20)
+
+**Accepted by Jopia and Lat; SIMULATION_ONLY** (recorded in one multi-role
+session; self-validation disclosed). Policy `SYNTHETIC_REQUEST_DETAIL_V1`.
+The decision record, with each rule, is
+[`docs/frontend/REQUESTER-FORM-DECISIONS.md`](frontend/REQUESTER-FORM-DECISIONS.md).
+It closes `GAP-01` to `GAP-05` and `GAP-09` in the frontend gap register, except
+for the patient/case reference, which stays disabled under `RQ-20`.
+
+| Rule | Decision |
+|---|---|
+| Supplier (PA-REQ-05) | `GET /api/v2/eligible-suppliers` lists active blood banks with projected `AVAILABLE` stock for the product, most available first (ties by institution ID), with an availability band only. The requester confirms or changes the preselected bank. The supplier still approves or rejects; nothing is approved automatically. |
+| Details (PA-REQ-01/02/04) | Optional `details` on `POST /api/v2/transfers`: requesting person (required), `SYN-STAFF-0000` staff ID, attending physician, future required time, pickup representative, `SYN-AUTH-XXXXXX` authorization reference, and a plain-text note of up to 500 characters. Unknown fields, including a patient/case reference, are rejected. The pickup reference is stated, not verified. |
+| Documents (PA-REQ-03) | Optional `documents` on the same command or a later upload: PDF, PNG or JPEG, checked by content signature, at most 5 MB each and 3 per request. Bytes are stored on a project-owned, Git-ignored host directory; the operator PIN binds the metadata and SHA-256 digest. |
+| Storage | Off-chain only (`app.v2_request_details`, `app.v2_request_documents`). The ledger payload is unchanged. |
+| Access | The requesting and the chosen supplying institution read details and download documents; anyone else gets `404 REQUEST_DETAIL_NOT_FOUND`. Only the requester edits, with an `expectedVersion` (`409 STALE_STATE`), and only while the request is queued or pending without a reservation (`409 REQUEST_DETAIL_LOCKED`). |
+| Retries | Same idempotency key and body: one command, one detail row and one copy of each document. Same transfer ID with different details: `409 IDEMPOTENCY_CONFLICT`. |
+| Not implemented | Requiring the pickup fields before a "ready for pickup" step: the current workflow has no such step. Real retention stays blocked by `RQ-14`. |
+
 ## PA-DEF-07 — Automatic stock checkpoints (2026-10-19)
 
 **Accepted by Jopia; SIMULATION_ONLY.** Lat's Compliance Reports page needs
@@ -710,7 +734,7 @@ simulation under `SYNTHETIC_STOCK_CHECKPOINT_V1`.
 
 | Rule | Decision |
 |---|---|
-| Schedule | 09:00 and 16:00 Asia/Manila (01:00 and 08:00 UTC) every day, run by the command worker. |
+| Schedule | 09:00 and 16:00 Asia/Manila (01:00 and 08:00 UTC) every day, run by the command worker or the dedicated off-chain checkpoint service. |
 | Who | Every institution with `status = ACTIVE` and `account_category = BLOOD_BANK`. Requesters, PRC and DOH hold no stock and are not recorded. |
 | Eligible stock | `AVAILABLE` and `RESERVED` units whose printed expiry is after the capture time. Units past expiry but not yet evaluated are excluded; so are dispatched, in-transit, received, released, compromised and expired units. |
 | Content | The complete 8 blood types × 4 V2 component types matrix (whole blood, packed red cells, fresh frozen plasma, platelets; zero-filled; cryoprecipitate is not part of the census), the actual `capturedAt`, the slot's `scheduledFor`, the policy version and a source digest. Column order is the synthetic `DOH_CENSUS_COLUMN_ORDER_V1` (O, A, B, AB positive, then negative), which is not a DOH-approved order. |

@@ -13,6 +13,7 @@ export type Permission =
   | "profile:read";
 
 export interface Principal {
+  operatorPinLength?: 6 | 8;
   accountId?: string;
   accountCategory?: "BLOOD_BANK" | "REQUESTOR" | "PRC" | "DOH" | "SYSTEM";
   accountState?: string;

@@ -53,7 +53,7 @@ export function OperatorVerification({principal, children}: {principal: Principa
     <form className="preview-modal-body auth-form" onSubmit={event => void verify(event)}>
       <div className="operator-verification-fields">
         <label>Operator<span className="requester-select"><select aria-label="Operator" value={operatorId} disabled={busy || Boolean(pending && actorBound(pending.action) && boundOperators.current.has(pending.idempotencyKey))} onChange={event => setOperatorId(event.target.value)}>{eligibleOperators(principal.operators ?? [], pending.action).map(operator => <option key={operator.operatorId} value={operator.operatorId}>{operator.roleId} · {operator.operatorId}</option>)}</select></span></label>
-        <label>Operator PIN<input type="password" inputMode="numeric" pattern="[0-9]{8}" minLength={8} maxLength={8} autoComplete="off" value={pin} disabled={busy} onChange={event => setPin(event.target.value)} required/></label>
+        <label>Operator PIN<input type="password" inputMode="numeric" pattern={`[0-9]{${principal.operatorPinLength ?? 8}}`} minLength={principal.operatorPinLength ?? 8} maxLength={principal.operatorPinLength ?? 8} autoComplete="off" value={pin} disabled={busy} onChange={event => setPin(event.target.value)} required/></label>
       </div>
       {error && <p role="alert">{error}</p>}
       <div className="operator-verification-actions"><button className="button compact" type="button" onClick={cancel}>Cancel</button><button className="button primary compact" disabled={busy}>{busy ? "Verifying…" : "Verify and submit"}</button></div>

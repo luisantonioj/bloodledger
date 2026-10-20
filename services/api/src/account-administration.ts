@@ -1,3 +1,4 @@
+import { validOperatorPin } from "./operator-pin-policy.js";
 import { randomBytes } from "node:crypto";
 import type { Pool } from "pg";
 import type { FastifyInstance,FastifyRequest } from "fastify";
@@ -49,7 +50,7 @@ export function registerAccountAdministration(app:FastifyInstance,pool:Pool,rest
   app.post("/api/v2/onboarding/operators",async r=>{
     const {principal}=await restore(r),body=r.body as Row;
     if(!principal.operatorId||!principal.administrativeCapabilities?.includes("operators:manage"))throw new ApiFailure(403,"ONB_NOT_AUTHORIZED","Operator administration is not permitted.");
-    if(!body||Object.keys(body).sort().join(",")!=="correlationId,expectedVersion,institutionId,pin"||!Number.isSafeInteger(body.expectedVersion)||typeof body.pin!=="string"||!/^[0-9]{8}$/.test(body.pin)||!/^CORR_[0-9A-F]{32}$/.test(String(body.correlationId)))throw new ApiFailure(400,"OPERATOR_INPUT_INVALID","Operator input is invalid.");
+    if(!body||Object.keys(body).sort().join(",")!=="correlationId,expectedVersion,institutionId,pin"||!Number.isSafeInteger(body.expectedVersion)||typeof body.pin!=="string"||!validOperatorPin(body.pin)||!/^CORR_[0-9A-F]{32}$/.test(String(body.correlationId)))throw new ApiFailure(400,"OPERATOR_INPUT_INVALID","Operator input is invalid.");
     if(principal.accountCategory!=="PRC"&&principal.institutionId!==body.institutionId)throw new ApiFailure(403,"ONB_NOT_AUTHORIZED","Operator is outside the institution scope.");
     const key=String(r.headers["idempotency-key"]??"");if(!/^IDEM_[A-Z0-9_-]{1,59}$/.test(key))throw new ApiFailure(400,"INVALID_IDEMPOTENCY_KEY","An idempotency key is required.");
     return identityTransaction(pool,async client=>{
