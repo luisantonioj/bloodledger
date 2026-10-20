@@ -1,7 +1,7 @@
 import { ActionButton } from "../../components/ui/action-button";
 import { PaginatedTable } from "../../components/ui/record-pagination";
 import { SortableHeader, TableViewBar, useTableView, type TableColumn } from "../../components/ui/table-view";
-import { RefreshIcon } from "../../components/ui/refresh-button";
+import { RefreshButton } from "../../components/ui/refresh-button";
 import { useEffect, useState } from "react";
 import type { Principal } from "../../auth/permissions";
 import { InformationHelp } from "../../components/ui/information-help";
@@ -30,7 +30,7 @@ export function BloodUnitReceiptPage({principal}:{principal:Principal}) {
   const view=useTableView("bank-receipts",receiptColumns(principal),received),show=view.isVisible;
   useEffect(()=>{if(!hasRecords){setScannerOpen(false);setDetailId(undefined);}},[hasRecords]);
   return <div className="page blood-unit-receipt-page">
-    <header className="page-head"><h1 className="page-title">Blood Unit Receipt</h1><button className="button compact dashboard-refresh" type="button" disabled={state.busy} aria-busy={state.busy} onClick={state.manual}><RefreshIcon/>{state.busy?"Refreshing…":"Refresh"}</button></header>
+    <header className="page-head"><h1 className="page-title">Blood Unit Receipt</h1><RefreshButton busy={state.busy} onRefresh={state.manual}/></header>
     <section className="receipt-launch-card"><div className="receipt-launch-icon" aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M3 7h4l2-3h6l2 3h4v13H3Z"/><circle cx="12" cy="13" r="4"/></svg></div><div className="receipt-launch-copy"><span className="receipt-eyebrow">Mobile workflow</span><h2>Receive blood through the mobile scanner</h2></div><ActionButton className="button primary compact" type="button" disabled={!records} unavailableReason={"Receipt records must load before the mobile scanner can be opened."} onClick={()=>{setDetailId(undefined);setScannerOpen(true);}}>Open Mobile Receipt Scanner</ActionButton><InformationHelp label="Mobile workflow">Capture a label and review the incoming transfer.</InformationHelp></section>
     {error&&<div className="requester-transfer-notice" role="status"><span className="requester-notice-icon" aria-hidden="true">!</span><div className="requester-notice-copy"><strong>Receipt records unavailable</strong><p>{records?"Showing the last confirmed records. ":""}{error}</p></div><button className="button compact dashboard-refresh" type="button" onClick={state.manual} disabled={state.busy}>Retry</button></div>}
     <section className="requester-records-card receipt-history-card"><header className="requester-records-heading"><h2>Recorded inbound receipts</h2><InformationHelp label="Recorded inbound receipts">Review transfers recorded as received by your facility. Select a reference to read its current reservation details. Photos taken in the scanner preview do not add receipt records.</InformationHelp></header>

@@ -142,7 +142,10 @@ export class PostgresV2CommandStore implements V2CommandStore {
       const locked=await client.query<Record<string,unknown>>("SELECT institution_id,status,account_model FROM app.institutions WHERE institution_id=ANY($1::text[]) ORDER BY institution_id FOR UPDATE",[scopes]);
       const activeInstitution={rows:locked.rows.filter(r=>r.institution_id===input.actorInstitutionId)};
       if(input.payload.policyVersion==='SYNTHETIC_INSTITUTION_CORE_V1'&&locked.rows.some(r=>r.status!=='ACTIVE'))throw new ApiFailure(403,'AUTH_SCOPE_FORBIDDEN','A workflow institution is inactive.');
-      if(activeInstitution.rows[0]?.account_model==="INSTITUTION_V1"){
+      // PA-TC-03: the scheduled evaluator is not a session operator; it may only queue expiry for an ACTIVE institution.
+      const expiryService=input.actorUserId==="USR_SERVICE_EXPIRY"&&input.operation==="EVALUATE_COMPONENT_EXPIRY";
+      if(expiryService&&activeInstitution.rows[0]?.status!=="ACTIVE")throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","Institution/operator is not active.");
+      if(!expiryService&&activeInstitution.rows[0]?.account_model==="INSTITUTION_V1"){
         const activeOperator=await client.query("SELECT 1 FROM app.institution_operators o JOIN app.application_users u ON u.user_id=o.account_id WHERE o.operator_id=$1 AND o.institution_id=$2 AND o.status='ACTIVE' AND u.status='ACTIVE' AND o.version=$3 AND EXISTS(SELECT 1 FROM app.application_sessions s WHERE s.user_id=o.account_id AND s.session_id=$4 AND s.revoked_at IS NULL AND s.expires_at>CURRENT_TIMESTAMP) FOR UPDATE OF o,u",[input.actorUserId,input.actorInstitutionId,input.operatorVersion,input.verificationSessionId]);
         if(activeInstitution.rows[0].status!=="ACTIVE"||!activeOperator.rows.length)throw new ApiFailure(403,"AUTH_SCOPE_FORBIDDEN","Institution/operator is not active.");
       }

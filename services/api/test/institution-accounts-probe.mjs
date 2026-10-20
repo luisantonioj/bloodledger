@@ -73,6 +73,8 @@ try{
   await probeReceiptVerification({admin,runtime});
   const {probeStockCheckpoints}=await import('./stock-checkpoint-database-probe.mjs');
   await probeStockCheckpoints({admin,runtime});
+  const {probeCorrectedIntake}=await import('./corrected-intake-database-probe.mjs');
+  await probeCorrectedIntake({admin,runtime});
   if(process.env.BLOODLEDGER_ACCOUNTS_BROWSER==='1'){
     const {chromium}=await import('@playwright/test');
     await app.listen({host:'127.0.0.1',port:5174});

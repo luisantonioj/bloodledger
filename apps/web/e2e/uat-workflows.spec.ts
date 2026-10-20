@@ -7,7 +7,7 @@ const reconciliationCodes = ["LABEL_RECORD_MISMATCH","POSSIBLE_DUPLICATE","COMPO
 function policy(kind: "compromise"|"reconciliation") { return {policyVersion:kind === "compromise" ? "SYNTHETIC_COMPROMISE_REASONS_V1" : "SYNTHETIC_RECONCILIATION_REASONS_V1",effect:kind === "compromise" ? "QUARANTINE_PENDING_MANUAL_REVIEW" : "RECONCILIATION_HOLD_ONLY",freeTextAllowed:false,classification:"SIMULATION_ONLY",reasons:(kind === "compromise" ? compromiseCodes : reconciliationCodes).map((code,index) => ({code,label:`API reason ${index+1}`}))}; }
 function json(route: Route, body: unknown, status = 200) { return route.fulfill({status,contentType:"application/json",body:JSON.stringify(body)}); }
 function command(body: Record<string,unknown>, status = "QUEUED", resourceId = reservation.reservationId, resourceType = "TRANSFER") {return {commandId:"CMD_UAT_SYNTH",resourceType,resourceId,status,statusUrl:"/api/v2/commands/CMD_UAT_SYNTH",acceptedAt:"2026-10-10T02:00:00Z",correlationId:body.correlationId ?? "CORR_00000000000000000000000000000000",safeErrorCode:null,classification:"SIMULATION_ONLY",replayed:false};}
-const capabilities = ["transfer:prepare","transfer:dispatch","transfer:transit","transfer:receive","transfer:cancel","transfer:compromise","inventory:local-release","inventory:reconcile"];
+const capabilities = ["transfer:prepare","transfer:dispatch","transfer:transit","transfer:receive","transfer:cancel","transfer:compromise","transfer:delay","transfer:resume","inventory:local-release","inventory:reconcile"];
 async function setup(page: Page, overrides: Partial<typeof reservation> = {}, intercept?: (route:Route,path:string) => Promise<boolean>, recipient = false, caps = capabilities) {
   const row = {...reservation,...overrides}; let active = true;
   const principal = {accountId:"ACC_UAT_SYNTH",accountCategory:recipient?"REQUESTOR":"BLOOD_BANK",verificationRequired:true,userId:"USR_UAT_SYNTH",displayName:"Synthetic UAT",institutionId:recipient?row.destinationInstitutionId:row.sourceInstitutionId,institutionDisplayName:"Synthetic facility",roleId:recipient?"ROLE-03":"ROLE-02",roleDisplayName:"Institution account",permissions:["dashboard:operational","inventory:read","transfers:read","alerts:read","profile:read"],operators:[{operatorId:"OP_UAT_SYNTH",roleId:recipient?"ROLE-03":"ROLE-02",capabilityProfile:"ROLE",version:1,actionCapabilities:caps}],classification:"SIMULATION_ONLY"};
@@ -35,6 +35,8 @@ for (const [action,label,state,prepared,local,recipient] of [
   ["receive","Receive reservation","IN_TRANSIT",true,false,true],
   ["cancel","Cancel reservation","ACTIVE",false,false,false],
   ["compromise","Report compromise","DISPATCHED",true,false,false],
+  ["delay","Record delay","IN_TRANSIT",true,false,false],
+  ["resume","Resume transfer","DELAYED",true,false,false],
 ] as const) {
   test(`${action}: current read version, exact body, explicit confirmation, operator binding`,async ({page}) => {
     let body:Record<string,unknown>={},posts=0,verification:Record<string,unknown>={};
@@ -45,10 +47,14 @@ for (const [action,label,state,prepared,local,recipient] of [
     const section=await open(page);await section.getByRole("button",{name:label,exact:true}).click();
     if(action==="prepare"){await section.getByLabel("Preparation evidence ID",{exact:true}).fill("EVD_UAT_SYNTH");await section.getByLabel("Preparation evidence SHA-256").fill("a".repeat(64));await section.getByLabel("Prepared at (ISO 8601 with timezone)").fill("2026-10-09T00:00:00Z");}
     if(action==="compromise"){await expect(section.getByLabel("Compromise reason").locator("option")).toHaveCount(5);await section.getByLabel("Compromise reason").selectOption(compromiseCodes[0]);await expect(section.getByText("This records quarantine pending manual review.",{exact:true})).toBeVisible();await expect(section.locator('textarea,input[type="text"]')).toHaveCount(0);}
+    if(action==="delay"){await expect(section.getByRole("button",{name:"Confirm reservation action",exact:true})).toBeDisabled();await section.getByLabel("Delay reason").selectOption("TRAFFIC");await expect(section.locator('textarea,input[type="text"]')).toHaveCount(0);}
+    if(action==="resume")await expect(section.getByText("Delayed — follow up with the other facility.",{exact:false})).toBeVisible();
     await expect(section.getByRole("button",{name:"Confirm reservation action",exact:true})).toBeDisabled();expect(posts).toBe(0);
     await section.getByRole("checkbox").check();await section.getByRole("button",{name:"Confirm reservation action",exact:true}).click();await verify(page);
     await expect(section.getByRole("heading",{name:"Accepted and queued",exact:true})).toBeVisible();expect(posts).toBe(1);
-    expect(Object.keys(body).sort()).toEqual(["correlationId","eventTime","expectedVersion",...(action==="prepare"?["preparedAt","preparedEvidenceDigest","preparedEvidenceId"]:[]),...(action==="compromise"?["reasonCode"]:[])].sort());
+    expect(Object.keys(body).sort()).toEqual(["correlationId","eventTime","expectedVersion",...(action==="prepare"?["preparedAt","preparedEvidenceDigest","preparedEvidenceId"]:[]),...(action==="compromise"||action==="delay"?["reasonCode"]:[]),...(action==="dispatch"||action==="receive"?["location"]:[])].sort());
+    // TC-G01: without a granted permission the browser reports a denial, so the checkpoint falls back with that reason.
+    if(action==="dispatch"||action==="receive")expect(body.location).toMatchObject({source:"FACILITY_FALLBACK",fallbackReason:"PERMISSION_DENIED",latitude:null,longitude:null});
     if(action==="receive")await expect(section.getByText("Receipt records RECEIVED stock. It does not make the units usable.",{exact:true})).toBeVisible();
   });
 }

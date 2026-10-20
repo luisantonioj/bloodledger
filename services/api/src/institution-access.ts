@@ -13,10 +13,10 @@ export const BANK_INSTITUTION_IDS = accountPolicy.accounts.filter(a => a.categor
 export function operatorActions(operator: OperatorProfile): string[] {
   if(operator.capabilityProfile==='PRC_REVIEWER')return ['prc-supply:respond','onboarding:invite','onboarding:review','onboarding:approve','onboarding:activate','institution:suspend','institution:reactivate','institution:profile','institution:account','operator:create-administrator','operator:reset-pin','operator:revoke'];
   if(operator.capabilityProfile==='INSTITUTION_ADMIN')return ['institution:profile','operator:create-administrator','operator:reset-pin','operator:revoke'];
-  if(operator.roleId==='ROLE-03')return ['transfer:request','transfer:receive','transfer:cancel','transfer:compromise'];
+  if(operator.roleId==='ROLE-03')return ['transfer:request','transfer:receive','transfer:cancel','transfer:compromise','transfer:delay'];
   if(!['ROLE-01','ROLE-02'].includes(operator.roleId))return [];
   // ADR-049: a blood bank receives transfers it is the destination of, so its operators also hold transfer:receive.
-  return ['inventory:capture','inventory:local-release','inventory:reconcile','inventory:expiry','alert:acknowledge','transfer:prepare','transfer:dispatch','transfer:transit','transfer:receive','transfer:cancel','transfer:compromise',...(operator.roleId==='ROLE-02'?['transfer:request','transfer:approve','transfer:reject','prc-supply:request','prc-supply:cancel']:[])];
+  return ['inventory:capture','inventory:local-release','inventory:reconcile','inventory:expiry','alert:acknowledge','transfer:prepare','transfer:dispatch','transfer:transit','transfer:receive','transfer:cancel','transfer:compromise','transfer:delay','transfer:resume',...(operator.roleId==='ROLE-02'?['transfer:request','transfer:approve','transfer:reject','prc-supply:request','prc-supply:cancel']:[])];
 }
 export function primaryPrincipal(record: CredentialRecord): WebPrincipal {
   const category = record.accountCategory;

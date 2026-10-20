@@ -1,5 +1,5 @@
 import { DohReportingDashboard } from "./doh-reporting-dashboard";
-import { RefreshIcon } from "../../components/ui/refresh-button";
+import { RefreshButton } from "../../components/ui/refresh-button";
 import { can } from "../../auth/permissions";
 import { isRequester, type RequesterRequests } from "./requester-dashboard-data";
 import type { Principal } from "../../auth/permissions";
@@ -32,10 +32,7 @@ function StandardDashboardPage({ principal }: { principal: Principal }) {
           ? <time dateTime={state.data.lastSuccessfulProjectionAt}>{formatManilaDateTime(state.data.lastSuccessfulProjectionAt)}</time>
           : "Unavailable"}
       </span>
-      <button className="button compact dashboard-refresh" type="button" onClick={refresh} disabled={busy} aria-busy={busy}>
-        <RefreshIcon/>
-        {busy ? "Refreshing…" : "Refresh"}
-      </button>
+      <RefreshButton busy={busy} onRefresh={refresh}/>
       </div>
     </header>
     <section className="dashboard-content">

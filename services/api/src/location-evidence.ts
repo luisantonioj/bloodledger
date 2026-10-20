@@ -13,19 +13,20 @@ export interface LocationCaptureInput<P extends "DISPATCH" | "RECEIPT" = "DISPAT
   capturedAt: string;
 }
 
-export interface LocationEvidence<P extends "DISPATCH" | "RECEIPT" = "DISPATCH" | "RECEIPT"> extends LocationCaptureInput<P> {
+export interface LocationEvidence<P extends "DISPATCH" | "RECEIPT" = "DISPATCH" | "RECEIPT", V extends LocationPolicyVersion = "SYNTHETIC_LOCATION_V1"> extends LocationCaptureInput<P> {
   evidenceId: string;
   evidenceDigest: string;
   facilityMatched: boolean;
   fallback: boolean;
-  policyVersion: "SYNTHETIC_LOCATION_V1";
+  policyVersion: V;
   classification: "SYNTHETIC_DATA";
   deleteAfter: string;
 }
 
+export type LocationPolicyVersion = "SYNTHETIC_LOCATION_V1" | "SYNTHETIC_LOCATION_V2";
 type LocationPolicy = {
   classification: "SYNTHETIC_DATA";
-  policyVersion: "SYNTHETIC_LOCATION_V1";
+  policyVersion: LocationPolicyVersion;
   maximumAccuracyMetres: number;
   facilityMatchRadiusMetres: number;
   retentionDays: number;
@@ -33,8 +34,9 @@ type LocationPolicy = {
   facilities: { institutionId:string; latitude:number; longitude:number }[];
 };
 
-const policyUrl = new URL("../../../coordination/policy/synthetic-location-v1.json", import.meta.url);
-const policy = JSON.parse(readFileSync(policyUrl, "utf8")) as LocationPolicy;
+const loadPolicy = (file: string) => JSON.parse(readFileSync(new URL(`../../../coordination/policy/${file}`, import.meta.url), "utf8")) as LocationPolicy;
+// V1 serves the V1 transfer contract; V2 (TC-T04 remediation, Proposed) covers the V2 institution-account hospitals.
+const policies: Record<LocationPolicyVersion, LocationPolicy> = { SYNTHETIC_LOCATION_V1: loadPolicy("synthetic-location-v1.json"), SYNTHETIC_LOCATION_V2: loadPolicy("synthetic-location-v2.json") };
 
 function invalid(): never {
   throw new ApiFailure(400, "INVALID_LOCATION_EVIDENCE", "Synthetic location evidence is invalid.");
@@ -53,8 +55,15 @@ function distanceMetres(leftLat:number,leftLon:number,rightLat:number,rightLon:n
   return 6_371_000*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
-export function captureSyntheticLocationEvidence<P extends "DISPATCH"|"RECEIPT">(input:LocationCaptureInput<P>,evidenceId:string):LocationEvidence<P> {
-  if(policy.policyVersion!=="SYNTHETIC_LOCATION_V1"||policy.classification!=="SYNTHETIC_DATA"||policy.retentionDays!==30)invalid();
+/** The synthetic facility point used for an explicit fallback; undefined when the institution has none. */
+export function facilityPoint(institutionId:string,policyVersion:LocationPolicyVersion):{latitude:number;longitude:number}|undefined {
+  const facility=policies[policyVersion].facilities.find(item=>item.institutionId===institutionId);
+  return facility?{latitude:facility.latitude,longitude:facility.longitude}:undefined;
+}
+
+export function captureSyntheticLocationEvidence<P extends "DISPATCH"|"RECEIPT",V extends LocationPolicyVersion="SYNTHETIC_LOCATION_V1">(input:LocationCaptureInput<P>,evidenceId:string,policyVersion:V=("SYNTHETIC_LOCATION_V1" as V)):LocationEvidence<P,V> {
+  const policy=policies[policyVersion];
+  if(policy.policyVersion!==policyVersion||policy.classification!=="SYNTHETIC_DATA"||policy.retentionDays!==30)invalid();
   if(!/^LOC_[A-Z0-9_-]{1,56}$/.test(evidenceId)||!["DISPATCH","RECEIPT"].includes(input.phase))invalid();
   if(!Number.isFinite(input.latitude)||input.latitude < -90||input.latitude > 90||!Number.isFinite(input.longitude)||input.longitude < -180||input.longitude > 180)invalid();
   if(!Number.isFinite(input.accuracyMetres)||input.accuracyMetres<=0||input.accuracyMetres>policy.maximumAccuracyMetres)invalid();
@@ -67,6 +76,6 @@ export function captureSyntheticLocationEvidence<P extends "DISPATCH"|"RECEIPT">
   const capturedMs=parseUtc(input.capturedAt);
   const facilityMatched=distanceMetres(input.latitude,input.longitude,facility.latitude,facility.longitude)<=policy.facilityMatchRadiusMetres;
   if(fallback&&!facilityMatched)invalid();
-  const evidenceDigest=sha256({...input,policyVersion:policy.policyVersion});
-  return{...input,evidenceId,evidenceDigest,facilityMatched,fallback,policyVersion:policy.policyVersion,classification:policy.classification,deleteAfter:new Date(capturedMs+policy.retentionDays*86_400_000).toISOString()};
+  const evidenceDigest=sha256({...input,policyVersion});
+  return{...input,evidenceId,evidenceDigest,facilityMatched,fallback,policyVersion,classification:policy.classification,deleteAfter:new Date(capturedMs+policy.retentionDays*86_400_000).toISOString()};
 }

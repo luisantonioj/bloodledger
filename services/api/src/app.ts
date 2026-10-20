@@ -22,12 +22,14 @@ import { sha256 } from "./hash.js";
 import { csvCell } from "./csv.js";
 import { captureSyntheticLocationEvidence } from "./location-evidence.js";
 import { registerV2Routes } from "./v2-routes.js";
+import { operatorBoundPayload, type RequestDetailStore } from "./request-details.js";
 import type { UnitHistoryReader } from "./unit-history.js";
 import type { TransferSummaryReader } from "./transfer-summary.js";
 import type { ActivityHistoryReader } from "./activity-history.js";
 import type { BloodBankReader } from "./blood-bank-reads.js";
 import type { PostgresOutboundVerification } from "./outbound-verification.js";
 import type { PostgresReceiptVerification } from "./receipt-verification.js";
+import type { ReservationLocationStore } from "./reservation-location.js";
 import type { CoordinationReader } from "./coordination-views.js";
 import type { DonationKeyring } from "./donation-crypto.js";
 import type { V2CommandStore } from "./v2-command.js";
@@ -133,7 +135,7 @@ export async function buildApp(
   sessions?: SessionRepository,
   applicationReads?: ApplicationReadRepository,
   applicationWrites?: ApplicationWriteRepository,
-  v2?: { store: V2CommandStore; developmentRead?: DevelopmentReader; keyring?: DonationKeyring; census?: CensusStore; mlInventory?: MlInventoryEvidenceReader; projection?: V2ProjectionReader; coordination?: CoordinationReader; unitHistory?: UnitHistoryReader; transferSummaries?: TransferSummaryReader; activityHistory?: ActivityHistoryReader; bloodBank?: BloodBankReader; outboundVerification?: Pick<PostgresOutboundVerification, "verify">; receiptVerification?: Pick<PostgresReceiptVerification, "verify" | "findEvidence">; enabledIssuerInstitutionIds?: readonly string[] },
+  v2?: { store: V2CommandStore; developmentRead?: DevelopmentReader; keyring?: DonationKeyring; census?: CensusStore; mlInventory?: MlInventoryEvidenceReader; projection?: V2ProjectionReader; coordination?: CoordinationReader; unitHistory?: UnitHistoryReader; transferSummaries?: TransferSummaryReader; activityHistory?: ActivityHistoryReader; bloodBank?: BloodBankReader; outboundVerification?: Pick<PostgresOutboundVerification, "verify">; receiptVerification?: Pick<PostgresReceiptVerification, "verify" | "findEvidence">; reservationLocation?: ReservationLocationStore; enabledIssuerInstitutionIds?: readonly string[]; correctedIntakeEnabled?: boolean; reviewedIntakeEnabled?: boolean; requestDetails?: RequestDetailStore },
   accountAccess?: PostgresOperatorVerification,
 ): Promise<FastifyInstance> {
   const app = Fastify({
@@ -240,7 +242,7 @@ export async function buildApp(
         requireSameOrigin(request,webOrigin);
         // Primary accounts never mutate through the retired V1 actor path.
         if (path!.startsWith("/api/v1/")) throw new ApiFailure(409,"V2_1_CONTRACT_REQUIRED","Institution accounts require the current V2 contract.");
-        const verified=await accountAccess.consume(active.principal,active.claims,request.headers["operator-verification"],`${request.method} ${path}`,request.body,request.headers["idempotency-key"],clock());
+        const verified=await accountAccess.consume(active.principal,active.claims,request.headers["operator-verification"],`${request.method} ${path}`,operatorBoundPayload(request.body),request.headers["idempotency-key"],clock());
         verifiedPrincipals.set(request,verified);
       });
       app.post("/api/v2/auth/operator-verifications", async request => {

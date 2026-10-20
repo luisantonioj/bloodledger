@@ -1,3 +1,4 @@
+import { OfflineBanner } from "../components/ui/offline-banner";
 import { useEffect, useState } from "react";
 import type { Principal } from "../auth/permissions";
 import { OperatorVerification } from "../auth/operator-verification";
@@ -49,5 +50,5 @@ export function App() {
 
   const navigation = visibleNavigation(principal);
   const activePath = canonicalPagePath(principal,path);
-  return <OperatorVerification key={principal.accountId ?? principal.userId} principal={principal}><ApplicationShell principal={principal} path={activePath} navigation={navigation} onNavigate={navigate} onSignOut={() => void signOut()}>{navigation.some(item => item.href === activePath) ? <PageContent key={principal.userId + activePath} path={activePath} principal={principal}/> : <div className="empty" role="alert">This account cannot access this page.</div>}</ApplicationShell></OperatorVerification>;
+  return <OperatorVerification key={principal.accountId ?? principal.userId} principal={principal}><ApplicationShell principal={principal} path={activePath} navigation={navigation} onNavigate={navigate} onSignOut={() => void signOut()}><OfflineBanner/>{navigation.some(item => item.href === activePath) ? <PageContent key={principal.userId + activePath} path={activePath} principal={principal}/> : <div className="empty" role="alert">This account cannot access this page.</div>}</ApplicationShell></OperatorVerification>;
 }

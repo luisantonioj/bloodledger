@@ -63,6 +63,7 @@ test("requester scans every unit, verifies through a frozen retry, then receives
  expect(verified[0].body).toMatchObject({expectedVersion:2,scannedLabels:[{donationNumber:"MM26-01-0001",componentType:"WHOLE_BLOOD"}]});
  const received=posts.filter(post=>post.path.endsWith("/receive"));expect(received).toHaveLength(1);expect(received[0].body).toMatchObject({expectedVersion:2,receiptEvidenceId:evidenceId,receiptEvidenceDigest:evidenceDigest});
  expect(posts.some(post=>post.path==="/api/v2/inbound-captures")).toBe(false);await expect(scanner.getByText("MM26-01-0001",{exact:true})).toHaveCount(0);expect(missing).toEqual([]);
+ await expect(scanner.getByRole("button",{name:"Dismiss status",exact:true})).toBeVisible();await scanner.getByRole("button",{name:"Close receipt scanner",exact:true}).click();await expect(scanner).toHaveCount(0);
 });
 
 test("a blood-bank destination sees a counts-only mismatch and never receives without evidence",async({page,context})=>{

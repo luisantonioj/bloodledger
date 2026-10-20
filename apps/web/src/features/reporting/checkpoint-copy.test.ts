@@ -12,10 +12,18 @@ describe("checkpoint copy",()=>{
 });
 
 import {latestCheckpointRecord} from "./checkpoint-copy";
-import {demonstrationStockRecords} from "./demo-stock-records";
 describe("retained latest checkpoint",()=>{
  const yesterday={...record,snapshotId:"CENSUS_YESTERDAY",scheduledFor:"2026-10-15T01:00:00Z",capturedAt:"2026-10-15T01:00:01Z"};
  it("retains yesterday's morning record until a newer reached morning record exists",()=>{expect(latestCheckpointRecord([yesterday,record],"INST_TEST","09",Date.parse("2026-10-16T00:59:59Z")).record?.snapshotId).toBe(yesterday.snapshotId);expect(latestCheckpointRecord([yesterday,record],"INST_TEST","09",now).record?.snapshotId).toBe(record.snapshotId);});
  it("keeps morning and afternoon independent and detects ambiguous latest policies",()=>{expect(latestCheckpointRecord([yesterday],"INST_TEST","16",now).record).toBeUndefined();expect(latestCheckpointRecord([record,{...record,snapshotId:"CENSUS_OTHER"}],"INST_TEST","09",now).ambiguous).toBe(true);});
- it("seeds two explicit, identical frontend-only demo matrices",()=>{const demos=demonstrationStockRecords("INST_TEST");expect(demos).toHaveLength(2);expect(demos.every(row=>row.record.triggerType==="DEMONSTRATION")).toBe(true);expect(demos[0].snapshot.groups).toEqual(demos[1].snapshot.groups);expect(demos[0].snapshot.groups.flatMap(g=>g.bloodTypes)).toHaveLength(40);});
+
+});
+
+// PA-DEF-07 must copy only real four-component matrices, never an invented cryo count.
+describe("automatic checkpoint policy",()=>{
+ const automatic={...record,reportPolicyVersion:"SYNTHETIC_STOCK_CHECKPOINT_V1"};
+ const four={...detail,...automatic,groups:detail.groups.slice(0,4)};
+ it("copies exactly thirty-two saved values without a cryo column",()=>{const rows=checkpointClipboard(four,automatic).trimEnd().split("\r\n").map(row=>row.split("\t"));expect(rows).toHaveLength(9);expect(rows[0]).toEqual(["Blood type","Whole Blood","PRBC","FFP","Platelets","Total"]);expect(rows[1]).toEqual(["O+","1","9","17","25","52"]);expect(rows[8]).toEqual(["AB-","8","16","24","32","80"]);});
+ it("rejects missing and unexpected components instead of filling or dropping values",()=>{expect(()=>checkpointClipboard({...four,groups:four.groups.slice(0,3)},automatic)).toThrow();expect(()=>checkpointClipboard({...four,groups:detail.groups},automatic)).toThrow();});
+ it("never manufactures a missed slot or accepts a future capture",()=>{expect(checkpointRecord([],"INST_TEST","2026-10-16","09",now).record).toBeUndefined();expect(latestCheckpointRecord([{...automatic,capturedAt:"2026-10-17T01:00:00Z"}],"INST_TEST","09",now).record).toBeUndefined();});
 });

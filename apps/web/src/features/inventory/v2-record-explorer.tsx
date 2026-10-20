@@ -19,6 +19,7 @@ const memberColumns: TableColumn<ReservationDetail["components"][number]>[] = [
   { id: "version", label: "Version", sortValue: member => member.inventoryVersion },
 ];
 import { CommandRecovery } from "../commands/command-recovery";
+import { RequestDetailPanel } from "../transfers/request-detail-panel";
 
 export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline = false, showRecovery = true, navigationLocked: externalNavigationLocked = false, onActionLockChange, headerHelp, renderExtra, renderBody}: {initial: RecordSelection; principal: Principal; onClose: () => void; onRefresh?: () => void; inline?: boolean; showRecovery?: boolean; navigationLocked?: boolean; onActionLockChange?:(locked:boolean)=>void; headerHelp?: React.ReactNode; renderBody?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode; renderExtra?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode}) {
   const [actionLocked,setActionLocked]=useState(false);
@@ -90,6 +91,7 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
         </section>
       </>}
       {request && !renderBody && <dl><dt>Source</dt><dd>{facilityLabel(request.source_institution_id, principal)}</dd><dt>Destination</dt><dd>{facilityLabel(request.destination_institution_id, principal)}</dd>{renderExtra ? <><dt>Blood type</dt><dd>{formatBloodType(request.blood_type)}</dd><dt>Component</dt><dd>{componentLabel(request.component_type)}</dd></> : <><dt>Blood / component</dt><dd>{humanizeCode(request.blood_type)} / {humanizeCode(request.component_type)}</dd></>}<dt>Requested units</dt><dd>{request.quantity}</dd><dt>Request state</dt><dd>{humanizeCode(request.status)}</dd><dt>Ledger reference</dt><dd className="mono">{request.ledger_transaction_id ?? "Pending — no commitment"}</dd></dl>}
+      {request && <RequestDetailPanel key={request.transfer_id} transferId={request.transfer_id}/>}
       {record && renderBody?.(record, open)}
       {record && renderExtra?.(record, open)}
       {selected.kind === "reservation" && <ReservationActions key={"actions:" + selected.id} reservation={reservation} principal={principal} onRefresh={refresh} onLockChange={setActionLocked}/>}
