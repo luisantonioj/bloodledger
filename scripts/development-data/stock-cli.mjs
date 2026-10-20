@@ -18,7 +18,9 @@ const pause = milliseconds => new Promise(resolve => setTimeout(resolve, millise
 const fieldEqual = (a,b) => requireStock(canonical(a) === canonical(b), 'STOCK_EVIDENCE_MISMATCH');
 // TP-JOP-D16: since J4 the API adds a read-time expiryState that projections never store.
 // Require it to agree with the ledger status, then compare only the stored fields.
-export function storedComponent({ expiryState, ...component }) {
+// TP-JOP-D20: the printed-label Unit ID (`labelIdentity`) is also a read-time
+// display decoration from a separate table, never a projection field.
+export function storedComponent({ expiryState, labelIdentity: _labelIdentity, ...component }) {
   const allowed = component.inventoryStatus === 'EXPIRED' ? ['EXPIRED']
     : ['AVAILABLE','RESERVED'].includes(component.inventoryStatus) ? ['CURRENT','LABEL_EXPIRED_PENDING_EVALUATION']
     : ['CURRENT','LABEL_EXPIRED_NOT_IN_INVENTORY'];

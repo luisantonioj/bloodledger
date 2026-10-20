@@ -29,7 +29,7 @@ if [[ "$entrypoint" == scripts/development-data/stock-cli.mjs && ( "${1:-}" == c
     if [[ "${arguments[i]}" == --backup ]]; then backup="${arguments[i+1]:-}"; fi
   done
   [[ -f "$backup" && "$(stat -c %a "$backup")" == 600 ]] || { echo STOCK_PRIVATE_BACKUP_REQUIRED >&2; exit 2; }
-  backup_result="$(bash scripts/development-data/validate-stock-backup.sh "$backup")"
+  backup_result="$(bash scripts/development-data/validate-stock-backup.sh "$backup" "${BLOODLEDGER_STOCK_BACKUP_BASELINE:-SIX_PRIMARY_ACCOUNTS}")"
   mapfile -t backup_evidence <<< "$backup_result"
   backup_sha="${backup_evidence[0]}"; backup_instance="${backup_evidence[1]:-}"
 fi
