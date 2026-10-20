@@ -157,6 +157,16 @@ for (const [code,message] of [
   });
 }
 
+// Lat 056d6db: bank accounts use the full request form (supplier choice + required requester details).
+async function openBankRequest(page: Page) {
+  await page.route("**/api/v2/eligible-suppliers*", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ suppliers: [{ institutionId: "INST_SYNTH_NLVILLA", displayName: "N.L. Villa", availabilityBand: "10_OR_MORE", meetsRequestedQuantity: true }], readAt: "2026-10-21T00:00:00.000Z", classification: "SIMULATION_ONLY" }) }));
+  await page.goto("/transfers");
+  await page.getByRole("button", { name: "+ New Blood Request", exact: true }).click();
+  await expect(page.getByLabel("Supplying blood bank", { exact: true })).toHaveValue("INST_SYNTH_NLVILLA");
+  await page.getByLabel("Requesting Person", { exact: true }).fill("Synthetic Requester A");
+  await page.getByLabel("Required Date & Time", { exact: true }).fill("2099-01-01T10:00");
+}
+
 for (const workflow of ["transfer"]) {
   test(`${workflow}: stale-time rejection uses fresh intent, ambiguous failure reuses it`,async ({page}) => {
     const calls: {body:Record<string,unknown>;key:string}[] = [];
@@ -167,9 +177,8 @@ for (const workflow of ["transfer"]) {
       const code = calls.length <= 2 ? "V2_COMMAND_TIME_OUT_OF_WINDOW" : "SERVICE_UNAVAILABLE";
       await json(route,{error:{code,message:"Service unavailable; retry same request"}},calls.length <= 2 ? 400 : 503); return true;
     },{capabilities:["transfer:request"]});
-    await page.goto("/transfers");
-    await page.getByRole("button",{name:"+ New Blood Request",exact:true}).click();
-    const submit = page.getByRole("button",{name:"Submit",exact:true});
+    await openBankRequest(page);
+    const submit = page.getByRole("button",{name:"Submit request",exact:true});
     await submit.click();await verify(page);
     await expect(page.getByRole("alert").filter({hasText:"fresh time"})).toContainText("fresh time");
     await submit.click();await verify(page);
@@ -191,12 +200,12 @@ for (const [status,code,message] of [[400,"REQUEST_INVALID","request body is inv
       if(path!=="/api/v2/transfers" || route.request().method()!=="POST")return false;
       calls++;await json(route,{error:{code,message:"Rejected"}},status);return true;
     },{capabilities:["transfer:request"]});
-    await page.goto("/transfers");await page.getByRole("button",{name:"+ New Blood Request",exact:true}).click();await page.getByRole("button",{name:"Submit",exact:true}).click();await verify(page);
+    await openBankRequest(page);await page.getByRole("button",{name:"Submit request",exact:true}).click();await verify(page);
     await expect(page.getByRole("alert").filter({hasText:message})).toContainText(message);
     await expect(page.getByRole("button",{name:"Correct request before submitting unavailable",exact:true})).toBeDisabled();
     await page.waitForTimeout(100);expect(calls).toBe(1);
     await page.getByLabel("Quantity",{exact:true}).fill("2");
-    await expect(page.getByRole("button",{name:"Submit",exact:true})).toBeEnabled();
+    await expect(page.getByRole("button",{name:"Submit request",exact:true})).toBeEnabled();
   });
 }
 
