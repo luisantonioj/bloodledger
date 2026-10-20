@@ -2,7 +2,7 @@ import { compactRecordReference } from "../../components/ui/display";
 import { PaginatedTable, RecordPagination } from "../../components/ui/record-pagination";
 import { SortableHeader, TableViewBar, timeValue, useTableView, type TableColumn } from "../../components/ui/table-view";
 import { urgencyRank } from "../../services/api/transaction-reads";
-import { RefreshIcon } from "../../components/ui/refresh-button";
+import { RefreshButton, RefreshIcon } from "../../components/ui/refresh-button";
 import { V2_BLOOD_TYPES, V2_COMPONENT_TYPES } from "../../services/api/v2";
 import { RequestFormHelp } from "./request-form-help";
 import { useEffect, useRef, useState } from "react";
@@ -79,7 +79,7 @@ export function RequesterTransfersPage({ principal }: { principal: Principal }) 
   const timelineView = useTableView("requester-activity", timelineColumns, records?.timeline ?? []), showEvent = timelineView.isVisible;
   return <div className="page requester-transfers-page">
     <header className="page-head"><div><h1 className="page-title">Requests &amp; Transfers</h1></div>
-      <div className="requester-page-actions"><button className="button compact dashboard-refresh" type="button" onClick={state.manual} disabled={state.busy} aria-busy={state.busy}><RefreshIcon/>{state.busy ? "Refreshing…" : "Refresh"}</button>{mayRequest && <button className="button primary compact" type="button" aria-expanded={formOpen} aria-controls="requester-new-request-form" onClick={() => {if (formOpen) scrollToRequestForm(); else setFormOpen(true);}}>+ New Blood Request</button>}</div>
+      <div className="requester-page-actions"><RefreshButton busy={state.busy} onRefresh={state.manual}/>{mayRequest && <button className="button primary compact" type="button" aria-expanded={formOpen} aria-controls="requester-new-request-form" onClick={() => {if (formOpen) scrollToRequestForm(); else setFormOpen(true);}}>+ New Blood Request</button>}</div>
     </header>
     <div className="requester-transfer-tabs" role="tablist" aria-label="Requests and transfers">
       <button type="button" id="requester-requests-tab" role="tab" aria-selected={tab === "requests"} aria-controls="requester-records-panel" tabIndex={tab === "requests" ? 0 : -1} onKeyDown={event => {if (["ArrowRight", "ArrowLeft", "End"].includes(event.key)) {event.preventDefault(); changeTab("transfers"); document.getElementById("requester-transfers-tab")?.focus();}}} onClick={() => changeTab("requests")}>Blood Requests <span>{count(records?.requests.length)}</span></button>
@@ -90,7 +90,7 @@ export function RequesterTransfersPage({ principal }: { principal: Principal }) 
       <ol>{stages.map(([label, hint], index) => <li key={label}><span>{index + 1}</span><div><strong>{label}</strong><small>{hint}</small></div></li>)}</ol>
       <RequestFormHelp label="Requester workflow">
         <span className="requester-workflow-help-intro">Submit requirements, monitor request and transfer updates, then review recorded receipt status.</span>
-        <span className="requester-workflow-help-step"><strong>1. Submit a request.</strong> Select New Blood Request to open the form below the records. Choose a source blood bank, blood type, component, quantity and urgency. Submit request may ask you to verify an authorized operator and PIN. Disabled details and attachments are not submitted yet.</span>
+        <span className="requester-workflow-help-step"><strong>1. Submit a request.</strong> Select New Blood Request to open the form below the records. Choose a source blood bank, blood type, component, quantity and urgency. Submit request may ask you to verify an authorized operator and PIN. Enter the requester details and attach synthetic supporting documents if needed. Patient / Case Reference remains unavailable under RQ-20.</span>
         <span className="requester-workflow-help-step"><strong>2. Monitor the request.</strong> Find your request in Blood Requests and select its ID to review details. Use Refresh for updates. Submission or pending confirmation does not mean approval.</span>
         <span className="requester-workflow-help-step"><strong>3. Track the transfer.</strong> Open Transfers when a linked reservation appears. Select its ID to review the recorded status, source, destination and reserved units. Request and transfer statuses are separate.</span>
         <span className="requester-workflow-help-step"><strong>4. Review receipt status.</strong> Check the recorded transfer status for receipt updates. Dispatch and receipt confirmation controls are not available on this page yet.</span>

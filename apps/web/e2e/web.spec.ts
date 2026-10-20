@@ -878,7 +878,9 @@ for (const [accountType, roleId] of [["Blood bank", "ROLE-02"], ["Requestor", "R
     const refresh = page.getByRole("button", { name: "Refresh", exact: true });
     await refresh.focus();
     await page.keyboard.press("Enter");
-    const busy = page.getByRole("button", { name: "Refreshing…", exact: true });
+    // The label stays "Refresh" while busy (Lat 2026-10-20); disabled state and aria-busy carry progress.
+    const busy = refresh;
+    await expect(busy).toHaveText("Refresh");
     await expect(busy).toBeDisabled();
     await expect(busy).toHaveAttribute("aria-busy", "true");
     await expect(page.locator(".dashboard-updated time")).toHaveAttribute("datetime", timestamp);

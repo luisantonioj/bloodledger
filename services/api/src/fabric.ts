@@ -652,7 +652,7 @@ export function interviewCorePayload(command: Pick<V2Command, "operation" | "pay
 }
 
 export class FabricGatewayInterviewCore implements V2LedgerSubmitter {
-  constructor(private readonly environment: NodeJS.ProcessEnv = process.env) {}
+  constructor(private readonly environment: NodeJS.ProcessEnv = process.env,private readonly staffAuthorization?:(command:V2Command,payload:Record<string,unknown>)=>Promise<Record<string,Uint8Array>|undefined>) {}
 
   async submit(command: V2Command): Promise<{ transactionId: string }> {
     const repositoryRoot = resolve(this.environment.BLOODLEDGER_REPOSITORY_ROOT ?? process.cwd());
@@ -673,7 +673,9 @@ export class FabricGatewayInterviewCore implements V2LedgerSubmitter {
       if (!transaction) throw new WorkerFailure("CORE_OPERATION_UNSUPPORTED", false);
       const payload = interviewCorePayload(command);
       const contract = gateway.getNetwork(this.environment.FABRIC_CHANNEL ?? "bloodledger-dev").getContract(this.environment.FABRIC_CHAINCODE ?? "bloodledger-inventory", "InterviewCoreContract");
-      const submitted = await contract.submitAsync(transaction, { arguments: [JSON.stringify(payload)] });
+      const transientData=await this.staffAuthorization?.(command,payload);
+      if(/^USR_STAFF_/.test(command.actorUserId)&&!transientData)throw new WorkerFailure("STAFF_LEDGER_AUTHORIZATION_UNAVAILABLE",false);
+      const submitted = await contract.submitAsync(transaction, { arguments: [JSON.stringify(payload)],...(transientData?{transientData}:{}) });
       const status = await submitted.getStatus();
       if (!status.successful || status.code !== StatusCode.VALID) throw new WorkerFailure("FABRIC_COMMIT_INVALID", false);
       return { transactionId: submitted.getTransactionId() };

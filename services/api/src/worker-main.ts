@@ -1,3 +1,4 @@
+import {staffLedgerAuthorization} from "./staff-ledger-authorization.js";
 import { randomUUID } from "node:crypto";
 import { createPoolFromEnvironment, PostgresScanRepository } from "./database.js";
 import { FabricGatewayInventory } from "./fabric.js";
@@ -22,7 +23,10 @@ const worker = new ScanSyncWorker(
   `WORKER_${randomUUID().replaceAll("-", "").slice(0, 24).toUpperCase()}`,
 );
 const v2Worker = process.env.FABRIC_V2_SYNC_ENABLED === "true"
-  ? new V2CommandWorker(new PostgresV2CommandStore(pool), { submit: (command) => new FabricGatewayInterviewCore().submit(command), project: (command, committed) => new PostgresV2Projector(pool).project(command, committed) }, `V2WORKER_${randomUUID().replaceAll("-", "").slice(0, 24).toUpperCase()}`)
+  ? new V2CommandWorker(new PostgresV2CommandStore(pool), { submit: async (command) => {
+    if(!/^USR_STAFF_/.test(command.actorUserId))return new FabricGatewayInterviewCore().submit(command);
+    const client=await pool.connect();try{await client.query("BEGIN");const result=await new FabricGatewayInterviewCore(process.env,(cmd,payload)=>staffLedgerAuthorization(client,cmd,payload)).submit(command);await client.query("COMMIT");return result;}catch(error){await client.query("ROLLBACK");throw error;}finally{client.release();}
+  }, project: (command, committed) => new PostgresV2Projector(pool).project(command, committed) }, `V2WORKER_${randomUUID().replaceAll("-", "").slice(0, 24).toUpperCase()}`)
   : null;
 let stopping = false;
 process.on("SIGINT", () => { stopping = true; });
@@ -30,7 +34,7 @@ process.on("SIGTERM", () => { stopping = true; });
 
 // PA-DEF-07: 09:00/16:00 Asia/Manila stock checkpoints run only under the approved simulation report policy.
 const reportPolicy = readDohReportPolicy();
-const checkpoints = reportPolicy.copyModeEnabled && reportPolicy.version === STOCK_CHECKPOINT_POLICY_VERSION
+const checkpoints = process.env.BLOODLEDGER_STOCK_CHECKPOINT_WORKER_MODE !== "dedicated" && reportPolicy.copyModeEnabled && reportPolicy.version === STOCK_CHECKPOINT_POLICY_VERSION
   ? new PostgresCensusStore(pool, reportPolicy.version, reportPolicy.bloodTypeOrder) : null;
 let nextCheckpointCheck = 0;
 async function runCheckpoints(now: Date): Promise<void> {

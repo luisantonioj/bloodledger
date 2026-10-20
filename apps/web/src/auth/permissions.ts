@@ -13,6 +13,8 @@ export type Permission =
   | "profile:read";
 
 export interface Principal {
+  staffManagementPolicyVersion?: "SYNTHETIC_INSTITUTION_STAFF_V1";
+  operatorPinLength?: 6 | 8;
   accountId?: string;
   accountCategory?: "BLOOD_BANK" | "REQUESTOR" | "PRC" | "DOH" | "SYSTEM";
   accountState?: string;
@@ -31,6 +33,7 @@ export interface Principal {
 }
 
 export interface OperatorProfile {
+  jobTitle?:string;
   operatorId: string;
   roleId: Principal["roleId"];
   capabilityProfile: "ROLE" | "PRC_REVIEWER" | "INSTITUTION_ADMIN";

@@ -51,3 +51,10 @@ condition = "AND"
 paths = ['''(^|/)docs/validation/lat\-blood\-bank\-completion\-2026\-10\-15/FORECAST\-HOST\-READ\.json$''']
 regexTarget = "secret"
 regexes = ['''^RUNKEY_2D04AD0EE64FBB64CA940C298126C77C$''']
+
+[[allowlists]]
+description = "Reviewed institution-staff API build tree checksum; not an authentication credential"
+condition = "AND"
+paths = ['''(^|/)docs/validation/lat-institution-staff-2026-10-21/README\.md$''']
+regexTarget = "secret"
+regexes = ['''^f3adc953c229a89bd1902bce55b417e1a2e274e326389bb67faea938ade247c7$''']

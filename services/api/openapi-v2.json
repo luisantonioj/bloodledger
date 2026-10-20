@@ -4018,6 +4018,520 @@
           }
         }
       }
+    },
+    "/staff": {
+      "post": {
+        "operationId": "staffStaff",
+        "description": "PA-STAFF-01 / ADR-052. SIMULATION_ONLY. Own active blood-bank/requester institution administrator only; PRC/DOH excluded. Explicit retries only, same key and frozen body. No stock or ledger mutation. Restore preserves history and does not revive old approvals. Reset preserves ACTIVE/REVOKED status. Errors: STAFF_INPUT_INVALID, STAFF_JOB_TITLE_INVALID, STAFF_PIN_INVALID, STAFF_PERMISSION_SET_INVALID, STAFF_NOT_AUTHORIZED, STAFF_NOT_FOUND, STAFF_VERSION_CONFLICT, STAFF_TRANSITION_INVALID, STAFF_LAST_ADMINISTRATOR, STAFF_IDEMPOTENCY_CONFLICT, STAFF_APPROVAL_INVALID, STAFF_APPROVAL_EXPIRED. Last-administrator check is serialized with concurrent changes. The session advertises staffManagementPolicyVersion=SYNTHETIC_INSTITUTION_STAFF_V1 only in the compatible API. Clients keep legacy controls until that readiness value or staff:create capability is present.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstitutionStaffCreateResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstitutionStaffCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/{id}/revoke": {
+      "post": {
+        "operationId": "staffStaffOperatorRevoke",
+        "description": "PA-STAFF-01 / ADR-052. SIMULATION_ONLY. Own active blood-bank/requester institution administrator only; PRC/DOH excluded. Explicit retries only, same key and frozen body. No stock or ledger mutation. Restore preserves history and does not revive old approvals. Reset preserves ACTIVE/REVOKED status. Errors: STAFF_INPUT_INVALID, STAFF_JOB_TITLE_INVALID, STAFF_PIN_INVALID, STAFF_PERMISSION_SET_INVALID, STAFF_NOT_AUTHORIZED, STAFF_NOT_FOUND, STAFF_VERSION_CONFLICT, STAFF_TRANSITION_INVALID, STAFF_LAST_ADMINISTRATOR, STAFF_IDEMPOTENCY_CONFLICT, STAFF_APPROVAL_INVALID, STAFF_APPROVAL_EXPIRED. Last-administrator check is serialized with concurrent changes.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstitutionStaffResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstitutionStaffAction"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/{id}/restore": {
+      "post": {
+        "operationId": "staffStaffOperatorRestore",
+        "description": "PA-STAFF-01 / ADR-052. SIMULATION_ONLY. Own active blood-bank/requester institution administrator only; PRC/DOH excluded. Explicit retries only, same key and frozen body. No stock or ledger mutation. Restore preserves history and does not revive old approvals. Reset preserves ACTIVE/REVOKED status. Errors: STAFF_INPUT_INVALID, STAFF_JOB_TITLE_INVALID, STAFF_PIN_INVALID, STAFF_PERMISSION_SET_INVALID, STAFF_NOT_AUTHORIZED, STAFF_NOT_FOUND, STAFF_VERSION_CONFLICT, STAFF_TRANSITION_INVALID, STAFF_LAST_ADMINISTRATOR, STAFF_IDEMPOTENCY_CONFLICT, STAFF_APPROVAL_INVALID, STAFF_APPROVAL_EXPIRED. Last-administrator check is serialized with concurrent changes.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstitutionStaffResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstitutionStaffAction"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/{id}/reset-pin-approval": {
+      "post": {
+        "operationId": "staffStaffOperatorResetPinApproval",
+        "description": "PA-STAFF-01 / ADR-052. SIMULATION_ONLY. Own active blood-bank/requester institution administrator only; PRC/DOH excluded. Explicit retries only, same key and frozen body. No stock or ledger mutation. Restore preserves history and does not revive old approvals. Reset preserves ACTIVE/REVOKED status. Errors: STAFF_INPUT_INVALID, STAFF_JOB_TITLE_INVALID, STAFF_PIN_INVALID, STAFF_PERMISSION_SET_INVALID, STAFF_NOT_AUTHORIZED, STAFF_NOT_FOUND, STAFF_VERSION_CONFLICT, STAFF_TRANSITION_INVALID, STAFF_LAST_ADMINISTRATOR, STAFF_IDEMPOTENCY_CONFLICT, STAFF_APPROVAL_INVALID, STAFF_APPROVAL_EXPIRED. Last-administrator check is serialized with concurrent changes.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstitutionStaffPinApproval"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/OperatorVerification"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstitutionStaffAction"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/{id}/reset-pin": {
+      "post": {
+        "operationId": "staffStaffOperatorResetPin",
+        "description": "PA-STAFF-01 / ADR-052. SIMULATION_ONLY. Own active blood-bank/requester institution administrator only; PRC/DOH excluded. Explicit retries only, same key and frozen body. No stock or ledger mutation. Restore preserves history and does not revive old approvals. Reset preserves ACTIVE/REVOKED status. Errors: STAFF_INPUT_INVALID, STAFF_JOB_TITLE_INVALID, STAFF_PIN_INVALID, STAFF_PERMISSION_SET_INVALID, STAFF_NOT_AUTHORIZED, STAFF_NOT_FOUND, STAFF_VERSION_CONFLICT, STAFF_TRANSITION_INVALID, STAFF_LAST_ADMINISTRATOR, STAFF_IDEMPOTENCY_CONFLICT, STAFF_APPROVAL_INVALID, STAFF_APPROVAL_EXPIRED. Last-administrator check is serialized with concurrent changes.",
+        "responses": {
+          "200": {
+            "description": "Simulation-only result. See handoff for safe result fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstitutionStaffResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid synthetic input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, inactive or revoked session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Scope or operator-verification failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Idempotency, state or version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Persistent PIN or session rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^IDEM_[A-Z0-9_-]{1,59}$"
+            }
+          },
+          {
+            "name": "Staff-Reset-Approval",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^SPA_[0-9A-F]{40}$"
+            },
+            "description": "Two-minute, session/actor/operator-version/subject-version-bound approval from reset-pin-approval. Replaces a second operator-PIN prompt; only exact consumed-attempt retries are accepted."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstitutionStaffPinReset"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5167,6 +5681,12 @@
               "type": "string"
             },
             "description": "UI action visibility only. Server requires a bound PIN grant and validates roles, scope and versions."
+          },
+          "jobTitle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Optional display title. Existing operators need no fabricated title."
           }
         }
       },
@@ -5187,7 +5707,8 @@
           },
           "pin": {
             "type": "string",
-            "pattern": "^[0-9]{8}$",
+            "pattern": "^(?:[0-9]{6}|[0-9]{8})$",
+            "description": "Exact length follows the active server PIN policy; the institution session advertises operatorPinLength. Six digits require SYNTHETIC_OPERATOR_PIN_6_V1; baseline hosts require eight.",
             "writeOnly": true
           },
           "action": {
@@ -5536,7 +6057,8 @@
           },
           "operatorPin": {
             "type": "string",
-            "pattern": "^[0-9]{8}$",
+            "pattern": "^(?:[0-9]{6}|[0-9]{8})$",
+            "description": "Exact length follows the active server PIN policy; the institution session advertises operatorPinLength. Six digits require SYNTHETIC_OPERATOR_PIN_6_V1; baseline hosts require eight.",
             "writeOnly": true
           }
         }
@@ -5586,7 +6108,8 @@
           },
           "pin": {
             "type": "string",
-            "pattern": "^[0-9]{8}$",
+            "pattern": "^(?:[0-9]{6}|[0-9]{8})$",
+            "description": "Exact length follows the active server PIN policy; the institution session advertises operatorPinLength. Six digits require SYNTHETIC_OPERATOR_PIN_6_V1; baseline hosts require eight.",
             "writeOnly": true
           }
         }
@@ -5614,7 +6137,8 @@
           },
           "pin": {
             "type": "string",
-            "pattern": "^[0-9]{8}$",
+            "pattern": "^(?:[0-9]{6}|[0-9]{8})$",
+            "description": "Exact length follows the active server PIN policy; the institution session advertises operatorPinLength. Six digits require SYNTHETIC_OPERATOR_PIN_6_V1; baseline hosts require eight.",
             "writeOnly": true
           }
         }
@@ -9387,6 +9911,212 @@
           "ocrAttempted": {
             "const": true,
             "description": "Operator workflow attests that OCR ran before review. This is not proof of recognition accuracy."
+          }
+        }
+      },
+      "InstitutionStaffCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "correlationId",
+          "institutionId",
+          "jobTitle",
+          "accessProfile",
+          "permissionSet",
+          "pin"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "institutionId": {
+            "type": "string"
+          },
+          "jobTitle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "Nonblank trimmed display label, not an authorization grant."
+          },
+          "accessProfile": {
+            "type": "string",
+            "enum": [
+              "ROLE",
+              "INSTITUTION_ADMIN"
+            ]
+          },
+          "permissionSet": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "ROLE-01",
+              "ROLE-02",
+              "ROLE-03",
+              null
+            ],
+            "description": "Administration requires null and grants ROLE-06. Role permissions: blood banks ROLE-01/02; requesters ROLE-03."
+          },
+          "pin": {
+            "type": "string",
+            "pattern": "^(?:[0-9]{6}|[0-9]{8})$",
+            "description": "Must match the host PIN policy (operatorPinLength in session); never stored or returned in clear text."
+          }
+        }
+      },
+      "InstitutionStaffAction": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "correlationId"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          }
+        }
+      },
+      "InstitutionStaffPinReset": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion",
+          "correlationId",
+          "pin"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "correlationId": {
+            "type": "string",
+            "pattern": "^CORR_[0-9A-F]{32}$"
+          },
+          "pin": {
+            "type": "string",
+            "pattern": "^(?:[0-9]{6}|[0-9]{8})$",
+            "description": "Must match the host PIN policy (operatorPinLength in session); never stored or returned in clear text."
+          }
+        }
+      },
+      "InstitutionStaffResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operatorId",
+          "status",
+          "version",
+          "classification"
+        ],
+        "properties": {
+          "operatorId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "REVOKED"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "InstitutionStaffCreateResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "operatorId",
+          "status",
+          "version",
+          "classification",
+          "institutionVersion",
+          "roleId",
+          "jobTitle",
+          "capabilityProfile"
+        ],
+        "properties": {
+          "operatorId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "REVOKED"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
+          },
+          "institutionVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "roleId": {
+            "type": "string",
+            "enum": [
+              "ROLE-01",
+              "ROLE-02",
+              "ROLE-03",
+              "ROLE-06"
+            ]
+          },
+          "jobTitle": {
+            "type": "string"
+          },
+          "capabilityProfile": {
+            "type": "string",
+            "enum": [
+              "ROLE",
+              "INSTITUTION_ADMIN"
+            ]
+          }
+        }
+      },
+      "InstitutionStaffPinApproval": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "approvalId",
+          "expiresAt",
+          "classification"
+        ],
+        "properties": {
+          "approvalId": {
+            "type": "string",
+            "pattern": "^SPA_[0-9A-F]{40}$"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "classification": {
+            "const": "SIMULATION_ONLY"
           }
         }
       }

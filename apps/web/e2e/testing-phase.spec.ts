@@ -117,6 +117,11 @@ for (const feature of ["alerts", "reporting"] as const) {
   });
 }
 
+// PA-REQ-01: the requester form now requires the requesting person and required time.
+async function fillRequester(page: Page) {
+  await page.getByLabel("Requesting Person", { exact: true }).fill("Synthetic Requester A");
+  await page.getByLabel("Required Date & Time", { exact: true }).fill("2099-01-01T10:00");
+}
 function command(payload: Record<string, unknown>, status: "QUEUED" | "FAILED" | "CONFLICT" = "QUEUED") {
   return { commandId: "CMD_LAT_REQUEST", resourceType: "TRANSFER", resourceId: payload.transferId, status, statusUrl: "/api/v2/commands/CMD_LAT_REQUEST", acceptedAt: instant, correlationId: payload.correlationId, safeErrorCode: status === "QUEUED" ? null : "V2_STATE_CONFLICT", classification: "SIMULATION_ONLY", replayed: false };
 }
@@ -140,6 +145,7 @@ for (const terminal of ["FAILED", "CONFLICT"] as const) {
     expect(attempts).toHaveLength(0);
     await page.getByLabel("Quantity", { exact: true }).fill("2");
     await page.getByRole("combobox", { name: "Component", exact: true }).selectOption("CRYOPRECIPITATE");
+    await fillRequester(page);
     await page.getByRole("button", { name: "Submit request", exact: true }).focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("button", { name: "Retry same request", exact: true })).toBeVisible();
@@ -149,7 +155,7 @@ for (const terminal of ["FAILED", "CONFLICT"] as const) {
     expect(attempts[1]).toEqual(attempts[0]);
     expect(attempts[0]!.body).toMatchObject({ sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_LAT_RECIPIENT", quantity: 2, componentType: "CRYOPRECIPITATE" });
     expect(attempts[0]!.version).toBe("V2.1");
-    expect(Object.keys(attempts[0]!.body).sort()).toEqual(["bloodType", "componentType", "correlationId", "destinationInstitutionId", "eventTime", "quantity", "requestTime", "sourceInstitutionId", "transferId", "urgency"]);
+    expect(Object.keys(attempts[0]!.body).sort()).toEqual(["bloodType", "componentType", "correlationId", "destinationInstitutionId", "details", "eventTime", "quantity", "requestTime", "sourceInstitutionId", "transferId", "urgency"]);
     await expect(page.getByRole("heading", { name: "Committed", exact: true })).toHaveCount(0);
     await page.getByRole("button", { name: "Dismiss status", exact: true }).click();
     await expect(page.locator(".v2-command-card")).toHaveCount(0);
@@ -165,6 +171,7 @@ test("TP-LAT-006 command poll rejects another resource identity", async ({ page 
     return false;
   });
   await page.goto("/transfers?newRequest=1");
+  await fillRequester(page);
   await page.getByRole("button", { name: "Submit request", exact: true }).click();
   await expect(page.getByText(/Status check delayed:/)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Accepted and queued", exact: true })).toBeVisible();

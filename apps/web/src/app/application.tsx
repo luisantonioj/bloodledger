@@ -27,6 +27,13 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    let current=true;
+    const refresh=()=>{void requestJson<{principal:Principal}>("/api/v1/auth/session").then(value=>{if(current)setPrincipal(value.principal);}).catch(()=>undefined);};
+    addEventListener("bloodledger:staff-updated",refresh);
+    return ()=>{current=false;removeEventListener("bloodledger:staff-updated",refresh);};
+  },[principal?.accountId,principal?.userId]);
+
+  useEffect(() => {
     const onPopState = () => setPath(location.pathname);
     addEventListener("popstate", onPopState);
     return () => removeEventListener("popstate", onPopState);

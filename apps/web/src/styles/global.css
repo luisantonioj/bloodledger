@@ -194,7 +194,7 @@
 .inventory-overview-axis{height:292px;position:relative;font-size:11px;line-height:1;color:var(--ink-muted);text-align:right}.inventory-overview-axis>span{position:absolute;right:0;top:calc(var(--tick-index) * 20%);transform:translateY(-50%)}
 .inventory-overview-chart{height:330px;background:repeating-linear-gradient(to bottom,var(--line-subtle) 0,var(--line-subtle) 1px,var(--surface) 1px,var(--surface) 58.4px);background-size:100% 293px;background-repeat:no-repeat}
 .inventory-overview-bar{grid-template-rows:minmax(0,1fr) 32px 6px}.stock-critical .inventory-overview-fill{background:var(--critical)}.stock-low .inventory-overview-fill{background:var(--warning)}.stock-adequate .inventory-overview-fill{background:var(--success)}.stock-surplus .inventory-overview-fill{background:var(--success)}.inventory-overview-fill>i{background:var(--information)}
-.dashboard-refresh{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}.dashboard-refresh:disabled{opacity:.65;cursor:wait}
+.dashboard-refresh{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}.button.dashboard-refresh:disabled{opacity:1;cursor:pointer}
 .dashboard-stats{grid-template-columns:repeat(4,minmax(0,1fr))}@media(max-width:1180px){.dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.dashboard-stats{grid-template-columns:1fr}}
 
 .dashboard-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px}.dashboard-updated{color:var(--ink-muted);font-size:11px;line-height:1.5}.dashboard-updated time{font-variant-numeric:tabular-nums}@media(max-width:760px){.dashboard-actions{justify-content:flex-start;gap:8px 12px}}
@@ -269,7 +269,7 @@
 .requester-workflow-help-intro,.requester-workflow-help-step{display:block}.requester-workflow-help-step{margin-top:10px}.requester-workflow-help-step strong{font-weight:600}.requester-workflow .request-form-help-tooltip{width:min(360px,calc(100vw - 100px))}
 
 /* Neutral Refresh hover treatment across every dashboard account and requester transfers. */
-.dashboard-refresh{transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease}.dashboard-refresh:not(:disabled){cursor:pointer}.dashboard-refresh:not(:disabled):hover,.dashboard-refresh:not(:disabled):focus-visible{background:var(--surface-subtle);border-color:var(--line-strong);color:var(--ink)}@media(prefers-reduced-motion:reduce){.dashboard-refresh{transition:none}}
+.dashboard-refresh{transition:background-color 160ms ease,border-color 160ms ease,color 160ms ease}.dashboard-refresh:not(:disabled){cursor:pointer}.button.dashboard-refresh:hover,.button.dashboard-refresh:focus-visible{background:var(--surface-subtle);border-color:var(--line-strong);color:var(--ink)}@media(prefers-reduced-motion:reduce){.dashboard-refresh{transition:none}}
 
 /* Shared form interaction rule: focused fields use BloodLedger red across accounts. */
 :is(input,select,textarea):not(:disabled):focus{border-color:var(--focus-ring);outline:3px solid var(--focus-ring);outline-offset:2px}
@@ -1286,8 +1286,8 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .receipt-auto-capture-actions{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .receipt-auto-capture-actions>.button:nth-child(n+3){grid-column:1/-1}
 
-.receipt-inbound-preview .scan-review-fields{gap:10px;padding:8px 0}
-.receipt-inbound-preview .scan-review-fields>label{margin:0;gap:4px}
+.receipt-unit-preview .scan-review-fields{gap:10px;padding:8px 0}
+.receipt-unit-preview .scan-review-fields>label{margin:0;gap:4px}
 .offline-banner { margin: 12px 28px 0; padding: 10px 14px; border-radius: 6px; color: var(--warning); background: var(--warning-container); font-size: 13px; }
 .dashboard-alert-summary { margin-top: 16px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .dashboard-alert-summary header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
@@ -1295,3 +1295,43 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .dashboard-alert-summary a { font-size: 13px; }
 .dashboard-alert-summary p { margin: 8px 0 0; font-size: 13px; }
 .dashboard-alert-summary strong { font-size: 20px; color: var(--critical); }
+/* GAP-09 / PA-REQ-01..04 requester detail panel */
+.request-detail-panel{display:grid;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line-subtle);min-width:0}.request-detail-panel>header{display:flex;justify-content:space-between;align-items:center;gap:12px}.request-detail-panel h3,.request-detail-panel h4{margin:0;font:600 13px/1.4 var(--font-sans)}.request-detail-panel dl{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);gap:6px 16px;margin:0}.request-detail-panel dd{margin:0;min-width:0;overflow-wrap:anywhere}.request-detail-notes{white-space:pre-wrap}.request-detail-documents{display:grid;gap:8px;margin:0;padding:0;list-style:none}.request-detail-documents li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}.request-detail-documents a{overflow-wrap:anywhere}.request-detail-attach{display:flex;flex-wrap:wrap;gap:8px}.request-detail-panel .requester-placeholder-fields{grid-template-columns:minmax(0,1fr)}
+
+/* Keep requester details usable within narrow inline record panels. */
+.request-detail-panel>*{min-width:0;max-width:100%}
+.request-detail-panel>header h3{min-width:0}
+.request-detail-panel>header .requester-placeholder-tag{flex-shrink:0}
+.request-detail-panel .requester-placeholder-fields label{display:grid;gap:7px;margin:0;min-width:0;font-size:11px;color:var(--ink-secondary)}
+.request-detail-panel .requester-placeholder-fields input,.request-detail-panel textarea{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+.request-detail-panel .requester-submit-actions{min-width:0;max-width:100%;flex-wrap:wrap}
+.request-detail-attach>.button{position:relative;max-width:100%;white-space:normal;overflow-wrap:anywhere;cursor:pointer}
+.request-detail-panel .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+@media(max-width:600px){.request-detail-panel dl{grid-template-columns:minmax(0,1fr);gap:4px}.request-detail-panel dd{margin-bottom:8px}}
+
+.requester-submit-footer .requester-submit-actions{flex-wrap:wrap;max-width:100%}
+
+/* Outbound uses the scanner's compact card, field and button styling. */
+.scanner-transfer-actions .scanner-transfer-controls{padding:0;gap:10px}
+.scanner-transfer-actions .v2-operation-card{padding:14px 0 0;font:400 12px/1.5 var(--font-sans)}
+.scanner-transfer-actions .v2-operation-card h3{margin:0 0 12px;font:600 14px/1.5 var(--font-sans)}
+.scanner-transfer-actions .bank-detail-action-buttons{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.scanner-transfer-actions .v2-operation-card>form>fieldset{display:grid;gap:10px;margin:0;padding:0;border:0}
+.scanner-transfer-actions .v2-operation-card legend{padding:0 0 10px;font:600 12px/1.5 var(--font-sans)}
+.scanner-transfer-actions .v2-operation-card label{display:grid;gap:4px;margin:0;font:500 11px/1.5 var(--font-sans);color:var(--ink-secondary)}
+.scanner-transfer-actions .v2-operation-card input:not([type=checkbox]),.scanner-transfer-actions .v2-operation-card select{min-height:38px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px/1.5 var(--font-sans)}
+.scanner-transfer-actions .v2-operation-card label:has(>input[type=checkbox]){display:flex;align-items:flex-start;gap:8px}
+.scanner-transfer-actions .button{min-height:38px;padding:8px 10px;font:500 12px/1.5 var(--font-sans)}
+.scanner-transfer-actions .v2-operation-card>form>.button{margin-top:12px}
+.outbound-label-verification{padding:12px;font:400 12px/1.5 var(--font-sans)}
+.outbound-label-verification>h4{margin:0 0 12px;font:600 13px/1.5 var(--font-sans)}
+.outbound-label-verification>fieldset{min-width:0;margin:0;padding:0;border:0}
+.outbound-label-verification>fieldset>label{display:flex;align-items:flex-start;gap:8px;font:400 12px/1.5 var(--font-sans)}
+.outbound-label-verification>.button{margin-top:10px}
+
+.institution-staff-editor{max-width:620px;margin-left:auto;scroll-margin-top:20px}
+.institution-staff-editor .auth-form{padding:18px}
+.institution-staff-editor fieldset{display:grid;gap:16px;min-width:0;padding:0;margin:0;border:0}
+.institution-staff-editor select{width:100%;padding:10px 30px 10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);font:400 13px var(--font-sans);color:var(--ink);appearance:none}
+.staff-row-actions{display:flex;gap:8px;flex-wrap:wrap}
+.staff-action-subject{margin:0;overflow-wrap:anywhere;font:500 13px/1.5 var(--font-sans)}

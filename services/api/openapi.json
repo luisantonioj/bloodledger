@@ -2152,6 +2152,14 @@
             "items": {
               "type": "string"
             }
+          },
+          "operatorPinLength": {
+            "type": "integer",
+            "enum": [
+              6,
+              8
+            ],
+            "description": "Active exact operator PIN length for this host."
           }
         }
       },

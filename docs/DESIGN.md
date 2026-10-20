@@ -733,7 +733,7 @@ Dashboard and Requests & Transfers breadcrumb bars include a far-right circled i
 
 
 ### Primary requester supplier routing placeholder — 2026-10-10
-The MetroLipa institution-account form replaces source-bank choice with read-only Supplier Routing / Assign automatically. Its information control sits at the right edge of the label row. Current canonical requests require a source institution, so requester submission is gated until an approved routing response supplies one; the UI must not silently choose the former default bank. Existing legacy role-fixture request contracts remain unchanged. This supersedes earlier manual source selection for primary requester sessions; see GAP-05.
+The MetroLipa institution-account form shows a **Supplying blood bank** select in the Supplier Routing position, with its information control at the right edge of the label row. It lists banks with available stock for the chosen product (availability band only), preselects the first, and the requester confirms or changes it; availability is not approval. Requester details, pickup, documents and notes keep the saved section layout and are editable; Patient / Case Reference stays visibly disabled with its RQ-20 note. This supersedes the 2026-10 read-only "Assign automatically" placeholder (GAP-05); see PA-REQ-01..05 in `REQUIREMENTS.md`. Existing legacy role-fixture request contracts remain unchanged.
 
 Requester Blood Unit Receipt follows the MetroLipa inbound-only mockup: camera launch card, scoped received history, responsive capture/review dialog, shared red focus and right-inset dropdown arrow. Camera/file input provides an in-memory preview only; no OCR/receipt claim or automatic confirmation. Confirmation must wait for label-to-reservation matching and authorized operator submission (GAP-19).
 
@@ -1261,3 +1261,35 @@ Keep the notification visible and completed action forms locked while open;
 only release the close/navigation lock. Queued, submitting, retrying,
 projection-pending and ambiguous outcomes retain close protection. Apply this
 to bank intake, outgoing transfer actions and incoming bank/requester receipts.
+
+
+### Shared institutional blood request form — 2026-10-20
+
+User-authorized frontend alignment: blood-bank institution accounts with `transfer:request` reuse the expanded requester form when requesting blood from another bank. The shared form collects the same accepted synthetic requester, pickup, notes and document fields, uses the existing eligible-suppliers read, and retains PIN verification and frozen request retries. The destination comes from the signed-in institution; the supplier list excludes that institution. Patient / Case Reference remains unavailable under RQ-20. This changes presentation and wiring only; it adds no backend contract, permission, migration or live-write authorization. Existing legacy role-only fixture paths keep their basic presentation.
+
+
+### Blood-request demonstration Fill Up — 2026-10-20
+
+The shared requester/blood-bank request form places a secondary `Fill Up` button immediately before Cancel and Submit request. Each click replaces only requester/clinical details, authorized pickup, notes and both supporting documents with fresh fictional values and readable synthetic PDFs. The manually chosen supplying bank, blood type, component, quantity and urgency remain unchanged. Required time is generated in the future and shown in Manila time; existing synthetic reference patterns apply. Patient / Case Reference stays disabled under RQ-20. Files remain in browser memory until the user submits; generated documents identify themselves as simulation-only and unverified. Fill Up makes no API mutation, skips no validation or PIN verification, and is disabled while the form is locked by a pending/accepted submission. Footer actions can wrap on narrow screens.
+
+### Institution staff management — PA-STAFF-01 (2026-10-21)
+
+Blood-bank and requester Staff Accounts use **Add staff** and an **Add
+institutional staff** editor aligned on the right below the directory. A required
+job title is a display label; Administration and Role permissions remain distinct
+access profiles. Permission sets are limited to the existing facility roles.
+Administration changes require an existing administrator's individual operator
+PIN. PRC retains its existing controls; DOH has no staff-management workflow.
+
+Active and revoked rows retain Reset PIN. Revoked rows also expose Restore;
+resetting a PIN preserves revoked status. The last active administrator's Revoke
+button is disabled, backed by the server's serialized check. Reset PIN first
+asks for administrator verification, then opens matching replacement-PIN inputs.
+The approval expires after two minutes. An uncertain outcome freezes the attempt
+for an explicit retry with identical data; it never auto-retries. Successful
+changes refresh both the directory and the session's authorized operator list.
+See ADR-052 and the additive staff OpenAPI routes for the server boundary.
+
+Staff summary cards use the same current status and search filters as the staff
+table, counting the full filtered dataset across pages. The institution-wide
+last-active-administrator guard always uses the unfiltered roster.

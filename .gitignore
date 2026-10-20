@@ -47,3 +47,6 @@ database/.data/
 database/postgres-data/
 postgres-data/
 .postgres/
+
+# PA-REQ-03 synthetic request documents (API host, project-owned)
+.local/
