@@ -12,7 +12,7 @@ import { PostgresV2CommandStore } from '../../services/api/build/src/v2-command.
 import { PostgresV2Projector, PostgresV2ProjectionReader } from '../../services/api/build/src/database-v2.js';
 import { PostgresMlInventorySnapshotStore, INTERNAL_ML_SNAPSHOT_POLICY_VERSION } from '../../services/api/build/src/census-worker.js';
 
-import { fileDigest, resolveScenarioReview, validateReviewedScenarioBytes, validateExecutionReview, validationOwner } from './stock-review.mjs';
+import { fileDigest, resolveScenarioReview, validateReviewedScenarioBytes, validateExecutionReview, validationOwner, LEGACY_SCENARIO_REVIEW } from './stock-review.mjs';
 
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const fieldEqual = (a,b) => requireStock(canonical(a) === canonical(b), 'STOCK_EVIDENCE_MISMATCH');
@@ -81,18 +81,24 @@ async function bindRuntime(runtime, config, execution, review) {
   }
 }
 
-async function baselineComponents(runtime) {
+async function baselineComponents(runtime, review) {
   const reader = new PostgresV2ProjectionReader(runtime.pool);
   const rows = await reader.listComponents('INST_MEDIATRIX','ROLE-02');
   fieldEqual((await runtime.client.read('coordinator','/api/v2/components')).components.map(storedComponent), rows);
-  requireStock(rows.length === 9, 'STOCK_REVIEWED_NINE_COMPONENT_BASELINE_REQUIRED');
-  const counts = countStates(rows);
-  fieldEqual(counts, { AVAILABLE:6, RESERVED:1, IN_TRANSIT:1, EXPIRED:1, total:9 });
+  const globalCount = Number((await runtime.pool.query('SELECT count(*) AS count FROM app.v2_components')).rows[0].count);
+  requireBaselineShape(rows, globalCount, review);
   for (const row of rows) await compareCurrent(runtime,row);
   await verifyOriginalReceipts(runtime);
-  const globalCount = Number((await runtime.pool.query('SELECT count(*) AS count FROM app.v2_components')).rows[0].count);
-  requireStock(globalCount === rows.length, 'STOCK_UNREVIEWED_GLOBAL_STOCK');
   return rows;
+}
+// TP-JOP-D19: V1 was reviewed against exactly nine Mediatrix units. A successor
+// scenario is reviewed against the live target it inspects, so any accepted
+// state is a baseline; the sealed target hash and table fingerprints pin it.
+export function requireBaselineShape(rows, globalCount, review) {
+  if (review.scenarioVersion !== LEGACY_SCENARIO_REVIEW.scenarioVersion) return;
+  requireStock(rows.length === 9, 'STOCK_REVIEWED_NINE_COMPONENT_BASELINE_REQUIRED');
+  fieldEqual(countStates(rows), { AVAILABLE:6, RESERVED:1, IN_TRANSIT:1, EXPIRED:1, total:9 });
+  requireStock(globalCount === rows.length, 'STOCK_UNREVIEWED_GLOBAL_STOCK');
 }
 async function verifyOriginalReceipts(runtime) {
   const original = (await runtime.pool.query("SELECT c.operation,c.payload,c.idempotency_key,c.ledger_transaction_id,s.transaction_id,s.signed_transaction,s.block_number FROM app.v2_commands c JOIN app.development_seed_commands s USING(command_id) WHERE c.status='COMMITTED' ORDER BY c.command_id")).rows;
@@ -108,10 +114,20 @@ async function compareCurrent(runtime,row) {
   requireStock(asset.componentId === row.componentId && asset.donationId === row.donationId && asset.issuerInstitutionId === row.issuerInstitutionId && asset.componentType === row.componentType && asset.bloodType === row.bloodType && asset.collectedAt === row.collectedAt && asset.labelExpiry === row.expiresAt && asset.custodyInstitutionId === row.institutionId && asset.status === row.inventoryStatus && asset.version === row.inventoryVersion && (asset.reservationId ?? null) === row.reservationId && asset.lastTransactionId === receipt?.ledger_transaction_id, 'STOCK_CURRENT_LEDGER_PROJECTION_MISMATCH');
   return asset;
 }
-function countStates(components) {
-  const result = { AVAILABLE:0, RESERVED:0, IN_TRANSIT:0, EXPIRED:0, total:components.length };
-  for (const component of components) { requireStock(Object.hasOwn(result,component.inventoryStatus) && component.inventoryStatus !== 'total', 'STOCK_UNREVIEWED_COMPONENT_STATE'); result[component.inventoryStatus]++; }
-  return result;
+export function countStates(components) {
+  const result = { AVAILABLE:0, RESERVED:0, IN_TRANSIT:0, EXPIRED:0 };
+  for (const component of components) {
+    requireStock(/^[A-Z][A-Z_]*$/.test(component.inventoryStatus ?? ''), 'STOCK_UNREVIEWED_COMPONENT_STATE');
+    result[component.inventoryStatus] = (result[component.inventoryStatus] ?? 0) + 1;
+  }
+  return Object.fromEntries([...Object.entries(result).sort(([a],[b]) => a.localeCompare(b)), ['total', components.length]]);
+}
+// Combined custody stock after a run: the unchanged sealed baseline plus the scenario.
+export function expectedCombinedCounts(baseline, added = { AVAILABLE:486, RESERVED:36 }) {
+  const counts = countStates(baseline);
+  for (const [state, count] of Object.entries(added)) counts[state] += count;
+  counts.total += Object.values(added).reduce((n, count) => n + count, 0);
+  return counts;
 }
 
 async function preview(runtime, config, options, review) {
@@ -123,7 +139,7 @@ async function preview(runtime, config, options, review) {
   // Run only repository-owned, reviewed Buno code, never a path from an artifact.
   execFileSync('python3',['scripts/operational-scenario/verify.py','--workbook',options.workbook,'--manifest',options.scenario,'--sha256',review.scenarioFileSha256],{stdio:'pipe'});
   await requireQuiescent(runtime.pool);
-  const baseline = await baselineComponents(runtime);
+  const baseline = await baselineComponents(runtime, review);
   const labels = allocateLabels(scenario,runtime.targetSha256,config.labelSequenceStart,keyringFromEnvironment().lookupKey);
   requireStock(new Set(labels.map(label => label.donationId)).size === 522 && new Set(labels.map(label => label.componentId)).size === 522, 'STOCK_COMPONENT_ID_COLLISION');
   for (const label of labels) {
@@ -142,8 +158,11 @@ async function preview(runtime, config, options, review) {
   console.log(canonical({runId,previewSha256:value.manifestSha256,recognizedUnits:522,confirmationRequired:'Review all recognized fields, then confirm this exact preview hash. Confirmation records the actual time and a new execution hash.'}));
 }
 
-async function requireQuiescent(pool, own = []) {
-  const result = await pool.query("SELECT command_id FROM app.v2_commands WHERE status<>'COMMITTED' AND NOT(command_id=ANY($1::text[]))",[own]);
+// TP-JOP-D19: FAILED/CONFLICT commands that never reached the ledger are terminal,
+// not competing writers; preservation fingerprints still pin them unchanged.
+export const QUIESCENCE_SQL = "SELECT command_id FROM app.v2_commands WHERE status<>'COMMITTED' AND NOT(status IN ('FAILED','CONFLICT') AND ledger_transaction_id IS NULL) AND NOT(command_id=ANY($1::text[]))";
+export async function requireQuiescent(pool, own = []) {
+  const result = await pool.query(QUIESCENCE_SQL,[own]);
   requireStock(result.rows.length === 0,'STOCK_UNRELATED_PENDING_COMMANDS');
 }
 // TP-JOP-D17: confirm, apply and resume validate the backup; PR31 moved hashing to fileDigest.
@@ -221,7 +240,7 @@ async function reconcile(runtime,execution,receipts) {
   fieldEqual(rows,await reader.listComponents('INST_MEDIATRIX','ROLE-02'));
   const added = rows.filter(row=>execution.labels.some(label=>label.componentId === row.componentId));
   fieldEqual(countStates(added),{AVAILABLE:486,RESERVED:36,IN_TRANSIT:0,EXPIRED:0,total:522});
-  fieldEqual(countStates(rows),{AVAILABLE:492,RESERVED:37,IN_TRANSIT:1,EXPIRED:1,total:531});
+  fieldEqual(countStates(rows),expectedCombinedCounts(execution.baselineComponents));
   requireStock(new Set(added.map(row=>row.donationId)).size === 522,'STOCK_SINGLETON_DONATION_MISMATCH');
   for(const row of rows) {
     await compareCurrent(runtime,row);
@@ -330,7 +349,7 @@ async function execute(runtime,config,options,action,execution,review) {
     }
     const report = {classification:'SIMULATION_ONLY',hostValidation:validationOwner(config),runId:execution.runId,executionSha256:execution.manifestSha256,targetSha256:runtime.targetSha256,policySha256:runtime.policySha256,verifiedAt:new Date().toISOString(),t0Verification:census?'PASS':Date.now()<Date.parse(execution.scenario.t0)?'PENDING':'MISSED_WINDOW',...reconciliation,receipts,census,censusApiStatus,nearExpiry:'DISABLED_UNAPPROVED_POLICY',v4Default:true,v5:'SEPARATE_APPROVAL_REQUIRED'};
     await savePrivate(options.report,report);
-    console.log(canonical({runId:execution.runId,validTransactions:receipts.length,newUnits:522,totalUnits:531,t0Verification:report.t0Verification,report:options.report}));
+    console.log(canonical({runId:execution.runId,validTransactions:receipts.length,newUnits:522,totalUnits:reconciliation.combined.total,t0Verification:report.t0Verification,report:options.report}));
   } finally {await lock.query('SELECT pg_advisory_unlock_all()');lock.release();}
 }
 
