@@ -29,17 +29,19 @@ workbook, twenty-series distribution, 522 units, 24 reservations (18 TRANSFER
 | `VERSION` | `SYNTHETIC_OPERATIONAL_STOCK_522_V4` |
 | `DATE_POLICY` | `SYNTHETIC_522_DATES_V4` (same offsets as V3) |
 | `BASELINE` | the `main` commit that contains PR #97 |
-| `POPULATION_NOT_BEFORE` | `2026-10-20T06:00:00Z` (Tue 14:00 Manila) |
+| `POPULATION_NOT_BEFORE` | Buno's choice: the next whole half hour after generation, and no later than `2026-10-20T10:00:00Z` (Tue 18:00 Manila) |
 | `T0` | `2026-10-20T22:00:00Z` (Wed 06:00 Manila) |
 | `VERIFICATION_END` | `2026-10-21T03:00:00Z` (Wed 11:00 Manila) |
 
-`generatedAt` must be earlier than `POPULATION_NOT_BEFORE`. With these
+Only `POPULATION_NOT_BEFORE` is flexible, so Buno can publish as soon as V4 is
+ready. Once it is frozen it is never renewed; `generatedAt` must be earlier than
+it. T0 and the verification end stay fixed. With these
 offsets, units are collected Tue 06:00 Manila, reserved units expire Fri
 2026-10-23, and available units expire 2026-10-26 to 2026-10-29 Manila. Nothing
 expires during the defense. T0 falls on the defense's Manila business date, so
 the verify-time census reads `CURRENT` (TP-JOP-D18 rule).
 
-## What to publish (PR, by Tue 2026-10-20 13:00 Manila)
+## What to publish (PR, as early as possible today)
 
 1. Generator and README updates for V4. Run
    `python3 -m unittest discover -s scripts/operational-scenario -v`.
@@ -49,6 +51,9 @@ the verify-time census reads `CURRENT` (TP-JOP-D18 rule).
    (unchanged), window, and the V3 → V4 supersession reason.
 3. Send the ZIP and `scenario.json` privately to Jopia. Never commit the
    workbook, manifest or ZIP.
+4. Tell Jopia as soon as the PR is up, with the chosen
+   `POPULATION_NOT_BEFORE`. Apply takes about 5 h plus review, so a start after
+   Tue 18:00 Manila cannot finish safely before T0.
 
 Jopia then reviews the hashes and window, inspects the live target, posts
 `ACCEPTED` on Buno's PR, and seals the review JSON from that link.
@@ -57,8 +62,8 @@ Jopia then reviews the hashes and window, inspects the live target, posts
 
 | Manila time | Step |
 |---|---|
-| Tue ≤ 14:00 | Stop the worker and expiry evaluator; recover the peer; `stock inspect`; backup + `validate-stock-backup.sh`; `labelSequenceStart=2000` (V1 used `MM26-10-1000…1521`) |
-| Tue 14:00 | `stock preview` → review → `confirm` → `apply` (about 5 h with 35 s pacing); `resume` if stopped |
+| Before the window opens | Stop the worker and expiry evaluator; recover the peer; `stock inspect`; backup + `validate-stock-backup.sh`; `labelSequenceStart=2000` (V1 used `MM26-10-1000…1521`) |
+| When the window opens | `stock preview` → review → `confirm` → `apply` (about 5 h with 35 s pacing); `resume` if stopped |
 | Tue 18:00 | Cutoff: if apply is not running, stop and use the small OCR demo set instead |
 | Wed 06:00–11:00 | `stock verify` at T0, stop/start re-verify, V5 forecast on the CURRENT census, start the worker, UI smoke check |
 
