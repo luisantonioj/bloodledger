@@ -14,6 +14,9 @@ export function allowedOperatorAction(principal: WebPrincipal, operator: Operato
   if (operator.capabilityProfile === "INSTITUTION_ADMIN" && (action === "POST /api/v2/onboarding/operators" || /^POST \/api\/v2\/onboarding\/institutions\/[A-Z0-9_-]+\/profile$/.test(action))) return true;
   if (operator.capabilityProfile === "PRC_REVIEWER") return principal.accountCategory === "PRC" && /^POST \/api\/v2\/onboarding\/(invitations|applications\/[A-Z0-9_-]+\/(review|approve|reject|activate)|institutions\/[A-Z0-9_-]+\/(suspend|reactivate|deregister|profile|account)|operators\/[A-Z0-9_-]+\/(reset-pin|revoke))$/.test(action);
   if (operator.capabilityProfile === "INSTITUTION_ADMIN") return /^POST \/api\/v2\/onboarding\/operators\/[A-Z0-9_-]+\/(reset-pin|revoke)$/.test(action);
+  // PA-REQ-01..04: requester detail edits and document upload/delete on the requester's own transfer.
+  const requestDetailAction = /^POST \/api\/v2\/transfers\/TRF_[A-Z0-9_-]{1,56}\/(details|documents|documents\/DOC_[0-9A-F]{40}\/delete)$/.test(action);
+  if (requestDetailAction) return operator.roleId === "ROLE-03" || operator.roleId === "ROLE-02";
   if (operator.roleId === "ROLE-03") return action === "POST /api/v2/transfers" || /^POST \/api\/v2\/(transfers\/[A-Z0-9_-]+\/(cancellation|receipt|compromise)|reservations\/[A-Z0-9_-]+\/(receive|receipt-verifications|compromise|cancel|delay))$/.test(action);
   if (operator.roleId !== "ROLE-01" && operator.roleId !== "ROLE-02") return false;
   if (action === "POST /api/v2/transfers") return operator.roleId === "ROLE-02";

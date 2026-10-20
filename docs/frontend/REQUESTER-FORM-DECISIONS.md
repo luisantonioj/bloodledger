@@ -1,6 +1,6 @@
-# Requester form decisions (GAP-01 to GAP-05): proposed
+# Requester form decisions (GAP-01 to GAP-05)
 
-Status: **Proposed. Jopia and Lat have not accepted it.** Classification: `SIMULATION_ONLY`.
+Status: **Accepted by Jopia and Lat on 2026-10-20** (recorded from one multi-role session; self-validation disclosed). Classification: `SIMULATION_ONLY`.
 Drafted 2026-10-20 for the Lat morning UI handoff (`6856c28`). Proposed policy
 version: `SYNTHETIC_REQUEST_DETAIL_V1`.
 
@@ -82,7 +82,7 @@ a stale version returns `STALE_STATE`.
 
 ## PA-REQ-03: supporting documents (GAP-03)
 
-- Upload: real file selection plus an authenticated multipart upload to the API.
+- Upload: real file selection plus an authenticated JSON upload to the API (base64 transport, SHA-256 checked; the operator PIN binds the metadata and digest, not the raw bytes).
   Files are stored on the API host's project-owned volume
   (`.local/request-documents/`, git-ignored) under a random ID. They are never
   stored in the ledger or as base64 in the database.
@@ -128,9 +128,9 @@ are preserved.
 
 | Item | Jopia | Lat | Date |
 |---|---|---|---|
-| PA-REQ-01 | | | |
-| PA-REQ-02 | | | |
-| PA-REQ-03 | | | |
-| PA-REQ-04 | | | |
-| PA-REQ-05 | | | |
-| RQ-20 opened | | | |
+| PA-REQ-01 | Accepted | Accepted | 2026-10-20 |
+| PA-REQ-02 | Accepted | Accepted | 2026-10-20 |
+| PA-REQ-03 | Accepted | Accepted | 2026-10-20 |
+| PA-REQ-04 | Accepted | Accepted | 2026-10-20 |
+| PA-REQ-05 | Accepted | Accepted | 2026-10-20 |
+| RQ-20 opened | Accepted | Accepted | 2026-10-20 |
