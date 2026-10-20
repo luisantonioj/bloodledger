@@ -52,8 +52,12 @@ export interface V2ProjectionReader {
 
 type Row = Record<string, unknown>;
 
+// TP-JOP-D21: pg returns timestamptz as Date; String(Date) drops milliseconds,
+// so a read could disagree with the exact instant stored on the ledger.
+export function utcIso(value: unknown): string { return (value instanceof Date ? value : new Date(String(value))).toISOString(); }
+
 function mapRow(row: Row): V2ComponentProjection {
-  return { componentId: String(row.component_id), donationId: String(row.donation_id), issuerInstitutionId: String(row.issuer_institution_id), componentType: String(row.component_type), bloodType: String(row.blood_type), collectedAt: new Date(String(row.collected_at)).toISOString(), expiresAt: new Date(String(row.expires_at)).toISOString(), institutionId: String(row.institution_id), inventoryStatus: String(row.inventory_status), reservationId: row.reservation_id === null || row.reservation_id === undefined ? null : String(row.reservation_id), reservationVersion: row.reservation_version === null || row.reservation_version === undefined ? null : Number(row.reservation_version), inventoryVersion: Number(row.ledger_version), policyVersion: String(row.policy_version), classification: "SIMULATION_ONLY" };
+  return { componentId: String(row.component_id), donationId: String(row.donation_id), issuerInstitutionId: String(row.issuer_institution_id), componentType: String(row.component_type), bloodType: String(row.blood_type), collectedAt: utcIso(row.collected_at), expiresAt: utcIso(row.expires_at), institutionId: String(row.institution_id), inventoryStatus: String(row.inventory_status), reservationId: row.reservation_id === null || row.reservation_id === undefined ? null : String(row.reservation_id), reservationVersion: row.reservation_version === null || row.reservation_version === undefined ? null : Number(row.reservation_version), inventoryVersion: Number(row.ledger_version), policyVersion: String(row.policy_version), classification: "SIMULATION_ONLY" };
 }
 
 function mapReservation(row: Row): V2ReservationProjection {
@@ -67,9 +71,9 @@ function mapReservation(row: Row): V2ReservationProjection {
     destinationInstitutionId: row.destination_institution_id == null ? null : String(row.destination_institution_id),
     transferId: row.transfer_id == null ? null : String(row.transfer_id),
     localReleaseId: row.local_release_id == null ? null : String(row.local_release_id),
-    preparedAt: row.prepared_at == null ? null : new Date(String(row.prepared_at)).toISOString(),
+    preparedAt: row.prepared_at == null ? null : utcIso(row.prepared_at),
     preparedEvidencePresent: row.prepared_evidence_digest != null && row.prepared_evidence_id != null,
-    updatedAt: new Date(String(row.updated_at)).toISOString(),
+    updatedAt: utcIso(row.updated_at),
     components: components.map((item) => {
       const component = item as Record<string, unknown>;
       return { componentId: String(component.componentId), componentType: String(component.componentType), inventoryStatus: String(component.inventoryStatus), inventoryVersion: Number(component.inventoryVersion) };

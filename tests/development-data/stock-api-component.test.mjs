@@ -13,3 +13,8 @@ test('TP-JOP-D16: a missing, unknown or status-inconsistent expiryState still fa
   assert.throws(()=>storedComponent({...row(status),expiryState:state}),/STOCK_EVIDENCE_MISMATCH/);
  }
 });
+test('TP-JOP-D20: the read-time printed-label identity is removed so API rows equal stored projections',()=>{
+ assert.deepEqual(storedComponent({...row('AVAILABLE'),expiryState:'CURRENT',labelIdentity:{unitId:'SYNTH-UNIT-1'}}),row('AVAILABLE'));
+ assert.deepEqual(storedComponent({...row('AVAILABLE'),expiryState:'CURRENT',labelIdentity:null}),row('AVAILABLE'));
+ assert.throws(()=>storedComponent({...row('AVAILABLE'),labelIdentity:null}),/STOCK_EVIDENCE_MISMATCH/);
+});
