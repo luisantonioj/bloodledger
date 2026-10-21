@@ -36,6 +36,7 @@ test("S5-08 serves web, capture, and API from their required same-origin paths",
   try {
     assert.match((await app.inject({ method: "GET", url: "/" })).body, /SPRINT5_WEB/);
     assert.match((await app.inject({ method: "GET", url: "/inventory" })).body, /SPRINT5_WEB/);
+    for (const url of ["/transactions", "/accounts", "/receipts", "/redistribution", "/prc-supply"]) assert.match((await app.inject({ method: "GET", url })).body, /SPRINT5_WEB/);
     assert.match((await app.inject({ method: "GET", url: "/profile" })).body, /SPRINT5_WEB/);
     const analytics = await app.inject({ method: "GET", url: "/analytics" });
     assert.equal(analytics.statusCode, 200);
