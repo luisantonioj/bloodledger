@@ -90,6 +90,250 @@ automated evidence does not populate them.
 
 An open gate produces an explicit `BLOCKED` or `NOT_RUN` result, never a pass.
 
+### UAT postponement and adviser progress demo — Oct 12 decision
+
+**Accepted scheduling instruction, 2026-10-12:** participant UAT will not take
+place on Oct 12. Its replacement date is unset. Keep PR #45 in draft and do
+not merge it as approval for the cancelled window. The Oct 12 record below is
+preserved as preparation and technical evidence, not an executed UAT session.
+
+The next event is an adviser progress demonstration on **Wednesday Oct 14**
+on Lat's populated host, not participant UAT or response collection.
+The Oct 12 choice of stale analytics is superseded by the Oct 14 decision below.
+
+#### Oct 14 morning demo analytics decision — fresh census and V5 preview
+
+**Accepted scope change from the relayed Jopia instruction, 2026-10-14:**
+choose option (a) as specifically revised here: fresh operational census plus
+an explicitly selected **V5 preview**, not a V4 forecast job or V5 activation.
+The instruction arrived on Oct 14 morning; do not backdate the artifact check,
+generation or review to the previous evening.
+
+Follow [Persist census and explicit V5 preview](PERSISTENT-DEVELOPMENT-RUNBOOK.md#persist-census-and-explicit-v5-preview)
+on Lat's retained host after the approved startup and pending-command checks.
+Use the actual Oct 14 generation time, origin **2026-10-13**, one-day target
+**2026-10-14**, Asia/Manila. Capture census independently at the actual current
+UTC instant; never retimestamp the Oct 11 snapshot or change expired units to
+make availability appear current. If the calendar has advanced, stop and
+reconcile the requested day rather than backdating a run.
+
+Before execution Lat must reconfirm the existing external model file SHA-256
+`1e0f0c240109e49e8f1a89a713021afae07c2f5fae5b0e2bc8e3904610fb9764`
+and pinned Docker image ID
+`sha256:dcb2ccd36834bcec33e3d5cb8158f2b7a75b0881f695821cc705764667fba4c1`.
+Buno's local model bytes match that file hash; earlier transfer evidence does
+not prove current presence on Lat's host. If missing, privately transfer the
+original artifact; no rebuilding, retraining or substitution. Canonical model
+parameter hash remains the one pinned in the linked runtime contracts.
+
+Preview must produce the actual target/institution binding and job hashes.
+**Jopia reviews those exact hashes before apply/persistence.** This scope choice
+is not that per-job approval and records no completed run. Verify 20 mapped
+one-day series through the real API/browser, exact origin/target, immutable
+lineage, nullable uncertainty and disabled recommendations. Census freshness
+does not establish forecast validity. Both use Manila-day freshness rules.
+
+V4 remains the default weighted-seven model. Its seven-day request-history
+requirement is not satisfied by manufacturing zeros or copying stock counts;
+show the actual unavailable reason when the valid V4 run/history is absent.
+Explicit V5 preview uses the frozen saved series means without runtime refit
+or a new history requirement. If prerequisites, hash review or execution fail,
+report the actual STALE/UNAVAILABLE state rather than claim a successful demo
+refresh. No activation, recommendations, participant UAT or deployment approval.
+
+#### Adviser forecasting talking points
+
+1. **Default V4:** a weighted seven-day demand baseline. This retained demo
+   does not have the required valid recent request history/run, so UNAVAILABLE
+   is expected; the actual API reason must be shown. Current stock is a
+   separate inventory measurement, not a substitute demand history.
+2. **V5 preview:** an explicitly selected synthetic-data model, chosen as the
+   training-series mean baseline. Its twenty frozen means are reused without
+   retraining. A reviewed fresh run demonstrates integration, not activation
+   or autonomous recommendations; V4 remains the default.
+3. **Research results:** the [V5 handoff](ML-V5-HANDOFF.md#results) reports
+   held-out 2025 test MAE 0.664509 units per series-day, RMSE 1.265116 and
+   WAPE 68.671480%, versus V4-method MAE 0.683502 on the same V5 test data.
+   This is a modest aggregate improvement, not improvement for every component.
+   The 85.27% result is secondary any-demand classification accuracy, never
+   accuracy of predicted quantities. The 2026 rows were demonstration-only.
+4. **Limits:** synthetic training/testing cannot establish Mediatrix operational
+   accuracy, emergency prediction or clinical suitability. RQ-07 remains open;
+   neither 100-minus-WAPE nor software passes constitute operational accuracy.
+
+For rescheduled UAT, retain these open work items:
+
+- reconcile five scored core areas and three supplementary safeguard items;
+  verify manuscript response anchors against the exact source, preserve item
+  IDs/wording, and secure final instrument approval, private version and hash;
+- preserve the user's Oct 12 confirmation of Buno's mean >=3.51 approval and
+  relayed Lat approval; final instrument reconciliation and formal PROJECT.md
+  supersession are still outstanding;
+- preserve the user's confirmation that survey permission exists, while
+  permission type/reference/date, consent/withdrawal, role eligibility,
+  facilitators and external custodian remain unrecorded; this is not evidence
+  that permission was denied, nor does it close TP-G03;
+- obtain the new Lat-approved date/window and scope, including an explicit
+  disposition of any deliberately untested live task.
+
+#### Successor operational scenario plan
+
+The scheduling handoff states that V3 reserved units expire **Tuesday Oct 13,
+23:30 Asia/Manila** (15:30 UTC). Do not extend their dates or treat them as
+usable for Wednesday's demo or a later UAT. Preserve their historical states
+and show actual statuses; this plan authorizes no expiry mutation or population.
+
+Once the new UAT date is approved, prepare a separately versioned successor
+using the [reviewed scenario/population process](OPERATIONAL-STOCK-POPULATION.md):
+
+1. Reconfirm the retained host state and eligible workflow scope with Lat and
+   Jopia; select collection/expiry dates and generation, population, T0 and end
+   windows around the new session, not the cancelled date.
+2. Preserve the original workbook/count lineage, separate historical snapshot
+   and unchanged forecasting artifacts. Specify 522 new synthetic units
+   (486 AVAILABLE, 36 RESERVED), institution/donation relationships and linked
+   reservations with new collision-checked identities; do not overwrite V3.
+3. Version the generator/verifier and private scenario package together;
+   publish sanitized manifest/archive and code hashes with validation results.
+   Keep values, images and private artifacts outside Git.
+4. Obtain Jopia's exact scenario and retained-target review before population.
+   Lat follows the reviewed backup, preview, confirmation and population flow,
+   then independent API/Fabric/workflow/census/restart verification. Preserve
+   existing accounts, credentials, identities, volumes and frontend work.
+
+No dates or approval manifests are generated before the new window is known.
+The Oct 14 demo does not itself authorize a replacement population. All work
+remains SIMULATION_ONLY, with research, UAT, activation and deployment gates
+separate.
+
+### Oct 12 step 18 decision record — historical preparation, UAT postponed
+
+**Status:** Oct 12 session cancelled; retained preparation evidence only.
+**Record date:** 2026-10-12, Asia/Manila.
+
+The relayed morning technical report states that service health, six logins,
+backup, clock skew and the worker checks passed, with no pending commands.
+It also reports that capture stopped before intake and the 23 pre-made
+reservations remained untouched at that check. These are host-owner reports,
+not independent validation here, participant authorization or UAT acceptance.
+The subsequent completed reruns and their narrower scope are recorded below;
+they supersede the earlier capture blocker and preservation count only where
+explicitly stated.
+
+| Gate | Sanitized facts received | Decision still required | Status |
+|---|---|---|---|
+| TP-G01 | Proposed Oct 12, 17:00–19:00 Asia/Manila; section C results received | Actual Lat approval/date and corrected final scope distinguishing prior PASS from the untested live expiry task | OPEN |
+| TP-G02 | Proposed mean at least 3.51, unchanged manuscript five-area questionnaire, five-point scale | Joint Lat/Buno approval/date, exact title and frozen private form SHA-256; formal supersession of PROJECT.md's 3.50 after approval | OPEN |
+| TP-G03 | No actual confirmation of the required research arrangements has been supplied in this handoff | Authorization type, non-identifying reference and date; consent procedure; eligibility by role; facilitator role; external raw-data custodian role/organization | OPEN |
+
+Do not fill these fields from a template, technical pass, scheduled time, or
+request to proceed. No approved decision date is backdated to the planned
+07:00 checkpoint. Buno notified the frontend and backend owners of the missing
+decisions in the [Oct 12 blocker notice](https://github.com/luisantonioj/bloodledger/pull/42#issuecomment-6116112892).
+Until TP-G03 is actually confirmed, the proposed session must move or be an
+internal technical demonstration without research participants, recruitment,
+consent collection or UAT response collection. Gate closure requires actual
+sanitized owner decisions recorded here and merged; opening this PR does not
+close step 18.
+
+#### Session scope reconciliation
+
+Section C results have been received as `LAT_LOCAL_VALIDATION`, completed
+approximately 12:27 Asia/Manila on Oct 12. Buno reviewed the two private
+handoffs; this is report review, not a second host execution. The following
+supersedes the earlier preparation worksheet, but is not owner-approved
+participant scope:
+
+| J9 task | Candidate data source and constraint |
+|---|---|
+| 2 — capture intake | PASS: replacement 01 matched all five fields; explicit confirmation; QUEUED → SUBMITTING → COMMITTED. That label is now used; do not rerun it as a fresh intake. Labels 02/03 remain unscanned and need immediate pre-scan uniqueness checks |
+| 4 — transfer through transit | PASS with limitation: authorized existing pre-made TRANSFER reservation prepared, dispatched and put IN_TRANSIT; new-request approval and reservation-from-request remain unavailable |
+| 5a — scanned receipt | BLOCKED: no verified matching label for the selected in-transit unit; do not substitute the newly captured label or override FEFO |
+| 5b — requesting-hospital request/receipt | BLOCKED: requesting-hospital new-request path unavailable; no successful receipt inferred |
+| 6 — local release | Prior PASS in the first supplied report: new local reservation, prepare, complete, all COMMITTED |
+| 8 — compromise | PASS: a separate pre-made transfer prepared, dispatched and compromised with a listed reason and explicit confirmation; all commands COMMITTED |
+| 10 — expiry and acknowledgement | NOT_RUN: preserve for live evaluation and acknowledgement of its newly generated alert; not a pre-session PASS |
+
+Lat reports 21 ACTIVE pre-made reservations, one IN_TRANSIT, one COMPROMISED
+and one previously CANCELLED (24 total), superseding the earlier 23 ACTIVE
+count after two explicitly authorized uses. Detailed mappings remain private;
+Lat must select distinct eligible current reservations for the session and
+must not replay a consumed scenario. The original historical snapshot remains
+separate and unchanged according to the report. Worker RUNNING, no pending
+commands, clean retained UAT checkout and a validated fresh backup are reported.
+
+The proposed window includes steps 1, 3, 4, 6, 7, 8, 9, 10, 11, 12 and now
+technically passed step 2. Earlier evidence for 1, 3, 7, 9, 11 and 12 is not
+reproduced by these two reports. Request a scope correction: a rule admitting
+only steps that PASS before 13:30 cannot simultaneously admit step 10, which
+is deliberately NOT_RUN. Lat must explicitly approve it as a planned live
+task with a stop/report-on-failure condition, or exclude it; never mark it PASS
+in advance. Scope approval and actual research permission remain separate.
+
+Read out these exclusions: approving new transfers/reserving from a request,
+requesting-hospital request/receipt (5b), and scanned receipt (5a) without the
+actual matching verified label. Keep identifying operational values out of
+this record.
+Prepare uses `SYNTHETIC_PREPARATION_EVIDENCE_V1`; disclose that it is a synthetic
+stand-in and no physical preparation evidence was reviewed. Read out the
+reviewed runbook limitations, including simulation-only data, remaining OCR
+device evidence, and the distinction between queued and committed actions.
+
+#### Analytics decision — option (b)
+
+**Accepted by the Buno task under the user's delegated choice, 2026-10-12:**
+retain the existing analytics evidence. No target-specific V4 job and binding
+approvals were supplied, so this record does not authorize a forecast refresh
+or census mutation. The session limitation is:
+
+> Analytics shows the Oct 11 census as STALE.
+
+Display forecast availability independently as actually returned by the API;
+do not relabel an unavailable forecast as stale or treat stock validity as
+forecast validity. V4 remains the default. V5 activation, binding, research,
+UAT and deployment approvals remain separate. This choice does not close
+TP-G01, TP-G02, TP-G03 or TP-G05.
+
+#### Capture replacement fixture verification
+
+Original fixture 01 reproduced six non-empty lines with
+`CAPTURE_REQUIRED_FIELD_MISSING`. Required prefix confidences in order
+DONATION NO / BLOOD TYPE / COMPONENT / COLLECTED AT / EXPIRES AT were
+92 / 92 / 90 / 86 / 88; the unmatched sixth line had confidence 93.
+Earlier uniqueness checks did not establish OCR success. Withdraw that set.
+
+The separately versioned **capture-label set V5** (unrelated to model V5)
+contains three replacements. Failed intermediate candidates are not released.
+The unchanged `labelImage` CSS layout was rendered with Chrome pixel density
+0.9; this is a disclosed fixture-rendering setting, not an OCR-policy change.
+Verification used baseline `ef799cb3990020e5e8356b77ccf86fb72cfa7ced`,
+tesseract.js 7.0.0, OEM LSTM_ONLY, default page segmentation, the pinned local
+language asset, block/paragraph/line extraction and the actual
+`parseInboundOcrLines` and `validateCapturedLabel` implementations. No confidence
+threshold was relaxed. Every replacement produced exactly five required-prefix
+lines, confidence at least 90 for every field, no parser error, and values
+identical to its private intended record.
+
+| Fixture | Field confidences in the prefix order above | PNG SHA-256 |
+|---|---|---|
+| 01 | 93 / 93 / 91 / 91 / 93 | `9082e70cf62379494c95fac37eba90326d79c98de6e617c5b1807bc0eff8eb04` |
+| 02 | 93 / 93 / 92 / 90 / 92 | `f2fb46f833fe53454be214ae483fc16ac8e23c475b73c20476014dc2fbfa3d3c` |
+| 03 | 93 / 94 / 91 / 91 / 92 | `9006039674d60379e7d06d890f72c30d980e9fb89ac128002566cf1d6c8f1a95` |
+
+Private archive SHA-256:
+`d9cc5eba5de380c6a68946eb67b0bf742d92b423c1c341b0ca8f63cda690a75b`.
+Included checksum-manifest SHA-256:
+`b1e87d17456602ead3ef2abec715fc8ec78d4ac7e475ef9d3badca37b8f46f6d`.
+
+PNG bytes, values, harness and detailed evidence stay in the private transfer
+package, outside Git. These are Buno-side software fixture results, not a pass
+on Lat's device or an intake. The subsequently supplied Lat report records the
+ZIP hash and all 13 checksums passing, immediate pre-scan uniqueness passing for
+all three labels, and actual fixture 01 OCR and committed intake passing as
+described above. These are attributed host-owner results. Repeat uniqueness for
+any still-unused label immediately before use. No ISBT, physical-label,
+clinical or research-approval claim follows.
+
 ## 4. Selected work mapped to Gantt
 
 ### 81 — System Testing
