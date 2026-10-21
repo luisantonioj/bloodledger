@@ -16,7 +16,7 @@ export function PhoneScannerShell({ principal, scanner, onSignOut }: { principal
       <button className="sign-out" type="button" disabled={locked} onClick={onSignOut} title="Sign out" aria-label="Sign out">↪</button>
     </header>
     <OfflineBanner/>
-    <main className="receipt-scanner-content phone-scanner-content">
+    <main className="receipt-scanner-content phone-scanner-content" aria-label={scanner === "RECEIPT" ? "Mobile receipt scanner" : "Mobile blood unit scanner"}>
       {scanner === "RECEIPT" ? <UnitCaptureWorkspace principal={principal} direction="Inbound" onLockChange={setLocked}/>
         : <BankUnitScannerBody principal={principal} direction={direction} onDirection={setDirection} onLockChange={setLocked}/>}
     </main>
