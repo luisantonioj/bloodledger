@@ -106,8 +106,11 @@ function cookieValue(header: string | undefined, name: string): string | null {
   for (const part of header.split(";")) { const [key, ...value] = part.trim().split("="); if (key === name) return value.join("="); }
   return null;
 }
-function sessionCookie(token: string, secure: boolean): string {
-  return `bloodledger_session=${token}; Path=/; Max-Age=900; HttpOnly; SameSite=Strict${secure ? "; Secure" : ""}`;
+// Sessions slide: 15 minutes idle, renewed once past half-life, capped at 8 hours absolute in the database.
+const SESSION_IDLE_SECONDS = 900;
+const SESSION_RENEW_BELOW_SECONDS = 450;
+function sessionCookie(token: string, secure: boolean, maxAgeSeconds = SESSION_IDLE_SECONDS): string {
+  return `bloodledger_session=${token}; Path=/; Max-Age=${maxAgeSeconds}; HttpOnly; SameSite=Strict${secure ? "; Secure" : ""}`;
 }
 function clearSessionCookie(secure: boolean): string {
   return `bloodledger_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict${secure ? "; Secure" : ""}`;
@@ -214,6 +217,22 @@ export async function buildApp(
     const secureCookie = config.webCookieSecure ?? !localOrigin;
     if (!secureCookie && !localOrigin) throw new Error("WEB_COOKIE_SECURE may be disabled only for isolated localhost development");
     const verifiedPrincipals = new WeakMap<FastifyRequest, WebPrincipal>();
+    const renewedCookies = new WeakMap<FastifyRequest, string>();
+    const renew = async (request: FastifyRequest, claims: SessionClaims): Promise<void> => {
+      if (!sessions.extendSession || renewedCookies.has(request) || claims.exp === undefined) return;
+      const now = clock();
+      if (claims.exp - now.getTime() / 1000 > SESSION_RENEW_BELOW_SECONDS) return;
+      const expiresAt = await sessions.extendSession(claims.sessionId, bindingDigest(claims.binding), new Date(now.getTime() + SESSION_IDLE_SECONDS * 1000), now);
+      const remaining = expiresAt ? Math.floor((expiresAt.getTime() - now.getTime()) / 1000) : 0;
+      if (remaining <= claims.exp - now.getTime() / 1000) { renewedCookies.set(request, ""); return; }
+      const { userId, institutionId, roleId, sessionId, binding, policyVersion, credentialVersion } = claims;
+      renewedCookies.set(request, sessionCookie(app.jwt.sign({ userId, institutionId, roleId, sessionId, binding, policyVersion, ...(credentialVersion === undefined ? {} : { credentialVersion }) }, { expiresIn: remaining }), secureCookie, remaining));
+    };
+    app.addHook("onSend", async (request, reply, payload) => {
+      const renewed = renewedCookies.get(request);
+      if (renewed && !reply.hasHeader("set-cookie")) reply.header("set-cookie", renewed);
+      return payload;
+    });
     const restore = async (request: FastifyRequest): Promise<{ claims: SessionClaims; principal: WebPrincipal }> => {
       const token = cookieValue(request.headers.cookie, "bloodledger_session");
       if (!token) throw new ApiFailure(401, "AUTH_REQUIRED", "A valid session is required.");
@@ -222,6 +241,7 @@ export async function buildApp(
       if (claims.policyVersion !== WEB_ACCESS_POLICY_VERSION || !isRoleId(claims.roleId)) throw new ApiFailure(401, "AUTH_REQUIRED", "A valid session is required.");
       const record = await sessions.restoreSession(claims.sessionId, bindingDigest(claims.binding), clock());
       if (!record || record.userId !== claims.userId || record.institutionId !== claims.institutionId || record.roleId !== claims.roleId || (claims.credentialVersion !== undefined && record.credentialVersion !== claims.credentialVersion)) throw new ApiFailure(401, "AUTH_REQUIRED", "A valid session is required.");
+      await renew(request, claims);
       return { claims, principal: verifiedPrincipals.get(request) ?? webPrincipal(record) };
     };
     restoreWebSession = restore;

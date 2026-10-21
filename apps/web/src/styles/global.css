@@ -1363,3 +1363,18 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .phone-scanner-header .sign-out{flex-shrink:0;color:var(--ink)}
 .phone-scanner-content{padding:16px;min-width:0;overflow-y:auto}
 .scan-on-phone-note{margin:0;padding:8px 10px;border-radius:var(--radius-sm);background:var(--information-container);color:var(--ink-secondary);font-size:11px;line-height:1.6;max-width:420px}
+
+/* PRC supply request details: identity + status, compact facts, timeline history. */
+.prc-supply-detail .prc-detail-identity{margin:0;padding:16px 18px}
+.prc-supply-detail .prc-detail-facts{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 18px;padding:16px 18px}
+.prc-supply-detail .prc-detail-facts dd{font-size:12px;line-height:1.5}
+.prc-supply-detail .prc-supply-message{margin:0 18px 16px;padding:8px 10px;border-radius:var(--radius-sm);background:var(--information-container);color:var(--ink-secondary);font-size:11px}
+.prc-supply-detail>h3{margin:0;padding:14px 18px 10px;border-top:1px solid var(--line-subtle);font:500 12px/1.4 var(--font-sans)}
+.prc-supply-detail .prc-request-history{list-style:none;gap:0;margin:0;padding:0 18px 18px}
+.prc-supply-detail .prc-request-history li{position:relative;padding:0 0 14px 20px;border-left:1px solid var(--line);margin-left:5px}
+.prc-supply-detail .prc-request-history li:last-child{border-left-color:transparent;padding-bottom:0}
+.prc-supply-detail .prc-request-history li::before{content:"";position:absolute;left:-5px;top:4px;width:9px;height:9px;border-radius:50%;background:var(--surface);border:1px solid var(--ink-muted)}
+.prc-supply-detail .prc-request-history li:last-child::before{background:var(--primary);border-color:var(--primary)}
+.prc-supply-detail .prc-request-history strong{font:500 12px/1.4 var(--font-sans);text-transform:lowercase;display:block}
+.prc-supply-detail .prc-request-history strong::first-letter{text-transform:uppercase}
+.prc-supply-detail .prc-request-history li>span,.prc-supply-detail .prc-request-history li>small{margin-top:2px;font-size:11px}
