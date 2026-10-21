@@ -1328,3 +1328,27 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .outbound-label-verification>fieldset{min-width:0;margin:0;padding:0;border:0}
 .outbound-label-verification>fieldset>label{display:flex;align-items:flex-start;gap:8px;font:400 12px/1.5 var(--font-sans)}
 .outbound-label-verification>.button{margin-top:10px}
+
+/* Request and transfer details: one calm reading rhythm inside the bank detail card. */
+.bank-detail-card .request-detail-panel{gap:14px;margin-top:18px;padding-top:16px;font-size:11px;line-height:1.6}
+.bank-detail-card .request-detail-panel h3,.bank-detail-card .request-detail-panel h4{font:500 12px/1.4 var(--font-sans);color:var(--ink)}
+.bank-detail-card .request-detail-panel h4{margin-top:4px}
+.bank-detail-card .request-detail-panel dl{grid-template-columns:135px minmax(0,1fr);gap:12px 14px}
+.bank-detail-card .request-detail-panel dt{color:var(--ink-muted)}
+.bank-detail-card .request-detail-panel dd small{color:var(--ink-muted);font-size:10px}
+.bank-detail-card .request-detail-panel .requester-placeholder-tag{font-size:10px;color:var(--ink-muted)}
+.bank-detail-card .request-detail-documents{gap:6px}
+.bank-detail-card .request-detail-documents li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:8px 10px;border:1px solid var(--line-subtle);border-radius:var(--radius-sm)}
+.bank-detail-card .request-detail-documents a{font-size:11px;color:var(--ink);text-underline-offset:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bank-detail-card .request-detail-documents small{font-size:10px;color:var(--ink-muted)}
+.bank-detail-card .request-detail-documents li>.button{grid-column:2;grid-row:1/span 2;align-self:center}
+.bank-detail-card .request-detail-panel>p{margin:0;color:var(--ink-muted)}
+.bank-detail-card .v2-operation-card{margin-top:18px;padding:16px 0 0;border:0;border-top:1px solid var(--line-subtle);background:transparent;font:400 11px/1.6 var(--font-sans)}
+.bank-detail-card .v2-operation-card>h3{margin:0 0 14px;font:500 12px/1.4 var(--font-sans);color:var(--ink)}
+.bank-detail-card .v2-operation-card>p{margin:0 0 12px;padding:8px 10px;border-radius:var(--radius-sm);background:var(--information-container);color:var(--ink-secondary);font-size:11px}
+.bank-detail-card .reservation-location-audit{margin-bottom:14px}
+.bank-detail-card .reservation-location-audit h4{margin:0 0 8px;font:500 11px/1.4 var(--font-sans);color:var(--ink-secondary)}
+.bank-detail-card .reservation-location-audit .data-table{width:100%;font-size:11px}
+.bank-detail-card .reservation-location-audit .data-table th{font-size:9px;padding:6px 8px}
+.bank-detail-card .reservation-location-audit .data-table td{padding:6px 8px}
+@media(max-width:760px){.bank-detail-card .request-detail-panel dl{grid-template-columns:125px minmax(0,1fr);gap:10px}.bank-detail-card .reservation-location-audit{overflow-x:auto}}
