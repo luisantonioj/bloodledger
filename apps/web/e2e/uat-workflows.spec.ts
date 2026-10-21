@@ -29,7 +29,6 @@ async function setup(page: Page, overrides: Partial<typeof reservation> = {}, in
 async function verify(page:Page) {const dialog=page.getByRole("dialog",{name:"Verify operator"});await dialog.getByLabel("Operator PIN").fill("00000000");await dialog.getByRole("button",{name:"Verify and submit",exact:true}).click();}
 async function open(page:Page) {await page.goto("/transfers?record=reservation&recordId=RES_UAT_SYNTH");await expect(page.getByRole("region",{name:"Reservation actions"})).toBeVisible();return page.getByRole("region",{name:"Reservation actions"});}
 for (const [action,label,state,prepared,local,recipient] of [
-  ["prepare","Prepare reservation","ACTIVE",false,false,false],
   ["dispatch","Dispatch reservation","ACTIVE",true,false,false],
   ["transit","Start transit","DISPATCHED",true,false,false],
   ["receive","Receive reservation","IN_TRANSIT",true,false,true],
@@ -49,8 +48,9 @@ for (const [action,label,state,prepared,local,recipient] of [
     if(action==="compromise"){await expect(section.getByLabel("Compromise reason").locator("option")).toHaveCount(5);await section.getByLabel("Compromise reason").selectOption(compromiseCodes[0]);await expect(section.getByText("This records quarantine pending manual review.",{exact:true})).toBeVisible();await expect(section.locator('textarea,input[type="text"]')).toHaveCount(0);}
     if(action==="delay"){await expect(section.getByRole("button",{name:"Confirm reservation action",exact:true})).toBeDisabled();await section.getByLabel("Delay reason").selectOption("TRAFFIC");await expect(section.locator('textarea,input[type="text"]')).toHaveCount(0);}
     if(action==="resume")await expect(section.getByText("Delayed — follow up with the other facility.",{exact:false})).toBeVisible();
-    await expect(section.getByRole("button",{name:"Confirm reservation action",exact:true})).toBeDisabled();expect(posts).toBe(0);
-    await section.getByRole("checkbox").check();await section.getByRole("button",{name:"Confirm reservation action",exact:true}).click();await verify(page);
+    const submitName=action==="dispatch"?"Confirm outbound transaction":"Confirm reservation action";
+    await expect(section.getByRole("button",{name:submitName,exact:true})).toBeDisabled();expect(posts).toBe(0);
+    await section.getByRole("checkbox").check();await section.getByRole("button",{name:submitName,exact:true}).click();await verify(page);
     await expect(section.getByRole("heading",{name:"Accepted and queued",exact:true})).toBeVisible();expect(posts).toBe(1);
     expect(Object.keys(body).sort()).toEqual(["correlationId","eventTime","expectedVersion",...(action==="prepare"?["preparedAt","preparedEvidenceDigest","preparedEvidenceId"]:[]),...(action==="compromise"||action==="delay"?["reasonCode"]:[]),...(action==="dispatch"||action==="receive"?["location"]:[])].sort());
     // TC-G01: without a granted permission the browser reports a denial, so the checkpoint falls back with that reason.

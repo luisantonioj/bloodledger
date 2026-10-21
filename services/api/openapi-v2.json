@@ -290,7 +290,7 @@
       },
       "post": {
         "operationId": "submitTransferRequest",
-        "description": "Queue a transfer requisition to another blood bank. Legacy sessions: ROLE-03 to INST_MEDIATRIX. Institution accounts: ROLE-02/ROLE-03 operators with operator verification, any other approved bank as source. destinationInstitutionId must be the caller institution. eventTime and requestTime must be within 300 seconds of the server clock for a new command. Acceptance is not ledger commitment.",
+        "description": "Queue a transfer requisition to another blood bank. Legacy sessions: ROLE-03 to INST_MEDIATRIX. Institution accounts: ROLE-02/ROLE-03 operators with operator verification, any other approved bank as source. destinationInstitutionId must be the caller institution. eventTime and requestTime must be within 300 seconds of the server clock for a new command. Acceptance is not ledger commitment. PA-REQ-01..04 (additive): optional details and documents (documents require details) are stored off-chain with the request; the ledger payload is unchanged. A retry with a different details/documents digest returns 409 IDEMPOTENCY_CONFLICT.",
         "parameters": [
           {
             "$ref": "#/components/parameters/ContractVersion"
@@ -323,13 +323,27 @@
             "$ref": "#/components/responses/Command"
           },
           "400": {
-            "$ref": "#/components/responses/CommandTimeOutOfWindow"
+            "description": "Invalid input or time window. Codes: V2_INPUT_INVALID, COMMAND_TIME_OUT_OF_WINDOW, REQUEST_DETAIL_INVALID, REQUEST_DOCUMENT_REJECTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
           "409": {
-            "$ref": "#/components/responses/Conflict"
+            "description": "Conflict. Codes: IDEMPOTENCY_CONFLICT, STALE_STATE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         }
       }
@@ -4018,6 +4032,525 @@
           }
         }
       }
+    },
+    "/eligible-suppliers": {
+      "get": {
+        "operationId": "readEligibleSuppliers",
+        "description": "PA-REQ-05. Blood banks with projected AVAILABLE stock for the product, excluding the caller institution, sorted by availability. Availability bands only; it does not establish transfer eligibility — the chosen bank still approves or rejects.",
+        "parameters": [
+          {
+            "name": "bloodType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/BloodType"
+            }
+          },
+          {
+            "name": "componentType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ComponentTypeV21"
+            }
+          },
+          {
+            "name": "quantity",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,4}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Suppliers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "bloodType": {
+                      "$ref": "#/components/schemas/BloodType"
+                    },
+                    "componentType": {
+                      "$ref": "#/components/schemas/ComponentTypeV21"
+                    },
+                    "quantity": {
+                      "type": "integer"
+                    },
+                    "suppliers": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/EligibleSupplier"
+                      }
+                    },
+                    "readAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "policyVersion": {
+                      "type": "string",
+                      "const": "SYNTHETIC_REQUEST_DETAIL_V1"
+                    },
+                    "eligibilityNote": {
+                      "type": "string",
+                      "const": "AVAILABILITY_ONLY_SUPPLIER_DECIDES"
+                    },
+                    "classification": {
+                      "type": "string",
+                      "const": "SIMULATION_ONLY"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query. Codes: V2_INPUT_INVALID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "503": {
+            "description": "Routing unavailable. Codes: ROUTING_UNAVAILABLE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transfers/{transferId}/details": {
+      "get": {
+        "operationId": "readRequestDetails",
+        "description": "PA-REQ-01..04. ROLE-01/02/03 of the requesting or supplying institution.",
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current request details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestDetailView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid transfer ID. Codes: V2_TRANSFER_ID_INVALID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not in the authorized institution scope. Codes: REQUEST_DETAIL_NOT_FOUND.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Unavailable. Codes: REQUEST_DETAILS_UNAVAILABLE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "updateRequestDetails",
+        "description": "Replace requester details. Requester institution only (ROLE-02/ROLE-03), same-origin, Idempotency-Key required; allowed only before the supplier decides.",
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "correlationId",
+                  "details",
+                  "expectedVersion"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "correlationId": {
+                    "type": "string",
+                    "pattern": "^CORR_[0-9A-F]{32}$"
+                  },
+                  "details": {
+                    "$ref": "#/components/schemas/RequestDetails"
+                  },
+                  "expectedVersion": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current request details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestDetailView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid. Codes: V2_INPUT_INVALID, REQUEST_DETAIL_INVALID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not in the authorized institution scope. Codes: REQUEST_DETAIL_NOT_FOUND.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Locked or stale. Codes: REQUEST_DETAIL_LOCKED, STALE_STATE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transfers/{transferId}/documents": {
+      "post": {
+        "operationId": "addRequestDocuments",
+        "description": "Add supporting documents (max 3 per request). Requester institution only (ROLE-02/ROLE-03), same-origin, Idempotency-Key required; allowed only before the supplier decides.",
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "correlationId",
+                  "documents"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "correlationId": {
+                    "type": "string",
+                    "pattern": "^CORR_[0-9A-F]{32}$"
+                  },
+                  "documents": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "items": {
+                      "$ref": "#/components/schemas/RequestDocumentUpload"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current request details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestDetailView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Rejected. Codes: V2_INPUT_INVALID, REQUEST_DOCUMENT_REJECTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not in the authorized institution scope. Codes: REQUEST_DETAIL_NOT_FOUND.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Locked or stale. Codes: REQUEST_DETAIL_LOCKED, STALE_STATE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transfers/{transferId}/documents/{documentId}/delete": {
+      "post": {
+        "operationId": "deleteRequestDocument",
+        "description": "Remove a supporting document; a retry after removal returns the same current list. Requester institution only (ROLE-02/ROLE-03), same-origin, Idempotency-Key required; allowed only before the supplier decides.",
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^DOC_[0-9A-F]{40}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "correlationId"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "correlationId": {
+                    "type": "string",
+                    "pattern": "^CORR_[0-9A-F]{32}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Current request details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestDetailView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid. Codes: V2_INPUT_INVALID, REQUEST_DOCUMENT_ID_INVALID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not in the authorized institution scope. Codes: REQUEST_DETAIL_NOT_FOUND.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Locked or stale. Codes: REQUEST_DETAIL_LOCKED, STALE_STATE.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transfers/{transferId}/documents/{documentId}": {
+      "get": {
+        "operationId": "downloadRequestDocument",
+        "description": "Download a supporting document as an attachment (nosniff, private no-store). Requesting or supplying institution only.",
+        "parameters": [
+          {
+            "name": "transferId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^TRF_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^DOC_[0-9A-F]{40}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document bytes",
+            "content": {
+              "application/pdf": {},
+              "image/png": {},
+              "image/jpeg": {}
+            }
+          },
+          "400": {
+            "description": "Invalid. Codes: REQUEST_DOCUMENT_ID_INVALID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Codes: REQUEST_DETAIL_NOT_FOUND, REQUEST_DOCUMENT_NOT_FOUND.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4405,6 +4938,17 @@
           },
           "correlationId": {
             "type": "string"
+          },
+          "details": {
+            "$ref": "#/components/schemas/RequestDetails"
+          },
+          "documents": {
+            "type": "array",
+            "maxItems": 3,
+            "items": {
+              "$ref": "#/components/schemas/RequestDocumentUpload"
+            },
+            "description": "Requires details."
           }
         },
         "additionalProperties": false
@@ -9391,6 +9935,228 @@
           "ocrAttempted": {
             "const": true,
             "description": "Operator workflow attests that OCR ran before review. This is not proof of recognition accuracy."
+          }
+        }
+      },
+      "RequestDetails": {
+        "type": "object",
+        "description": "PA-REQ-01..04, SYNTHETIC_REQUEST_DETAIL_V1. Off-chain; never in the ledger payload. Patient/case reference is not collected (RQ-20). Names are trimmed, 2-80 characters, single line.",
+        "required": [
+          "requestingPerson",
+          "requiredAt"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "requestingPerson": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80
+          },
+          "staffId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^SYN-STAFF-\\d{4}$",
+            "description": "Synthetic only; real employee IDs are prohibited."
+          },
+          "attendingPhysician": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 2,
+            "maxLength": 80
+          },
+          "requiredAt": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$",
+            "description": "UTC with milliseconds; must be in the future."
+          },
+          "pickupRepresentative": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 2,
+            "maxLength": 80
+          },
+          "pickupAuthorizationReference": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^SYN-AUTH-[A-Z0-9]{6}$"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500
+          }
+        }
+      },
+      "RequestDocumentUpload": {
+        "type": "object",
+        "required": [
+          "kind",
+          "fileName",
+          "contentType",
+          "contentSha256",
+          "contentBase64"
+        ],
+        "additionalProperties": false,
+        "description": "At most 3 documents per request, 5 MB each; content is checked by magic bytes against contentType and file extension, and against contentSha256.",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "REQUEST_FORM",
+              "PICKUP_AUTHORIZATION"
+            ]
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string",
+            "enum": [
+              "application/pdf",
+              "image/png",
+              "image/jpeg"
+            ]
+          },
+          "contentSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "contentBase64": {
+            "type": "string"
+          }
+        }
+      },
+      "RequestDocument": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "pattern": "^DOC_[0-9A-F]{40}$"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          },
+          "contentSha256": {
+            "type": "string"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RequestDetailView": {
+        "type": "object",
+        "description": "Visible only to the requesting and the chosen supplying institution; others receive 404 REQUEST_DETAIL_NOT_FOUND.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/RequestDetails"
+          }
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string"
+          },
+          "sourceInstitutionId": {
+            "type": "string"
+          },
+          "destinationInstitutionId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequestDocument"
+            }
+          },
+          "editable": {
+            "type": "boolean",
+            "description": "True only for the requester before the supplier decides."
+          },
+          "viewerRole": {
+            "type": "string",
+            "enum": [
+              "REQUESTER",
+              "SUPPLIER"
+            ]
+          },
+          "unavailableFields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "dependency": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "pickupAuthorityVerified": {
+            "type": "boolean",
+            "const": false
+          },
+          "policyVersion": {
+            "type": "string",
+            "const": "SYNTHETIC_REQUEST_DETAIL_V1"
+          },
+          "classification": {
+            "type": "string",
+            "const": "SIMULATION_ONLY"
+          }
+        }
+      },
+      "EligibleSupplier": {
+        "type": "object",
+        "properties": {
+          "institutionId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "availabilityBand": {
+            "type": "string",
+            "enum": [
+              "1_TO_4",
+              "5_TO_9",
+              "10_OR_MORE"
+            ]
+          },
+          "meetsRequestedQuantity": {
+            "type": "boolean"
           }
         }
       }
