@@ -94,7 +94,7 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
       {record && renderBody?.(record, open)}
       {request && <RequestDetailPanel key={request.transfer_id} transferId={request.transfer_id}/>}
       {record && renderExtra?.(record, open)}
-      {selected.kind === "reservation" && <ReservationActions key={"actions:" + selected.id} reservation={reservation} principal={principal} onRefresh={refresh} onLockChange={setActionLocked}/>}
+      {selected.kind === "reservation" && <ReservationActions key={"actions:" + selected.id} reservation={reservation} principal={principal} onRefresh={refresh} onLockChange={setActionLocked} scanOnPhone/>}
       {selected.kind === "component" && <ReconciliationHold key={"hold:" + selected.id} component={component} principal={principal} onRefresh={refresh}/>}
       {showRecovery && selected.kind !== "request" && <CommandRecovery key={"recovery:" + selected.id} resourceId={selected.id} onRefresh={refresh}/>}
     </div>

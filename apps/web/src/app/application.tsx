@@ -7,11 +7,14 @@ import { visibleNavigation,canonicalPagePath } from "../config/navigation";
 import { AccessPage } from "../features/auth/access-page";
 import { requestJson } from "../services/api/client";
 import { PageContent } from "./page-content";
+import { PhoneScannerShell } from "./phone-scanner-shell";
+import { phoneScannerFor, usePhoneScannerMode } from "./phone-scanner-mode";
 
 export function App() {
   const [principal, setPrincipal] = useState<Principal>();
   const [loading, setLoading] = useState(true);
   const [path, setPath] = useState(location.pathname);
+  const phone = usePhoneScannerMode();
 
   useEffect(() => {
     requestJson<{ principal: Principal }>("/api/v1/auth/session")
@@ -48,6 +51,8 @@ export function App() {
   if (loading) return <main className="login-panel"><h1>Restoring session...</h1></main>;
   if (!principal) return <AccessPage onAuthenticated={setPrincipal}/>;
 
+  const scanner = phone ? phoneScannerFor(principal) : undefined;
+  if (scanner) return <OperatorVerification key={principal.accountId ?? principal.userId} principal={principal}><PhoneScannerShell principal={principal} scanner={scanner} onSignOut={() => void signOut()}/></OperatorVerification>;
   const navigation = visibleNavigation(principal);
   const activePath = canonicalPagePath(principal,path);
   return <OperatorVerification key={principal.accountId ?? principal.userId} principal={principal}><ApplicationShell principal={principal} path={activePath} navigation={navigation} onNavigate={navigate} onSignOut={() => void signOut()}><OfflineBanner/>{navigation.some(item => item.href === activePath) ? <PageContent key={principal.userId + activePath} path={activePath} principal={principal}/> : <div className="empty" role="alert">This account cannot access this page.</div>}</ApplicationShell></OperatorVerification>;
