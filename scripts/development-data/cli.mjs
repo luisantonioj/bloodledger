@@ -44,7 +44,7 @@ try {
     let credential=await repo.findCredential(privateAccount.username);
     // Existing frozen runs retain their original actors after institution migration.
     // Maintenance verification/recovery is not interactive login authorization.
-    if(!credential && ['verify','resume'].includes(action)) {
+    if(!credential && ['verify','resume','inspect'].includes(action)) {
       const retained=(await pool.query("SELECT u.user_id,u.institution_id,u.password_salt,u.password_verifier,r.role_id FROM app.application_users u JOIN app.user_role_assignments r USING(user_id) WHERE u.username=$1 AND u.account_kind IN ('OPERATOR','RETIRED')",[privateAccount.username])).rows[0];
       if(retained)credential={userId:retained.user_id,institutionId:retained.institution_id,roleId:retained.role_id,saltHex:retained.password_salt,verifierHex:retained.password_verifier};
     }
