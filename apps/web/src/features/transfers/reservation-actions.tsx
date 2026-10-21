@@ -9,7 +9,7 @@ import type { ReservationDetail } from "../../services/api/v2-navigation";
 import { CommandStatusCard } from "../commands/command-status-card";
 import { ReasonSelector } from "../commands/reason-selector";
 import { useUatCommand } from "../commands/use-uat-command";
-import { DELAY_REASONS, reservationActions, RESERVATION_ACTION_LABELS, type ReservationAction } from "./reservation-action-policy";
+import { DELAY_REASONS, reservationActions, RESERVATION_ACTION_LABELS, reservationSubmitLabel, type ReservationAction } from "./reservation-action-policy";
 import { ReservationLocationAudit } from "./reservation-location-audit";
 import { captureCheckpointLocation, locationLabel, type CheckpointLocation } from "./checkpoint-location";
 
@@ -63,7 +63,7 @@ export function ReservationActions({ reservation, principal, onRefresh, onLockCh
       {action === "cancel" && <p>Cancellation releases this active reservation. Expired labels still require expiry evaluation.</p>}
       <label><input type="checkbox" checked={confirmed} onChange={event => {setConfirmed(event.target.checked);}}/>I confirm {action === "compromise" ? "quarantine pending manual review" : RESERVATION_ACTION_LABELS[action].toLowerCase()} for this reservation.</label>
       <p>Expected reservation version: {reservation?.version ?? "Loading current record…"}</p>
-    </fieldset><button className="button primary" type="submit" disabled={verificationLocked || command.busy || !!command.command || command.requiresCorrection || (!ready && !command.ambiguous)}>{command.busy ? "Submitting command…" : command.ambiguous ? "Retry same reservation command" : "Confirm reservation action"}</button></form>}
+    </fieldset><button className="button primary" type="submit" data-testid={action === "dispatch" ? "outbound-confirm-transaction" : "reservation-action-submit"} disabled={verificationLocked || command.busy || !!command.command || command.requiresCorrection || (!ready && !command.ambiguous)}>{reservationSubmitLabel(action, command)}</button></form>}
     {command.error && <p role="alert">{command.error}</p>}
     {command.ambiguous && <div><p>Saved request key: <code>{command.pendingKey}</code></p><button className="button" disabled={command.busy} onClick={() => void command.recover()}>Recover this attempt without resubmitting</button></div>}
     {command.requiresCorrection && <button className="button refresh-icon-button" onClick={onRefresh}><RefreshIcon/>Refresh reservation before continuing</button>}
