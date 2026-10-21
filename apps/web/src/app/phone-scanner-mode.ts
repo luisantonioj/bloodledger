@@ -11,7 +11,8 @@ export function usePhoneScannerMode() {
   const [phone, setPhone] = useState(matchesPhone);
   useEffect(() => {
     if (typeof matchMedia !== "function") return;
-    const query = matchMedia(PHONE_QUERY), changed = () => setPhone(query.matches);
+    // Latch on: rotating to landscape must not swap to the full app and drop a scan in progress.
+    const query = matchMedia(PHONE_QUERY), changed = () => { if (query.matches) setPhone(true); };
     query.addEventListener("change", changed);
     return () => query.removeEventListener("change", changed);
   }, []);

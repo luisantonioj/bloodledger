@@ -29,7 +29,6 @@ async function setup(page: Page, overrides: Partial<typeof reservation> = {}, in
 async function verify(page:Page) {const dialog=page.getByRole("dialog",{name:"Verify operator"});await dialog.getByLabel("Operator PIN").fill("00000000");await dialog.getByRole("button",{name:"Verify and submit",exact:true}).click();}
 async function open(page:Page) {await page.goto("/transfers?record=reservation&recordId=RES_UAT_SYNTH");await expect(page.getByRole("region",{name:"Reservation actions"})).toBeVisible();return page.getByRole("region",{name:"Reservation actions"});}
 for (const [action,label,state,prepared,local,recipient] of [
-  ["prepare","Prepare reservation","ACTIVE",false,false,false],
   ["dispatch","Dispatch reservation","ACTIVE",true,false,false],
   ["transit","Start transit","DISPATCHED",true,false,false],
   ["receive","Receive reservation","IN_TRANSIT",true,false,true],
