@@ -133,7 +133,7 @@ export async function buildApp(
   sessions?: SessionRepository,
   applicationReads?: ApplicationReadRepository,
   applicationWrites?: ApplicationWriteRepository,
-  v2?: { store: V2CommandStore; developmentRead?: DevelopmentReader; keyring?: DonationKeyring; census?: CensusStore; mlInventory?: MlInventoryEvidenceReader; projection?: V2ProjectionReader; coordination?: CoordinationReader; unitHistory?: UnitHistoryReader; transferSummaries?: TransferSummaryReader; activityHistory?: ActivityHistoryReader; bloodBank?: BloodBankReader; outboundVerification?: Pick<PostgresOutboundVerification, "verify">; receiptVerification?: Pick<PostgresReceiptVerification, "verify" | "findEvidence">; enabledIssuerInstitutionIds?: readonly string[] },
+  v2?: { store: V2CommandStore; developmentRead?: DevelopmentReader; keyring?: DonationKeyring; census?: CensusStore; mlInventory?: MlInventoryEvidenceReader; projection?: V2ProjectionReader; coordination?: CoordinationReader; unitHistory?: UnitHistoryReader; transferSummaries?: TransferSummaryReader; activityHistory?: ActivityHistoryReader; bloodBank?: BloodBankReader; outboundVerification?: Pick<PostgresOutboundVerification, "verify">; receiptVerification?: Pick<PostgresReceiptVerification, "verify" | "findEvidence">; enabledIssuerInstitutionIds?: readonly string[]; correctedIntakeEnabled?: boolean; reviewedIntakeEnabled?: boolean },
   accountAccess?: PostgresOperatorVerification,
 ): Promise<FastifyInstance> {
   const app = Fastify({

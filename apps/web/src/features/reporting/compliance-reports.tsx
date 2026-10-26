@@ -1,6 +1,5 @@
-import {demonstrationStockRecords} from "./demo-stock-records";
 import {ActionIcon} from "../../components/ui/action-icon";
-import {latestCheckpointRecord,checkpointClipboard} from "./checkpoint-copy";
+import {latestCheckpointRecord,checkpointClipboard,checkpointComponents,checkpointRecord} from "./checkpoint-copy";
 import {requestJson} from "../../services/api/client";
 import {parseComplianceStock,type StockGroup} from "./compliance-stock";
 export {parseComplianceStock} from "./compliance-stock";
@@ -52,24 +51,20 @@ export function ComplianceReports({ principal }: { principal: Principal }) {
   }, [principal, retry, cursor, bank, reportTick]);
   const inventory = useLiveData<Dashboard>(bank ? null : "/api/v2/dashboard");
   const currentStock=useCurrentComplianceStock(bank ? principal.institutionId : undefined,retry);
-  const demos=demonstrationStockRecords(principal.institutionId);
-  const selectedDemo=bank?demos.find(row=>row.record.snapshotId===selectedId):undefined;
-  const selected = index?.snapshots.find(row => row.snapshotId === selectedId)??selectedDemo?.record;
-  const detail = useLiveData<unknown>(selected && !selectedDemo ? "/api/v2/reports/doh-census/" + encodeURIComponent(selected.snapshotId) : null);
-  let groups: StockGroup[] = [], detailError = selectedDemo ? "" : detail.error;
-  const selectedStock=selectedDemo?.snapshot??detail.data;
-  if (selected && selectedStock && (!detail.error||selectedDemo)) {try {groups = parseComplianceStock(selectedStock, selected);} catch(reason) {detailError = reason instanceof Error ? reason.message : "Stock detail unavailable.";}}
+  const selected = index?.snapshots.find(row => row.snapshotId === selectedId);
+  const detail = useLiveData<unknown>(selected ? "/api/v2/reports/doh-census/" + encodeURIComponent(selected.snapshotId) : null);
+  let groups: StockGroup[] = [], detailError = detail.error;
+  if (selected && detail.data && !detail.error) {try {groups = parseComplianceStock(detail.data, selected);} catch(reason) {detailError = reason instanceof Error ? reason.message : "Stock detail unavailable.";}}
+  const savedComponents=checkpointComponents(selected?.reportPolicyVersion??"SYNTHETIC_STOCK_CHECKPOINT_V1");
   const day = (value: string) => new Intl.DateTimeFormat("en-CA", {timeZone:"Asia/Manila",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(value));
   const today = day(new Date().toISOString());
   const shown = index?.snapshots.filter(row => (!date || day(row.scheduledFor) === date) && (!search || [row.snapshotId,row.institutionId].some(value => value.toLowerCase().includes(search.toLowerCase())))) ?? [];
   const latestReal=(hour:"09"|"16")=>latestCheckpointRecord(index?.snapshots??[],principal.institutionId,hour);
-  const demoRows=demos.filter((_,i)=>{const latest=latestReal(i===0?"09":"16");return !latest.record&&!latest.ambiguous;});
   const realSavedRows=(index?.snapshots??[]).filter(record=>(["09","16"] as const).some(hour=>Boolean(latestCheckpointRecord([record],principal.institutionId,hour).record)));
-  const savedBankRows=[...realSavedRows,...demoRows.map(row=>row.record)].filter(row=>!date||day(row.scheduledFor)===date).sort((a,b)=>Date.parse(b.scheduledFor)-Date.parse(a.scheduledFor));
+  const savedBankRows=realSavedRows.filter(row=>!date||day(row.scheduledFor)===date).sort((a,b)=>Date.parse(b.scheduledFor)-Date.parse(a.scheduledFor));
   const savedView=useTableView("saved-stock-records",savedRecordColumns,savedBankRows),showSaved=savedView.isVisible;
   const reportView=useTableView("compliance-records",complianceColumns(principal),shown),showReport=reportView.isVisible;
-  const isDemo=(record:CensusSnapshot)=>demos.some(row=>row.record.snapshotId===record.snapshotId);
-  const copyAllowed=(record:CensusSnapshot)=>isDemo(record)||Boolean(index&&index.reportAvailability==="EXPORT_AVAILABLE"&&!index.nextCursor&&!busy);
+  const copyAllowed=(_record:CensusSnapshot)=>Boolean(index&&index.reportAvailability==="EXPORT_AVAILABLE"&&!index.nextCursor&&!busy);
   const validInventory = inventory.data && inventory.data.classification === "SIMULATION_ONLY" && inventory.data.scope === (bank ? "INSTITUTION" : "CITY_AGGREGATE") && inventory.data.lastSuccessfulProjectionAt !== null && Array.isArray(inventory.data.inventory) && inventory.data.inventory.every(row => (!bank || row.institutionId === principal.institutionId) && Number.isSafeInteger(row.confirmedCount) && row.confirmedCount >= 0);
   const currentTotal = bank ? currentStock.data?.total ?? null : validInventory ? inventory.data!.inventory.filter(row => ["AVAILABLE","RESERVED"].includes(row.inventoryStatus)).reduce((sum,row) => sum + row.confirmedCount,0) : null;
   const cards: [string,number|null,string][] = [
@@ -83,18 +78,16 @@ export function ComplianceReports({ principal }: { principal: Principal }) {
   const refresh = () => {setCursor(undefined); setRetry(value => value + 1); inventory.manual(); detail.manual();};
   async function copyStockRecord(record:CensusSnapshot){
     if(copyState?.busy||!copyAllowed(record))return;
-    const demonstration=demos.find(row=>row.record.snapshotId===record.snapshotId);
     const generation=++copyGeneration.current;
     const current=()=>copyActive.current&&copyGeneration.current===generation;
     setCopyState({key:record.snapshotId,busy:true,message:"Copying…"});
     try{
       if(!navigator.clipboard?.writeText)throw Error("Clipboard unavailable");
-      const value=demonstration?demonstration.snapshot:await retryAfterContextChange(()=>requestJson<unknown>("/api/v2/reports/doh-census/"+encodeURIComponent(record.snapshotId)),current);
+      const value=await retryAfterContextChange(()=>requestJson<unknown>("/api/v2/reports/doh-census/"+encodeURIComponent(record.snapshotId)),current);
       const tsv=checkpointClipboard(value,record);
       if(!current())return;
-      // Keep demo provenance in the header while preserving the 8×5 matrix layout.
-      await navigator.clipboard.writeText(demonstration?tsv.replace(/^Blood type\t/,"Blood type (Demo)\t"):tsv);
-      if(current())setCopyState({key:record.snapshotId,busy:false,message:demonstration?"Copied all 40 demonstration stock values.":"Copied all 40 stock values."});
+      await navigator.clipboard.writeText(tsv);
+      if(current())setCopyState({key:record.snapshotId,busy:false,message:`Copied all ${checkpointComponents(record.reportPolicyVersion).length*8} stock values.`});
     }catch{if(current())setCopyState({key:record.snapshotId,busy:false,message:"Could not copy a complete record. Check clipboard permission and refresh before retrying."});}
   }
   function copyIcon(record:CensusSnapshot,label:string){return <ActionButton className="button compact compliance-copy-icon" disabled={!copyAllowed(record)||Boolean(copyState?.busy)} unavailableReason={copyState?.busy?"Finish the current copy first.":"The saved report format must be enabled before copying."} onClick={event=>{event.stopPropagation();void copyStockRecord(record);}} aria-label={label} title={label} aria-busy={copyState?.key===record.snapshotId&&copyState.busy}><ActionIcon kind="copy"/></ActionButton>;}
@@ -116,12 +109,15 @@ export function ComplianceReports({ principal }: { principal: Principal }) {
     <header className="page-head consortium-page-head"><h1 className="page-title">Compliance Reports</h1><RefreshButton busy={busy || inventory.busy || currentStock.busy} onRefresh={refresh}/></header>
     {!bank && <div className="consortium-summary-grid">{cards.map(([label,value,help]) => <section className="consortium-summary" key={label}><header className="consortium-summary-title"><span>{label}</span><InformationHelp label={label}>{help}</InformationHelp></header><strong>{value ?? "—"}</strong></section>)}</div>}
     {bank && <section className="bank-record-card">
-      <header className="bank-section-heading"><h2>Reporting Checkpoints</h2><InformationHelp label="Reporting Checkpoints">The latest saved 9 AM and 4 PM records remain available until newer records for the same slot arrive. Times use Asia/Manila. Copy includes all eight blood types and five components. Demo-labelled records are frontend examples, not historical captures. Automatic saving still requires the backend scheduler.</InformationHelp></header>
-      <div className="compliance-checkpoints">{([ ["09","9:00 AM","Morning Stock Record"],["16","4:00 PM","Afternoon Stock Record"] ] as const).map(([hour,time,label],i)=>{
-        const latest=latestReal(hour),record=latest.record??(!latest.ambiguous?demos[i].record:undefined);
+      <header className="bank-section-heading"><h2>Reporting Checkpoints</h2><InformationHelp label="Reporting Checkpoints">The latest saved 9 AM and 4 PM records remain available until newer records for the same slot arrive. Times use Asia/Manila. Automatic checkpoints contain eight blood types and four V2 components. The host must enable the checkpoint policy. Missed slots are not captured or backfilled.</InformationHelp></header>
+      <div className="compliance-checkpoints">{([ ["09","9:00 AM","Morning Stock Record"],["16","4:00 PM","Afternoon Stock Record"] ] as const).map(([hour,time,label])=>{
+        const latest=latestReal(hour),record=latest.record;
+        const todaySlot=checkpointRecord(index?.snapshots??[],principal.institutionId,today,hour);
+        const reached=Date.now()>=Date.parse(`${today}T${hour}:00:00+08:00`);
+        const missed=reached&&!todaySlot.record&&!todaySlot.ambiguous;
         return <div className="compliance-checkpoint" key={hour}>
-          <div className="compliance-checkpoint-copy"><span>{time}</span><strong>{label}</strong><small>{record?<>{isDemo(record)&&<span className="compliance-demo-label">Demo · </span>}{formatManilaDateTime(record.scheduledFor)}</>:"Multiple records need review"}</small></div>
-          {record?copyIcon(record,"Copy "+label.toLowerCase()):<ActionButton className="button compact compliance-copy-icon" disabled unavailableReason="Multiple saved records need review." aria-label={"Copy "+label.toLowerCase()}><ActionIcon kind="copy"/></ActionButton>}
+          <div className="compliance-checkpoint-copy"><span>{time}</span><strong>{label}</strong><small>{record?formatManilaDateTime(record.scheduledFor):latest.ambiguous?"Multiple records need review":busy?"Loading records…":error?"Records unavailable":"Not captured"}{record&&missed&&" · Today: not captured"}</small></div>
+          {record?copyIcon(record,"Copy "+label.toLowerCase()):<ActionButton className="button compact compliance-copy-icon" disabled unavailableReason={latest.ambiguous?"Multiple saved records need review.":"No saved record: not captured."} aria-label={"Copy "+label.toLowerCase()}><ActionIcon kind="copy"/></ActionButton>}
         </div>;
       })}</div>
       {copyState&&!copyState.busy&&<p className="compliance-copy-status compliance-copy-feedback" role="status">{copyState.message}</p>}
@@ -129,10 +125,10 @@ export function ComplianceReports({ principal }: { principal: Principal }) {
     {bank && recordedStock}
     <div className={"compliance-record-columns"+(bank?" bank-stock-record-columns":"")}>
       {bank?<section className="bank-record-card bank-saved-stock-card">
-        <header className="bank-section-heading"><h2>Saved Stock Records</h2><InformationHelp label="Saved Stock Records">Each row represents one saved morning or afternoon checkpoint. Copy includes its complete stock matrix. Demo rows are explicit frontend examples and are not inserted into the reporting database.</InformationHelp></header>
+        <header className="bank-section-heading"><h2>Saved Stock Records</h2><InformationHelp label="Saved Stock Records">Each row represents one saved morning or afternoon checkpoint. Copy includes its complete saved stock matrix. Missed checkpoints have no record.</InformationHelp></header>
         <div className="compliance-filters compliance-date-filter"><label>Recorded date<input type="date" value={date} onChange={event=>setDate(event.target.value)}/></label><TableViewBar view={savedView}/></div>
         <PaginatedTable total={savedBankRows.length} ready label="Saved stock records" resetKey={date+"|"+savedView.sortKey}>
-          <table className="data-table compliance-record-table bank-stock-record-table"><thead><tr><SortableHeader view={savedView} id="recorded">Time Recorded</SortableHeader><SortableHeader view={savedView} id="copy">Copy</SortableHeader></tr></thead><tbody>{savedView.rows.map(record=><tr key={record.snapshotId} className={selectedId===record.snapshotId?"compliance-selected-row":""} onClick={()=>setSelectedId(record.snapshotId)}>{showSaved("recorded")&&<td><button className="bank-review-link" onClick={()=>setSelectedId(record.snapshotId)} aria-label={"View stock record "+record.snapshotId} aria-pressed={selectedId===record.snapshotId}>{formatManilaDateTime(record.scheduledFor)}</button></td>}{showSaved("copy")&&<td>{copyIcon(record,"Copy stock record "+record.snapshotId)}</td>}</tr>)}{!savedBankRows.length&&<tr><td colSpan={savedView.visibleCount}><div className="requester-records-empty"><strong>No stock records for this date</strong></div></td></tr>}</tbody></table>
+          <table className="data-table compliance-record-table bank-stock-record-table"><thead><tr><SortableHeader view={savedView} id="recorded">Time Recorded</SortableHeader><SortableHeader view={savedView} id="copy">Copy</SortableHeader></tr></thead><tbody>{savedView.rows.map(record=><tr key={record.snapshotId} className={selectedId===record.snapshotId?"compliance-selected-row":""} onClick={()=>setSelectedId(record.snapshotId)}>{showSaved("recorded")&&<td><button className="bank-review-link" onClick={()=>setSelectedId(record.snapshotId)} aria-label={"View stock record "+record.snapshotId} aria-pressed={selectedId===record.snapshotId}>{formatManilaDateTime(record.scheduledFor)}</button></td>}{showSaved("copy")&&<td>{copyIcon(record,"Copy stock record "+record.snapshotId)}</td>}</tr>)}{!savedBankRows.length&&<tr><td colSpan={savedView.visibleCount}><div className="requester-records-empty"><strong>{busy?"Loading stock records…":error?"Stock records unavailable":"No saved stock records"}</strong><span>{error||"Checkpoints not captured remain missing."}</span></div></td></tr>}</tbody></table>
         </PaginatedTable>
       </section>:(
       <section className="bank-record-card">
@@ -145,11 +141,11 @@ export function ComplianceReports({ principal }: { principal: Principal }) {
       </section>
       )}
       <section className="bank-record-card compliance-detail">
-        <header className="bank-section-heading"><h2>Report Details</h2><InformationHelp label="Report Details">{bank ? selectedDemo ? "This is a frontend sample stock record, not an observed historical capture. The table contains all eight blood types and five components." : "The selected saved record’s stock matrix contains all eight blood types and five components. It is separate from current inventory." : "Review the selected report’s facility, reporting checkpoint and capture time. Capturing, verification and submission are separate steps. Operator and verification information remain unavailable until those fields are supported."}</InformationHelp></header>
+        <header className="bank-section-heading"><h2>Report Details</h2><InformationHelp label="Report Details">{bank ? "The selected saved record’s stock matrix is separate from current inventory. Automatic checkpoints contain four V2 components; cryoprecipitate is not included." : "Review the selected report’s facility, reporting checkpoint and capture time. Capturing, verification and submission are separate steps. Operator and verification information remain unavailable until those fields are supported."}</InformationHelp></header>
         {bank ? selected ? <>
-          {detailError?<p className="compliance-stock-note" role="status">{detailError}</p>:!groups.length?<p className="compliance-stock-note" role="status">Loading recorded stock…</p>:<div className="table-wrap"><table className="data-table compliance-stock-table compliance-detail-stock-table"><thead><tr><th>Blood type</th>{V2_COMPONENT_TYPES.map(component=><th key={component}>{componentLabel(component)}</th>)}<th>Total</th></tr></thead><tbody>{CENSUS_ORDER.map(type=>{
-            const values=V2_COMPONENT_TYPES.map(component=>groups.find(group=>group.componentType===component)?.bloodTypes.find(row=>row.bloodType===type)?.reportableCount??null);
-            return <tr key={type}><td>{formatBloodType(type)}</td>{values.map((value,i)=><td key={V2_COMPONENT_TYPES[i]}>{value??"—"}</td>)}<td>{values.every(value=>value!==null)?values.reduce<number>((sum,value)=>sum+value!,0):"—"}</td></tr>;
+          {detailError?<p className="compliance-stock-note" role="status">{detailError}</p>:!groups.length?<p className="compliance-stock-note" role="status">Loading recorded stock…</p>:<div className="table-wrap"><table className="data-table compliance-stock-table compliance-detail-stock-table"><thead><tr><th>Blood type</th>{savedComponents.map(component=><th key={component}>{componentLabel(component)}</th>)}<th>Total</th></tr></thead><tbody>{CENSUS_ORDER.map(type=>{
+            const values=savedComponents.map(component=>groups.find(group=>group.componentType===component)?.bloodTypes.find(row=>row.bloodType===type)?.reportableCount??null);
+            return <tr key={type}><td>{formatBloodType(type)}</td>{values.map((value,i)=><td key={savedComponents[i]}>{value??"—"}</td>)}<td>{values.every(value=>value!==null)?values.reduce<number>((sum,value)=>sum+value!,0):"—"}</td></tr>;
           })}</tbody></table></div>}
         </>:<div className="requester-records-empty"><strong>Select a stock record</strong><span>Click a saved record to view its full stock matrix here.</span></div>:(
         <>{selected ? <dl><dt>Report reference</dt><dd className="mono">{selected.snapshotId}</dd><dt>Facility</dt><dd>{selected.institutionId === principal.institutionId ? principal.institutionDisplayName : selected.institutionId}</dd><dt>Checkpoint</dt><dd>{formatManilaDateTime(selected.scheduledFor)}</dd><dt>Captured</dt><dd>{formatManilaDateTime(selected.capturedAt)}</dd><dt>Captured by</dt><dd>Not supplied</dd><dt>Verification</dt><dd>Not supplied</dd></dl> : <div className="requester-records-empty"><strong>Select a report</strong><span>Choose View report to review its details.</span></div>}</>
