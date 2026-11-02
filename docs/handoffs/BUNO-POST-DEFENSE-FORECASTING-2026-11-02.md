@@ -100,3 +100,12 @@ private. Rerun the standard Docker-based command on a supported host before merg
 - No workbook, observed rows, private model artifact, per-row predictions, credentials
   or runtime evidence is included in Git. Original dirty Testing-phase work is
   preserved in the user's original checkout. Private runs stay under ignored build/.
+
+## Manuscript follow-through after GitHub publication
+
+Completed 2026-11-02 after code/evidence commit `5221723` was published. The original
+Google Docs paper now includes the targeted ML revisions and Table 10a; see
+[the exact change log](../research/POST-DEFENSE-MANUSCRIPT-CHANGES.md). Readback
+verified all intended paragraph changes, and the exported table pages were visually
+checked. This does not change the experiment, application model or outstanding
+actual-demand validation limitation. No PR was opened or merged by this work.

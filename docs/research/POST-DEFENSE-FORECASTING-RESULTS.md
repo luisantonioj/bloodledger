@@ -94,4 +94,4 @@ No independent institutional test set, clinical validation, UAT outcome or opera
 
 Franze #1 revision wording: "Expanded the reproducible comparison from eight to twenty-two configurations on the unchanged synthetic V5 dataset using chronological validation, and reported error, bias, underprediction and demand-occurrence results. Actual combined institutional-demand validation remains unavailable because the supplied records are incomplete and scope-limited; this unmet portion is stated in limitations and future work."
 
-The Google Docs manuscript has not been edited in this code/GitHub stage.
+The code/GitHub stage preceded manuscript editing. The paper was subsequently revised on 2026-11-02; see POST-DEFENSE-MANUSCRIPT-CHANGES.md for exact locations and verification.
