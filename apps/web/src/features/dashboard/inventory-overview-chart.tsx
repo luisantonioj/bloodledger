@@ -9,7 +9,8 @@ import { inventoryOverviewComponents, summarizeInventoryByComponent } from "./in
 
 export function InventoryOverviewChart({ items, institutionId }: { items: Aggregate[]; institutionId?: string }) {
   const [component, setComponent] = useState("ALL");
-  const evidence = useStockEvidence(institutionId, items);
+  // Refetch component evidence only when the aggregate content changes, not on every dashboard poll.
+  const evidence = useStockEvidence(institutionId, JSON.stringify(items));
   const components = inventoryOverviewComponents(items);
   const summary = summarizeInventoryByComponent(items, component);
   const productCount = summary[0]?.components.length ?? 1;
