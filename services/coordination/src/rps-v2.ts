@@ -7,6 +7,16 @@ type Urgency = "ROUTINE" | "URGENT" | "CRITICAL";
 export interface RpsV2Request { requestId: string; sourceInstitutionId: string; bloodType: InterviewV2BloodType; componentType: InterviewV2ComponentType; urgency: Urgency; requestTime: string; }
 export interface RpsV2Input { evaluationTime: string; requests: RpsV2Request[]; }
 
+export interface RpsV2Weights { urgencyWeight: number; waitWeight: number; waitCapHours: number; }
+
+// The RPS V2 score; the policy weights are the default, other weights are for sensitivity analysis only.
+export function rpsV2Score(urgency: Urgency, waitHours: number, weights: RpsV2Weights = policy.rps) {
+  const urgencyNormalized = urgency === "CRITICAL" ? 1 : urgency === "URGENT" ? 0.5 : 0;
+  const waitNormalized = Math.min(waitHours, weights.waitCapHours) / weights.waitCapHours;
+  const score = urgencyNormalized * weights.urgencyWeight + waitNormalized * weights.waitWeight;
+  return { urgencyNormalized, waitNormalized, score: Number(score.toFixed(12)) };
+}
+
 export function rankRpsV2(input: RpsV2Input) {
   if (!input || !Array.isArray(input.requests) || input.requests.length === 0) fail("COORD_RPS_V2_REQUESTS_INVALID");
   const evaluationMs = Date.parse(input.evaluationTime);
@@ -19,10 +29,7 @@ export function rankRpsV2(input: RpsV2Input) {
     const requestMs = Date.parse(request.requestTime);
     if (!Number.isFinite(requestMs) || new Date(requestMs).toISOString() !== request.requestTime || requestMs > evaluationMs) fail("COORD_RPS_V2_TIME_INVALID");
     const waitHours = (evaluationMs - requestMs) / 3_600_000;
-    const urgencyNormalized = request.urgency === "CRITICAL" ? 1 : request.urgency === "URGENT" ? 0.5 : 0;
-    const waitNormalized = Math.min(waitHours, policy.rps.waitCapHours) / policy.rps.waitCapHours;
-    const score = urgencyNormalized * policy.rps.urgencyWeight + waitNormalized * policy.rps.waitWeight;
-    return { ...request, competitionKey: key, urgencyNormalized, waitHours, waitNormalized, score: Number(score.toFixed(12)) };
+    return { ...request, competitionKey: key, waitHours, ...rpsV2Score(request.urgency, waitHours) };
   });
   if (groups.size > 1) fail("COORD_RPS_V2_COMPETITION_MISMATCH");
   ranked.sort((left, right) => right.score - left.score || left.requestTime.localeCompare(right.requestTime) || left.requestId.localeCompare(right.requestId));

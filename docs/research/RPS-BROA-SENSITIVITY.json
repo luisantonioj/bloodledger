@@ -1,0 +1,598 @@
+{
+  "studyVersion": "RPS_BROA_SENSITIVITY_V1",
+  "seed": 20261103,
+  "generatedScenarios": 200,
+  "factors": [
+    0.8,
+    0.9,
+    1.1,
+    1.2
+  ],
+  "rpsPolicyVersion": "INTERVIEW_DERIVED_OPTIMIZATION_V2",
+  "broaPolicyVersion": "INTERVIEW_DERIVED_OPTIMIZATION_V2_1",
+  "rpsBaseline": {
+    "urgencyWeight": 0.7,
+    "waitWeight": 0.3,
+    "waitCapHours": 24
+  },
+  "broaBaseline": {
+    "urgency": 0.5,
+    "stockShortage": 0.3125,
+    "distancePenalty": 0.1875
+  },
+  "surplusBaseline": {
+    "safetyAllowance": 2,
+    "minimumReserve": 10
+  },
+  "classification": "SIMULATION_ONLY",
+  "approvalStatus": "NOT_APPROVED_RQ_05_06_16_OPEN",
+  "results": {
+    "rps": [
+      {
+        "parameter": "urgencyWeight",
+        "factor": 0.8,
+        "weights": {
+          "urgencyWeight": 0.651163,
+          "waitWeight": 0.348837,
+          "waitCapHours": 24
+        },
+        "criticalAlwaysOutranksUrgent": false,
+        "table7Order": [
+          "TRF_SIM_URGENT_24H",
+          "TRF_SIM_CRITICAL_NEW",
+          "TRF_SIM_URGENT_06H",
+          "TRF_SIM_ROUTINE_30H"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 4,
+        "topChoiceChangedPercent": 1.99,
+        "meanKendallTau": 0.9794,
+        "minKendallTau": -0.3333
+      },
+      {
+        "parameter": "urgencyWeight",
+        "factor": 0.9,
+        "weights": {
+          "urgencyWeight": 0.677419,
+          "waitWeight": 0.322581,
+          "waitCapHours": 24
+        },
+        "criticalAlwaysOutranksUrgent": true,
+        "table7Order": [
+          "TRF_SIM_CRITICAL_NEW",
+          "TRF_SIM_URGENT_24H",
+          "TRF_SIM_URGENT_06H",
+          "TRF_SIM_ROUTINE_30H"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 0,
+        "topChoiceChangedPercent": 0,
+        "meanKendallTau": 1,
+        "minKendallTau": 1
+      },
+      {
+        "parameter": "urgencyWeight",
+        "factor": 1.1,
+        "weights": {
+          "urgencyWeight": 0.719626,
+          "waitWeight": 0.280374,
+          "waitCapHours": 24
+        },
+        "criticalAlwaysOutranksUrgent": true,
+        "table7Order": [
+          "TRF_SIM_CRITICAL_NEW",
+          "TRF_SIM_URGENT_24H",
+          "TRF_SIM_URGENT_06H",
+          "TRF_SIM_ROUTINE_30H"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 0,
+        "topChoiceChangedPercent": 0,
+        "meanKendallTau": 1,
+        "minKendallTau": 1
+      },
+      {
+        "parameter": "urgencyWeight",
+        "factor": 1.2,
+        "weights": {
+          "urgencyWeight": 0.736842,
+          "waitWeight": 0.263158,
+          "waitCapHours": 24
+        },
+        "criticalAlwaysOutranksUrgent": true,
+        "table7Order": [
+          "TRF_SIM_CRITICAL_NEW",
+          "TRF_SIM_URGENT_24H",
+          "TRF_SIM_URGENT_06H",
+          "TRF_SIM_ROUTINE_30H"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 0,
+        "topChoiceChangedPercent": 0,
+        "meanKendallTau": 1,
+        "minKendallTau": 1
+      },
+      {
+        "parameter": "waitCapHours=12",
+        "factor": null,
+        "weights": {
+          "urgencyWeight": 0.7,
+          "waitWeight": 0.3,
+          "waitCapHours": 12
+        },
+        "criticalAlwaysOutranksUrgent": true,
+        "table7Order": [
+          "TRF_SIM_CRITICAL_NEW",
+          "TRF_SIM_URGENT_24H",
+          "TRF_SIM_URGENT_06H",
+          "TRF_SIM_ROUTINE_30H"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 0,
+        "topChoiceChangedPercent": 0,
+        "meanKendallTau": 1,
+        "minKendallTau": 1
+      },
+      {
+        "parameter": "waitCapHours=48",
+        "factor": null,
+        "weights": {
+          "urgencyWeight": 0.7,
+          "waitWeight": 0.3,
+          "waitCapHours": 48
+        },
+        "criticalAlwaysOutranksUrgent": true,
+        "table7Order": [
+          "TRF_SIM_CRITICAL_NEW",
+          "TRF_SIM_URGENT_24H",
+          "TRF_SIM_URGENT_06H",
+          "TRF_SIM_ROUTINE_30H"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 0,
+        "topChoiceChangedPercent": 0,
+        "meanKendallTau": 1,
+        "minKendallTau": 1
+      }
+    ],
+    "broa": [
+      {
+        "parameter": "urgency",
+        "factor": 0.8,
+        "weights": {
+          "urgency": 0.444444,
+          "stockShortage": 0.347222,
+          "distancePenalty": 0.208333
+        },
+        "table8Order": [
+          "INST_HOSPITAL_A",
+          "INST_HOSPITAL_B",
+          "INST_HOSPITAL_C"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 11,
+        "topChoiceChangedPercent": 5.47,
+        "meanKendallTau": 0.9317,
+        "minKendallTau": 0.3333
+      },
+      {
+        "parameter": "urgency",
+        "factor": 0.9,
+        "weights": {
+          "urgency": 0.473684,
+          "stockShortage": 0.328947,
+          "distancePenalty": 0.197368
+        },
+        "table8Order": [
+          "INST_HOSPITAL_A",
+          "INST_HOSPITAL_B",
+          "INST_HOSPITAL_C"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 6,
+        "topChoiceChangedPercent": 2.99,
+        "meanKendallTau": 0.9642,
+        "minKendallTau": 0.3333
+      },
+      {
+        "parameter": "urgency",
+        "factor": 1.1,
+        "weights": {
+          "urgency": 0.52381,
+          "stockShortage": 0.297619,
+          "distancePenalty": 0.178571
+        },
+        "table8Order": [
+          "INST_HOSPITAL_A",
+          "INST_HOSPITAL_B",
+          "INST_HOSPITAL_C"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 3,
+        "topChoiceChangedPercent": 1.49,
+        "meanKendallTau": 0.9847,
+        "minKendallTau": 0.3333
+      },
+      {
+        "parameter": "urgency",
+        "factor": 1.2,
+        "weights": {
+          "urgency": 0.545455,
+          "stockShortage": 0.284091,
+          "distancePenalty": 0.170455
+        },
+        "table8Order": [
+          "INST_HOSPITAL_A",
+          "INST_HOSPITAL_B",
+          "INST_HOSPITAL_C"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 5,
+        "topChoiceChangedPercent": 2.49,
+        "meanKendallTau": 0.9751,
+        "minKendallTau": 0.3333
+      },
+      {
+        "parameter": "stockShortage",
+        "factor": 0.8,
+        "weights": {
+          "urgency": 0.533333,
+          "stockShortage": 0.266667,
+          "distancePenalty": 0.2
+        },
+        "table8Order": [
+          "INST_HOSPITAL_A",
+          "INST_HOSPITAL_B",
+          "INST_HOSPITAL_C"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 8,
+        "topChoiceChangedPercent": 3.98,
+        "meanKendallTau": 0.9645,
+        "minKendallTau": 0.3333
+      },
+      {
+        "parameter": "stockShortage",
+        "factor": 0.9,
+        "weights": {
+          "urgency": 0.516129,
+          "stockShortage": 0.290323,
+          "distancePenalty": 0.193548
+        },
+        "table8Order": [
+          "INST_HOSPITAL_A",
+          "INST_HOSPITAL_B",
+          "INST_HOSPITAL_C"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 5,
+        "topChoiceChangedPercent": 2.49,
+        "meanKendallTau": 0.9758,
+        "minKendallTau": 0.3333
+      },
+      {
+        "parameter": "stockShortage",
+        "factor": 1.1,
+        "weights": {
+          "urgency": 0.484848,
+          "stockShortage": 0.333333,
+          "distancePenalty": 0.181818
+        },
+        "table8Order": [
+          "INST_HOSPITAL_A",
+          "INST_HOSPITAL_B",
+          "INST_HOSPITAL_C"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 5,
+        "topChoiceChangedPercent": 2.49,
+        "meanKendallTau": 0.9652,
+        "minKendallTau": 0.3333
+      },
+      {
+        "parameter": "stockShortage",
+        "factor": 1.2,
+        "weights": {
+          "urgency": 0.470588,
+          "stockShortage": 0.352941,
+          "distancePenalty": 0.176471
+        },
+        "table8Order": [
+          "INST_HOSPITAL_A",
+          "INST_HOSPITAL_B",
+          "INST_HOSPITAL_C"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 13,
+        "topChoiceChangedPercent": 6.47,
+        "meanKendallTau": 0.9367,
+        "minKendallTau": 0.3333
+      },
+      {
+        "parameter": "distancePenalty",
+        "factor": 0.8,
+        "weights": {
+          "urgency": 0.519481,
+          "stockShortage": 0.324675,
+          "distancePenalty": 0.155844
+        },
+        "table8Order": [
+          "INST_HOSPITAL_A",
+          "INST_HOSPITAL_B",
+          "INST_HOSPITAL_C"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 7,
+        "topChoiceChangedPercent": 3.48,
+        "meanKendallTau": 0.9675,
+        "minKendallTau": 0.3333
+      },
+      {
+        "parameter": "distancePenalty",
+        "factor": 0.9,
+        "weights": {
+          "urgency": 0.509554,
+          "stockShortage": 0.318471,
+          "distancePenalty": 0.171975
+        },
+        "table8Order": [
+          "INST_HOSPITAL_A",
+          "INST_HOSPITAL_B",
+          "INST_HOSPITAL_C"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 3,
+        "topChoiceChangedPercent": 1.49,
+        "meanKendallTau": 0.9821,
+        "minKendallTau": 0.3333
+      },
+      {
+        "parameter": "distancePenalty",
+        "factor": 1.1,
+        "weights": {
+          "urgency": 0.490798,
+          "stockShortage": 0.306748,
+          "distancePenalty": 0.202454
+        },
+        "table8Order": [
+          "INST_HOSPITAL_A",
+          "INST_HOSPITAL_B",
+          "INST_HOSPITAL_C"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 5,
+        "topChoiceChangedPercent": 2.49,
+        "meanKendallTau": 0.9741,
+        "minKendallTau": 0.3333
+      },
+      {
+        "parameter": "distancePenalty",
+        "factor": 1.2,
+        "weights": {
+          "urgency": 0.481928,
+          "stockShortage": 0.301205,
+          "distancePenalty": 0.216867
+        },
+        "table8Order": [
+          "INST_HOSPITAL_A",
+          "INST_HOSPITAL_B",
+          "INST_HOSPITAL_C"
+        ],
+        "scenarios": 201,
+        "topChoiceChanged": 8,
+        "topChoiceChangedPercent": 3.98,
+        "meanKendallTau": 0.9592,
+        "minKendallTau": 0.3333
+      }
+    ],
+    "surplusGrid": [
+      {
+        "safetyAllowance": 0,
+        "minimumReserve": 6,
+        "gateOpenPercent": 84.5,
+        "gateDecisionChangedPercent": 19,
+        "table8SourceSurplus": 14
+      },
+      {
+        "safetyAllowance": 0,
+        "minimumReserve": 8,
+        "gateOpenPercent": 78,
+        "gateDecisionChangedPercent": 12.5,
+        "table8SourceSurplus": 12
+      },
+      {
+        "safetyAllowance": 0,
+        "minimumReserve": 10,
+        "gateOpenPercent": 71,
+        "gateDecisionChangedPercent": 5.5,
+        "table8SourceSurplus": 10
+      },
+      {
+        "safetyAllowance": 0,
+        "minimumReserve": 12,
+        "gateOpenPercent": 65.5,
+        "gateDecisionChangedPercent": 0,
+        "table8SourceSurplus": 8
+      },
+      {
+        "safetyAllowance": 0,
+        "minimumReserve": 14,
+        "gateOpenPercent": 60,
+        "gateDecisionChangedPercent": 5.5,
+        "table8SourceSurplus": 6
+      },
+      {
+        "safetyAllowance": 1,
+        "minimumReserve": 6,
+        "gateOpenPercent": 82,
+        "gateDecisionChangedPercent": 16.5,
+        "table8SourceSurplus": 13
+      },
+      {
+        "safetyAllowance": 1,
+        "minimumReserve": 8,
+        "gateOpenPercent": 74.5,
+        "gateDecisionChangedPercent": 9,
+        "table8SourceSurplus": 11
+      },
+      {
+        "safetyAllowance": 1,
+        "minimumReserve": 10,
+        "gateOpenPercent": 68.5,
+        "gateDecisionChangedPercent": 3,
+        "table8SourceSurplus": 9
+      },
+      {
+        "safetyAllowance": 1,
+        "minimumReserve": 12,
+        "gateOpenPercent": 64,
+        "gateDecisionChangedPercent": 1.5,
+        "table8SourceSurplus": 7
+      },
+      {
+        "safetyAllowance": 1,
+        "minimumReserve": 14,
+        "gateOpenPercent": 56.5,
+        "gateDecisionChangedPercent": 9,
+        "table8SourceSurplus": 5
+      },
+      {
+        "safetyAllowance": 2,
+        "minimumReserve": 6,
+        "gateOpenPercent": 78,
+        "gateDecisionChangedPercent": 12.5,
+        "table8SourceSurplus": 12
+      },
+      {
+        "safetyAllowance": 2,
+        "minimumReserve": 8,
+        "gateOpenPercent": 71,
+        "gateDecisionChangedPercent": 5.5,
+        "table8SourceSurplus": 10
+      },
+      {
+        "safetyAllowance": 2,
+        "minimumReserve": 10,
+        "gateOpenPercent": 65.5,
+        "gateDecisionChangedPercent": 0,
+        "table8SourceSurplus": 8
+      },
+      {
+        "safetyAllowance": 2,
+        "minimumReserve": 12,
+        "gateOpenPercent": 60,
+        "gateDecisionChangedPercent": 5.5,
+        "table8SourceSurplus": 6
+      },
+      {
+        "safetyAllowance": 2,
+        "minimumReserve": 14,
+        "gateOpenPercent": 55,
+        "gateDecisionChangedPercent": 10.5,
+        "table8SourceSurplus": 4
+      },
+      {
+        "safetyAllowance": 3,
+        "minimumReserve": 6,
+        "gateOpenPercent": 74.5,
+        "gateDecisionChangedPercent": 9,
+        "table8SourceSurplus": 11
+      },
+      {
+        "safetyAllowance": 3,
+        "minimumReserve": 8,
+        "gateOpenPercent": 68.5,
+        "gateDecisionChangedPercent": 3,
+        "table8SourceSurplus": 9
+      },
+      {
+        "safetyAllowance": 3,
+        "minimumReserve": 10,
+        "gateOpenPercent": 64,
+        "gateDecisionChangedPercent": 1.5,
+        "table8SourceSurplus": 7
+      },
+      {
+        "safetyAllowance": 3,
+        "minimumReserve": 12,
+        "gateOpenPercent": 56.5,
+        "gateDecisionChangedPercent": 9,
+        "table8SourceSurplus": 5
+      },
+      {
+        "safetyAllowance": 3,
+        "minimumReserve": 14,
+        "gateOpenPercent": 54,
+        "gateDecisionChangedPercent": 11.5,
+        "table8SourceSurplus": 3
+      },
+      {
+        "safetyAllowance": 4,
+        "minimumReserve": 6,
+        "gateOpenPercent": 71,
+        "gateDecisionChangedPercent": 5.5,
+        "table8SourceSurplus": 10
+      },
+      {
+        "safetyAllowance": 4,
+        "minimumReserve": 8,
+        "gateOpenPercent": 65.5,
+        "gateDecisionChangedPercent": 0,
+        "table8SourceSurplus": 8
+      },
+      {
+        "safetyAllowance": 4,
+        "minimumReserve": 10,
+        "gateOpenPercent": 60,
+        "gateDecisionChangedPercent": 5.5,
+        "table8SourceSurplus": 6
+      },
+      {
+        "safetyAllowance": 4,
+        "minimumReserve": 12,
+        "gateOpenPercent": 55,
+        "gateDecisionChangedPercent": 10.5,
+        "table8SourceSurplus": 4
+      },
+      {
+        "safetyAllowance": 4,
+        "minimumReserve": 14,
+        "gateOpenPercent": 49,
+        "gateDecisionChangedPercent": 16.5,
+        "table8SourceSurplus": 2
+      }
+    ],
+    "panelExample": [
+      {
+        "eligibleAvailable": 20,
+        "minimumReserve": 12,
+        "safetyAllowance": 0,
+        "pointForecast": 0,
+        "surplus": 8
+      },
+      {
+        "eligibleAvailable": 20,
+        "minimumReserve": 12,
+        "safetyAllowance": 0,
+        "pointForecast": 4.59,
+        "surplus": 3
+      },
+      {
+        "eligibleAvailable": 20,
+        "minimumReserve": 12,
+        "safetyAllowance": 2,
+        "pointForecast": 0,
+        "surplus": 6
+      },
+      {
+        "eligibleAvailable": 20,
+        "minimumReserve": 12,
+        "safetyAllowance": 2,
+        "pointForecast": 4.59,
+        "surplus": 1
+      }
+    ],
+    "criticalPrecedenceThreshold": "urgencyWeight / (urgencyWeight + waitWeight) > 2/3"
+  },
+  "resultSha256": "a340d6f3908c140027c704bf48e39ea1706ac352678784321cac0e330ed19231"
+}

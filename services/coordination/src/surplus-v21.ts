@@ -6,6 +6,11 @@ import { INTERVIEW_V2_1_COMPONENT_TYPES, INTERVIEW_V2_1_POLICY_VERSION, INTERVIE
 export const SYNTHETIC_OPTIMIZATION_V2_1 = { policyVersion: INTERVIEW_V2_1_POLICY_VERSION, horizonDays: 1, safetyAllowance: 2, minimumReserve: 10, rounding: "FLOOR", eligibleStock: "AVAILABLE_COMMITTED_ONLY", classification: INTERVIEW_V2_CLASSIFICATION, recommendationEligibility: INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY } as const;
 export const SYNTHETIC_OPTIMIZATION_V2_1_CONFIGURATION_SHA256 = sha256(SYNTHETIC_OPTIMIZATION_V2_1);
 
+// Surplus = max(0, floor(eligible - forecast - safety allowance - minimum reserve)); other buffers are for sensitivity analysis only.
+export function distributableSurplus(eligibleAvailable: number, pointForecast: number, buffers: { safetyAllowance: number; minimumReserve: number } = SYNTHETIC_OPTIMIZATION_V2_1): number {
+  return Math.max(0, Math.floor(eligibleAvailable - pointForecast - buffers.safetyAllowance - buffers.minimumReserve));
+}
+
 export interface CensusV21BloodTypeCount { bloodType: InterviewV2BloodType; availableCount: number; reservedCount: number; forecastEligibleAvailableCount: number; reportableCount: number; }
 export interface CensusV21Group { componentType: InterviewV2_1ComponentType; bloodTypes: CensusV21BloodTypeCount[]; }
 export interface CensusV21Snapshot { snapshotId: string; institutionId: string; scheduledFor: string; capturedAt?: string; timezone: "Asia/Manila"; reportPolicyVersion: string; sourceProjectionDigest: string; groups: CensusV21Group[]; classification: typeof INTERVIEW_V2_CLASSIFICATION; }
@@ -49,7 +54,7 @@ export function produceSourceSurplusEvidenceV2_1(input: { sourceInstitutionId: s
   const group = input.snapshot.groups.find((candidate) => candidate.componentType === input.forecast.componentType);
   const count = group?.bloodTypes.find((candidate) => candidate.bloodType === input.forecast.bloodType);
   if (!count) fail("COORD_V2_1_SOURCE_SERIES_UNAVAILABLE");
-  const surplusQuantity = Math.max(0, Math.floor(count.forecastEligibleAvailableCount - input.forecast.pointForecast - SYNTHETIC_OPTIMIZATION_V2_1.safetyAllowance - SYNTHETIC_OPTIMIZATION_V2_1.minimumReserve));
+  const surplusQuantity = distributableSurplus(count.forecastEligibleAvailableCount, input.forecast.pointForecast);
   const identity = sha256({ sourceInstitutionId: input.sourceInstitutionId, snapshotId: input.snapshot.snapshotId, projectionDigest: input.snapshot.sourceProjectionDigest, forecast: input.forecast, configurationSha256: SYNTHETIC_OPTIMIZATION_V2_1_CONFIGURATION_SHA256, surplusQuantity });
   const evidence: SourceSurplusEvidenceV2_1 = { evidenceId: `SURP_${identity.slice(0, 40).toUpperCase()}`, sourceInstitutionId: input.sourceInstitutionId, bloodType: input.forecast.bloodType, componentType: input.forecast.componentType, surplusQuantity, asOf: input.forecast.asOf, horizonDate: input.forecast.horizonDate, forecastStatus: "AVAILABLE", datasetVersion: input.forecast.datasetVersion, forecastRunId: input.forecast.forecastRunId, modelVersion: input.forecast.modelVersion, optimizationPolicyVersion: INTERVIEW_V2_1_POLICY_VERSION, configurationSha256: SYNTHETIC_OPTIMIZATION_V2_1_CONFIGURATION_SHA256, inventorySnapshotId: input.snapshot.snapshotId, sourceProjectionDigest: input.snapshot.sourceProjectionDigest, classification: INTERVIEW_V2_CLASSIFICATION, recommendationEligibility: INTERVIEW_V2_RECOMMENDATION_ELIGIBILITY };
   try { validateSourceSurplusEvidenceV2_1(evidence); } catch { fail("COORD_V2_1_SOURCE_SURPLUS_INVALID"); }
