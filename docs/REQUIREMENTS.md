@@ -753,6 +753,15 @@ Boundaries: decision support and staff action only. `RQ-09`, `RQ-10` and the
 reject/cancel parts of `RQ-18` stay open. Not a clinical or institutional
 dispute policy.
 
+Implemented in `services/api/src/partial-approval-policy.ts`,
+`receipt-verification.ts` (`recordDiscrepancy`; a matching verification resolves
+an open discrepancy), `database-v2.ts` (projection and reads) and `v2-routes.ts`,
+with additive migration
+`20261103000000000_add-partial-approval-and-receipt-discrepancy.js`. Evidence:
+`services/api/test/panel-revisions.test.ts` and the disposable-database probe
+`panel-revisions-database-probe.mjs` (run by `tests/accounts/postgres-integration.sh`).
+The web controls are Lat's work.
+
 ## PA-DEF-07 — Automatic stock checkpoints (2026-10-19)
 
 **Accepted by Jopia; SIMULATION_ONLY.** Lat's Compliance Reports page needs

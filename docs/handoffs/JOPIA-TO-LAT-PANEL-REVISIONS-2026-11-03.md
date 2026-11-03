@@ -75,3 +75,4 @@ never committed.
 ## Status log
 
 - 2026-11-03 Jopia: integration branch and contract published.
+- 2026-11-03 Jopia: PA-REV-01/02 backend on `codex/jopia-panel-backend` (API 251/251; disposable-database probe 35 assertions, harness 330). No chaincode change. Lat can switch from mocks once it merges into the integration branch.

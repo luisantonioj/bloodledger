@@ -633,7 +633,7 @@ export function interviewCorePayload(command: Pick<V2Command, "operation" | "pay
       return { ...safe, donationNoDigest: donationNoLookupHmac };
     })()
     : command.operation === "RESERVE_COMPONENTS"
-      ? (() => { const { transferId: _projectionTransfer, ...ledgerPayload } = command.payload; return ledgerPayload; })()
+      ? (() => { const { transferId: _projectionTransfer, requestedQuantity: _requested, partialReasonCode: _partialReason, partialPolicyVersion: _partialPolicy, ...ledgerPayload } = command.payload; return ledgerPayload; })()
     : command.operation === "RESERVE_LOCAL_RELEASE"
       ? (() => { const { localReleaseId: _projectionRelease, ...ledgerPayload } = command.payload; return ledgerPayload; })()
     : command.operation === "RECEIVE_INBOUND_COMPONENT"
