@@ -674,7 +674,7 @@
       },
       "post": {
         "operationId": "reserveComponentsForTransfer",
-        "description": "Same-origin ROLE-02 canonical RESERVE_COMPONENTS bridge. Source request must be PENDING and selected components must satisfy contract FEFO and expected versions. V2.1 header required for CRYO. Retired transfer action aliases stay disabled.",
+        "description": "Same-origin ROLE-02 canonical RESERVE_COMPONENTS bridge. Source request must be PENDING and selected components must satisfy contract FEFO and expected versions. V2.1 header required for CRYO. Retired transfer action aliases stay disabled. PA-REV-01 (Proposed): the body may add approvedQuantity (1..requested quantity) and partialReasonCode together; selectedComponentIds must then hold exactly approvedQuantity FEFO units. A smaller approvedQuantity requires a SYNTHETIC_PARTIAL_APPROVAL_REASONS_V1 code; the request's remainder closes as a recorded shortfall and is not reserved later. Without both fields the full requested quantity is required, as before. Errors: 400 PARTIAL_APPROVAL_INVALID (quantity out of range, missing or unsupported reason, or a reason on a full approval). The ledger reservation quantity is approvedQuantity; requestedQuantity, shortfall and the reason are recorded off-chain.",
         "parameters": [
           {
             "name": "Idempotency-Key",
@@ -754,6 +754,24 @@
                       "type": "integer",
                       "minimum": 1
                     }
+                  },
+                  "approvedQuantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "PA-REV-01. Units approved now; at most the requested quantity. Send together with partialReasonCode."
+                  },
+                  "partialReasonCode": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "INSUFFICIENT_ELIGIBLE_STOCK",
+                      "LOCAL_RESERVE_PROTECTED",
+                      "OTHER_OPERATIONAL",
+                      null
+                    ],
+                    "description": "PA-REV-01. Required when approvedQuantity is below the requested quantity; null for a full approval."
                   }
                 }
               }
@@ -4551,6 +4569,69 @@
           }
         }
       }
+    },
+    "/reservations/{reservationId}/receipt-discrepancy": {
+      "post": {
+        "operationId": "recordReceiptDiscrepancy",
+        "description": "RECEIPT_DISCREPANCY_V1 (PA-REV-02, Proposed). When receipt verification returns 409 RECEIPT_LABELS_MISMATCH, the destination institution (ROLE-01/02/03 with a PIN-verified operator) records the dispute with the same body as receipt-verifications. The server recomputes matched, unmatched and missing counts (never label values), stores keyed digests only, and opens one discrepancy per reservation. While it is OPEN, receive returns 409 RECEIPT_DISCREPANCY_OPEN. It resolves as RECOUNT_MATCHED when a later receipt verification matches every unit, or as COMPROMISED when the reservation is compromised (the ledger then records the outcome). Errors: 400 RECEIPT_VERIFICATION_INPUT_INVALID / RECEIPT_LABEL_DUPLICATE; 403 AUTH_SCOPE_FORBIDDEN; 404 V2_RESERVATION_NOT_FOUND; 409 RESERVATION_VERSION_CONFLICT, RESERVATION_TRANSITION_INVALID, RECEIPT_LABELS_MATCH (nothing to dispute; verify instead), RECEIPT_DISCREPANCY_OPEN (another discrepancy is open), RECEIPT_DISCREPANCY_IDEMPOTENCY_CONFLICT; 503 V2_KEYS_UNAVAILABLE. Synchronous off-chain write; no ledger transaction. The same actor, Idempotency-Key and labels replay the record (replayed true).",
+        "parameters": [
+          {
+            "name": "reservationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^RES_[A-Z0-9_-]{1,56}$"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "name": "Operator-Verification",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Required for institution accounts."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptVerificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Discrepancy recorded or replayed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptDiscrepancy"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Invalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5144,7 +5225,12 @@
           "preparedEvidencePresent",
           "updatedAt",
           "components",
-          "classification"
+          "classification",
+          "requestedQuantity",
+          "approvedQuantity",
+          "shortfallQuantity",
+          "partialApproval",
+          "receiptDiscrepancy"
         ],
         "properties": {
           "reservationId": {
@@ -5229,6 +5315,68 @@
           },
           "classification": {
             "const": "SIMULATION_ONLY"
+          },
+          "requestedQuantity": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "description": "PA-REV-01. Quantity on the transfer request; null for a local release."
+          },
+          "approvedQuantity": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "description": "PA-REV-01. Units reserved by the approval; null for reservations accepted before PA-REV-01."
+          },
+          "shortfallQuantity": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "PA-REV-01. requestedQuantity - approvedQuantity; closed, never reserved later."
+          },
+          "partialApproval": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "required": [
+              "reasonCode",
+              "policyVersion"
+            ],
+            "properties": {
+              "reasonCode": {
+                "type": "string",
+                "enum": [
+                  "INSUFFICIENT_ELIGIBLE_STOCK",
+                  "LOCAL_RESERVE_PROTECTED",
+                  "OTHER_OPERATIONAL"
+                ]
+              },
+              "policyVersion": {
+                "type": "string",
+                "enum": [
+                  "SYNTHETIC_PARTIAL_APPROVAL_REASONS_V1"
+                ]
+              }
+            }
+          },
+          "receiptDiscrepancy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReceiptDiscrepancy"
+              }
+            ],
+            "description": "PA-REV-02. Latest recorded receipt discrepancy, visible to the source and destination institutions."
           }
         },
         "additionalProperties": false
@@ -10156,6 +10304,99 @@
             ]
           },
           "meetsRequestedQuantity": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReceiptDiscrepancy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "discrepancyId",
+          "reservationId",
+          "reservationVersion",
+          "status",
+          "expectedUnits",
+          "matchedUnits",
+          "unmatchedLabels",
+          "missingUnits",
+          "recordedAt",
+          "resolutionCode",
+          "resolvedAt",
+          "policyVersion",
+          "classification"
+        ],
+        "properties": {
+          "discrepancyId": {
+            "type": "string",
+            "pattern": "^RDS_[A-F0-9]{40}$"
+          },
+          "reservationId": {
+            "type": "string",
+            "pattern": "^RES_[A-Z0-9_-]{1,56}$"
+          },
+          "reservationVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "RESOLVED"
+            ]
+          },
+          "expectedUnits": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "matchedUnits": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unmatchedLabels": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "missingUnits": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolutionCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "RECOUNT_MATCHED",
+              "COMPROMISED",
+              null
+            ]
+          },
+          "resolvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "policyVersion": {
+            "type": "string",
+            "enum": [
+              "RECEIPT_DISCREPANCY_V1"
+            ]
+          },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "SIMULATION_ONLY"
+            ]
+          },
+          "replayed": {
             "type": "boolean"
           }
         }

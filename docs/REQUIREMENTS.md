@@ -312,7 +312,9 @@ Acceptance:
 
 - **BR-TRF-01:** A request does not reserve stock until authorized approval.
 - **BR-TRF-02:** Approval must atomically validate availability and reserve the
-  selected units or fail without partial reservation.
+  selected units or fail without partial reservation. *PA-REV-01 (Proposed)
+  allows approving fewer units than requested; the approved units are still
+  reserved atomically and the remainder closes as a recorded shortfall.*
 - **BR-TRF-03:** Rejection before dispatch releases reservations and requires a
   non-PHI reason.
 - **BR-TRF-04:** Dispatch requires an approved request, reserved eligible units,
@@ -597,6 +599,8 @@ withdrawal creates a new `SUBMITTED` application linked to the prior record.
 | PA-TC-02 | Accepted prototype assumption | `SYNTHETIC_OFFLINE_CAPTURE_V1` | Jopia / 2026-10-19 (accepted 2026-10-19) | The capture PWA may hold an operator-confirmed capture while offline: allowlisted confirmed fields only (no image or raw OCR text), AES-GCM with a non-extractable WebCrypto key in IndexedDB, at most 20 captures, purged 24 h after queuing. On reconnect each capture is sent once with its original idempotency key. The send time becomes `eventTime`, and the operator re-enters the PIN, which is never stored. Remediates TC-S05/TC-O01. | Approved device-retention, encryption and offline-custody rule |
 | PA-TC-03 | Accepted prototype assumption | `USR_SERVICE_EXPIRY` | Jopia / 2026-10-19 (accepted 2026-10-19) | An opt-in worker job (`V2_EXPIRY_EVALUATOR_ENABLED=true`) queues `EVALUATE_COMPONENT_EXPIRY` for label-expired `AVAILABLE` components. It uses server time and is attributed to a non-login service actor (SUSPENDED, unusable verifier) that the chaincode accepts for that transaction only. Each component and printed expiry gets one idempotency key. The chaincode still rejects evaluation before label expiry. Remediates TC-E05. | Approved expiry-operations ownership and audit rule |
 | PA-TC-04 | Accepted prototype assumption | `SYNTHETIC_LOCATION_V2` | Jopia / 2026-10-19 (accepted 2026-10-19) | Supersedes `SYNTHETIC_LOCATION_V1` for V2 reservations only (V1 is unchanged). It adds invented facility points for the V2 institution-account hospitals. V2 dispatch and receipt may carry one checkpoint reading or a reasoned facility fallback. The ledger stores only the summary and digest; exact points stay off-chain for 30 days and are visible only to the capturing institution. Reservations gain a staff-recorded `DELAYED` state with coded reasons (`VEHICLE_DELAY`, `TRAFFIC`, `WEATHER`, `HANDOVER_PENDING`, `OTHER_OPERATIONAL`); the chaincode keeps no clock. Remediates TC-T04, TC-T07, TC-G01 and TC-G03. | Approved location-privacy, retention and transport-exception policy |
+| PA-REV-01 | Proposed prototype assumption | `SYNTHETIC_PARTIAL_APPROVAL_REASONS_V1` | Jopia / 2026-11-03 | A supplying ROLE-02 may approve fewer units than requested, from 1 up to the requested quantity, with a coded reason (`INSUFFICIENT_ELIGIBLE_STOCK`, `LOCAL_RESERVE_PROTECTED`, `OTHER_OPERATIONAL`). FEFO stays exact on the approved units, and the remainder closes as a recorded shortfall. Supersedes `BR-TRF-02`'s full-quantity rule for this case only. See [the decision](#pa-rev-0102--partial-approval-and-receipt-discrepancy-2026-11-03). | Approved partial-fulfilment rules, `RQ-18` reject/cancel decisions |
+| PA-REV-02 | Proposed prototype assumption | `RECEIPT_DISCREPANCY_V1` | Jopia / 2026-11-03 | The destination can record a receipt count dispute after `RECEIPT_LABELS_MISMATCH`: counts only, keyed digests, one open discrepancy per reservation, receipt blocked while open, resolved by a matching recount or by compromise. See [the decision](#pa-rev-0102--partial-approval-and-receipt-discrepancy-2026-11-03). | Approved dispute, investigation and signature rules (`RQ-09`) |
 
 Prototype-assumption versions are immutable. A replacement adds a new version,
 marks the earlier one superseded for new operations, preserves historical
@@ -624,7 +628,7 @@ sprint:
 | RQ-14 | What retention period and access policy apply to onboarding verification evidence and rejected applications? | Sprint 4 |
 | RQ-15 | Who may authorize emergency suspension while a transfer is dispatched or in transit, and how is safe receipt/custody resolution assigned? | Before operational in-transit suspension |
 | RQ-16 | What institutionally approved minimum-stock and safe-stock levels, shortage rule and surplus indicator replace the unavailable `FR-04` dashboard classification (Critical, Low, Adequate, Surplus)? This covers unit of measure, institution, blood-group and component scope, boundary comparisons, zero and missing-coverage handling, freshness tolerance, and the owner, approver, effective date and audit reference. The `SYNTHETIC_OPTIMIZATION_V1` and V2.1 surplus safety allowance and minimum reserve are not stock-classification thresholds. | Before operational dashboard stock classification or full `FR-04` acceptance; accepted project-only demonstration exception is recorded under FR-04 |
-| RQ-18 | Which request decisions beyond approval are allowed, and with what rules? Rejection by the supplying ROLE-02 (reason codes, terminal state), cancellation of a still-pending request by its requester, and partial offers (allowed at all, and how the remainder is handled). The ledger request asset has no reject or cancel transition today; enabling them needs new chaincode functions and a lifecycle upgrade. | Before any request reject, cancel or partial-offer control |
+| RQ-18 | Which request decisions beyond approval are allowed, and with what rules? Rejection by the supplying ROLE-02 (reason codes, terminal state), cancellation of a still-pending request by its requester, and partial offers (allowed at all, and how the remainder is handled). **Partial offers are proposed for simulation by PA-REV-01 (2026-11-03); rejection and cancellation stay open.** The ledger request asset has no reject or cancel transition today; enabling them needs new chaincode functions and a lifecycle upgrade. | Before any request reject, cancel or partial-offer control |
 | RQ-19 | Should any intake path other than confirmed OCR capture exist: manual Donation No. entry or bulk CSV import? ADR-035 currently forbids unverified manual or system-import records. A new path needs its verification evidence, operator authority, confidence and confirmation rules and an ADR superseding ADR-035. **Partly resolved for simulation on 2026-10-19:** operator correction of an OCR capture is allowed by ADR-050 / `PA-OCR-03`. PA-OCR-04 additionally permits all-field review after OCR for simulation. Scanner-free manual entry and CSV import stay open. | Before enabling fully manual intake or Inventory CSV import |
 | RQ-20 | May a requester record a patient/case reference? If so, in what format, who may access it, and how long is it retained? `PA-REQ-01` keeps the field disabled; see `docs/frontend/REQUESTER-FORM-DECISIONS.md`. | Before collecting any patient/case reference |
 
@@ -723,6 +727,31 @@ for the patient/case reference, which stays disabled under `RQ-20`.
 | Access | The requesting and the chosen supplying institution read details and download documents; anyone else gets `404 REQUEST_DETAIL_NOT_FOUND`. Only the requester edits, with an `expectedVersion` (`409 STALE_STATE`), and only while the request is queued or pending without a reservation (`409 REQUEST_DETAIL_LOCKED`). |
 | Retries | Same idempotency key and body: one command, one detail row and one copy of each document. Same transfer ID with different details: `409 IDEMPOTENCY_CONFLICT`. |
 | Not implemented | Requiring the pickup fields before a "ready for pickup" step: the current workflow has no such step. Real retention stays blocked by `RQ-14`. |
+
+## PA-REV-01/02 — Partial approval and receipt discrepancy (2026-11-03)
+
+**Proposed by Jopia; SIMULATION_ONLY.** The Thesis 2 panel asked for approval
+that is not all-or-nothing (Dean Cherrie #2) and asked what happens when a
+receiving hospital disputes the number of units delivered (Franze Q3). Both are
+implemented off-chain: the chaincode already reserves exactly the submitted
+quantity in FEFO order and accepts any well-formed reason code, so **no
+chaincode change or lifecycle upgrade** is needed. Contract:
+`services/api/openapi-v2.json` (`POST /reservations`, `Reservation`,
+`ReceiptDiscrepancy`, `POST /reservations/{reservationId}/receipt-discrepancy`).
+
+| Rule | PA-REV-01 partial approval | PA-REV-02 receipt discrepancy |
+|---|---|---|
+| Who | Supplying ROLE-02 with a PIN-verified operator | Destination ROLE-01/02/03 with a PIN-verified operator |
+| Input | `approvedQuantity` (1 to requested) and `partialReasonCode`; exactly that many FEFO units | The same scanned labels as receipt verification |
+| Validation | A smaller quantity needs a `SYNTHETIC_PARTIAL_APPROVAL_REASONS_V1` code; a full approval takes `null` | Only an `IN_TRANSIT` transfer at its expected version; the labels must actually mismatch |
+| Ledger | Reservation quantity is the approved quantity; reason, requested quantity and shortfall stay off-chain | Nothing while open; the outcome is ledger-recorded as receipt or compromise |
+| Remainder / effect | Closed as a recorded shortfall; the requester submits a new request if still needed | Receive returns `409 RECEIPT_DISCREPANCY_OPEN` until resolved |
+| Resolution | — | `RECOUNT_MATCHED` (later verification matches every unit) or `COMPROMISED` (reservation compromised) |
+| Privacy | No patient or donor data | Counts only; keyed digests, never label values |
+
+Boundaries: decision support and staff action only. `RQ-09`, `RQ-10` and the
+reject/cancel parts of `RQ-18` stay open. Not a clinical or institutional
+dispute policy.
 
 ## PA-DEF-07 — Automatic stock checkpoints (2026-10-19)
 
