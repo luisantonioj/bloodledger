@@ -22,6 +22,8 @@ docker exec "${postgres_container}" psql --username postgres --dbname bloodledge
 trap 'docker exec "${postgres_container}" psql --username postgres --dbname bloodledger_dev --no-psqlrc --command "DROP DATABASE \"${test_database}\" WITH (FORCE)" >/dev/null' EXIT
 export POSTGRES_DB="${test_database}" POSTGRES_HOST=127.0.0.1 POSTGRES_PORT="${POSTGRES_HOST_PORT:-5432}" POSTGRES_APP_USER="${POSTGRES_APP_USER:-bloodledger_app}"
 export BLOODLEDGER_REPOSITORY_ROOT="${repository_root}"
+# The probe runs on the host: reach the peer through its published port, not the compose-network name from .env.
+export FABRIC_PEER_ENDPOINT="${WORKLOAD_PEER_ENDPOINT:-127.0.0.1:7051}"
 node database/scripts/migrate.mjs >/dev/null
 node_modules/.bin/tsc -p services/api/tsconfig.json
 mkdir -p "$(dirname "${report}")"

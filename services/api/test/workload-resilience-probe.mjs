@@ -82,7 +82,8 @@ async function verify(accepted, drained) {
     duplicateProjections: projected.rowCount - new Set(projected.rows.map((row) => row.transfer_id)).size,
     queueEqualsProjection: [...transactions].every((tx) => projectedTx.has(tx)) && transactions.size === projectedTx.size,
     maxAttempts: Math.max(...commands.rows.map((row) => Number(row.attempt_count))),
-    resubmittedAfterCommit: [...drained.submissions.values()].filter((count) => count > 1).length,
+    // Retries after a failed submission (for example while the peer is down); duplicates show in the counts above.
+    commandsWithRetriedSubmission: [...drained.submissions.values()].filter((count) => count > 1).length,
   };
 }
 
