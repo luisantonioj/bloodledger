@@ -76,3 +76,4 @@ never committed.
 
 - 2026-11-03 Jopia: integration branch and contract published.
 - 2026-11-03 Jopia: PA-REV-01/02 backend on `codex/jopia-panel-backend` (API 251/251; disposable-database probe 35 assertions, harness 330). No chaincode change. Lat can switch from mocks once it merges into the integration branch.
+- 2026-11-03 Jopia: PR #103 merged into the integration branch (`0712f05`, self-validated). Lat can use the real backend after `npm run migrate:up` (migration `20261103000000000`). Sensitivity study PR #104 open. Workload experiment written (`ce4e007`, guarded) but not run: the host peer is stopped and the run needs owner approval.
