@@ -12,6 +12,7 @@ import { INTERVIEW_V2_1_COMPONENT_TYPES } from "./v2-contracts.js";
 // keyed-lookup digests and component IDs are stored; no stock is registered and nothing is written to the ledger.
 export const RECEIPT_VERIFICATION_POLICY_VERSION = "INBOUND_RECEIPT_LABEL_VERIFICATION_V1";
 export const RECEIPT_EVIDENCE_ID_PATTERN = /^RCV_[A-F0-9]{40}$/;
+export const RECEIPT_DISCREPANCY_POLICY_VERSION = "RECEIPT_DISCREPANCY_V1";
 const MAX_LABELS = 50;
 const sha = (value: unknown) => createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
 
@@ -91,8 +92,55 @@ export class PostgresReceiptVerification {
       const evidenceDigest = sha({ policy: RECEIPT_VERIFICATION_POLICY_VERSION, evidenceId, reservationId, reservationVersion: input.expectedVersion, componentIds, verifiedBy: principal.userId, institutionId: principal.institutionId, verifiedAt: now.toISOString() });
       const inserted = await client.query<Record<string, unknown>>("INSERT INTO app.v2_receipt_verifications(evidence_id,reservation_id,reservation_version,institution_id,component_ids,request_sha256,evidence_digest,verified_by,verified_at,idempotency_key,correlation_id,policy_version,classification) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'SIMULATION_ONLY') RETURNING *",
         [evidenceId, reservationId, input.expectedVersion, principal.institutionId, JSON.stringify(componentIds), requestSha256, evidenceDigest, principal.userId, now, idempotencyKey, input.correlationId, RECEIPT_VERIFICATION_POLICY_VERSION]);
+      // PA-REV-02: a recount that matches every unit resolves an open discrepancy, so receipt can proceed.
+      await client.query("UPDATE app.v2_receipt_discrepancies SET status='RESOLVED',resolution_code='RECOUNT_MATCHED',resolved_at=$2 WHERE reservation_id=$1 AND status='OPEN'", [reservationId, now]);
       await client.query("COMMIT");
       return present(inserted.rows[0], false);
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally { client.release(); }
+  }
+
+  // PA-REV-02 RECEIPT_DISCREPANCY_V1: the destination records a mismatch it disputes. Counts and digests only.
+  async recordDiscrepancy(principal: WebPrincipal, reservationId: string, value: unknown, idempotencyKey: string, now: Date) {
+    if (!["ROLE-01", "ROLE-02", "ROLE-03"].includes(principal.roleId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Receipt discrepancy requires a hospital receiving role.");
+    if (!/^RES_[A-Z0-9_-]{1,56}$/.test(reservationId)) throw new ApiFailure(400, "V2_RESERVATION_ID_INVALID", "Reservation ID is invalid.");
+    if (!/^IDEM_[A-Z0-9_-]{1,59}$/.test(idempotencyKey)) throw new ApiFailure(400, "INVALID_IDEMPOTENCY_KEY", "A valid Idempotency-Key header is required.");
+    const input = parseReceiptInput(value);
+    if (!this.keyring) throw new ApiFailure(503, "V2_KEYS_UNAVAILABLE", "Donation lookup keys are not available.");
+    let scanned: string[];
+    try { scanned = input.scannedLabels.map((label) => receiptIdentity(donationLookupHmac(label.donationNumber, this.keyring!), label.componentType)); }
+    catch { throw new ApiFailure(400, "RECEIPT_VERIFICATION_INPUT_INVALID", "A scanned label is not a valid Donation No."); }
+    const requestSha256 = sha({ policyVersion: RECEIPT_DISCREPANCY_POLICY_VERSION, reservationId, expectedVersion: input.expectedVersion, labels: [...scanned].sort() });
+    const discrepancyId = `RDS_${createHash("sha256").update(`${principal.userId}|${idempotencyKey}`, "utf8").digest("hex").slice(0, 40).toUpperCase()}`;
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`discrepancy:${reservationId}`]);
+      const prior = await client.query<Record<string, unknown>>("SELECT * FROM app.v2_receipt_discrepancies WHERE recorded_by=$1 AND idempotency_key=$2", [principal.userId, idempotencyKey]);
+      if (prior.rows[0]) {
+        await client.query("COMMIT");
+        if (prior.rows[0].request_sha256 !== requestSha256) throw new ApiFailure(409, "RECEIPT_DISCREPANCY_IDEMPOTENCY_CONFLICT", "This request key was used for a different discrepancy.");
+        return presentDiscrepancy(prior.rows[0], true);
+      }
+      const reservation = await client.query<Record<string, unknown>>("SELECT r.reservation_id,r.purpose,r.status,r.version,t.destination_institution_id FROM app.v2_reservations r LEFT JOIN app.v2_transfer_requests t ON t.transfer_id=r.transfer_id WHERE r.reservation_id=$1 FOR SHARE OF r", [reservationId]);
+      const row = reservation.rows[0];
+      if (!row || row.destination_institution_id !== principal.institutionId) throw new ApiFailure(404, "V2_RESERVATION_NOT_FOUND", "The reservation was not found in the authorized scope.");
+      if (Number(row.version) !== input.expectedVersion) throw new ApiFailure(409, "RESERVATION_VERSION_CONFLICT", "The reservation changed; refresh before recording a discrepancy.");
+      if (row.purpose !== "TRANSFER" || row.status !== "IN_TRANSIT") throw new ApiFailure(409, "RESERVATION_TRANSITION_INVALID", "Only an in-transit transfer can have a receipt discrepancy.");
+      const open = await client.query("SELECT 1 FROM app.v2_receipt_discrepancies WHERE reservation_id=$1 AND status='OPEN'", [reservationId]);
+      if (open.rowCount) throw new ApiFailure(409, "RECEIPT_DISCREPANCY_OPEN", "A receipt discrepancy is already open for this reservation.");
+      const members = await client.query<Record<string, unknown>>("SELECT component_id,donation_number_lookup_hmac,component_type FROM app.v2_components WHERE reservation_id=$1 AND inventory_status='IN_TRANSIT' ORDER BY component_id", [reservationId]);
+      if (members.rows.length === 0) throw new ApiFailure(409, "RESERVATION_TRANSITION_INVALID", "The reservation has no in-transit units.");
+      const memberIdentities = new Map(members.rows.map((member) => [String(member.component_id), receiptIdentity(String(member.donation_number_lookup_hmac), String(member.component_type))]));
+      const comparison = compareReceiptLabels(memberIdentities, scanned);
+      if (comparison.matchedUnits === comparison.expectedUnits && comparison.unmatchedLabels === 0) throw new ApiFailure(409, "RECEIPT_LABELS_MATCH", "Every scanned label matches; verify the receipt instead.");
+      const evidenceDigest = sha({ policy: RECEIPT_DISCREPANCY_POLICY_VERSION, discrepancyId, reservationId, reservationVersion: input.expectedVersion, comparison, requestSha256, recordedBy: principal.userId, institutionId: principal.institutionId, recordedAt: now.toISOString() });
+      const inserted = await client.query<Record<string, unknown>>("INSERT INTO app.v2_receipt_discrepancies(discrepancy_id,reservation_id,reservation_version,institution_id,expected_units,matched_units,unmatched_labels,missing_units,request_sha256,evidence_digest,recorded_by,recorded_at,idempotency_key,correlation_id,status,policy_version,classification) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'OPEN',$15,'SIMULATION_ONLY') RETURNING *",
+        [discrepancyId, reservationId, input.expectedVersion, principal.institutionId, comparison.expectedUnits, comparison.matchedUnits, comparison.unmatchedLabels, comparison.missingUnits, requestSha256, evidenceDigest, principal.userId, now, idempotencyKey, input.correlationId, RECEIPT_DISCREPANCY_POLICY_VERSION]);
+      await client.query("COMMIT");
+      return presentDiscrepancy(inserted.rows[0], false);
     } catch (error) {
       await client.query("ROLLBACK").catch(() => undefined);
       throw error;
@@ -127,5 +175,24 @@ function present(row: Record<string, unknown>, replayed: boolean) {
     ledger: { status: "NOT_APPLICABLE" as const },
     policyVersion: RECEIPT_VERIFICATION_POLICY_VERSION,
     classification: "SIMULATION_ONLY" as const,
+  };
+}
+
+export function presentDiscrepancy(row: Record<string, unknown>, replayed?: boolean) {
+  return {
+    discrepancyId: String(row.discrepancy_id),
+    reservationId: String(row.reservation_id),
+    reservationVersion: Number(row.reservation_version),
+    status: String(row.status) as "OPEN" | "RESOLVED",
+    expectedUnits: Number(row.expected_units),
+    matchedUnits: Number(row.matched_units),
+    unmatchedLabels: Number(row.unmatched_labels),
+    missingUnits: Number(row.missing_units),
+    recordedAt: isoTimestamp(row.recorded_at),
+    resolutionCode: row.resolution_code == null ? null : String(row.resolution_code) as "RECOUNT_MATCHED" | "COMPROMISED",
+    resolvedAt: row.resolved_at == null ? null : isoTimestamp(row.resolved_at),
+    policyVersion: RECEIPT_DISCREPANCY_POLICY_VERSION,
+    classification: "SIMULATION_ONLY" as const,
+    ...(replayed === undefined ? {} : { replayed }),
   };
 }

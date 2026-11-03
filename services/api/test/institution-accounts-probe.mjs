@@ -71,6 +71,8 @@ try{
   await probeBloodBankCompletion({admin,runtime,app,sessions});
   const {probeReceiptVerification}=await import('./receipt-verification-database-probe.mjs');
   await probeReceiptVerification({admin,runtime});
+  const {probePanelRevisions}=await import('./panel-revisions-database-probe.mjs');
+  await probePanelRevisions({admin,runtime});
   const {probeStockCheckpoints}=await import('./stock-checkpoint-database-probe.mjs');
   await probeStockCheckpoints({admin,runtime});
   const {probeCorrectedIntake}=await import('./corrected-intake-database-probe.mjs');

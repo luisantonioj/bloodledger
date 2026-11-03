@@ -242,6 +242,8 @@ services:
     command: ["node", "services/api/build/src/worker-main.js"]
     environment:
       BLOODLEDGER_REPOSITORY_ROOT: /workspace
+      # PA-TC-03: development moves label-expired units to EXPIRED by default (panel revision, Dean Cherrie #1).
+      V2_EXPIRY_EVALUATOR_ENABLED: "true"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: bloodledger_dev

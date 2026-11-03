@@ -21,6 +21,7 @@ import { captureReservationLocation, locationSummary, scopeLocationView, type Re
 import { assertReceiptEvidence, RECEIPT_EVIDENCE_ID_PATTERN, type PostgresReceiptVerification } from "./receipt-verification.js";
 import { isReconciliationReasonCode, RECONCILIATION_POLICY_VERSION, RECONCILIATION_REASONS } from "./reconciliation-policy.js";
 import { COMPROMISE_POLICY_VERSION, COMPROMISE_REASONS, isCompromiseReasonCode } from "./compromise-policy.js";
+import { approvalQuantity, PARTIAL_APPROVAL_POLICY_VERSION } from "./partial-approval-policy.js";
 import { DOH_CENSUS_DISPLAY_ORDER, DOH_CENSUS_DISPLAY_POLICY_VERSION } from "./report-policy.js";
 import { DOCUMENT_ID_PATTERN, REQUEST_DETAIL_POLICY_VERSION, REQUEST_UPLOAD_BODY_LIMIT, detailDigest, detailView, documentId, isRequestSupplier, validateRequestDetails, validateRequestDocuments, type RequestDetailStore, type RequestDocumentInput } from "./request-details.js";
 import { COORDINATION_BLOOD_TYPES, COORDINATION_COMPONENT_TYPES, priorityView, redistributionView, surplusView, type CoordinationReader } from "./coordination-views.js";
@@ -55,7 +56,7 @@ export interface V2RouteDependencies {
   activityHistory?: ActivityHistoryReader;
   bloodBank?: BloodBankReader;
   outboundVerification?: Pick<PostgresOutboundVerification, "verify">;
-  receiptVerification?: Pick<PostgresReceiptVerification, "verify" | "findEvidence">;
+  receiptVerification?: Pick<PostgresReceiptVerification, "verify" | "findEvidence"> & Partial<Pick<PostgresReceiptVerification, "recordDiscrepancy">>;
   reservationLocation?: ReservationLocationStore;
   webOrigin: string;
   clock: () => Date;
@@ -248,6 +249,12 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!dependencies.receiptVerification) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Receipt verification is not available.");
     return dependencies.receiptVerification.verify(principal, request.params.reservationId, request.body, String(request.headers["idempotency-key"] ?? ""), dependencies.clock());
   });
+  // PA-REV-02: the destination records a receipt count dispute after a label mismatch; off-chain, synchronous, idempotent.
+  app.post<{ Params: { reservationId: string } }>("/api/v2/reservations/:reservationId/receipt-discrepancy", async (request) => {
+    sameOrigin(request); const { principal } = await restore(request);
+    if (!dependencies.receiptVerification?.recordDiscrepancy) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Receipt discrepancy recording is not available.");
+    return dependencies.receiptVerification.recordDiscrepancy(principal, request.params.reservationId, request.body, String(request.headers["idempotency-key"] ?? ""), dependencies.clock());
+  });
 
   app.get<{ Querystring: { limit?: string; cursor?: string; contract?: string } }>("/api/v2/activity-history", async (request) => {
     const { principal } = await restore(request);
@@ -333,7 +340,9 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
   app.post("/api/v2/reservations", async (request, reply) => {
     sameOrigin(request); const { principal } = await restore(request);
     const body = request.body;
-    if (!hasKeys(body, ["correlationId", "eventTime", "expectedComponentVersions", "reservationId", "selectedComponentIds", "transferId"])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Reservation input is invalid.");
+    const reservationKeys = ["correlationId", "eventTime", "expectedComponentVersions", "reservationId", "selectedComponentIds", "transferId"];
+    // PA-REV-01: approvedQuantity and partialReasonCode travel together or not at all.
+    if (!hasKeys(body, reservationKeys) && !hasKeys(body, [...reservationKeys, "approvedQuantity", "partialReasonCode"])) throw new ApiFailure(400, "V2_INPUT_INVALID", "Reservation input is invalid.");
     authorized(principal, ["ROLE-02"]);
     const transferId = requiredBodyString(body, "transferId", TRANSFER_ID_PATTERN);
     const reservationId = requiredBodyString(body, "reservationId", RESERVATION_ID_PATTERN);
@@ -342,9 +351,10 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (transfer.status !== "PENDING") throw new ApiFailure(409, "V2_TRANSFER_STATE_CONFLICT", "Transfer request is not pending.");
     const version = contractVersion(request);
     if (transfer.component_type === "CRYOPRECIPITATE" && version !== "V2.1") throw new ApiFailure(409, "V2_1_CONTRACT_REQUIRED", "CRYO requires V2.1.");
+    const approval = approvalQuantity(body, Number(transfer.quantity));
     const selected = body.selectedComponentIds; const versions = body.expectedComponentVersions;
-    if (!Array.isArray(selected) || !Array.isArray(versions) || selected.length !== Number(transfer.quantity) || versions.length !== selected.length || new Set(selected).size !== selected.length || selected.some(id => typeof id !== "string" || !COMPONENT_ID_PATTERN.test(id)) || versions.some(value => !Number.isSafeInteger(value) || value < 1)) throw new ApiFailure(400, "V2_INPUT_INVALID", "Selected components and versions are invalid.");
-    const payload = { reservationId, transferId, purpose: "TRANSFER", sourceInstitutionId: principal.institutionId, destinationInstitutionId: transfer.destination_institution_id, bloodType: transfer.blood_type, componentType: transfer.component_type, quantity: Number(transfer.quantity), selectedComponentIds: selected, expectedComponentVersions: versions, actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: selectCorePolicy(principal, version) };
+    if (!Array.isArray(selected) || !Array.isArray(versions) || selected.length !== approval.approvedQuantity || versions.length !== selected.length || new Set(selected).size !== selected.length || selected.some(id => typeof id !== "string" || !COMPONENT_ID_PATTERN.test(id)) || versions.some(value => !Number.isSafeInteger(value) || value < 1)) throw new ApiFailure(400, "V2_INPUT_INVALID", "Selected components and versions are invalid.");
+    const payload = { reservationId, transferId, purpose: "TRANSFER", sourceInstitutionId: principal.institutionId, destinationInstitutionId: transfer.destination_institution_id, bloodType: transfer.blood_type, componentType: transfer.component_type, quantity: approval.approvedQuantity, selectedComponentIds: selected, expectedComponentVersions: versions, actorUserId: principal.userId, eventTime: requiredUtc(body, "eventTime"), correlationId: requiredBodyString(body, "correlationId", CORRELATION_PATTERN), policyVersion: selectCorePolicy(principal, version), requestedQuantity: approval.requestedQuantity, ...(approval.partialReasonCode ? { partialReasonCode: approval.partialReasonCode, partialPolicyVersion: PARTIAL_APPROVAL_POLICY_VERSION } : {}) };
     return enqueue(request, reply, "TRANSFER", transferId, "RESERVE_COMPONENTS", payload, principal);
   });
 
@@ -748,6 +758,7 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     }
     const recordLocation = async () => { if (location) await dependencies.reservationLocation!.record(request.params.reservationId, location); };
     if (action === "receive") {
+      if (scopedReservation.receiptDiscrepancy?.status === "OPEN") throw new ApiFailure(409, "RECEIPT_DISCREPANCY_OPEN", "A receipt discrepancy is open; recount every unit or record the reservation as compromised.");
       const bank = principal.roleId !== "ROLE-03";
       // Only the destination receives; a source bank sees its reservation but cannot receive it.
       if (bank && scopedReservation.destinationInstitutionId !== principal.institutionId) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", "Only the destination institution receives a reservation.");

@@ -1,3 +1,4 @@
+import { presentDiscrepancy } from "./receipt-verification.js";
 import { createHash } from "node:crypto";
 import type { Pool } from "pg";
 import type { V2Command } from "./v2-command.js";
@@ -34,6 +35,12 @@ export interface V2ReservationProjection {
   preparedEvidencePresent: boolean;
   updatedAt: string;
   components: Array<{ componentId: string; componentType: string; inventoryStatus: string; inventoryVersion: number }>;
+  // PA-REV-01/02: null for local releases and for reservations accepted before the decision.
+  requestedQuantity?: number | null;
+  approvedQuantity?: number | null;
+  shortfallQuantity?: number | null;
+  partialApproval?: { reasonCode: string; policyVersion: string } | null;
+  receiptDiscrepancy?: ReturnType<typeof presentDiscrepancy> | null;
   classification: "SIMULATION_ONLY";
 }
 
@@ -78,6 +85,11 @@ function mapReservation(row: Row): V2ReservationProjection {
       const component = item as Record<string, unknown>;
       return { componentId: String(component.componentId), componentType: String(component.componentType), inventoryStatus: String(component.inventoryStatus), inventoryVersion: Number(component.inventoryVersion) };
     }),
+    requestedQuantity: row.purpose === "TRANSFER" && row.transfer_quantity != null ? Number(row.transfer_quantity) : null,
+    approvedQuantity: row.approved_quantity == null ? null : Number(row.approved_quantity),
+    shortfallQuantity: row.approved_quantity == null || row.transfer_quantity == null ? null : Number(row.transfer_quantity) - Number(row.approved_quantity),
+    partialApproval: row.partial_reason_code == null ? null : { reasonCode: String(row.partial_reason_code), policyVersion: String(row.partial_policy_version) },
+    receiptDiscrepancy: row.receipt_discrepancy && typeof row.receipt_discrepancy === "object" ? presentDiscrepancy(row.receipt_discrepancy as Record<string, unknown>) : null,
     classification: "SIMULATION_ONLY",
   };
 }
@@ -116,7 +128,7 @@ export class PostgresV2ProjectionReader implements V2ProjectionReader {
     return Object.fromEntries(result.rows.map((row) => [String(row.status), Number(row.count)]));
   }
 
-  private reservationSelect = `SELECT r.reservation_id,r.purpose,r.status,r.version,r.institution_id,r.transfer_id,r.local_release_id,r.prepared_at,r.prepared_evidence_digest,r.prepared_evidence_id,r.updated_at,t.destination_institution_id,COALESCE(jsonb_agg(jsonb_build_object('componentId',c.component_id,'componentType',c.component_type,'inventoryStatus',c.inventory_status,'inventoryVersion',c.ledger_version) ORDER BY c.component_id) FILTER (WHERE c.component_id IS NOT NULL),'[]'::jsonb) AS components FROM app.v2_reservations r LEFT JOIN app.v2_transfer_requests t ON t.transfer_id=r.transfer_id LEFT JOIN app.v2_components c ON c.reservation_id=r.reservation_id`;
+  private reservationSelect = `SELECT r.reservation_id,r.purpose,r.status,r.version,r.institution_id,r.transfer_id,r.local_release_id,r.prepared_at,r.prepared_evidence_digest,r.prepared_evidence_id,r.updated_at,r.approved_quantity,r.partial_reason_code,r.partial_policy_version,t.destination_institution_id,t.quantity AS transfer_quantity,(SELECT to_jsonb(d) FROM app.v2_receipt_discrepancies d WHERE d.reservation_id=r.reservation_id ORDER BY d.recorded_at DESC,d.discrepancy_id DESC LIMIT 1) AS receipt_discrepancy,COALESCE(jsonb_agg(jsonb_build_object('componentId',c.component_id,'componentType',c.component_type,'inventoryStatus',c.inventory_status,'inventoryVersion',c.ledger_version) ORDER BY c.component_id) FILTER (WHERE c.component_id IS NOT NULL),'[]'::jsonb) AS components FROM app.v2_reservations r LEFT JOIN app.v2_transfer_requests t ON t.transfer_id=r.transfer_id LEFT JOIN app.v2_components c ON c.reservation_id=r.reservation_id`;
 
   async listReservations(institutionId: string, roleId: string, limit: number, cursor?: string): Promise<{ reservations: V2ReservationProjection[]; nextCursor: string | null }> {
     const destination = roleId === "ROLE-03";
@@ -125,7 +137,7 @@ export class PostgresV2ProjectionReader implements V2ProjectionReader {
     const values: unknown[] = [institutionId];
     if (cursor) values.push(cursor);
     values.push(limit + 1);
-    const result = await this.pool.query<Row>(`${this.reservationSelect} WHERE ${scope}${cursorClause} GROUP BY r.reservation_id,t.destination_institution_id ORDER BY r.reservation_id LIMIT $${values.length}`, values);
+    const result = await this.pool.query<Row>(`${this.reservationSelect} WHERE ${scope}${cursorClause} GROUP BY r.reservation_id,t.destination_institution_id,t.quantity ORDER BY r.reservation_id LIMIT $${values.length}`, values);
     const hasMore = result.rows.length > limit;
     const rows = result.rows.slice(0, limit).map(mapReservation);
     return { reservations: rows, nextCursor: hasMore ? rows.at(-1)?.reservationId ?? null : null };
@@ -134,7 +146,7 @@ export class PostgresV2ProjectionReader implements V2ProjectionReader {
   async getReservation(reservationId: string, institutionId: string, roleId: string): Promise<V2ReservationProjection | null> {
     const destination = roleId === "ROLE-03";
     const scope = destination ? "t.destination_institution_id=$2" : "(r.institution_id=$2 OR t.destination_institution_id=$2)";
-    const result = await this.pool.query<Row>(`${this.reservationSelect} WHERE r.reservation_id=$1 AND ${scope} GROUP BY r.reservation_id,t.destination_institution_id`, [reservationId, institutionId]);
+    const result = await this.pool.query<Row>(`${this.reservationSelect} WHERE r.reservation_id=$1 AND ${scope} GROUP BY r.reservation_id,t.destination_institution_id,t.quantity`, [reservationId, institutionId]);
     return result.rows[0] ? mapReservation(result.rows[0]) : null;
   }
 }
@@ -226,7 +238,10 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
         if (purpose !== "TRANSFER" && purpose !== "LOCAL_RELEASE") throw new Error("V2_PROJECTION_INPUT_INVALID");
         const transferId = purpose === "TRANSFER" ? String(payload.transferId ?? command.resourceId) : null;
         const localReleaseId = purpose === "LOCAL_RELEASE" ? String(payload.localReleaseId ?? command.resourceId) : null;
-        await client.query("INSERT INTO app.v2_reservations(reservation_id,purpose,transfer_id,local_release_id,institution_id,status,correlation_id,version,classification,last_projection_command_id) VALUES($1,$2,$3,$4,$5,'ACTIVE',$6,1,'SIMULATION_ONLY',$7) ON CONFLICT(reservation_id) DO NOTHING", [reservationId, purpose, transferId, localReleaseId, command.actorInstitutionId, command.correlationId, command.commandId]);
+        // PA-REV-01: the approved quantity is the reserved set; the requested quantity and any partial reason come from the command.
+        const requestedQuantity = Number.isSafeInteger(payload.requestedQuantity) ? Number(payload.requestedQuantity) : null;
+        const partialReason = typeof payload.partialReasonCode === "string" ? payload.partialReasonCode : null;
+        await client.query("INSERT INTO app.v2_reservations(reservation_id,purpose,transfer_id,local_release_id,institution_id,status,correlation_id,version,classification,last_projection_command_id,requested_quantity,approved_quantity,partial_reason_code,partial_policy_version) VALUES($1,$2,$3,$4,$5,'ACTIVE',$6,1,'SIMULATION_ONLY',$7,$8,$9,$10,$11) ON CONFLICT(reservation_id) DO NOTHING", [reservationId, purpose, transferId, localReleaseId, command.actorInstitutionId, command.correlationId, command.commandId, requestedQuantity, requestedQuantity === null ? null : selected.length, partialReason, partialReason ? payload.partialPolicyVersion : null]);
         const expectedVersions = Array.isArray(payload.expectedComponentVersions) ? payload.expectedComponentVersions : [];
         for (const [index, selectedId] of selected.entries()) {
           const expected = Number(expectedVersions[index]);
@@ -324,6 +339,8 @@ export class PostgresV2Projector implements Pick<V2LedgerSubmitter, "project"> {
         reservationParams.push(version);
         const reservationUpdate = await client.query(`UPDATE app.v2_reservations SET status=$2,last_projection_command_id=$3,updated_at=$4,version=version+1${preparedFields}${completedFields}${locationFields}${delayFields} WHERE reservation_id=$1 AND version=$${reservationParams.length}`, reservationParams);
         if (!reservationUpdate.rowCount) throw new Error("V2_PROJECTION_STATE_CONFLICT");
+        // PA-REV-02: a compromised reservation resolves its open receipt discrepancy; the ledger holds the outcome.
+        if (command.operation === "COMPROMISE_RESERVATION") await client.query("UPDATE app.v2_receipt_discrepancies SET status='RESOLVED',resolution_code='COMPROMISED',resolved_at=$2 WHERE reservation_id=$1 AND status='OPEN'", [reservationId, command.acceptedAt]);
       }
       await finish();
     } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }

@@ -1,3 +1,4 @@
+import { validOperatorPin } from "./operator-pin-policy.js";
 import { randomBytes } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { accountPolicy, type AccountPolicyEntry } from "./institution-access.js";
@@ -91,7 +92,7 @@ export async function applyAccountMigration(pool:Pool,manifest:MigrationPreview,
   const {manifestSha256,...unsigned}=manifest;
   if(sha256(unsigned)!==manifestSha256||manifest.targetDigest!==targetDigest||manifest.mappingDigest!==sha256(migrationMapping(manifest.legacyBaselineVersion))||manifest.classification!=="SIMULATION_ONLY"||manifest.migrationId!==MIGRATION_ID)throw new Error("ACCOUNT_MANIFEST_OR_TARGET_MISMATCH");
   for(const account of accountPolicy.accounts)if(typeof credentials.passwords[account.accountId]!=="string"||credentials.passwords[account.accountId].length<12||credentials.passwords[account.accountId].length>128)throw new Error("ACCOUNT_PRIVATE_PASSWORD_REQUIRED");
-  for(const operator of OPERATOR_ROSTER)if(!/^[0-9]{8}$/.test(credentials.pins[operator.operatorId]??""))throw new Error("ACCOUNT_PRIVATE_PIN_REQUIRED");
+  for(const operator of OPERATOR_ROSTER)if(!validOperatorPin(credentials.pins[operator.operatorId]))throw new Error("ACCOUNT_PRIVATE_PIN_REQUIRED");
   return identityTransaction(pool,async client=>{
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[MIGRATION_ID]);
     const prior=await client.query<Record<string,unknown>>("SELECT * FROM app.institution_account_migrations WHERE migration_id=$1",[MIGRATION_ID]);
