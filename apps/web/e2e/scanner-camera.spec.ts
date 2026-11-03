@@ -1,8 +1,9 @@
 // FR-01 / NFR-11: device-local capture only; no live domain commands.
 import {test,expect,type Page} from "@playwright/test";
 import {readPage} from "./fixtures/transaction-reads";
+import {PHONE,openBankScanner} from "./fixtures/phone-scanner";
 
-test.use({launchOptions:{args:["--use-fake-device-for-media-stream","--use-fake-ui-for-media-stream"]}});
+test.use({...PHONE,launchOptions:{args:["--use-fake-device-for-media-stream","--use-fake-ui-for-media-stream"]}});
 async function setup(page:Page){
  const writes:string[]=[];
  await page.route("**/capture/ocr-assets/**",route=>route.abort());
@@ -22,8 +23,7 @@ async function setup(page:Page){
  return writes;
 }
 async function open(page:Page,direction:"Inbound"|"Outbound"){
- await page.goto("/transactions");await page.getByRole("button",{name:"Open Mobile Scanner",exact:true}).click();await page.getByRole("button",{name:direction,exact:true}).click();
- return page.getByRole("dialog",{name:"Mobile blood unit scanner",exact:true});
+ return openBankScanner(page,direction);
 }
 const stopped=(page:Page)=>page.evaluate(()=>(window as any).cameraStreams.length>0&&(window as any).cameraStreams.every((s:MediaStream)=>s.getTracks().every(t=>t.readyState==="ended")));
 for(const direction of ["Inbound","Outbound"] as const)test(`${direction} has separate camera and gallery actions, captures a local photo and releases the camera`,async({page})=>{
@@ -53,13 +53,13 @@ test("camera denial offers gallery recovery without granting OCR confirmation",a
  await dialog.getByRole("button",{name:"Cancel camera",exact:true}).click();await expect(dialog.getByRole("button",{name:"Choose image",exact:true})).toBeEnabled();
  await expect(dialog.getByRole("button",{name:"Confirm inbound transaction",exact:true})).toBeDisabled();expect(writes).toEqual([]);
 });
-test("closing a scanner while camera permission is pending stops the eventual stream",async({page})=>{
+test("leaving capture while camera permission is pending stops the eventual stream",async({page})=>{
  const writes=await setup(page);await page.addInitScript(()=>{
   const get=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
   navigator.mediaDevices.getUserMedia=async constraints=>{await new Promise<void>(resolve=>{(window as any).releaseCamera=resolve;});return get(constraints);};
  });
  const dialog=await open(page,"Outbound");await dialog.getByRole("button",{name:"Take photo",exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>typeof (window as any).releaseCamera)).toBe("function");
- await dialog.getByRole("button",{name:"Close mobile scanner",exact:true}).click();await page.evaluate(()=>(window as any).releaseCamera());
+ await dialog.getByRole("button",{name:"Change direction",exact:true}).click();await page.evaluate(()=>(window as any).releaseCamera());
  await expect.poll(()=>stopped(page)).toBe(true);expect(writes).toEqual([]);
 });

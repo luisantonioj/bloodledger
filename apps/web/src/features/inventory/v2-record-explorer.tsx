@@ -91,10 +91,10 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
         </section>
       </>}
       {request && !renderBody && <dl><dt>Source</dt><dd>{facilityLabel(request.source_institution_id, principal)}</dd><dt>Destination</dt><dd>{facilityLabel(request.destination_institution_id, principal)}</dd>{renderExtra ? <><dt>Blood type</dt><dd>{formatBloodType(request.blood_type)}</dd><dt>Component</dt><dd>{componentLabel(request.component_type)}</dd></> : <><dt>Blood / component</dt><dd>{humanizeCode(request.blood_type)} / {humanizeCode(request.component_type)}</dd></>}<dt>Requested units</dt><dd>{request.quantity}</dd><dt>Request state</dt><dd>{humanizeCode(request.status)}</dd><dt>Ledger reference</dt><dd className="mono">{request.ledger_transaction_id ?? "Pending — no commitment"}</dd></dl>}
-      {request && <RequestDetailPanel key={request.transfer_id} transferId={request.transfer_id}/>}
       {record && renderBody?.(record, open)}
+      {request && <RequestDetailPanel key={request.transfer_id} transferId={request.transfer_id}/>}
       {record && renderExtra?.(record, open)}
-      {selected.kind === "reservation" && <ReservationActions key={"actions:" + selected.id} reservation={reservation} principal={principal} onRefresh={refresh} onLockChange={setActionLocked}/>}
+      {selected.kind === "reservation" && <ReservationActions key={"actions:" + selected.id} reservation={reservation} principal={principal} onRefresh={refresh} onLockChange={setActionLocked} scanOnPhone/>}
       {selected.kind === "component" && <ReconciliationHold key={"hold:" + selected.id} component={component} principal={principal} onRefresh={refresh}/>}
       {showRecovery && selected.kind !== "request" && <CommandRecovery key={"recovery:" + selected.id} resourceId={selected.id} onRefresh={refresh}/>}
     </div>

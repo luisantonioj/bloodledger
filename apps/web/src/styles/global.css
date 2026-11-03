@@ -1328,3 +1328,53 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .outbound-label-verification>fieldset{min-width:0;margin:0;padding:0;border:0}
 .outbound-label-verification>fieldset>label{display:flex;align-items:flex-start;gap:8px;font:400 12px/1.5 var(--font-sans)}
 .outbound-label-verification>.button{margin-top:10px}
+
+/* Request and transfer details: one calm reading rhythm inside the bank detail card. */
+.bank-detail-card .request-detail-panel{gap:14px;margin-top:18px;padding-top:16px;font-size:11px;line-height:1.6}
+.bank-detail-card .request-detail-panel h3,.bank-detail-card .request-detail-panel h4{font:500 12px/1.4 var(--font-sans);color:var(--ink)}
+.bank-detail-card .request-detail-panel h4{margin-top:4px}
+.bank-detail-card .request-detail-panel dl{grid-template-columns:135px minmax(0,1fr);gap:12px 14px}
+.bank-detail-card .request-detail-panel dt{color:var(--ink-muted)}
+.bank-detail-card .request-detail-panel dd small{color:var(--ink-muted);font-size:10px}
+.bank-detail-card .request-detail-panel .requester-placeholder-tag{font-size:10px;color:var(--ink-muted)}
+.bank-detail-card .request-detail-documents{gap:6px}
+.bank-detail-card .request-detail-documents li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:8px 10px;border:1px solid var(--line-subtle);border-radius:var(--radius-sm)}
+.bank-detail-card .request-detail-documents a{font-size:11px;color:var(--ink);text-underline-offset:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bank-detail-card .request-detail-documents small{font-size:10px;color:var(--ink-muted)}
+.bank-detail-card .request-detail-documents li>.button{grid-column:2;grid-row:1/span 2;align-self:center}
+.bank-detail-card .request-detail-panel>p{margin:0;color:var(--ink-muted)}
+.bank-detail-card .v2-operation-card{margin-top:18px;padding:16px 0 0;border:0;border-top:1px solid var(--line-subtle);background:transparent;font:400 11px/1.6 var(--font-sans)}
+.bank-detail-card .v2-operation-card>h3{margin:0 0 14px;font:500 12px/1.4 var(--font-sans);color:var(--ink)}
+.bank-detail-card .v2-operation-card>p{margin:0 0 12px;padding:8px 10px;border-radius:var(--radius-sm);background:var(--information-container);color:var(--ink-secondary);font-size:11px}
+.bank-detail-card .reservation-location-audit{margin-bottom:14px}
+.bank-detail-card .reservation-location-audit h4{margin:0 0 8px;font:500 11px/1.4 var(--font-sans);color:var(--ink-secondary)}
+.bank-detail-card .reservation-location-audit .data-table{width:100%;font-size:11px}
+.bank-detail-card .reservation-location-audit .data-table th{font-size:9px;padding:6px 8px}
+.bank-detail-card .reservation-location-audit .data-table td{padding:6px 8px}
+@media(max-width:760px){.bank-detail-card .request-detail-panel dl{grid-template-columns:125px minmax(0,1fr);gap:10px}.bank-detail-card .reservation-location-audit{overflow-x:auto}}
+
+/* Phone scanner-only screen (scans happen on the phone; laptops show a pointer note). */
+.phone-scanner-shell{min-height:100dvh;display:grid;grid-template-rows:auto auto minmax(0,1fr);background:var(--surface)}
+.phone-scanner-header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line-subtle);background:var(--surface)}
+.phone-scanner-header .bloodledger-logo{width:32px;height:32px;object-fit:contain}
+.phone-scanner-header>div{flex:1;min-width:0;display:grid;gap:2px}
+.phone-scanner-header h1{margin:0;font:500 17px/1.3 var(--font-serif)}
+.phone-scanner-header .receipt-eyebrow{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.phone-scanner-header .sign-out{flex-shrink:0;color:var(--ink)}
+.phone-scanner-content{padding:16px;min-width:0;overflow-y:auto}
+.scan-on-phone-note{margin:0;padding:8px 10px;border-radius:var(--radius-sm);background:var(--information-container);color:var(--ink-secondary);font-size:11px;line-height:1.6;max-width:420px}
+
+/* PRC supply request details: identity + status, compact facts, timeline history. */
+.prc-supply-detail .prc-detail-identity{margin:0;padding:16px 18px}
+.prc-supply-detail .prc-detail-facts{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 18px;padding:16px 18px}
+.prc-supply-detail .prc-detail-facts dd{font-size:12px;line-height:1.5}
+.prc-supply-detail .prc-supply-message{margin:0 18px 16px;padding:8px 10px;border-radius:var(--radius-sm);background:var(--information-container);color:var(--ink-secondary);font-size:11px}
+.prc-supply-detail>h3{margin:0;padding:14px 18px 10px;border-top:1px solid var(--line-subtle);font:500 12px/1.4 var(--font-sans)}
+.prc-supply-detail .prc-request-history{list-style:none;gap:0;margin:0;padding:0 18px 18px}
+.prc-supply-detail .prc-request-history li{position:relative;padding:0 0 14px 20px;border-left:1px solid var(--line);margin-left:5px}
+.prc-supply-detail .prc-request-history li:last-child{border-left-color:transparent;padding-bottom:0}
+.prc-supply-detail .prc-request-history li::before{content:"";position:absolute;left:-5px;top:4px;width:9px;height:9px;border-radius:50%;background:var(--surface);border:1px solid var(--ink-muted)}
+.prc-supply-detail .prc-request-history li:last-child::before{background:var(--primary);border-color:var(--primary)}
+.prc-supply-detail .prc-request-history strong{font:500 12px/1.4 var(--font-sans);text-transform:lowercase;display:block}
+.prc-supply-detail .prc-request-history strong::first-letter{text-transform:uppercase}
+.prc-supply-detail .prc-request-history li>span,.prc-supply-detail .prc-request-history li>small{margin-top:2px;font-size:11px}

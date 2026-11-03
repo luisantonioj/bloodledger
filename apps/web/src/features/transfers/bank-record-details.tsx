@@ -30,7 +30,6 @@ export function BankRecordDetails({record, principal, open}: {record: SelectedRe
         ["Reservation status", request.reservation_status ? humanizeCode(request.reservation_status) : "Not reserved"],
         ["Ledger reference", request.ledger_transaction_id ? <Reference value={request.ledger_transaction_id}/> : <span className="bank-review-muted">Awaiting ledger confirmation</span>]
       ]}/>
-      <section className="bank-review-section"><h3>Requester and clinical details</h3><DetailRows rows={[["Required By", unavailable],["Requested By", unavailable],["Attending Physician", unavailable],["Case Reference", unavailable],["Authorized Pickup", unavailable],["Supporting Documents", unavailable],["Notes", unavailable]]}/></section>
     </>}
     {transfer && <>
       <DetailRows rows={[
@@ -41,8 +40,8 @@ export function BankRecordDetails({record, principal, open}: {record: SelectedRe
       ]}/>
       {transfer.purpose === "TRANSFER" && <section className="bank-review-section"><h3>Transfer Progress</h3><ol className="bank-review-progress" aria-label="Current transfer stage">{stages.map((label,index) => <li key={label} className={stage === index ? "current" : ""} aria-current={stage === index ? "step" : undefined}><span aria-hidden="true">{index+1}</span><small>{label}</small></li>)}</ol></section>}
       <section className="bank-review-section"><h3>Transfer Lifecycle Summary</h3><DetailRows rows={[
-        ["Local release reference", transfer.localReleaseId ? <Reference value={transfer.localReleaseId}/> : unavailable],
-        ["Request Reference", transfer.transferId ? <button className="bank-review-link mono" onClick={() => open("request", transfer.transferId!)} title={transfer.transferId}>{transfer.transferId}</button> : unavailable],
+        ...(transfer.localReleaseId ? [["Local release reference", <Reference value={transfer.localReleaseId}/>] as [string, ReactNode]] : []),
+        ...(transfer.transferId ? [["Request Reference", <button className="bank-review-link mono" onClick={() => open("request", transfer.transferId!)} title={transfer.transferId}>{transfer.transferId}</button>] as [string, ReactNode]] : []),
         ["Prepared At", transfer.preparedAt ? formatManilaDateTime(transfer.preparedAt) : unavailable],
         ["Last Updated", formatManilaDateTime(transfer.updatedAt)],
         ["Version", transfer.version]

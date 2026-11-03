@@ -1,3 +1,4 @@
+import {openBankScanner} from "./phone-scanner";
 import {expect,type Page,type BrowserContext} from "@playwright/test";
 import {unitFixture,readPage} from "./transaction-reads";
 import {fileURLToPath} from "node:url";
@@ -30,7 +31,7 @@ export async function fixture(page:Page,context:BrowserContext,recovery:"found"|
 }
 export const V1_LABEL=["DONATION NO: MM26-01-0001","BLOOD TYPE: A_POSITIVE","COMPONENT: WHOLE_BLOOD","COLLECTED AT: 2026-09-17T00:00:00.000Z","EXPIRES AT: 2026-10-17T00:00:00.000Z"];
 export async function scan(page:Page,direction:"Inbound"|"Outbound",label=V1_LABEL,font="bold 48px monospace"){
- await page.goto("/transactions");await page.getByRole("button",{name:"Open Mobile Scanner",exact:true}).click();await page.getByRole("button",{name:direction,exact:true}).click();const dialog=page.getByRole("dialog",{name:"Mobile blood unit scanner",exact:true});
+ const dialog=await openBankScanner(page,direction);
  const data=await page.evaluate(([label,font])=>{const canvas=document.createElement("canvas");canvas.width=1600;canvas.height=600;const ctx=canvas.getContext("2d")!;ctx.fillStyle="white";ctx.fillRect(0,0,1600,600);ctx.fillStyle="black";ctx.font=font;label.forEach((line,index)=>ctx.fillText(line,70,90+index*90));return canvas.toDataURL("image/png");},[label,font] as const);
  await dialog.getByLabel(direction==="Outbound"?"Outbound blood-unit label image":"Blood-unit label image",{exact:true}).setInputFiles({name:"synthetic-label.png",mimeType:"image/png",buffer:Buffer.from(data.split(",")[1],"base64")});await expect(dialog.getByLabel("Donation No. / Unit ID",{exact:true})).toHaveValue("MM26-01-0001",{timeout:90000});return dialog;
 }

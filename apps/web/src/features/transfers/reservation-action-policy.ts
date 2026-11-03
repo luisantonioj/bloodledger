@@ -1,6 +1,15 @@
 import type { Principal } from "../../auth/permissions";
 import type { ReservationDetail } from "../../services/api/v2-navigation";
 export const RESERVATION_ACTION_LABELS = { prepare: "Prepare reservation", dispatch: "Dispatch reservation", transit: "Start transit", receive: "Receive reservation", cancel: "Cancel reservation", "local-release-complete": "Complete local release", compromise: "Report compromise", delay: "Record delay", resume: "Resume transfer" } as const;
+// Lat MVP handoff: dispatch is the final outbound step, so its submit action
+// carries the explicit outbound label. Prepare and dispatch remain separate
+// versioned commands; this changes wording only.
+export const OUTBOUND_CONFIRM_LABEL = "Confirm outbound transaction";
+export function reservationSubmitLabel(action: ReservationAction | undefined, state: { busy: boolean; ambiguous: boolean }): string {
+  if (state.busy) return action === "dispatch" ? "Confirming outbound transaction…" : "Submitting command…";
+  if (state.ambiguous) return action === "dispatch" ? "Retry same outbound transaction" : "Retry same reservation command";
+  return action === "dispatch" ? OUTBOUND_CONFIRM_LABEL : "Confirm reservation action";
+}
 // TC-T07: staff-recorded delay reasons (coded; no free text).
 export const DELAY_REASONS = [["VEHICLE_DELAY", "Vehicle delay"], ["TRAFFIC", "Traffic"], ["WEATHER", "Weather"], ["HANDOVER_PENDING", "Handover pending"], ["OTHER_OPERATIONAL", "Other operational delay"]] as const;
 export type ReservationAction = keyof typeof RESERVATION_ACTION_LABELS;
