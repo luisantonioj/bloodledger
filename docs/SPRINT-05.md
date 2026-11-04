@@ -314,13 +314,14 @@ Development bootstrap uses only opaque synthetic users and untracked
 credentials. The login form does not allow a caller to choose or override its
 role or institution.
 
-*Amendment (Proposed, Jopia, 2026-11-03; commit `b051919`):* the 15-minute
+*Amendment (Accepted by the owner, Jopia role, 2026-11-04; commit `b051919`):* the 15-minute
 limit is now an idle limit. An authenticated request past half the token's
 lifetime extends the database session and re-issues the cookie, capped at 8
 hours from sign-in by migration
 `20261021000000000_allow-sliding-application-sessions.js` (UPDATE on
 `expires_at` only). Logout, suspension and revocation are unchanged. The 8-hour
-cap awaits owner acceptance.
+cap was accepted on 2026-11-04 for the research prototype; it is not an
+operational session policy.
 
 #### S5-06 — Expand the authoritative OpenAPI and persistence contracts
 

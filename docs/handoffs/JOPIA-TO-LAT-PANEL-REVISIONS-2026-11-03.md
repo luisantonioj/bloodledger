@@ -58,7 +58,7 @@ contract alone.
 
 | | Jopia host | Lat host |
 |---|---|---|
-| Operator PIN | 8 digits (default policy) | 6 digits (`SYNTHETIC_OPERATOR_PIN_6_V1`) |
+| Operator PIN | 6 digits (`SYNTHETIC_OPERATOR_PIN_6_V1`, applied 2026-10-21) | 6 digits (`SYNTHETIC_OPERATOR_PIN_6_V1`) |
 | Data | V5 population (1,060 units) | Lat's dataset |
 | Ledger | `tc-remediation-v1` | sequence 8 (staff build) |
 
@@ -76,3 +76,5 @@ never committed.
 
 - 2026-11-03 Jopia: integration branch and contract published.
 - 2026-11-03 Jopia: PA-REV-01/02 backend on `codex/jopia-panel-backend` (API 251/251; disposable-database probe 35 assertions, harness 330). No chaincode change. Lat can switch from mocks once it merges into the integration branch.
+- 2026-11-03 Jopia: PR #103 merged into the integration branch (`0712f05`, self-validated). Lat can use the real backend after `npm run migrate:up` (migration `20261103000000000`). Sensitivity study PR #104 open. Workload experiment written (`ce4e007`, guarded) but not run: the host peer is stopped and the run needs owner approval.
+- 2026-11-04 Jopia: PIN decision — the manuscript states six digits (owner decision). Both hosts already run `SYNTHETIC_OPERATOR_PIN_6_V1`; the code default for a fresh host stays eight. Jopia manuscript edits applied to the final IMRAD as suggestions (not accepted); Lat edits only frontend sections.
