@@ -73,6 +73,8 @@ try{
   await probeReceiptVerification({admin,runtime});
   const {probePanelRevisions}=await import('./panel-revisions-database-probe.mjs');
   await probePanelRevisions({admin,runtime});
+  const {probeDashboardStockCounts}=await import('./dashboard-stock-counts-database-probe.mjs');
+  await probeDashboardStockCounts({admin,runtime});
   const {probeStockCheckpoints}=await import('./stock-checkpoint-database-probe.mjs');
   await probeStockCheckpoints({admin,runtime});
   const {probeCorrectedIntake}=await import('./corrected-intake-database-probe.mjs');

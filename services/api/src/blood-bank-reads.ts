@@ -2,6 +2,7 @@ import type { Pool } from "pg";
 import { ApiFailure } from "./errors.js";
 import { nullableIsoTimestamp } from "./time.js";
 import type { WebPrincipal } from "./session.js";
+import type { StockCountEvidence, StockCountRow } from "./dashboard-stock-counts.js";
 
 // ADR-046 blood-bank completion reads. All are SIMULATION_ONLY, complete aggregates (never capped lists),
 // and carry their own read time. None changes inventory, request or ledger state.
@@ -16,6 +17,8 @@ export interface BloodBankReader {
   summary(institutionId: string, now: Date): Promise<Record<string, unknown>>;
   networkAvailability(now: Date): Promise<Record<string, unknown>[]>;
   requestHistory(institutionId: string, from: string, to: string): Promise<Record<string, unknown>[]>;
+  // PA-REV-03: optional so readers without the exact-count read keep compiling; the route answers 503 without it.
+  stockCounts?(institutionId: string, now: Date): Promise<StockCountEvidence>;
 }
 
 function requireRoles(principal: WebPrincipal, roles: readonly string[], message: string): void {
@@ -114,6 +117,23 @@ export class PostgresBloodBankReader implements BloodBankReader {
       (SELECT count(*) FROM app.v2_transfer_requests t WHERE t.source_institution_id=$1 AND t.status='PENDING' AND NOT EXISTS (SELECT 1 FROM app.v2_reservations r WHERE r.transfer_id=t.transfer_id))::int AS incoming_awaiting,
       (SELECT count(*) FROM app.v2_transfer_requests t WHERE t.destination_institution_id=$1 AND t.status='PENDING' AND NOT EXISTS (SELECT 1 FROM app.v2_reservations r WHERE r.transfer_id=t.transfer_id))::int AS outgoing_awaiting`, [institutionId, now]);
     return result.rows[0] as Record<string, unknown>;
+  }
+  async stockCounts(institutionId: string, now: Date): Promise<StockCountEvidence> {
+    // Label expiry is evaluated at $2, as in summary(); RELEASED units and other institutions are excluded.
+    const counts = await this.pool.query<StockCountRow>(`SELECT blood_type,component_type,CASE
+        WHEN inventory_status='AVAILABLE' AND expires_at>$2 THEN 'available'
+        WHEN inventory_status='RESERVED' AND expires_at>$2 THEN 'reserved'
+        WHEN inventory_status IN ('AVAILABLE','RESERVED') THEN 'labelExpiredPendingEvaluation'
+        WHEN inventory_status IN ('DISPATCHED','IN_TRANSIT') THEN 'outgoingInTransit'
+        WHEN inventory_status='RECEIVED' THEN 'received'
+        WHEN inventory_status='EXPIRED' THEN 'expired'
+        WHEN inventory_status='RECONCILIATION_HOLD' THEN 'onHold'
+        WHEN inventory_status='COMPROMISED' THEN 'compromised'
+        ELSE 'excluded' END AS bucket,count(*)::int AS count
+      FROM app.v2_components WHERE institution_id=$1 GROUP BY 1,2,3`, [institutionId, now]);
+    const meta = await this.pool.query(`SELECT (SELECT max(updated_at) FROM app.v2_components WHERE institution_id=$1) AS last_projected_at,
+      (SELECT count(*) FROM app.v2_commands WHERE actor_institution_id=$1 AND status IN ('QUEUED','SUBMITTING','RETRY_WAIT','LEDGER_COMMITTED_PROJECTION_PENDING'))::int AS pending_commands`, [institutionId]);
+    return { rows: counts.rows, lastProjectedAt: meta.rows[0]?.last_projected_at ?? null, pendingCommands: Number(meta.rows[0]?.pending_commands ?? 0) };
   }
   async networkAvailability(now: Date) {
     const result = await this.pool.query(`SELECT c.institution_id,i.display_name,c.blood_type,c.component_type,count(*)::int AS available_units,

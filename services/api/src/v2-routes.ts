@@ -22,6 +22,7 @@ import { assertReceiptEvidence, RECEIPT_EVIDENCE_ID_PATTERN, type PostgresReceip
 import { isReconciliationReasonCode, RECONCILIATION_POLICY_VERSION, RECONCILIATION_REASONS } from "./reconciliation-policy.js";
 import { COMPROMISE_POLICY_VERSION, COMPROMISE_REASONS, isCompromiseReasonCode } from "./compromise-policy.js";
 import { approvalQuantity, PARTIAL_APPROVAL_POLICY_VERSION } from "./partial-approval-policy.js";
+import { assembleStockCounts } from "./dashboard-stock-counts.js";
 import { DOH_CENSUS_DISPLAY_ORDER, DOH_CENSUS_DISPLAY_POLICY_VERSION } from "./report-policy.js";
 import { DOCUMENT_ID_PATTERN, REQUEST_DETAIL_POLICY_VERSION, REQUEST_UPLOAD_BODY_LIMIT, detailDigest, detailView, documentId, isRequestSupplier, validateRequestDetails, validateRequestDocuments, type RequestDetailStore, type RequestDocumentInput } from "./request-details.js";
 import { COORDINATION_BLOOD_TYPES, COORDINATION_COMPONENT_TYPES, priorityView, redistributionView, surplusView, type CoordinationReader } from "./coordination-views.js";
@@ -224,6 +225,13 @@ export function registerV2Routes(app: FastifyInstance, dependencies: V2RouteDepe
     if (!dependencies.bloodBank) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "The blood-bank summary is not available.");
     const now = dependencies.clock();
     return assembleSummary(await dependencies.bloodBank.summary(principal.institutionId, now), now);
+  });
+  // PA-REV-03: exact counts by status for the caller's own blood bank (Dean Cherrie #3).
+  app.get("/api/v2/dashboard/stock-counts", async (request) => {
+    const { principal } = await restore(request); bloodBankRoutes(principal).summary();
+    if (!dependencies.bloodBank?.stockCounts) throw new ApiFailure(503, "V2_PROJECTION_UNAVAILABLE", "Exact stock counts are not available.");
+    const now = dependencies.clock();
+    return assembleStockCounts(principal.institutionId, await dependencies.bloodBank.stockCounts(principal.institutionId, now), now);
   });
   app.get("/api/v2/network-availability", async (request) => {
     const { principal } = await restore(request); bloodBankRoutes(principal).network();
