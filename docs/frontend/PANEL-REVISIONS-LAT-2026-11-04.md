@@ -37,9 +37,43 @@ no retained-host domain commands.
 - `npm run test:web`: 507 passed, 0 failed, 0 skipped, 57 files. Includes the two design-token boundary tests.
 - Design-token tests also run separately: 2 passed, 0 failed.
 - Receipt-enabled configuration: 3 passed, 0 failed, 0 skipped. Covers exact frozen verification, receive evidence, counts-only mismatch, frozen discrepancy replay discovered by polling, receive blocking and matched recount resolution.
-- Final full browser run: in progress at this implementation checkpoint; replace with exact result before final handoff.
+- Final full browser run: **266 passed, 0 failed, 7 skipped** (273 cases, 3.4 minutes). The seven existing retired-V1 mutation cases remain skipped. No browser retry was configured. Implementation commit: `fecd2d5`. Six synthetic screenshots were captured and visually reviewed for the dashboard layout.
 - Earlier runs exposed outdated dashboard fixtures, missing generated OCR assets and phone-scanner test navigation. Fixtures were aligned with the published contract, pinned OCR assets prepared, and assertions preserved. No OCR recognition threshold or backend authorization was loosened.
 - Candidate/index and this branch's HEAD ancestry secret scans pass. The all-local-refs history scan reports one unrelated, unmerged staff-branch API-build SHA-256 false positive at `67ff03e:docs/validation/lat-institution-staff-2026-10-21/README.md:137–138`. It is outside integration ancestry. Repository scanning configuration is unchanged; the all-refs scan is not claimed to pass.
+
+### Commands and diagnostic runs
+
+Run root-level `npm run check:web` and `npm run test:web`. Browser commands run
+from `apps/web` inside the pinned container with the repository mounted at
+`/workspace` and DejaVu fonts mounted read-only:
+
+```bash
+npx playwright test --config playwright-receipt.config.ts --workers=1
+npx playwright test --workers=1
+```
+
+Final run sets `LAT_PANEL_EVIDENCE=/workspace/build/lat-panel-20261104`.
+Previous diagnostic runs are superseded, not hidden:
+
+| Run | Passed | Failed | Skipped |
+|---|---:|---:|---:|
+| Supplemental native focused run | 30 | 1 | 0 |
+| Pinned initial focused run | 57 | 3 | 0 |
+| Pinned dashboard recheck | 22 | 1 | 0 |
+| Pinned expanded focused run | 55 | 3 | 0 |
+| Pinned initial full suite | 253 | 8 | 7 |
+| Pinned intermediate full suite | 265 | 1 | 7 |
+| Pinned final full suite | **266** | **0** | **7** |
+| Receipt-enabled fixture/layout diagnostic | 1 | 2 | 0 |
+| Receipt-enabled final run | **3** | **0** | **0** |
+
+An obsolete desktop-receipt run was interrupted after discovering its removed
+entry point; no pass count is claimed for it. The intermediate full run's
+secondary-hospital navigation failure did not recur on the final immutable
+build run. No assertions were removed to obtain a pass. The added permission
+test initially had 506 pass / 1 fail because the existing generic capability
+helper returns an unmatched GET capability name; the corrected test asserts
+that GET selects no authorized operator. Final unit result is 507/0/0.
 
 ## Host preflight — migration NOT applied
 
