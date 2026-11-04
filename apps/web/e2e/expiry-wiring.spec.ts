@@ -51,7 +51,7 @@ async function setup(page: Page, override?: (route: Route, path: string) => Prom
 async function verify(page: Page) {
   const dialog = page.getByRole("dialog", {name:"Verify operator"});
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel("Operator PIN").fill("00000000"); // fixture PIN only
+  await dialog.getByLabel("Operator PIN").fill("000000"); // fixture PIN only
   await dialog.getByRole("button", {name:"Verify and submit",exact:true}).click();
 }
 async function openComponent(page: Page) {

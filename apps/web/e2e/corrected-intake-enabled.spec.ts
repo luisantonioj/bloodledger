@@ -1,6 +1,6 @@
 import {test,expect} from "@playwright/test";
 import {fixture,scan} from "./fixtures/scanner-intake";
-async function pin(page:import("@playwright/test").Page){await page.getByLabel("Operator PIN",{exact:true}).fill("12345678");await page.getByRole("button",{name:"Verify and submit",exact:true}).click();}
+async function pin(page:import("@playwright/test").Page){await page.getByLabel("Operator PIN",{exact:true}).fill("123456");await page.getByRole("button",{name:"Verify and submit",exact:true}).click();}
 
 test("corrected Donation No. retains OCR evidence, requires double entry and freezes an exact retry",async({page,context})=>{
  test.setTimeout(150000);const state=await fixture(page,context),dialog=await scan(page,"Inbound");

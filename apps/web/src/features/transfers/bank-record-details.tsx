@@ -1,3 +1,4 @@
+import {ReservationOutcome,LinkedReservationOutcome} from "./reservation-outcome";
 import type { ReactNode } from "react";
 import type { Principal } from "../../auth/permissions";
 import { formatBloodType, formatManilaDateTime, humanizeCode, statusClassName } from "../../components/ui/display";
@@ -31,7 +32,8 @@ export function BankRecordDetails({record, principal, open}: {record: SelectedRe
         ["Ledger reference", request.ledger_transaction_id ? <Reference value={request.ledger_transaction_id}/> : <span className="bank-review-muted">Awaiting ledger confirmation</span>]
       ]}/>
     </>}
-    {transfer && <>
+    {request?.reservation_id&&<LinkedReservationOutcome reservationId={request.reservation_id} principal={principal}/>}
+    {transfer && <><ReservationOutcome reservation={transfer}/>
       <DetailRows rows={[
         ["From", facilityLabel(transfer.sourceInstitutionId, principal)],
         ["To", transfer.destinationInstitutionId ? facilityLabel(transfer.destinationInstitutionId, principal) : "Local release"],

@@ -3,7 +3,7 @@ import type {Principal} from "../../auth/permissions";
 import {ApiRequestError,setCommandVerifier} from "./client";
 import {parseReservationDetail,parseTransferRequest,readSelectedRecord,recordErrorMessage} from "./v2-navigation";
 const principal={institutionId:"INST_MEDIATRIX"} as Principal;
-const reservation={reservationId:"RES_TEST",purpose:"TRANSFER",status:"ACTIVE",version:2,sourceInstitutionId:"INST_MEDIATRIX",destinationInstitutionId:"INST_SYNTH_MEDIX",transferId:"TRF_TEST",localReleaseId:null,preparedAt:null,preparedEvidencePresent:false,updatedAt:"2026-10-09T00:00:00Z",components:[{componentId:"COMP_TEST",componentType:"PLATELETS",inventoryStatus:"RESERVED",inventoryVersion:2}],classification:"SIMULATION_ONLY"};
+const reservation={reservationId:"RES_TEST",purpose:"TRANSFER",status:"ACTIVE",version:2,sourceInstitutionId:"INST_MEDIATRIX",destinationInstitutionId:"INST_SYNTH_MEDIX",transferId:"TRF_TEST",localReleaseId:null,preparedAt:null,requestedQuantity:null,approvedQuantity:null,shortfallQuantity:null,partialApproval:null,receiptDiscrepancy:null,preparedEvidencePresent:false,updatedAt:"2026-10-09T00:00:00Z",components:[{componentId:"COMP_TEST",componentType:"PLATELETS",inventoryStatus:"RESERVED",inventoryVersion:2}],classification:"SIMULATION_ONLY"};
 afterEach(()=>{setCommandVerifier();vi.unstubAllGlobals();});
 describe("FR-01/05/12 operational detail navigation",()=>{
  it("keeps reservation purpose, version and members separate from the request state",()=>{expect(parseReservationDetail(reservation,"RES_TEST",principal)).toMatchObject({purpose:"TRANSFER",status:"ACTIVE",components:[{componentId:"COMP_TEST"}]});});

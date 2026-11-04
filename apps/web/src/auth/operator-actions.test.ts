@@ -37,3 +37,10 @@ it("PA-REQ detail and document writes select request-capable operators only",()=
  }
  expect(actionCapability("POST /api/v2/transfers/TRF_SYNTH_REQUEST/documents/INVALID/delete")).toBeUndefined();
 });
+
+it("PA-REV-02 discrepancy recording requires the receipt capability",()=>{
+ const receiver:OperatorProfile={operatorId:"USR_RECEIVER",roleId:"ROLE-03",capabilityProfile:"ROLE",version:1,actionCapabilities:["transfer:receive"]};
+ const action="POST /api/v2/reservations/RES_SYNTH/receipt-discrepancy";
+ expect(actionCapability(action)).toBe("transfer:receive");expect(eligibleOperators([...operators,receiver],action)).toEqual([receiver]);
+ expect(eligibleOperators([...operators,receiver],action.replace("POST","GET"))).toEqual([]);
+});

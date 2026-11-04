@@ -1,3 +1,6 @@
+import {parseReceiptDiscrepancy,type ReceiptDiscrepancy} from "../../services/api/panel-revisions";
+import {componentLabel,facilityLabel} from "../transfers/requester-transfer-data";
+import {compactRecordReference,humanizeCode} from "../../components/ui/display";
 import {COMMAND_PRESENTATION} from "../commands/command-state";
 import {useCallback,useEffect,useRef,useState} from "react";
 import { captureCheckpointLocation, type CheckpointLocation } from "../transfers/checkpoint-location";
@@ -24,13 +27,16 @@ type Evidence=ReturnType<typeof parseReceiptVerification>;
 function parseIncoming(value:unknown,principal:Principal){
  const body=value as {scope?:string;classification?:string;reservations?:Record<string,unknown>[];nextCursor?:unknown}|null;
  if(!["SOURCE_INSTITUTION","DESTINATION_INSTITUTION"].includes(String(body?.scope))||body?.classification!=="SIMULATION_ONLY"||!Array.isArray(body.reservations)||(body.nextCursor!==null&&(typeof body.nextCursor!=="string"||!/^RES_[A-Z0-9_-]{1,56}$/.test(body.nextCursor))))throw Error("Reservation list is invalid");
- const rows=body.reservations.map(row=>{if(typeof row.reservationId!=="string"||!/^RES_[A-Z0-9_-]{1,56}$/.test(row.reservationId)||![row.sourceInstitutionId,row.destinationInstitutionId].includes(principal.institutionId)||typeof row.status!=="string")throw Error("Reservation scope is invalid");return {reservationId:row.reservationId,status:row.status,purpose:row.purpose,destinationInstitutionId:row.destinationInstitutionId};});
+ const rows=body.reservations.map(row=>{if(typeof row.reservationId!=="string"||!/^RES_[A-Z0-9_-]{1,56}$/.test(row.reservationId)||![row.sourceInstitutionId,row.destinationInstitutionId].includes(principal.institutionId)||typeof row.status!=="string")throw Error("Reservation scope is invalid");return {reservationId:row.reservationId,status:row.status,purpose:row.purpose,destinationInstitutionId:row.destinationInstitutionId,sourceInstitutionId:typeof row.sourceInstitutionId==="string"?row.sourceInstitutionId:undefined,units:Array.isArray(row.components)?row.components.length:null,componentType:Array.isArray(row.components)&&row.components[0]&&typeof row.components[0]==="object"?String((row.components[0] as Record<string,unknown>).componentType):null};});
  return {rows,nextCursor:body.nextCursor as string|null};
 }
 // Counts only; a mismatch never shows another unit's label.
 export function receiptFailure(reason:unknown){
  if(reason instanceof ApiRequestError){
   if(reason.code==="RECEIPT_LABELS_MISMATCH"){const counts=/^Scanned labels do not match the in-transit units: (\d+) of (\d+) matched, (\d+) unmatched, (\d+) missing\.$/.exec(reason.message);return counts?`${counts[1]} of ${counts[2]} matched; ${counts[3]} unmatched; ${counts[4]} missing. Review all scanned units.`:"Scanned units do not match the incoming transfer. Review and rescan all units.";}
+  if(reason.code==="RECEIPT_DISCREPANCY_OPEN")return "Receipt discrepancy is open. Recount every unit or report compromise before receiving.";
+  if(reason.code==="RECEIPT_LABELS_MATCH")return "The labels now match. Verify them again instead of recording a discrepancy.";
+  if(reason.code==="RECEIPT_DISCREPANCY_IDEMPOTENCY_CONFLICT")return "This saved discrepancy attempt conflicts. Refresh and review its recorded status.";
   if(reason.code==="RECEIPT_EVIDENCE_INVALID")return "The receipt evidence no longer matches this transfer. Refresh and verify every unit again.";
   if(reason.code==="RECEIPT_VERIFICATION_REQUIRED")return "Verify every incoming unit before receiving this transfer.";
   if(reason.code==="RESERVATION_VERSION_CONFLICT"||reason.code==="RESERVATION_TRANSITION_INVALID")return "The transfer changed. Refresh its details before scanning again.";
@@ -47,7 +53,7 @@ const cancelled=(reason:unknown)=>reason instanceof Error&&reason.message==="Ope
 export function IncomingReceipt({principal,scannedRecognition,onLockChange}:{principal:Principal;scannedRecognition?:ReceiptRecognition;onLockChange:(locked:boolean)=>void}){
  const [selected,setSelected]=useState(""),[childLocked,setChildLocked]=useState(false);
  // The receive command outlives the verification panel: once it commits, the transfer leaves IN_TRANSIT.
- const status=useCommandStatus(),locked=childLocked||Boolean(status.command);
+ const status=useCommandStatus(),locked=childLocked||Boolean(status.command&&!COMMAND_PRESENTATION[status.command.status].terminal);
  const closeLocked=status.command?!COMMAND_PRESENTATION[status.command.status].terminal:childLocked;
  const notifyLock=useCallback((value:boolean)=>setChildLocked(value),[]);
  useEffect(()=>{onLockChange(closeLocked);},[closeLocked,onLockChange]);
@@ -58,7 +64,7 @@ export function IncomingReceipt({principal,scannedRecognition,onLockChange}:{pri
  const refresh=()=>{list.refresh();detail.manual();};
  if(!receiptVerificationReady)return null;
  return <section className="receipt-review-card scanner-transfer-actions"><header><h3>Incoming transfer</h3></header>
-  <div className="scanner-transfer-controls"><label>In-transit incoming transfer<span className="requester-select"><select aria-label="In-transit incoming transfer" value={selected} disabled={locked} onChange={event=>setSelected(event.target.value)}><option value="">Select a transfer</option>{rows.map(row=><option key={row.reservationId} value={row.reservationId}>{row.reservationId}</option>)}</select></span></label>
+  <div className="scanner-transfer-controls"><label>In-transit incoming transfer<span className="requester-select"><select aria-label="In-transit incoming transfer" value={selected} disabled={locked} onChange={event=>{if(status.command?.status==="COMMITTED")status.clear();setSelected(event.target.value);}}><option value="">Select a transfer</option>{rows.map(row=><option key={row.reservationId} value={row.reservationId}>{row.sourceInstitutionId?facilityLabel(row.sourceInstitutionId,principal):"Supplying facility unavailable"} · {row.componentType?componentLabel(row.componentType):"Product unavailable"} · {row.units??"?"} units · {compactRecordReference(row.reservationId)}</option>)}</select></span></label>
   <p className="receipt-preview-note">Scan every unit of the transfer, verify them together, then receive. Receipt records RECEIVED stock; it does not make the units usable.</p>
   {list.nextCursor&&<button className="button compact" type="button" disabled={list.busy||locked} onClick={list.loadMore}>Load more transfers</button>}
   {(list.error||detail.error)&&<p role="status">Incoming transfers could not be verified. Refresh before continuing.</p>}
@@ -66,17 +72,20 @@ export function IncomingReceipt({principal,scannedRecognition,onLockChange}:{pri
   {list.ready&&!rows.length&&<p className="receipt-preview-note">No in-transit incoming transfers in the loaded records.</p>}
   </div>
   {status.command?<CommandStatusCard command={status.command} pollError={status.pollError} onClear={()=>{status.clear();refresh();}}/>
-   :detail.data&&!detail.error&&detail.data.status==="IN_TRANSIT"&&<ReceiptVerification key={detail.data.reservationId+":"+detail.data.version} reservation={detail.data} scannedRecognition={scannedRecognition} onAccepted={status.accept} onLockChange={notifyLock}/>}
+   :detail.data&&!detail.error&&detail.data.status==="IN_TRANSIT"&&<ReceiptVerification key={detail.data.reservationId+":"+detail.data.version} reservation={detail.data} scannedRecognition={scannedRecognition} onAccepted={status.accept} onLockChange={notifyLock} onRefresh={refresh}/>}
 </section>;
 }
 
-function ReceiptVerification({reservation,scannedRecognition,onAccepted,onLockChange}:{reservation:ReservationDetail;scannedRecognition?:ReceiptRecognition;onAccepted:(command:ReturnType<typeof parseV2Command>)=>void;onLockChange:(locked:boolean)=>void}){
+function ReceiptVerification({reservation,scannedRecognition,onAccepted,onLockChange,onRefresh}:{onRefresh:()=>void;reservation:ReservationDetail;scannedRecognition?:ReceiptRecognition;onAccepted:(command:ReturnType<typeof parseV2Command>)=>void;onLockChange:(locked:boolean)=>void}){
  const [image,setImage]=useState<File>(),[recognition,setRecognition]=useState<ReceiptRecognition>(),[labels,setLabels]=useState<ScannedLabel[]>([]),[confirmed,setConfirmed]=useState(false),[reading,setReading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState("");
+ const [mismatch,setMismatch]=useState(false),[discrepancy,setDiscrepancy]=useState<ReceiptDiscrepancy|null|undefined>(reservation.receiptDiscrepancy),[disputeFrozen,setDisputeFrozen]=useState(false);
+ const disputeAttempt=useRef<{keys:ReturnType<typeof newMutationKeys>;body:{expectedVersion:number;correlationId:string;scannedLabels:ScannedLabel[]}}|null>(null);
+ useEffect(()=>setDiscrepancy(reservation.receiptDiscrepancy),[reservation.receiptDiscrepancy]);
  const [evidence,setEvidence]=useState<Evidence>(),[verifyFrozen,setVerifyFrozen]=useState(false),[receiveFrozen,setReceiveFrozen]=useState(false);
  const active=useRef(true),controller=useRef<AbortController|null>(null),timeRejects=useRef(0);
  const verifyAttempt=useRef<{keys:ReturnType<typeof newMutationKeys>;body:{expectedVersion:number;correlationId:string;scannedLabels:ScannedLabel[]}}|null>(null);
  const receiveAttempt=useRef<{keys:ReturnType<typeof newMutationKeys>;body:{location:CheckpointLocation;correlationId:string;eventTime:string;expectedVersion:number;receiptEvidenceId:string;receiptEvidenceDigest:string}}|null>(null);
- const members=reservation.components.length,locked=busy||verifyFrozen||receiveFrozen;
+ const members=reservation.components.length,locked=busy||verifyFrozen||receiveFrozen||disputeFrozen;
  useEffect(()=>{active.current=true;return()=>{active.current=false;controller.current?.abort();};},[]);
  useEffect(()=>{onLockChange(locked);},[locked,onLockChange]);
  useEffect(()=>{if(!locked){controller.current?.abort();setRecognition(scannedRecognition);setConfirmed(false);setError("");}},[scannedRecognition]);
@@ -87,29 +96,41 @@ function ReceiptVerification({reservation,scannedRecognition,onAccepted,onLockCh
   finally{if(active.current)setReading(false);}
  }
  function add(){
-  if(!recognition||!confirmed||locked||labels.length>=members)return;
+  if(!recognition||!confirmed||locked||labels.length>=50)return;
   const label={donationNumber:recognition.label.donationNumber,componentType:recognition.label.componentType};
   if(labels.some(entry=>entry.donationNumber===label.donationNumber&&entry.componentType===label.componentType)){setError("This label has already been added.");return;}
-  setLabels([...labels,label]);setRecognition(undefined);setImage(undefined);setConfirmed(false);setError("");
+  setMismatch(false);setLabels([...labels,label]);setRecognition(undefined);setImage(undefined);setConfirmed(false);setError("");
  }
  async function verify(){
-  if(busy||evidence||(!verifyFrozen&&labels.length!==members))return;
+  if(busy||disputeFrozen||receiveFrozen||evidence||(!verifyFrozen&&labels.length<1))return;
   if(!verifyAttempt.current){const keys=newMutationKeys();verifyAttempt.current={keys,body:{expectedVersion:reservation.version,correlationId:keys.correlationId,scannedLabels:[...labels]}};}
   const saved=verifyAttempt.current;setBusy(true);setError("");
   try{
    const result=parseReceiptVerification(await requestJson<unknown>(`/api/v2/reservations/${encodeURIComponent(reservation.reservationId)}/receipt-verifications`,{method:"POST",headers:{"Idempotency-Key":saved.keys.idempotencyKey},body:JSON.stringify(saved.body)}),reservation.reservationId,saved.body.expectedVersion);
    const expected=reservation.components.map(member=>member.componentId).sort();if(JSON.stringify([...result.componentIds].sort())!==JSON.stringify(expected))throw Error("Evidence membership mismatch");
-   if(active.current){setEvidence(result);setVerifyFrozen(false);setLabels([]);verifyAttempt.current=null;}
+   if(active.current){setEvidence(result);setMismatch(false);setDiscrepancy(null);setVerifyFrozen(false);setLabels([]);verifyAttempt.current=null;onRefresh();}
   }catch(reason){
    if(!active.current)return;
+   setMismatch(reason instanceof ApiRequestError&&reason.code==="RECEIPT_LABELS_MISMATCH");
    // A cancelled first verification sent nothing; an already ambiguous attempt stays frozen for an explicit retry.
    if(definitive(reason)||(cancelled(reason)&&!verifyFrozen))verifyAttempt.current=null;
    setVerifyFrozen(Boolean(verifyAttempt.current));setError(cancelled(reason)?(verifyFrozen?"Operator verification cancelled. The saved verification stays frozen; nothing was sent.":"Operator verification cancelled. Nothing was sent."):receiptFailure(reason));
   }
   finally{if(active.current)setBusy(false);}
  }
+ async function recordDiscrepancy(){
+  if(busy||verifyFrozen||receiveFrozen||(!mismatch&&!disputeFrozen))return;
+  if(!disputeAttempt.current){const keys=newMutationKeys();disputeAttempt.current={keys,body:{expectedVersion:reservation.version,correlationId:keys.correlationId,scannedLabels:labels.map(row=>({...row}))}};}
+  const saved=disputeAttempt.current;setBusy(true);setError("");
+  try{
+   const result=parseReceiptDiscrepancy(await requestJson<unknown>(`/api/v2/reservations/${encodeURIComponent(reservation.reservationId)}/receipt-discrepancy`,{method:"POST",headers:{"Idempotency-Key":saved.keys.idempotencyKey},body:JSON.stringify(saved.body)}),reservation.reservationId);
+   if(result.reservationVersion!==saved.body.expectedVersion)throw Error("Discrepancy version mismatch");
+   if(active.current){setDiscrepancy(result);setMismatch(false);setDisputeFrozen(false);disputeAttempt.current=null;onRefresh();}
+  }catch(reason){if(!active.current)return;if(definitive(reason)||(cancelled(reason)&&!disputeFrozen))disputeAttempt.current=null;setDisputeFrozen(Boolean(disputeAttempt.current));setError(cancelled(reason)?"Operator verification cancelled. Nothing new was sent.":receiptFailure(reason));if(reason instanceof ApiRequestError&&reason.code==="RECEIPT_LABELS_MATCH")setMismatch(false);}
+  finally{if(active.current)setBusy(false);}
+ }
  async function receive(){
-  if(busy||!evidence)return;
+  if(busy||!evidence||discrepancy?.status==="OPEN")return;
   // TC-G01: one receipt checkpoint reading, captured once per attempt so a retry resends the same body.
   if(!receiveAttempt.current){setBusy(true);const location=await captureCheckpointLocation();const keys=newMutationKeys();receiveAttempt.current={keys,body:{location,correlationId:keys.correlationId,eventTime:new Date().toISOString(),expectedVersion:reservation.version,receiptEvidenceId:evidence.evidenceId,receiptEvidenceDigest:evidence.evidenceDigest}};}
   const saved=receiveAttempt.current!;setBusy(true);setError("");
@@ -130,12 +151,14 @@ function ReceiptVerification({reservation,scannedRecognition,onAccepted,onLockCh
   <fieldset disabled={locked||Boolean(evidence)}>
    <label>Incoming-unit label image<input type="file" accept="image/png,image/jpeg" capture="environment" disabled={reading} onChange={event=>{const file=event.target.files?.[0];controller.current?.abort();setRecognition(undefined);setConfirmed(false);setError("");setImage(undefined);if(file&&["image/png","image/jpeg"].includes(file.type)&&file.size<=10*1024*1024)setImage(file);else if(file)setError("Choose a JPG or PNG image up to 10 MB.");event.target.value="";}}/></label>
    <button className="button compact" type="button" disabled={!image||reading} onClick={()=>void ocr()}>{reading?"Reading…":"Run OCR"}</button>
-   {recognition&&<><p>Five label fields passed OCR checks. The label value is not displayed or persisted.</p><label><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)}/>I checked the recognized label against this incoming unit.</label><button className="button compact" type="button" disabled={!confirmed||labels.length>=members} onClick={add}>Add scanned unit</button></>}
+   {recognition&&<><p>Five label fields passed OCR checks. The label value is not displayed or persisted.</p><label><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)}/>I checked the recognized label against this incoming unit.</label><button className="button compact" type="button" disabled={!confirmed||labels.length>=50} onClick={add}>Add scanned unit</button></>}
    <p>{evidence?"All incoming units verified · Off-chain evidence returned":`${labels.length} of ${members} incoming units scanned`}</p>
-   {!!labels.length&&<button className="button compact" type="button" onClick={()=>{setLabels([]);setError("");}}>Clear scans</button>}
+   {!!labels.length&&<button className="button compact" type="button" onClick={()=>{setLabels([]);setMismatch(false);setError("");}}>Clear scans</button>}
   </fieldset>
-  {!evidence&&<button className="button compact primary" type="button" disabled={busy||reading||(!verifyFrozen&&labels.length!==members)} onClick={()=>void verify()}>{busy?"Verifying…":verifyFrozen?"Retry same verification":"Verify scanned units"}</button>}
-  {evidence&&<button className="button compact primary" type="button" disabled={busy} onClick={()=>void receive()}>{busy?"Receiving…":receiveFrozen?"Retry same receipt":"Receive transfer"}</button>}
+  {!evidence&&<button className="button compact primary" type="button" disabled={busy||reading||disputeFrozen||receiveFrozen||(!verifyFrozen&&labels.length<1)} onClick={()=>void verify()}>{busy?"Verifying…":verifyFrozen?"Retry same verification":"Verify scanned units"}</button>}
+  {(disputeFrozen||mismatch&&discrepancy?.status!=="OPEN")&&<button className="button compact" type="button" disabled={busy||verifyFrozen||receiveFrozen} onClick={()=>void recordDiscrepancy()}>{disputeFrozen?"Retry same discrepancy":"Record discrepancy"}</button>}
+  {discrepancy&&<section className="receipt-discrepancy" aria-label="Receipt discrepancy"><h4>Receipt discrepancy · {humanizeCode(discrepancy.status)}</h4><p>{discrepancy.matchedUnits} of {discrepancy.expectedUnits} matched · {discrepancy.unmatchedLabels} unmatched · {discrepancy.missingUnits} missing</p><p>{discrepancy.status==="OPEN"?"Receipt is blocked. Recount all units and verify again, or report compromise in Transfer details.":"Resolved: "+humanizeCode(discrepancy.resolutionCode??"")}</p></section>}
+  {evidence&&<button className="button compact primary" type="button" disabled={busy||discrepancy?.status==="OPEN"} onClick={()=>void receive()}>{busy?"Receiving…":receiveFrozen?"Retry same receipt":"Receive transfer"}</button>}
   {error&&<p role="alert">{error}</p>}
  </section>;
 }

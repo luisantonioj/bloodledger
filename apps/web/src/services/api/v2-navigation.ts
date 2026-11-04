@@ -1,3 +1,4 @@
+import {parseApprovalQuantities,parseReceiptDiscrepancy,type ReceiptDiscrepancy} from "./panel-revisions";
 import type { Principal } from "../../auth/permissions";
 import { ApiRequestError, requestJson } from "./client";
 import { parseV2Component, type V2Component } from "./v2";
@@ -8,6 +9,7 @@ export interface ReservationDetail {
   transferId: string | null; localReleaseId: string | null; preparedAt: string | null;
   preparedEvidencePresent: boolean; updatedAt: string;
   components: {componentId: string; componentType: string; inventoryStatus: string; inventoryVersion: number}[];
+  requestedQuantity?:number|null;approvedQuantity?:number|null;shortfallQuantity?:number|null;partialApproval?:{reasonCode:string;policyVersion:string}|null;receiptDiscrepancy?:ReceiptDiscrepancy|null;
   classification: "SIMULATION_ONLY";
 }
 export interface TransferRequestDetail {
@@ -46,7 +48,9 @@ export function parseReservationDetail(value: unknown, id: string, principal: Pr
     return {componentId: text(member.componentId), componentType: text(member.componentType), inventoryStatus: text(member.inventoryStatus), inventoryVersion: integer(member.inventoryVersion)};
   });
   if (new Set(components.map(c => c.componentId)).size !== components.length) throw invalid();
-  return {reservationId: id, purpose: row.purpose as ReservationDetail["purpose"], status: text(row.status), version: integer(row.version), sourceInstitutionId, destinationInstitutionId, transferId, localReleaseId, preparedAt: nullable(row.preparedAt), preparedEvidencePresent: row.preparedEvidencePresent, updatedAt: text(row.updatedAt), components, classification: "SIMULATION_ONLY"};
+  const quantities=parseApprovalQuantities(row,components.length);
+  const receiptDiscrepancy=row.receiptDiscrepancy===null?null:parseReceiptDiscrepancy(row.receiptDiscrepancy,id);
+  return {...quantities,receiptDiscrepancy,reservationId: id, purpose: row.purpose as ReservationDetail["purpose"], status: text(row.status), version: integer(row.version), sourceInstitutionId, destinationInstitutionId, transferId, localReleaseId, preparedAt: nullable(row.preparedAt), preparedEvidencePresent: row.preparedEvidencePresent, updatedAt: text(row.updatedAt), components, classification: "SIMULATION_ONLY"};
 }
 
 export function parseTransferRequest(value: unknown, id: string, principal: Principal): TransferRequestDetail {

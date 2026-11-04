@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { retryAfterContextChange } from "../../services/api/client";
 import { ApiRequestError } from "../../services/api/client";
 import { newMutationKeys, type MutationKeys } from "../../services/api/mutation-keys";
 import { formatManilaDateTime } from "../../components/ui/display";
@@ -24,7 +25,8 @@ export function RequestDetailPanel({ transferId }: { transferId: string }) {
   useEffect(() => {
     let active = true;
     setState("loading");
-    readRequestDetails(transferId).then(result => { if (active) { setView(result); setState("ready"); } })
+    setView(undefined);
+    retryAfterContextChange(()=>readRequestDetails(transferId),()=>active).then(result => { if (active) { setView(result); setState("ready"); } })
       .catch(reason => { if (active) setState(reason instanceof ApiRequestError && reason.status === 404 ? "none" : "failed"); });
     return () => { active = false; };
   }, [transferId, retry]);

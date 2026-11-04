@@ -27,6 +27,7 @@ export function ReservationActions({ reservation, principal, onRefresh, onLockCh
   const prepareValid = action !== "prepare" || (/^EVD_[A-Z0-9_-]+$/.test(evidenceId) && /^[a-f0-9]{64}$/.test(digest) && /(Z|[+-]\d{2}:\d{2})$/.test(preparedAt) && Number.isFinite(Date.parse(preparedAt)) && Date.parse(preparedAt) <= Date.now());
   const ready = action && actions.includes(action) && prepareValid && confirmed && (action !== "compromise" || !!reason) && (action !== "delay" || !!reason) && ((action !== "dispatch" && action !== "receive") || !!location);
   function choose(next: ReservationAction) {
+    if(command.command?.status==="COMMITTED")command.clear();
     if(next !== action)command.correct(); setAction(next); setReason(""); setConfirmed(false); setLocation(undefined);
     // One reading per checkpoint, taken when the user opens dispatch or receipt.
     if (next === "dispatch" || next === "receive") { setLocating(true); void captureCheckpointLocation().then(value => { setLocation(value); setLocating(false); }); }
@@ -45,6 +46,7 @@ export function ReservationActions({ reservation, principal, onRefresh, onLockCh
   }
   return <section className="v2-operation-card" aria-label="Reservation actions"><h3>Reservation actions</h3>
     {reservation && reservation.purpose === "TRANSFER" && ["DISPATCHED", "IN_TRANSIT", "DELAYED", "RECEIVED", "COMPROMISED"].includes(reservation.status) && <ReservationLocationAudit reservationId={reservation.reservationId} version={reservation.version}/>}
+    {reservation?.receiptDiscrepancy?.status==="OPEN"&&<p role="alert">Receipt discrepancy open. Recount the scanned units before receipt, or report compromise.</p>}
     {reservation?.status === "DELAYED" && <p role="status">Delayed — follow up with the other facility. Units stay in custody transit until received.</p>}
     {reservation?.status === "RECEIVED" && <p>Stock is RECEIVED. It is not usable inventory; manual disposition remains required (RQ-10).</p>}
     {!actions.length && !command.command && <p>No authorized action is available in the current reservation state.</p>}

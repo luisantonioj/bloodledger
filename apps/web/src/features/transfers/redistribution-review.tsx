@@ -27,11 +27,12 @@ export function RedistributionReview({principal,requests,reservations,requestId,
   const [snapshot,setSnapshot]=useState<{id:string;request:TransferRequestDetail;units:V2Component[];at:number}>();
   const [error,setError]=useState(""),[confirmed,setConfirmed]=useState(false),[revision,setRevision]=useState(0),[reservationId,setReservationId]=useState("");
   const [now,setNow]=useState(Date.now);
+  const [approvedQuantity,setApprovedQuantity]=useState(0),[partialReason,setPartialReason]=useState("");
   const command=useUatCommand(()=>{setSnapshot(undefined);setConfirmed(false);onRefresh();});
   useEffect(()=>{onLockChange(command.locked);return()=>onLockChange(false);},[command.locked,onLockChange]);
   const candidates=redistributionRequestCandidates(requests,reservations,principal.institutionId,destination??"",blood??"",component??"");
   const request=candidates.find(row=>row.transfer_id===selected);
-  const quantity=request?.quantity??Number(query.get("quantity")??1);
+  const quantity=approvedQuantity||request?.quantity||Number(query.get("quantity")??1);
   const ranking=useRedistributionMatches(principal.institutionId,false,blood??"A_POSITIVE",component??"PACKED_RED_BLOOD_CELLS",redistribution&&blood&&component&&destination&&Number.isSafeInteger(quantity)&&quantity>0&&quantity<=999?quantity:null);
   const evidence=ranking.data[0];
   const matched=evidence&&eligibleRedistribution(evidence)&&evidence.ranked.some(row=>row.destinationInstitutionId===destination);
@@ -43,32 +44,36 @@ export function RedistributionReview({principal,requests,reservations,requestId,
       if(closed)return;
       if(record.kind!=="request"||record.value.status!=="PENDING"||record.value.decision_state!==undefined&&record.value.decision_state!=="AWAITING_DECISION"||Boolean(record.value.reservation_id)||record.value.source_institution_id!==principal.institutionId||record.value.destination_institution_id!==destination||record.value.blood_type!==blood||record.value.component_type!==component||!record.value.ledger_transaction_id)throw Error("Request changed");
       const at=Date.now(),units=redistributionUnits(stock.components,principal.institutionId,record.value,at);
-      if(units.length!==record.value.quantity)throw Error("Insufficient eligible stock");
+      if(!units.length)throw Error("Insufficient eligible stock");
+      setApprovedQuantity(Math.min(record.value.quantity,units.length));setPartialReason("");
       setSnapshot({id:selected,request:record.value,units,at});
     }).catch(()=>{if(!closed)setError("Current request and FEFO allocation could not be verified. Refresh the allocation.");});
     return()=>{closed=true;};
   },[selected,principal,destination,blood,component,revision]);
   const fresh=snapshot?.id===selected&&request?.quantity===snapshot.request.quantity&&now-snapshot.at<60000&&snapshot.units.every(row=>Date.parse(row.expiresAt)>now);
   const authorized=principal.accountId?canAct(principal,"transfer:approve"):principal.roleId==="ROLE-02";
-  const ready=authorized&&(!redistribution||matched&&!ranking.busy)&&fresh&&confirmed;
+  const partial=Boolean(snapshot&&approvedQuantity<snapshot.request.quantity);
+  const quantityValid=Boolean(snapshot&&Number.isSafeInteger(approvedQuantity)&&approvedQuantity>=1&&approvedQuantity<=snapshot.request.quantity&&approvedQuantity<=snapshot.units.length&&(!partial||partialReason));
+  const ready=authorized&&(!redistribution||matched&&!ranking.busy)&&fresh&&confirmed&&quantityValid;
   async function submit(){
     if((!ready&&!command.ambiguous)||!snapshot)return;
-    await command.submit(keys=>{const id="RES_WEB_"+keys.correlationId.slice("CORR_".length);setReservationId(id);return {resourceType:"TRANSFER",resourceId:snapshot.request.transfer_id,payload:{reservationId:id,transferId:snapshot.request.transfer_id,selectedComponentIds:snapshot.units.map(row=>row.componentId),expectedComponentVersions:snapshot.units.map(row=>row.inventoryVersion),eventTime:new Date().toISOString(),correlationId:keys.correlationId}};},(payload,keys)=>submitV2Reservation(payload,keys));
+    await command.submit(keys=>{const id="RES_WEB_"+keys.correlationId.slice("CORR_".length);setReservationId(id);return {resourceType:"TRANSFER",resourceId:snapshot.request.transfer_id,payload:{reservationId:id,transferId:snapshot.request.transfer_id,approvedQuantity,partialReasonCode:partial?partialReason:null,selectedComponentIds:snapshot.units.slice(0,approvedQuantity).map(row=>row.componentId),expectedComponentVersions:snapshot.units.slice(0,approvedQuantity).map(row=>row.inventoryVersion),eventTime:new Date().toISOString(),correlationId:keys.correlationId}};},(payload,keys)=>submitV2Reservation(payload,keys));
   }
   if(!blood||!component||!destination)return null;
   return <section className="redistribution-review bank-request-approval" aria-label="Transfer approval"><header className="bank-section-heading"><h3>Approve transfer</h3></header>
     <div className="dashboard-redistribution-body"><strong>{facilityLabel(destination,principal)} · {formatBloodType(blood)} {componentLabel(component)}</strong>
-      <p className="approval-intro">Review the FEFO units below. Approval reserves the full request; prepare and dispatch under Transfers.</p>
+      <p className="approval-intro">Review the FEFO units below. Choose the quantity to approve, then review its FEFO allocation. Any unapproved remainder closes as a shortfall; prepare and dispatch under Transfers.</p>
       {redistribution&&!matched&&<p role="status">{ranking.busy?"Rechecking destination and source surplus…":"This destination is no longer an eligible match. Return to Dashboard and refresh the matches."}</p>}
       {!candidates.length&&<p>No pending unreserved request for this product and destination is assigned to your bank. A recommendation alone cannot create a request on another facility’s behalf.</p>}
       {error&&<p role="alert">{error}</p>}
+      {snapshot&&<div className="panel-approval-fields"><label>Approved units<input type="number" min={1} max={Math.min(snapshot.request.quantity,snapshot.units.length)} value={approvedQuantity||""} disabled={command.locked} onChange={event=>{setApprovedQuantity(Number(event.target.value));setConfirmed(false);setPartialReason("");command.correct();}}/></label><p>Requested: {snapshot.request.quantity} · Approved: {approvedQuantity} · Shortfall: {Math.max(0,snapshot.request.quantity-approvedQuantity)}</p>{partial&&<label>Partial approval reason<select value={partialReason} required disabled={command.locked} onChange={event=>{setPartialReason(event.target.value);setConfirmed(false);command.correct();}}><option value="">Select a reason</option><option value="INSUFFICIENT_ELIGIBLE_STOCK">Insufficient eligible stock</option><option value="LOCAL_RESERVE_PROTECTED">Local reserve protected</option><option value="OTHER_OPERATIONAL">Other operational reason</option></select></label>}</div>}
       <div className="approval-allocation">
         <div className="approval-allocation-heading">
-          <strong>{snapshot ? <>FEFO allocation · {snapshot.units.length} {snapshot.units.length===1?"unit":"units"}</> : "FEFO allocation"}</strong>
+          <strong>{snapshot ? <>FEFO allocation · {approvedQuantity} {approvedQuantity===1?"unit":"units"}</> : "FEFO allocation"}</strong>
           <button className="button compact" disabled={command.locked||!selected} onClick={()=>{setRevision(value=>value+1);ranking.refresh();command.correct();}}>Refresh allocation</button>
         </div>
         {snapshot&&<>
-          <table className="data-table approval-units"><thead><tr><th>Component</th><th>Expiry</th><th>Version</th></tr></thead><tbody>{snapshot.units.map(row=><tr key={row.componentId}><td><span title={row.componentId}>{compactRecordReference(row.componentId)}</span></td><td><RecordTime value={row.expiresAt}/></td><td>{row.inventoryVersion}</td></tr>)}</tbody></table>
+          <table className="data-table approval-units"><thead><tr><th>Component</th><th>Expiry</th><th>Version</th></tr></thead><tbody>{snapshot.units.slice(0,approvedQuantity).map(row=><tr key={row.componentId}><td><span title={row.componentId}>{compactRecordReference(row.componentId)}</span></td><td><RecordTime value={row.expiresAt}/></td><td>{row.inventoryVersion}</td></tr>)}</tbody></table>
           {!fresh&&<p role="status">Allocation expired or changed. Refresh it before confirming.</p>}
         </>}
       </div>

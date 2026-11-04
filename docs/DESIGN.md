@@ -1271,3 +1271,46 @@ User-authorized frontend alignment: blood-bank institution accounts with `transf
 ### Blood-request demonstration Fill Up — 2026-10-20
 
 The shared requester/blood-bank request form places a secondary `Fill Up` button immediately before Cancel and Submit request. Each click replaces only requester/clinical details, authorized pickup, notes and both supporting documents with fresh fictional values and readable synthetic PDFs. The manually chosen supplying bank, blood type, component, quantity and urgency remain unchanged. Required time is generated in the future and shown in Manila time; existing synthetic reference patterns apply. Patient / Case Reference stays disabled under RQ-20. Files remain in browser memory until the user submits; generated documents identify themselves as simulation-only and unverified. Fill Up makes no API mutation, skips no validation or PIN verification, and is disabled while the form is locked by a pending/accepted submission. Footer actions can wrap on narrow screens.
+
+
+### Thesis panel: exact inventory and reviewed transfer outcomes — 2026-11-04
+
+Lat frontend implementation against PA-REV-01/02 (ADR-053) and PA-REV-03,
+using `services/api/openapi-v2.json` as the contract. This entry supersedes the
+older blood-bank chart total/tooltip behavior only; other institutional scopes
+keep their existing authorized views.
+
+- Blood-bank bar heights and visible numbers use exact `available` from
+  `DASHBOARD_EXACT_STOCK_V1`, not sums of the older dashboard statuses. Each
+  hover/focus exposes all eight status counts and the demonstration band.
+  Reserved, received, expired and in-transit quantities do not inflate a bar.
+  The Total Blood Units card uses `totals.usable`; the new Expired (not usable)
+  card uses summary `labelExpiredPendingEvaluation`, as directed by the handoff.
+- Five blood-bank cards share one row where width permits, wrapping at smaller
+  widths. Component filtering remains. The exact-count table, copy and PDF use
+  one filtered snapshot. Show the evaluated Manila time and separately label
+  pending commands, never adding them to inventory. Unverified or unauthorized
+  exact reads do not fall back to old aggregate numbers. Stale/future evidence
+  has no available demonstration classification. Zero bars remain inspectable.
+- Supplier approval has an approved quantity and an explicit partial reason.
+  Reconfirm after changing either; reserve only that FEFO prefix. Show the
+  requested/approved/closed-shortfall outcome in request and reservation details.
+  Historical null quantities stay not recorded rather than inferred.
+- Receipt label mismatches expose Record discrepancy with PIN verification.
+  Unknown outcomes freeze the exact attempt and operator for explicit retry,
+  including when polling discovers its OPEN record. Open discrepancies block
+  receive. Counts-only status appears to permitted source and destination
+  viewers; a matching recount or compromise can resolve it under the API policy.
+- Committed command banners do not require dismissal before another authorized
+  action. Ambiguous and pending operations keep their existing locks. Requester
+  transfer rows open their reservation; receipt choices show supplying facility,
+  product, units and a compact reference. Request details retry only a current
+  authentication-context read, never a mutation or real unauthorized response.
+- BROA remains visibly SIMULATION_ONLY and advisory. Stock bands, forecast
+  surplus and human approval are separate. PIN forms default to six digits on
+  these hosts while honoring an explicit server-returned compatibility policy.
+
+The DOH PDF heading is unchanged until the team's current template is supplied.
+No API, database source, chaincode, account or clinical policy is changed by this
+frontend implementation. Evidence and remaining gates are recorded in
+`docs/frontend/PANEL-REVISIONS-LAT-2026-11-04.md`.

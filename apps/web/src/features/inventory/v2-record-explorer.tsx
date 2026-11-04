@@ -1,3 +1,4 @@
+import {ReservationOutcome,LinkedReservationOutcome} from "../transfers/reservation-outcome";
 import { retryAfterContextChange } from "../../services/api/client";
 import { labelText } from "../../services/api/label-identity";
 import { PaginatedTable } from "../../components/ui/record-pagination";
@@ -72,7 +73,7 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
         <dt>Inventory version</dt><dd>{component.inventoryVersion}</dd><dt>Reservation version</dt><dd>{component.reservationVersion ?? "Not reserved"}</dd>
       </dl>{component.reservationId ? <button className="button" onClick={() => open("reservation", component.reservationId!)}>Open linked reservation</button> : <p>No linked reservation.</p>}<p>Dates describe this unit. Near-expiry alerts remain disabled.</p></>}
       {selected.kind === "component" && <ExpiryEvaluation key={"expiry:" + selected.id} component={component} principal={principal} onRefresh={() => {setRetry(value => value + 1); onRefresh?.();}}/>}
-      {reservation && !renderBody && <>
+      {reservation && !renderBody && <><ReservationOutcome reservation={reservation}/>
         <dl className="reservation-facts">
           <div><dt>Purpose</dt><dd>{reservation.purpose === "TRANSFER" ? "Transfer" : "Local release"}</dd></div>
           <div><dt>Version</dt><dd>{reservation.version}</dd></div>
@@ -90,6 +91,7 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
           </tbody></table></PaginatedTable>
         </section>
       </>}
+      {request?.reservation_id&&!renderBody&&<LinkedReservationOutcome reservationId={request.reservation_id} principal={principal}/>}
       {request && !renderBody && <dl><dt>Source</dt><dd>{facilityLabel(request.source_institution_id, principal)}</dd><dt>Destination</dt><dd>{facilityLabel(request.destination_institution_id, principal)}</dd>{renderExtra ? <><dt>Blood type</dt><dd>{formatBloodType(request.blood_type)}</dd><dt>Component</dt><dd>{componentLabel(request.component_type)}</dd></> : <><dt>Blood / component</dt><dd>{humanizeCode(request.blood_type)} / {humanizeCode(request.component_type)}</dd></>}<dt>Requested units</dt><dd>{request.quantity}</dd><dt>Request state</dt><dd>{humanizeCode(request.status)}</dd><dt>Ledger reference</dt><dd className="mono">{request.ledger_transaction_id ?? "Pending — no commitment"}</dd></dl>}
       {record && renderBody?.(record, open)}
       {request && <RequestDetailPanel key={request.transfer_id} transferId={request.transfer_id}/>}

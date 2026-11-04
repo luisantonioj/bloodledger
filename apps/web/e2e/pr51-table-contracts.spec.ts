@@ -15,7 +15,7 @@ async function setup(page:Page,override?:(route:Route,path:string)=>Promise<bool
  if(path==="/api/v2/transfer-summaries")return send(readPage("TRANSFER_SUMMARY_READ_V1",[summaryFixture]));
  if(path==="/api/v2/activity-history")return send(readPage("ACTIVITY_HISTORY_READ_V2",[activityFixture]));
  if(path==="/api/v2/transfers")return send({scope:"INSTITUTION",classification:"SIMULATION_ONLY",requests:[],reservations:[],timeline:[]});
- if(path==="/api/v2/reservations/RES_SYNTH")return send({reservationId:"RES_SYNTH",purpose:"TRANSFER",status:"PREPARED",version:2,sourceInstitutionId:"INST_MEDIATRIX",destinationInstitutionId:"INST_SYNTH_MEDIX",transferId:"TRF_SYNTH",localReleaseId:null,preparedAt:"2026-10-15T00:00:00Z",preparedEvidencePresent:true,updatedAt:"2026-10-15T00:00:00Z",components:[],classification:"SIMULATION_ONLY"});
+ if(path==="/api/v2/reservations/RES_SYNTH")return send({reservationId:"RES_SYNTH",purpose:"TRANSFER",status:"PREPARED",version:2,sourceInstitutionId:"INST_MEDIATRIX",destinationInstitutionId:"INST_SYNTH_MEDIX",transferId:"TRF_SYNTH",localReleaseId:null,preparedAt:"2026-10-15T00:00:00Z",requestedQuantity:null,approvedQuantity:null,shortfallQuantity:null,partialApproval:null,receiptDiscrepancy:null,preparedEvidencePresent:true,updatedAt:"2026-10-15T00:00:00Z",components:[],classification:"SIMULATION_ONLY"});
  return send({error:{code:"UNAVAILABLE"}},404);
  });return calls;
 }

@@ -6,7 +6,7 @@ async function auth(page:Page,category='BLOOD_BANK',role='ROLE-02'){
 for(const [category,role] of roles)test(`${category}: dashboard cards render before the initial read completes`,async({page})=>{
  let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);
  await page.route('**/api/v2/**',async route=>{await gate;await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:{message:'Layout fixture unavailable'}})});});await auth(page,category,role);
- await page.goto('/');if(category==="DOH"){await expect(page.locator(".doh-hospital-report-table tbody tr")).toHaveCount(3);await expect(page.locator(".consortium-summary")).toHaveCount(0);}else{const summaries=page.locator(".dashboard-stats article");await expect(summaries).toHaveCount(4);await expect(summaries.locator("strong").first()).toHaveText("—");}
+ await page.goto('/');if(category==="DOH"){await expect(page.locator(".doh-hospital-report-table tbody tr")).toHaveCount(3);await expect(page.locator(".consortium-summary")).toHaveCount(0);}else{const summaries=page.locator(".dashboard-stats article");await expect(summaries).toHaveCount(category==="BLOOD_BANK"?5:4);await expect(summaries.locator("strong").first()).toHaveText("—");}
  await expect(page.getByText(/Unable to load|account session changed/i)).toHaveCount(0);
  const heading=category==='BLOOD_BANK'?'Blood Inventory Overview':category==='REQUESTOR'?'My Requests':category==='PRC'?'Blood-Bank Inventory Overview':'Hospital Reports';
  await expect(page.getByRole('heading',{name:heading,exact:true})).toBeVisible();release();

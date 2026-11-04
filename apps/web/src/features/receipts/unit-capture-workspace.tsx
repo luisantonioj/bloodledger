@@ -27,8 +27,8 @@ export function UnitCaptureWorkspace({principal,direction,onBack,onLockChange}:{
  const [mode,setMode]=useState<"Scan"|"Manual">("Scan"),[image,setImage]=useState<File>(),[imageUrl,setImageUrl]=useState<string>();
  const [review,setReview]=useState<ScanReview>(),[draft,setDraft]=useState(emptyLabel),[confirmed,setConfirmed]=useState(false),[reading,setReading]=useState(false),[progress,setProgress]=useState(0),[error,setError]=useState(""),[busy,setBusy]=useState(false),[duplicate,setDuplicate]=useState(false),[frozen,setFrozen]=useState(false),[transferLocked,setTransferLocked]=useState(false);
  const chooser=useRef<HTMLInputElement>(null),controller=useRef<AbortController|null>(null),active=useRef(true),attempt=useRef<Attempt|undefined>(undefined),timeRejects=useRef(0);
- const status=useCommandStatus(),locked=busy||frozen||Boolean(status.command)||transferLocked;
- // Keep completed forms locked until Dismiss, but let the scanner itself close.
+ const status=useCommandStatus(),locked=busy||frozen||Boolean(status.command&&!COMMAND_PRESENTATION[status.command.status].terminal)||transferLocked;
+ // A committed intake permits another scan; unresolved attempts remain locked.
  const closeLocked=busy||frozen||transferLocked||Boolean(status.command&&!COMMAND_PRESENTATION[status.command.status].terminal);
  const requester=principal.accountCategory==="REQUESTOR"||principal.roleId==="ROLE-03";
  const verified=mode==="Scan"&&unchangedVerifiedDraft(draft,review);
