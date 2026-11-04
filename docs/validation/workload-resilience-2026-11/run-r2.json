@@ -1,0 +1,152 @@
+{
+  "experiment": "WORKLOAD_RESILIENCE_V1",
+  "run": "R2",
+  "classification": "SIMULATION_ONLY",
+  "host": "single development host; one Mediatrix peer, one Raft orderer",
+  "workers": 4,
+  "scenarios": [
+    {
+      "scenario": "concurrent-10",
+      "acceptToLedgerValidMs": {
+        "n": 10,
+        "p50": 5247,
+        "p95": 7392,
+        "max": 7392
+      },
+      "acceptToProjectedMs": {
+        "n": 10,
+        "p50": 5277,
+        "p95": 7398,
+        "max": 7398
+      },
+      "wallSeconds": 7.612,
+      "committedPerSecond": 1.314,
+      "outcome": {
+        "accepted": 10,
+        "committed": 10,
+        "lost": 0,
+        "distinctLedgerTransactions": 10,
+        "projectedRows": 10,
+        "duplicateProjections": 0,
+        "queueEqualsProjection": true,
+        "maxAttempts": 1,
+        "resubmittedAfterCommit": 0
+      }
+    },
+    {
+      "scenario": "concurrent-25",
+      "acceptToLedgerValidMs": {
+        "n": 25,
+        "p50": 8505,
+        "p95": 12762,
+        "max": 14833
+      },
+      "acceptToProjectedMs": {
+        "n": 25,
+        "p50": 8520,
+        "p95": 12780,
+        "max": 14840
+      },
+      "wallSeconds": 15.081,
+      "committedPerSecond": 1.658,
+      "outcome": {
+        "accepted": 25,
+        "committed": 25,
+        "lost": 0,
+        "distinctLedgerTransactions": 25,
+        "projectedRows": 25,
+        "duplicateProjections": 0,
+        "queueEqualsProjection": true,
+        "maxAttempts": 2,
+        "resubmittedAfterCommit": 0
+      }
+    },
+    {
+      "scenario": "concurrent-50",
+      "acceptToLedgerValidMs": {
+        "n": 50,
+        "p50": 14512,
+        "p95": 24892,
+        "max": 26936
+      },
+      "acceptToProjectedMs": {
+        "n": 50,
+        "p50": 14523,
+        "p95": 24898,
+        "max": 26944
+      },
+      "wallSeconds": 27.398,
+      "committedPerSecond": 1.825,
+      "outcome": {
+        "accepted": 50,
+        "committed": 50,
+        "lost": 0,
+        "distinctLedgerTransactions": 50,
+        "projectedRows": 50,
+        "duplicateProjections": 0,
+        "queueEqualsProjection": true,
+        "maxAttempts": 1,
+        "resubmittedAfterCommit": 0
+      }
+    },
+    {
+      "scenario": "peer-outage",
+      "outageSeconds": 60,
+      "acceptToLedgerValidMs": {
+        "n": 25,
+        "p50": 77237,
+        "p95": 81646,
+        "max": 83746
+      },
+      "acceptToProjectedMs": {
+        "n": 25,
+        "p50": 77256,
+        "p95": 81689,
+        "max": 83755
+      },
+      "wallSeconds": 83.998,
+      "committedPerSecond": 0.298,
+      "recoverySecondsAfterPeerStart": 11.94,
+      "outcome": {
+        "accepted": 25,
+        "committed": 25,
+        "lost": 0,
+        "distinctLedgerTransactions": 25,
+        "projectedRows": 25,
+        "duplicateProjections": 0,
+        "queueEqualsProjection": true,
+        "maxAttempts": 7,
+        "resubmittedAfterCommit": 17
+      }
+    },
+    {
+      "scenario": "abandoned-claim",
+      "acceptToLedgerValidMs": {
+        "n": 5,
+        "p50": 32546,
+        "p95": 34672,
+        "max": 34672
+      },
+      "acceptToProjectedMs": {
+        "n": 5,
+        "p50": 32582,
+        "p95": 34682,
+        "max": 34682
+      },
+      "wallSeconds": 34.51,
+      "committedPerSecond": 0.145,
+      "recoverySecondsAfterAbandon": 34.526,
+      "outcome": {
+        "accepted": 5,
+        "committed": 5,
+        "lost": 0,
+        "distinctLedgerTransactions": 5,
+        "projectedRows": 5,
+        "duplicateProjections": 0,
+        "queueEqualsProjection": true,
+        "maxAttempts": 2,
+        "resubmittedAfterCommit": 0
+      }
+    }
+  ]
+}
