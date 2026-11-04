@@ -4632,6 +4632,30 @@
           }
         }
       }
+    },
+    "/dashboard/stock-counts": {
+      "get": {
+        "operationId": "readDashboardStockCounts",
+        "description": "DASHBOARD_EXACT_STOCK_V1 (PA-REV-03, Proposed; panel revision Dean Cherrie #3). Exact, ledger-confirmed unit counts for the authenticated blood bank by blood type, component and status, evaluated at read time. ROLE-01/02 for their own institution; other roles receive 403. Queued commands are reported in pendingCommands and never counted. The existing dashboard aggregate is unchanged.",
+        "responses": {
+          "200": {
+            "description": "Own-institution exact counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardStockCounts"
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "503": {
+            "description": "Projection unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -10398,6 +10422,216 @@
           },
           "replayed": {
             "type": "boolean"
+          }
+        }
+      },
+      "DashboardStockCounts": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scope",
+          "institutionId",
+          "evaluatedAt",
+          "lastProjectedAt",
+          "pendingCommands",
+          "rows",
+          "totals",
+          "policyVersion",
+          "classification"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "INSTITUTION"
+            ]
+          },
+          "institutionId": {
+            "type": "string"
+          },
+          "evaluatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Server time the counts and label expiry were evaluated."
+          },
+          "lastProjectedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Latest ledger-confirmed projection for this institution."
+          },
+          "pendingCommands": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "This institution's accepted commands not yet ledger-confirmed (QUEUED, SUBMITTING, RETRY_WAIT, LEDGER_COMMITTED_PROJECTION_PENDING). They are never added to the counts."
+          },
+          "rows": {
+            "type": "array",
+            "minItems": 40,
+            "maxItems": 40,
+            "description": "8 blood types x 5 V2.1 components, zero-filled, blood type order A+, A-, B+, B-, AB+, AB-, O+, O-; component order WHOLE_BLOOD, PACKED_RED_BLOOD_CELLS, FRESH_FROZEN_PLASMA, PLATELETS, CRYOPRECIPITATE.",
+            "items": {
+              "allOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "bloodType",
+                    "componentType"
+                  ],
+                  "properties": {
+                    "bloodType": {
+                      "type": "string"
+                    },
+                    "componentType": {
+                      "$ref": "#/components/schemas/ComponentTypeV21"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "available",
+                    "reserved",
+                    "outgoingInTransit",
+                    "received",
+                    "labelExpiredPendingEvaluation",
+                    "expired",
+                    "onHold",
+                    "compromised"
+                  ],
+                  "properties": {
+                    "available": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "AVAILABLE with label expiry after evaluatedAt (usable now)."
+                    },
+                    "reserved": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "RESERVED with label expiry after evaluatedAt."
+                    },
+                    "outgoingInTransit": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "DISPATCHED or IN_TRANSIT units this bank has sent and not yet handed over."
+                    },
+                    "received": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "RECEIVED at this bank; on hand but not usable stock until RQ-10 is decided."
+                    },
+                    "labelExpiredPendingEvaluation": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "AVAILABLE or RESERVED whose label expiry is at or before evaluatedAt, not yet evaluated on the ledger."
+                    },
+                    "expired": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "EXPIRED (ledger-evaluated)."
+                    },
+                    "onHold": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "RECONCILIATION_HOLD."
+                    },
+                    "compromised": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "COMPROMISED (quarantined)."
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "totals": {
+            "allOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "available",
+                  "reserved",
+                  "outgoingInTransit",
+                  "received",
+                  "labelExpiredPendingEvaluation",
+                  "expired",
+                  "onHold",
+                  "compromised"
+                ],
+                "properties": {
+                  "available": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "AVAILABLE with label expiry after evaluatedAt (usable now)."
+                  },
+                  "reserved": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "RESERVED with label expiry after evaluatedAt."
+                  },
+                  "outgoingInTransit": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "DISPATCHED or IN_TRANSIT units this bank has sent and not yet handed over."
+                  },
+                  "received": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "RECEIVED at this bank; on hand but not usable stock until RQ-10 is decided."
+                  },
+                  "labelExpiredPendingEvaluation": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "AVAILABLE or RESERVED whose label expiry is at or before evaluatedAt, not yet evaluated on the ledger."
+                  },
+                  "expired": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "EXPIRED (ledger-evaluated)."
+                  },
+                  "onHold": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "RECONCILIATION_HOLD."
+                  },
+                  "compromised": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "COMPROMISED (quarantined)."
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "usable"
+                ],
+                "properties": {
+                  "usable": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "available + reserved; equals the dashboard Total Blood Units card."
+                  }
+                }
+              }
+            ]
+          },
+          "policyVersion": {
+            "type": "string",
+            "enum": [
+              "DASHBOARD_EXACT_STOCK_V1"
+            ]
+          },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "SIMULATION_ONLY"
+            ]
           }
         }
       }
