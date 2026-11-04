@@ -52,6 +52,7 @@ repository root independently of the caller's current directory.
 scripts/bloodledger-dev.sh doctor
 scripts/bloodledger-dev.sh bootstrap
 scripts/bloodledger-dev.sh start
+scripts/bloodledger-dev.sh recover-peer
 scripts/bloodledger-dev.sh status
 scripts/bloodledger-dev.sh logs [ca-mediatrix|ca-orderer|peer0-mediatrix|orderer0|postgres]
 scripts/bloodledger-dev.sh stop
@@ -71,8 +72,16 @@ scripts/bloodledger-dev.sh reset-all --dry-run
 - `start` requires the bootstrap marker, channel artifact, and health package,
   starts existing state, and succeeds only after consolidated health. It does
   not migrate, enroll, join, deploy, invoke, or reset implicitly. When the
-  stopped peer last failed on its Docker socket mount, it recreates only
-  `peer0-mediatrix` first; named volumes and identities are preserved.
+  stopped peer last failed on its Docker socket mount, it applies the
+  `recover-peer` recovery first.
+- `recover-peer` waits for `/var/run/docker.sock` to be a socket and the
+  engine to answer, then acts only when `peer0-mediatrix` is stopped and its
+  last error names the Docker socket mount. It retries `docker start` on the
+  existing container (up to 10 attempts, 6 s apart) and, only if the socket
+  error persists, recreates that one container. Named volumes, identities,
+  chaincode containers, and other services are not changed. A running,
+  deliberately stopped, or absent peer is left unchanged. It finishes when
+  the peer is healthy. See section 3.3.
 - `status` is read-only. It checks container health, authenticated PostgreSQL
   access, migration status, CA readiness, peer/orderer operations health,
   channel participation and membership, the committed health-contract
@@ -203,6 +212,46 @@ is optional host tooling and is not installed or invoked by repository scripts.
 Record the phone/Chrome versions and pass/fail result, never the credential,
 JWT, image, raw OCR text, Fabric identity, or database contents. If a supported
 phone is unavailable, leave the physical-device acceptance gate pending.
+
+### 3.3 Peer recovery after a Docker Desktop restart
+
+`peer0-mediatrix` mounts `/var/run/docker.sock` to build and launch chaincode
+containers. Docker Desktop resolves that WSL path to a socket under
+`/run/desktop/mnt/host/wsl/docker-desktop-bind-mounts/<distro>/`. After a
+Docker Desktop or Windows restart, the engine applies the `unless-stopped`
+restart policy before WSL integration has published that socket. The peer
+then exits `127` with `error mounting ... to rootfs at /var/run/docker.sock
+... not a directory`, and Docker does not retry a failed start. The other
+four services start normally because they do not mount the socket. A Compose
+healthcheck or `depends_on` cannot prevent this, because the mount fails
+before the peer process exists.
+
+After such a restart, run:
+
+```bash
+scripts/bloodledger-dev.sh recover-peer
+```
+
+`BLOODLEDGER_PEER_START_ATTEMPTS`, `BLOODLEDGER_PEER_RETRY_SECONDS`,
+`BLOODLEDGER_DOCKER_WAIT_SECONDS` (default 180), and
+`BLOODLEDGER_PEER_HEALTH_WAIT_SECONDS` (default 120) tune the waits.
+
+**Proposed, not installed on any host:** `scripts/systemd/` contains a
+systemd user service and timer for WSL distributions with `systemd=true`.
+They run `recover-peer` 2 minutes after the distribution boots and every
+5 minutes after that, because Docker Desktop can restart without restarting
+the distribution. Each run is a no-op unless the socket-mount failure is
+present. The unit assumes the working copy is at `~/projects/bloodledger`
+and runs whatever branch that checkout has. `systemd-analyze --user verify`
+accepts both files. Installing them requires `loginctl enable-linger` so the
+timer runs without an open shell; that changes the host, so the host owner
+must approve and record evidence before it is listed as a tested setup
+command here.
+
+Fabric chaincode-as-a-service with external builders would remove the
+socket mount entirely. That changes the accepted chaincode runtime and the
+lifecycle of every installed chaincode, so it needs an ADR and is not part of
+this recovery.
 
 ## 4. Reset-safety policy
 
@@ -355,6 +404,7 @@ Add an entry only after the problem is observed:
 | 2026-07-16 | Jopia Windows 11/Ubuntu 24.04 host | Level 2 preview refused the correctly labeled `postgres-data` volume | Bash dynamic scoping initialized the expected PostgreSQL volume name from the preceding Fabric loop variable | Volume validation now initializes its key and expected name in separate local statements; automated named-volume regression and live Level 2 preview/reset/recreate passed | Bash in Ubuntu `24.04.4 LTS`, Compose `5.3.0` |
 | 2026-07-16 | Jopia Windows 11/Ubuntu 24.04 host | Initial S1-09 preflight could not reach Docker from WSL | Docker Desktop had not been opened, so WSL integration and the Docker Engine were unavailable | Jopia opened Docker Desktop; `doctor`, the README workflow, service health, restart, both reset levels, recreation, and the pinned secret scan then passed without a version or configuration change | Docker Desktop `4.82.0`, Engine `29.6.1`, Compose `5.3.0` |
 | 2026-10-09 | Jopia Windows 11/Ubuntu 24.04 host | After a Docker Desktop restart the peer stayed `Exited (127)`; chaincode containers and the persistent API/web had stopped | The peer container kept a Docker Desktop WSL socket bind path that no longer existed, so `/var/run/docker.sock` could not be mounted | `docker compose --project-name bloodledger --env-file .env up -d --no-deps --force-recreate --wait peer0-mediatrix`; peer healthy at the prior height 1158, chaincode containers relaunched, all five named volumes unchanged. `start` now applies this recovery automatically | Engine `29.6.1`, Compose `5.3.0`, Fabric peer `2.5.16` |
+| 2026-11-03, 2026-11-04 | Jopia Windows 11/Ubuntu 24.04 host | After Docker Desktop restarts (08:22 UTC on 11-03; a 09:20 Manila reboot on 11-04) the peer stayed `Exited (127)`: `error mounting /run/desktop/mnt/host/wsl/docker-desktop-bind-mounts/Ubuntu-24.04/docker.sock to rootfs at /var/run/docker.sock ... not a directory`. The other four services restarted healthy at 01:20:47 UTC on 11-04 | Boot-order race: the restart policy started the peer before WSL integration published the socket bind path; the path was unchanged, so a later plain start succeeded | Manual `docker start bloodledger-peer0-mediatrix-1` on both days; ledger intact, no reset. `recover-peer` now automates the retry-before-recreate path (section 3.3). Fake-engine command tests cover race, moved path, and no-op cases. A live no-op run left the healthy peer unchanged (same ID, `StartedAt`, restart count). The failing branch has not yet been observed live through `recover-peer` | Engine `29.6.1`, Compose `5.3.0`, Fabric peer `2.5.16` |
 | 2026-10-16 | Lat retained host | Native API build of `d83509b` failed with TS5033/EACCES writing `services/api/build` | One-shot `node:24.17.0` build containers ran as root on the writable repository mount, leaving root-owned generated files under `services/api/build`, `services/coordination/build` and `chaincode/build` | Prevention: every one-shot build container now runs with `--user "$(id -u):$(id -g)" -e HOME=/tmp`; verified on Jopia's host (disposable account suite passed, 0 files not owned by the user, chaincode package digest identical to a root build). One-time recovery on an affected host: list `find services/api/build services/coordination/build chaincode/build -not -user "$(id -u)"`, confirm they are Git-ignored, then `sudo chown -R "$(id -u):$(id -g)"` on those three directories only. Lat-host recovery pending verification | Node `24.17.0` image, Engine `29.6.1` |
 
 Do not populate troubleshooting with speculative errors copied from external

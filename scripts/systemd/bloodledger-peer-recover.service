@@ -1,0 +1,10 @@
+# Optional WSL systemd user unit; see docs/LOCAL-DEVELOPMENT.md section 3.3.
+# Starts only a peer0-mediatrix that failed on its Docker socket mount after a
+# Docker Desktop or Windows restart. It never stops, resets, or deletes anything.
+[Unit]
+Description=BloodLedger peer Docker-socket boot recovery
+
+[Service]
+Type=oneshot
+Environment=BLOODLEDGER_DOCKER_WAIT_SECONDS=90
+ExecStart=%h/projects/bloodledger/scripts/bloodledger-dev.sh recover-peer
