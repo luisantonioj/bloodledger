@@ -36,8 +36,8 @@ async function setup(page:Page,role:Role){
 async function scanIncomingUnit(page:Page,panel:ReturnType<Page["getByRole"]>,componentLine="COMPONENT: WHOLE_BLOOD"){
  const data=await page.evaluate(line=>{const canvas=document.createElement("canvas");canvas.width=1800;canvas.height=600;const ctx=canvas.getContext("2d")!;ctx.fillStyle="white";ctx.fillRect(0,0,1800,600);ctx.fillStyle="black";ctx.font="bold 48px monospace";["DONATION NO: MM26-01-0001","BLOOD TYPE: A_POSITIVE",line,"COLLECTED AT: 2026-09-17T00:00:00.000Z","EXPIRES AT: 2026-10-17T00:00:00.000Z"].forEach((text,i)=>ctx.fillText(text,70,90+i*90));return canvas.toDataURL("image/png");},componentLine);
  await panel.getByLabel("Incoming-unit label image").setInputFiles({name:"synthetic-incoming-label.png",mimeType:"image/png",buffer:Buffer.from(data.split(",")[1],"base64")});
- await panel.getByRole("button",{name:"Run OCR",exact:true}).click();
- await expect(panel.getByText("Five label fields passed OCR checks.",{exact:false})).toBeVisible({timeout:90000});
+ await panel.getByRole("button",{name:"Read label",exact:true}).click();
+ await expect(panel.getByText("Label read. Check it against the incoming unit.",{exact:false})).toBeVisible({timeout:90000});
  await panel.getByLabel("I checked the recognized label against this incoming unit.").check();await panel.getByRole("button",{name:"Add scanned unit",exact:true}).click();
 }
 async function pin(page:Page){await page.getByLabel("Operator PIN",{exact:true}).fill("123456");await page.getByRole("button",{name:"Verify and submit",exact:true}).click();}
@@ -59,9 +59,9 @@ test("requester scans every unit, verifies through a frozen retry, then receives
  await panel.getByRole("button",{name:"Verify scanned units",exact:true}).click();await pin(page);
  await expect(panel.getByRole("button",{name:"Retry same verification",exact:true})).toBeEnabled();await expect(page.getByRole("button",{name:"Sign out",exact:true})).toBeDisabled();
  await panel.getByRole("button",{name:"Retry same verification",exact:true}).click();await pin(page);
- await expect(panel).toContainText("All incoming units verified · Off-chain evidence returned");
+ await expect(panel).toContainText("All incoming units verified");
  await panel.getByRole("button",{name:"Receive transfer",exact:true}).click();await pin(page);
- await expect(scanner.getByText("Committed",{exact:true})).toBeVisible();await expect(scanner.getByRole("region",{name:"Receipt label verification"})).toHaveCount(0);
+ await expect(scanner.getByRole("heading",{name:"Transfer received",exact:true})).toBeVisible();await expect(scanner.getByRole("region",{name:"Receipt label verification"})).toHaveCount(0);
  const verified=posts.filter(post=>post.path.endsWith("/receipt-verifications"));expect(verified).toHaveLength(2);expect(verified[1].body).toEqual(verified[0].body);expect(verified[1].key).toBe(verified[0].key);
  expect(verified[0].body).toMatchObject({expectedVersion:2,scannedLabels:[{donationNumber:"MM26-01-0001",componentType:"WHOLE_BLOOD"}]});
  const received=posts.filter(post=>post.path.endsWith("/receive"));expect(received).toHaveLength(1);expect(received[0].body).toMatchObject({expectedVersion:2,receiptEvidenceId:evidenceId,receiptEvidenceDigest:evidenceDigest});

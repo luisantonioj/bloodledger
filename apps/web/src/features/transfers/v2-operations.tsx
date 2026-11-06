@@ -3,12 +3,13 @@ import { InformationHelp } from "../../components/ui/information-help";
 import { RequestFormHelp } from "./request-form-help";
 import { EMPTY_REQUESTER_FIELDS, RequesterRequestFields, requesterDetails, type RequesterFields } from "./requester-request-fields";
 import { syntheticRequestFields } from "./synthetic-request-fill";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { AVAILABILITY_BAND_LABEL, readDocumentFile, readEligibleSuppliers, type EligibleSupplier, type RequestDocumentKind } from "../../services/api/request-details";
 import { canAct, type Principal } from "../../auth/permissions";
 import { componentLabel } from "./requester-transfer-data";
 import { formatBloodType, humanizeCode } from "../../components/ui/display";
 import { CommandStatusCard } from "../commands/command-status-card";
+import { COMMAND_PRESENTATION } from "../commands/command-state";
 import { useCommandStatus } from "../commands/use-command-status";
 import { newMutationKeys, type MutationKeys } from "../../services/api/mutation-keys";
 import { mutationError } from "../../services/api/mutation-error";
@@ -16,6 +17,7 @@ import {
   V2_BLOOD_TYPES,
   V2_COMPONENT_TYPES,
   submitV2Transfer,
+  type V2Command,
   type V2BloodType,
   type V2ComponentType,
 } from "../../services/api/v2";
@@ -28,12 +30,28 @@ function RequestDropdown({ styled, children }: { styled: boolean; children: Reac
   return styled ? <span className="requester-select">{children}</span> : children;
 }
 
-export function V2TransferRequest({ principal, onRefresh, requesterPresentation = false, onCancel, initialBloodType, initialComponentType }: { principal: Principal; onRefresh: () => void; requesterPresentation?: boolean; onCancel?: () => void; initialBloodType?: V2BloodType; initialComponentType?: V2ComponentType }) {
+function BloodRequestNotice({command,pollError,onDone}: {command:V2Command;pollError:string;onDone:()=>void}) {
+  const {terminal,tone}=COMMAND_PRESENTATION[command.status];
+  const sent=command.status==="COMMITTED";
+  const title=sent?"Blood request sent":terminal?"Blood request needs attention":"Sending your blood request";
+  const detail=sent?"The supplying blood bank can now review your request."
+    :terminal?"Check Blood Requests before trying again."
+    :pollError?"We’re still checking the status. You don’t need to submit again."
+    :"We’ll confirm when the supplying blood bank can review it.";
+
+  return <section className="requester-transfer-notice blood-request-result" data-tone={tone} aria-live="polite">
+    <span className="requester-notice-icon" aria-hidden="true">{sent?"✓":terminal?"!":"…"}</span>
+    <div className="requester-notice-copy"><strong>{title}</strong><p>{detail}</p></div>
+    {terminal&&<button className="button compact" type="button" onClick={onDone}>{sent?"Done":"Dismiss"}</button>}
+  </section>;
+}
+
+export function V2TransferRequest({ principal, onRefresh, requesterPresentation = false, modal = false, onCancel, initialBloodType, initialComponentType }: { principal: Principal; onRefresh: () => void; requesterPresentation?: boolean; modal?: boolean; onCancel?: () => void; initialBloodType?: V2BloodType; initialComponentType?: V2ComponentType }) {
   // PA-REQ-05: requesting institutions choose another bank with projected available stock for the product.
   const supplierChoice = requesterPresentation && Boolean(principal.accountId);
   const [bloodType, setBloodType] = useState<V2BloodType>(initialBloodType ?? "A_POSITIVE");
   const [componentType, setComponentType] = useState<V2ComponentType>(initialComponentType ?? "PACKED_RED_BLOOD_CELLS");
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number | "">(1);
   const [urgency, setUrgency] = useState("ROUTINE");
   const banks = [{id:"INST_MEDIATRIX",name:"Mediatrix"},{id:"INST_SYNTH_MEDIX",name:"Medix"},{id:"INST_SYNTH_NLVILLA",name:"N.L. Villa"}].filter(bank => bank.id !== principal.institutionId);
   const [source, setSource] = useState(supplierChoice ? "" : principal.accountId ? banks[0]?.id ?? "INST_MEDIATRIX" : "INST_MEDIATRIX");
@@ -47,9 +65,17 @@ export function V2TransferRequest({ principal, onRefresh, requesterPresentation 
   const attempt = useRef<{ keys: MutationKeys; payload: Record<string, unknown> & { componentType: V2ComponentType } } | undefined>(undefined);
   const status = useCommandStatus(onRefresh);
   const locked = busy || status.command !== undefined;
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
+  useEffect(() => {
+    if (!modal) return;
+    const trigger = document.activeElement;
+    closeButton.current?.focus();
+    return () => { if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus({preventScroll:true}); };
+  }, [modal]);
   const [supplierRetry, setSupplierRetry] = useState(0);
   useEffect(() => {
-    if (!supplierChoice || !Number.isSafeInteger(quantity) || quantity < 1) return;
+    if (!supplierChoice || quantity === "" || !Number.isSafeInteger(quantity) || quantity < 1) return;
     let active = true;
     setSuppliers(current => ({ state: "loading", rows: current.rows }));
     const timer = setTimeout(() => {
@@ -74,7 +100,7 @@ export function V2TransferRequest({ principal, onRefresh, requesterPresentation 
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (locked || requiresCorrection || routingUnavailable) return;
+    if (locked || requiresCorrection || routingUnavailable || quantity === "" || !Number.isSafeInteger(quantity) || quantity < 1) return;
     let extra: Record<string, unknown> = {};
     if (requesterPresentation && !attempt.current) {
       const mapped = requesterDetails(fields);
@@ -82,8 +108,9 @@ export function V2TransferRequest({ principal, onRefresh, requesterPresentation 
       extra = { details: mapped.details };
       const selected = Object.entries(fields.files) as Array<[RequestDocumentKind, File]>;
       if (selected.length) {
+        setBusy(true);
         try { extra.documents = await Promise.all(selected.map(([kind, file]) => readDocumentFile(kind, file))); }
-        catch (reason) { setError(reason instanceof Error ? reason.message : "The document could not be read."); return; }
+        catch (reason) { setBusy(false); setError(reason instanceof Error ? reason.message : "The document could not be read."); return; }
       }
     }
     setBusy(true);
@@ -124,10 +151,28 @@ export function V2TransferRequest({ principal, onRefresh, requesterPresentation 
     }
   }
 
-  const submitButton = <ActionButton className="button primary compact" disabled={locked || requiresCorrection || routingUnavailable} unavailableReason={routingUnavailable?"Choose an available supplying blood bank before submitting.":requiresCorrection?"Correct the request details before submitting again.":busy?"The request is being submitted. Please wait.":"This request already has an accepted command. Review its status before starting another request."} title={routingUnavailable ? "No supplying blood bank is selected." : undefined}>{busy ? "Submitting…" : status.command ? "Command accepted" : requiresCorrection ? "Correct request before submitting" : error && attempt.current ? "Retry same request" : requesterPresentation ? "Submit request" : "Submit"}</ActionButton>;
+  const command=status.command;
+  const sent=command?.status==="COMMITTED";
+  const closeDisabled = busy || Boolean(command && !COMMAND_PRESENTATION[command.status].terminal);
+  function handleModalKeys(event: React.KeyboardEvent<HTMLElement>) {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      if (!closeDisabled) onCancel?.();
+    }
+    if (event.key !== "Tab") return;
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button:enabled,a[href],select:enabled,input:enabled,textarea:enabled,[tabindex='0']"))
+      .filter(item => item.getClientRects().length > 0);
+    const first = items[0], last = items[items.length - 1];
+    if (event.shiftKey && event.target === first) { event.preventDefault(); last?.focus(); }
+    if (!event.shiftKey && event.target === last) { event.preventDefault(); first?.focus(); }
+  }
+  const submitButton = requesterPresentation && command
+    ? <button className="button primary compact" type="submit" disabled>{sent ? "Request sent" : COMMAND_PRESENTATION[command.status].terminal ? "Review request status" : "Sending request…"}</button>
+    : <ActionButton className="button primary compact" disabled={locked || requiresCorrection || routingUnavailable} unavailableReason={routingUnavailable?"Choose an available supplying blood bank before submitting.":requiresCorrection?"Correct the request details before submitting again.":busy?"The request is being submitted. Please wait.":"This request already has an accepted command. Review its status before starting another request."} title={routingUnavailable ? "No supplying blood bank is selected." : undefined}>{busy ? "Submitting…" : command ? "Command accepted" : requiresCorrection ? "Correct request before submitting" : error && attempt.current ? "Retry same request" : requesterPresentation ? "Submit request" : "Submit"}</ActionButton>;
 
-  return <section className={requesterPresentation ? "requester-request-form" : "v2-operation-card"}>
-    <header><div><h3>{requesterPresentation ? "Create Blood Request" : principal.accountId ? "Request blood" : "Request blood from Mediatrix"}</h3></div>{requesterPresentation ? <RequestFormHelp label="Create Blood Request">Enter the basic details of the requested blood supply.</RequestFormHelp> : <InformationHelp label="Request blood">Request a blood product for the authenticated institution using the supported command. The supplying bank and requested product remain subject to the recorded workflow; command acceptance is not approval or ledger commitment.</InformationHelp>}</header>
+  const title = requesterPresentation || modal ? "Create Blood Request" : principal.accountId ? "Request blood" : "Request blood from Mediatrix";
+  const help = requesterPresentation ? <RequestFormHelp label="Create Blood Request">Enter the basic details of the requested blood supply.</RequestFormHelp> : <InformationHelp label="Request blood">Request a blood product for the authenticated institution using the supported command. The supplying bank and requested product remain subject to the recorded workflow; command acceptance is not approval or ledger commitment.</InformationHelp>;
+  const content = <>
     <form className={requesterPresentation ? "requester-request-fields" : "v2-operation-form"} onSubmit={(event) => void submit(event)}>
       {supplierChoice ? <div className="requester-routing-field">
         <div className="requester-routing-label"><label htmlFor="requester-supplier-routing">Supplying blood bank</label><RequestFormHelp label="Supplying blood bank" id="requester-supplier-routing-help">Blood banks that currently show available stock for this product, most available first. Confirm or change the preselected bank. Availability is not approval: the chosen bank still reviews, approves or rejects the request.</RequestFormHelp></div>
@@ -139,17 +184,30 @@ export function V2TransferRequest({ principal, onRefresh, requesterPresentation 
       </div> : principal.accountId && <label>Source blood bank<RequestDropdown styled={true}><select disabled={locked} value={source} onChange={event => changed(() => setSource(event.target.value))}>{banks.map(bank => <option key={bank.id} value={bank.id}>{bank.name}</option>)}</select></RequestDropdown></label>}
       <label>Blood type<RequestDropdown styled={true}><select aria-label="Blood type" disabled={locked} value={bloodType} onChange={(event) => changed(() => setBloodType(event.target.value as V2BloodType))}>{V2_BLOOD_TYPES.map((value) => <option key={value} value={value}>{formatBloodType(value)}</option>)}</select></RequestDropdown></label>
       <label>Component<RequestDropdown styled={true}><select disabled={locked} value={componentType} onChange={(event) => changed(() => setComponentType(event.target.value as V2ComponentType))}>{V2_COMPONENT_TYPES.map((value) => <option key={value} value={value}>{componentLabel(value)}</option>)}</select></RequestDropdown></label>
-      <label>Quantity<input disabled={locked} type="number" min="1" value={quantity} onChange={(event) => changed(() => setQuantity(Number(event.target.value)))}/></label>
+      <label>Quantity<input disabled={locked} type="number" min="1" required value={quantity} onChange={(event) => {
+        const value = event.target.value;
+        changed(() => setQuantity(value === "" ? "" : Number(value)));
+      }}/></label>
       <label>Urgency<RequestDropdown styled={true}><select disabled={locked} value={urgency} onChange={(event) => changed(() => setUrgency(event.target.value))}><option value="ROUTINE">Routine</option><option value="URGENT">Urgent</option><option value="CRITICAL">Critical</option></select></RequestDropdown></label>
       {requesterPresentation && <RequesterRequestFields fields={fields} disabled={locked} onChange={next => changed(() => setFields(next))}/>}
       {requesterPresentation ? <div className="v2-submit requester-submit-footer">
-        <small>Submitted for {principal.institutionDisplayName}. The selected blood bank reviews your request; an accepted command is queued, not yet approved.</small>
+        <small>Requesting for {principal.institutionDisplayName}. The supplying blood bank decides how many units it can approve.</small>
         <div className="requester-submit-actions"><button className="button compact" type="button" disabled={locked} onClick={() => changed(() => setFields(current => syntheticRequestFields(current)))}>Fill Up</button>{onCancel && <button className="button compact" type="button" disabled={locked} onClick={onCancel}>Cancel</button>}{submitButton}</div>
         {error && <span role="alert">{error}</span>}
       </div> : <div className="v2-submit"><div className="requester-submit-actions">{onCancel&&<button className="button compact" type="button" disabled={locked} onClick={onCancel}>Cancel</button>}{submitButton}</div>{error && <span role="alert">{error}</span>}</div>}
     </form>
-    {status.command && <CommandStatusCard command={status.command} pollError={status.pollError} onClear={status.clear}/>}
-  </section>;
+    {command && (requesterPresentation
+      ? <BloodRequestNotice command={command} pollError={status.pollError} onDone={sent&&onCancel?onCancel:status.clear}/>
+      : <CommandStatusCard command={command} pollError={status.pollError} onClear={status.clear}/>)}
+  </>;
+  const formClass = requesterPresentation ? "requester-request-form" : "v2-operation-card";
+  if (!modal) return <section className={formClass}><header><div><h3>{title}</h3></div>{help}</header>{content}</section>;
+  return <div className="preview-modal-backdrop">
+    <section className={formClass + " preview-modal blood-request-modal"} role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={handleModalKeys}>
+      <header><div><h2 id={titleId}>{title}</h2></div><div className="record-detail-header-actions"><button ref={closeButton} type="button" aria-label="Close request form" disabled={closeDisabled} onClick={onCancel}>×</button></div></header>
+      <div className="preview-modal-body">{content}</div>
+    </section>
+  </div>;
 }
 
 export function V2Operations({ principal, onRefresh, showRequest=true, onCancelRequest, initialBloodType, initialComponentType }: { principal: Principal; onRefresh: () => void;showRequest?:boolean;onCancelRequest?:()=>void;initialBloodType?:V2BloodType;initialComponentType?:V2ComponentType }) {

@@ -15,6 +15,11 @@ const network={...common,policyVersion:"NETWORK_AVAILABILITY_V1",scope:"CITY_AGG
 const verification={...common,policyVersion:"OUTBOUND_LABEL_VERIFICATION_V1",reservationId:"RES_TEST",reservationVersion:2,ledger:{status:"NOT_APPLICABLE"},evidenceId:"EVD_"+"A".repeat(40),evidenceDigest:"b".repeat(64),componentIds:["COMP_TEST"],matchedUnits:1,verifiedAt:common.asOf,replayed:false};
 describe("blood-bank completion contracts",()=>{
  it("keeps expired labels separate and retains full aggregate counts and nullable projection time",()=>{expect(parseBankSummary(summary).inventory).toEqual(summary.inventory);expect(parseBankSummary(summary).requests.incomingAwaitingDecision).toBe(1);});
+ it("distinguishes an older summary from a verified synthetic near-expiry count",()=>{
+  expect(parseBankSummary(summary).expiringSoon).toBeNull();
+  for(const count of [0,204])expect(parseBankSummary({...summary,expiringSoon:{...summary.expiringSoon,syntheticAdvisory:{policyVersion:"SYNTHETIC_NEAR_EXPIRY_V1",count}}}).expiringSoon).toBe(count);
+  for(const syntheticAdvisory of [{policyVersion:"UNKNOWN",count:0},{policyVersion:"SYNTHETIC_NEAR_EXPIRY_V1",count:-1}])expect(()=>parseBankSummary({...summary,expiringSoon:{...summary.expiringSoon,syntheticAdvisory}})).toThrow();
+ });
  it.each([ {...summary,scope:"CITY_AGGREGATE"},{...summary,inventory:{...summary.inventory,available:-1}},{...summary,expiringSoon:{availability:"AVAILABLE",count:5,blocker:null}} ])("rejects unsafe summary or invented expiry threshold",value=>expect(()=>parseBankSummary(value)).toThrow());
  it("accepts an authorized empty network aggregate as zero recorded combinations",()=>expect(parseNetworkAvailability({...network,rows:[]}).rows).toEqual([]));
  it.each([{...network,scope:"INSTITUTION"},{...network,rows:[networkRow,networkRow]},{...network,rows:[{...networkRow,availableUnits:0}]}])("rejects scoped or inconsistent network responses",value=>expect(()=>parseNetworkAvailability(value)).toThrow());

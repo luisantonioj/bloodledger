@@ -66,7 +66,7 @@ describe("inventory overview component filter", () => {
   it("filters a product without leaking another product or reserved units into availability", () => {
     const result = summarizeInventoryByComponent(rows, "PACKED_RED_BLOOD_CELLS");
     expect(result[0].components).toEqual([{ component: "PACKED_RED_BLOOD_CELLS", confirmed: 11, available: 9 }]);
-    expect(result[2].components[0].confirmed).toBe(0);
+    expect(result.find(group => group.bloodType === "B_POSITIVE")?.components[0].confirmed).toBe(0);
     expect(summarizeInventoryByComponent(rows, "PLATELETS").every(group => group.components[0].confirmed === 0)).toBe(true);
   });
 

@@ -10,9 +10,18 @@ export async function setupBankCompletion(page:Page){const reads:string[]=[],pos
  if(path==="/api/v1/auth/session")body={principal:{accountId:"USR_BANK",accountCategory:"BLOOD_BANK",verificationRequired:true,userId:"USR_BANK",displayName:"Synthetic bank",institutionId,institutionDisplayName:"Synthetic Bank",roleId:"ROLE-02",roleDisplayName:"Technologist",classification,permissions:["dashboard:operational","inventory:read","transfers:read","profile:read"],operators:[{operatorId:"OP_TEST",roleId:"ROLE-02",version:1,capabilityProfile:"ROLE",actionCapabilities:["transfer:approve","transfer:prepare"]}]}};
  else if(path==="/api/v2/eligible-suppliers")body={suppliers:[{institutionId:"INST_OTHER",displayName:"Other synthetic bank",availabilityBand:"10_OR_MORE",meetsRequestedQuantity:true}],readAt:asOf,classification};
  else if(path==="/api/v2/dashboard")body={composition:"OPERATIONAL",scope:"INSTITUTION",inventory:[{institutionId,bloodType:"A_POSITIVE",component:"WHOLE_BLOOD",inventoryStatus:"AVAILABLE",confirmedCount:99,lastProjectedAt:asOf}],lastSuccessfulProjectionAt:asOf,pendingScans:[],classification};
- else if(path==="/api/v2/dashboard/stock-counts")body=exactStockFixture(institutionId);
- else if(path==="/api/v2/dashboard/summary")body={policyVersion:"BLOOD_BANK_SUMMARY_V1",scope:"INSTITUTION",asOf,classification,inventory:{available:7,reserved:2,labelExpiredPendingEvaluation:4,lastProjectedAt:asOf},requests:{incomingAwaitingDecision:1,outgoingAwaitingDecision:3},expiringSoon:{availability:"POLICY_BLOCKED",count:null,blocker:"RQ-03"}};
- else if(path==="/api/v2/network-availability")body={policyVersion:"NETWORK_AVAILABILITY_V1",scope:"CITY_AGGREGATE",asOf,classification,rows:[{institutionId:"INST_OTHER",institutionDisplayName:"Other bank",bloodType:"O_POSITIVE",componentType:"PACKED_RED_BLOOD_CELLS",availableUnits:23,lastProjectedAt:asOf}]};
+ else if(path==="/api/v2/dashboard/stock-counts")body=exactStockFixture(institutionId,7,2,4,2);
+ else if(path==="/api/v2/dashboard/summary")body={policyVersion:"BLOOD_BANK_SUMMARY_V1",scope:"INSTITUTION",asOf,classification,inventory:{available:7,reserved:2,labelExpiredPendingEvaluation:4,lastProjectedAt:asOf},requests:{incomingAwaitingDecision:1,outgoingAwaitingDecision:3},expiringSoon:{availability:"POLICY_BLOCKED",count:null,blocker:"RQ-03",syntheticAdvisory:{policyVersion:"SYNTHETIC_NEAR_EXPIRY_V1",count:0}}};
+ else if(path==="/api/v2/network-availability"){
+  const wholeBlood={bloodType:"A_POSITIVE",componentType:"WHOLE_BLOOD",lastProjectedAt:asOf};
+  body={policyVersion:"NETWORK_AVAILABILITY_V1",scope:"CITY_AGGREGATE",asOf,classification,rows:[
+   {institutionId:"INST_OTHER",institutionDisplayName:"Other bank",bloodType:"O_POSITIVE",componentType:"PACKED_RED_BLOOD_CELLS",availableUnits:23,lastProjectedAt:asOf},
+   {...wholeBlood,institutionId,institutionDisplayName:"Synthetic Bank",availableUnits:8},
+   {...wholeBlood,institutionId:"INST_OTHER",institutionDisplayName:"Other bank",availableUnits:4},
+   {...wholeBlood,institutionId:"INST_SECOND",institutionDisplayName:"Second bank",availableUnits:7},
+   {...wholeBlood,institutionId,institutionDisplayName:"Synthetic Bank",bloodType:"B_NEGATIVE",availableUnits:2},
+  ]};
+ }
  else if(path==="/api/v2/components")body={scope:"INSTITUTION",classification,components:[component,{...component,componentId:"COMP_EXPIRED_LABEL",expiresAt:"2020-01-01T00:00:00Z",expiryState:"LABEL_EXPIRED_PENDING_EVALUATION"}]};
  else if(path==="/api/v2/transfer-summaries"){status=503;body={error:{code:"SERVICE_UNAVAILABLE"}};}
  else if(path==="/api/v2/reports/inbound-intake")body={scope:"INSTITUTION",classification,statuses:{},includedInventoryStatuses:["COMMITTED"],excludedFromInventory:["QUEUED"]};

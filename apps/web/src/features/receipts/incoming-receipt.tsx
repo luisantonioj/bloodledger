@@ -65,13 +65,13 @@ export function IncomingReceipt({principal,scannedRecognition,onLockChange}:{pri
  if(!receiptVerificationReady)return null;
  return <section className="receipt-review-card scanner-transfer-actions"><header><h3>Incoming transfer</h3></header>
   <div className="scanner-transfer-controls"><label>In-transit incoming transfer<span className="requester-select"><select aria-label="In-transit incoming transfer" value={selected} disabled={locked} onChange={event=>{if(status.command?.status==="COMMITTED")status.clear();setSelected(event.target.value);}}><option value="">Select a transfer</option>{rows.map(row=><option key={row.reservationId} value={row.reservationId}>{row.sourceInstitutionId?facilityLabel(row.sourceInstitutionId,principal):"Supplying facility unavailable"} · {row.componentType?componentLabel(row.componentType):"Product unavailable"} · {row.units??"?"} units · {compactRecordReference(row.reservationId)}</option>)}</select></span></label>
-  <p className="receipt-preview-note">Scan every unit of the transfer, verify them together, then receive. Receipt records RECEIVED stock; it does not make the units usable.</p>
+  <p className="receipt-preview-note">Choose the transfer that arrived. Scan and verify its units before confirming receipt.</p>
   {list.nextCursor&&<button className="button compact" type="button" disabled={list.busy||locked} onClick={list.loadMore}>Load more transfers</button>}
   {(list.error||detail.error)&&<p role="status">Incoming transfers could not be verified. Refresh before continuing.</p>}
   <button className="button compact" type="button" disabled={locked||list.busy||detail.busy} onClick={refresh}>Refresh incoming transfers</button>
   {list.ready&&!rows.length&&<p className="receipt-preview-note">No in-transit incoming transfers in the loaded records.</p>}
   </div>
-  {status.command?<CommandStatusCard command={status.command} pollError={status.pollError} onClear={()=>{status.clear();refresh();}}/>
+  {status.command?<CommandStatusCard command={status.command} pollError={status.pollError} summary={{complete:"Transfer received",detail:"Received units are awaiting review before they can be used."}} onClear={()=>{status.clear();refresh();}}/>
    :detail.data&&!detail.error&&detail.data.status==="IN_TRANSIT"&&<ReceiptVerification key={detail.data.reservationId+":"+detail.data.version} reservation={detail.data} scannedRecognition={scannedRecognition} onAccepted={status.accept} onLockChange={notifyLock} onRefresh={refresh}/>}
 </section>;
 }
@@ -146,13 +146,13 @@ function ReceiptVerification({reservation,scannedRecognition,onAccepted,onLockCh
    setReceiveFrozen(Boolean(receiveAttempt.current));setError(cancelled(reason)?(receiveFrozen?"Operator verification cancelled. The saved receipt stays frozen; nothing was sent.":"Operator verification cancelled. Nothing was sent."):failure.timeRejected?failure.message:receiptFailure(reason));
   }finally{if(active.current)setBusy(false);}
  }
- return <section className="bank-record-card" aria-label="Receipt label verification">
+ return <section className="bank-record-card transfer-receipt-verification" aria-label="Receipt label verification">
   <h4>Scan incoming units</h4>
   <fieldset disabled={locked||Boolean(evidence)}>
-   <label>Incoming-unit label image<input type="file" accept="image/png,image/jpeg" capture="environment" disabled={reading} onChange={event=>{const file=event.target.files?.[0];controller.current?.abort();setRecognition(undefined);setConfirmed(false);setError("");setImage(undefined);if(file&&["image/png","image/jpeg"].includes(file.type)&&file.size<=10*1024*1024)setImage(file);else if(file)setError("Choose a JPG or PNG image up to 10 MB.");event.target.value="";}}/></label>
-   <button className="button compact" type="button" disabled={!image||reading} onClick={()=>void ocr()}>{reading?"Reading…":"Run OCR"}</button>
-   {recognition&&<><p>Five label fields passed OCR checks. The label value is not displayed or persisted.</p><label><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)}/>I checked the recognized label against this incoming unit.</label><button className="button compact" type="button" disabled={!confirmed||labels.length>=50} onClick={add}>Add scanned unit</button></>}
-   <p>{evidence?"All incoming units verified · Off-chain evidence returned":`${labels.length} of ${members} incoming units scanned`}</p>
+   {!evidence&&<><label>Label photo<input aria-label="Incoming-unit label image" type="file" accept="image/png,image/jpeg" capture="environment" disabled={reading} onChange={event=>{const file=event.target.files?.[0];controller.current?.abort();setRecognition(undefined);setConfirmed(false);setError("");setImage(undefined);if(file&&["image/png","image/jpeg"].includes(file.type)&&file.size<=10*1024*1024)setImage(file);else if(file)setError("Choose a JPG or PNG image up to 10 MB.");event.target.value="";}}/></label>
+   <button className="button compact" type="button" disabled={!image||reading} onClick={()=>void ocr()}>{reading?"Reading…":"Read label"}</button></>}
+   {recognition&&<div className="transfer-scan-review"><p>Label read. Check it against the incoming unit.</p><label><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)}/>I checked the recognized label against this incoming unit.</label><button className="button compact" type="button" disabled={!confirmed||labels.length>=50} onClick={add}>Add scanned unit</button></div>}
+   <p className="transfer-scan-count" role="status">{evidence?"All incoming units verified":`${labels.length} of ${members} incoming units scanned`}</p>
    {!!labels.length&&<button className="button compact" type="button" onClick={()=>{setLabels([]);setMismatch(false);setError("");}}>Clear scans</button>}
   </fieldset>
   {!evidence&&<button className="button compact primary" type="button" disabled={busy||reading||disputeFrozen||receiveFrozen||(!verifyFrozen&&labels.length<1)} onClick={()=>void verify()}>{busy?"Verifying…":verifyFrozen?"Retry same verification":"Verify scanned units"}</button>}

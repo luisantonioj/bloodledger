@@ -51,11 +51,11 @@ for (const [action,label,state,prepared,local,recipient] of [
     const submitName=action==="dispatch"?"Confirm outbound transaction":"Confirm reservation action";
     await expect(section.getByRole("button",{name:submitName,exact:true})).toBeDisabled();expect(posts).toBe(0);
     await section.getByRole("checkbox").check();await section.getByRole("button",{name:submitName,exact:true}).click();await verify(page);
-    await expect(section.getByRole("heading",{name:"Accepted and queued",exact:true})).toBeVisible();expect(posts).toBe(1);
+    await expect(section.getByRole("heading",{name:"Waiting for confirmation",exact:true})).toBeVisible();expect(posts).toBe(1);
     expect(Object.keys(body).sort()).toEqual(["correlationId","eventTime","expectedVersion",...(action==="prepare"?["preparedAt","preparedEvidenceDigest","preparedEvidenceId"]:[]),...(action==="compromise"||action==="delay"?["reasonCode"]:[]),...(action==="dispatch"||action==="receive"?["location"]:[])].sort());
     // TC-G01: without a granted permission the browser reports a denial, so the checkpoint falls back with that reason.
     if(action==="dispatch"||action==="receive")expect(body.location).toMatchObject({source:"FACILITY_FALLBACK",fallbackReason:"PERMISSION_DENIED",latitude:null,longitude:null});
-    if(action==="receive")await expect(section.getByText("Receipt records RECEIVED stock. It does not make the units usable.",{exact:true})).toBeVisible();
+    if(action==="receive")await expect(section.getByText("Confirm the shipment arrived. The units stay out of usable stock until reviewed.",{exact:true})).toBeVisible();
   });
 }
 
@@ -101,7 +101,7 @@ test("lost acceptance is recovered by saved request key with no second POST",asy
   if(path==="/api/v2/reservations/RES_UAT_SYNTH/cancel"){posts++;body=route.request().postDataJSON();key=route.request().headers()["idempotency-key"];await json(route,{error:{code:"SERVICE_UNAVAILABLE",message:"Acceptance response unavailable"}},503);return true;}
   if(path==="/api/v2/commands"){lookups++;expect(route.request().method()).toBe("GET");expect(new URL(route.request().url()).searchParams.get("idempotencyKey")).toBe(key);await json(route,{scope:"ACTOR_INSTITUTION",commands:[command(body,"COMMITTED")],nextCursor:null,classification:"SIMULATION_ONLY"});return true;}return false;
  });
- const section=await open(page);await section.getByRole("button",{name:"Cancel reservation",exact:true}).click();await section.getByRole("checkbox").check();await section.getByRole("button",{name:"Confirm reservation action"}).click();await verify(page);await expect(section.getByRole("alert")).toContainText("Acceptance response unavailable");await section.getByRole("button",{name:"Recover this attempt without resubmitting"}).click();await expect(section.getByRole("heading",{name:"Committed",exact:true})).toBeVisible();expect(posts).toBe(1);expect(lookups).toBe(1);
+ const section=await open(page);await section.getByRole("button",{name:"Cancel reservation",exact:true}).click();await section.getByRole("checkbox").check();await section.getByRole("button",{name:"Confirm reservation action"}).click();await verify(page);await expect(section.getByRole("alert")).toContainText("Acceptance response unavailable");await section.getByRole("button",{name:"Recover this attempt without resubmitting"}).click();await expect(section.getByRole("heading",{name:"Reservation cancelled",exact:true})).toBeVisible();expect(posts).toBe(1);expect(lookups).toBe(1);
 });
 
 
@@ -122,6 +122,6 @@ test("committed status does not block the next reservation action",async({page})
   return false;
  });
  const section=await open(page);await section.getByRole("button",{name:"Dispatch reservation",exact:true}).click();await section.getByRole("checkbox").check();await section.getByRole("button",{name:"Confirm outbound transaction",exact:true}).click();await verify(page);
- await expect(section.getByRole("heading",{name:"Committed",exact:true})).toBeVisible();await expect(section.getByRole("button",{name:"Start transit",exact:true})).toBeEnabled();
- await section.getByRole("button",{name:"Start transit",exact:true}).click();await expect(section.getByRole("checkbox")).toBeEnabled();await expect(section.getByRole("heading",{name:"Committed",exact:true})).toHaveCount(0);expect(writes).toBe(1);
+ await expect(section.getByRole("heading",{name:"Transfer dispatched",exact:true})).toBeVisible();await expect(section.getByRole("button",{name:"Start transit",exact:true})).toBeEnabled();
+ await section.getByRole("button",{name:"Start transit",exact:true}).click();await expect(section.getByRole("checkbox")).toBeEnabled();await expect(section.getByRole("heading",{name:"Transfer dispatched",exact:true})).toHaveCount(0);expect(writes).toBe(1);
 });

@@ -3,12 +3,12 @@ import { V2_COMPONENT_TYPES } from "../../services/api/v2";
 
 export const bloodTypeOrder = [
   "A_POSITIVE",
-  "A_NEGATIVE",
   "B_POSITIVE",
-  "B_NEGATIVE",
   "AB_POSITIVE",
-  "AB_NEGATIVE",
   "O_POSITIVE",
+  "A_NEGATIVE",
+  "B_NEGATIVE",
+  "AB_NEGATIVE",
   "O_NEGATIVE",
 ] as const;
 

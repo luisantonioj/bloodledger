@@ -36,7 +36,11 @@ export function RequesterDashboard({ data, principal, requests, bankMode=false }
   const [bloodType, setBloodType] = useState("O_POSITIVE");
   const [component, setComponent] = useState("PACKED_RED_BLOOD_CELLS");
   const network=useValidatedRead(bankMode?"/api/v2/network-availability":null,parseNetworkAvailability);
-  const available = bankMode ? network.data?network.data.rows.filter(row=>row.bloodType===bloodType&&row.componentType===component).reduce((sum,row)=>sum+row.availableUnits,0):null : networkAvailableUnits(data, bloodType, component);
+  const available = bankMode
+    ? network.data?.rows
+      .filter(row => row.institutionId !== principal.institutionId && row.bloodType === bloodType && row.componentType === component)
+      .reduce((sum, row) => sum + row.availableUnits, 0) ?? null
+    : networkAvailableUnits(data, bloodType, component);
   const rows = requests.data ? bankMode ? requests.data.requests : ownRequests(requests.data, principal.institutionId) : [];
   const mayRead = can(principal, "transfers:read");
   const view = useTableView(bankMode ? "dashboard-bank-requests" : "dashboard-requests", requestColumns(bankMode), rows), show = view.isVisible;
@@ -64,7 +68,7 @@ export function RequesterDashboard({ data, principal, requests, bankMode=false }
         </div>
         <div className={"requester-availability-result" + (available === null ? "" : available > 0 ? " has-supply" : " no-supply")} aria-live="polite">
           <div className="requester-availability-blood"><span className="requester-availability-type" aria-label={humanizeCode(bloodType)}>{formatBloodType(bloodType)}</span><span>{componentLabels[component]}</span></div>
-          <div className="requester-availability-quantity"><strong aria-label={available === null ? "Unavailable" : undefined}>{available ?? "—"}</strong><span>{bankMode?"City-wide, label-current available":"network units available"}</span></div>
+          <div className="requester-availability-quantity"><strong aria-label={available === null ? "Unavailable" : undefined}>{available ?? "—"}</strong><span>{bankMode?"units available at other facilities":"network units available"}</span></div>
           <div className="requester-availability-status"><span className={available !== null && available > 0 ? "status success" : "status warning"}>{available === null ? "Availability unavailable" : available > 0 ? "Current supply available" : "No current supply"}</span><small>{available === null ? "Waiting for a confirmed network projection." : "Availability does not guarantee request approval."}</small></div>
         </div>
       </div>

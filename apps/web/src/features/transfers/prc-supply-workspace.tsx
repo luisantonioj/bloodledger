@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { canAct, type Principal } from "../../auth/permissions";
 import { ApiRequestError, retryAfterContextChange } from "../../services/api/client";
 import { canReadPrcSupply, parsePrcSupplyList, readPrcDetail, PRC_DECLINE_REASONS, PRC_REFERENCE, prcSupplyError, type PrcAction, type PrcSupplyDetail, type PrcSupplyRequest } from "../../services/api/prc-supply";
@@ -43,7 +43,6 @@ export function PrcSupplyWorkspace({principal, embedded = false}: {principal: Pr
   const parser = useCallback((value: unknown) => parsePrcSupplyList(value, principal), [principal]);
   const list = usePagedRead(allowed ? "/api/v2/prc-supply-requests" : null, parser, "requestId", principal.accountCategory + "|" + principal.institutionId);
   const [search, setSearch] = useState(""), [formOpen, setFormOpen] = useState(false), [selected, setSelected] = useState(()=>new URLSearchParams(location.search).get("prcRequestId")??"");
-  const formArea = useRef<HTMLDivElement>(null);
   const [revision, setRevision] = useState(0), [detail, setDetail] = useState<PrcSupplyDetail>(), [detailError, setDetailError] = useState("");
   const [exporting, setExporting] = useState(false), [exportError, setExportError] = useState("");
   const mutation = usePrcMutation(principal, row => {setFormOpen(false); setSelected(row.requestId); setRevision(value => value + 1); list.refresh();});
@@ -54,27 +53,26 @@ export function PrcSupplyWorkspace({principal, embedded = false}: {principal: Pr
     void retryAfterContextChange(() => readPrcDetail(selected, principal, controller.signal), () => !controller.signal.aborted).then(row => {if (!controller.signal.aborted) {setDetail(row);mutation.refreshed();}}).catch(reason => {if (!controller.signal.aborted) setDetailError(reason instanceof ApiRequestError && reason.status === 403 ? "You are not permitted to view this PRC request." : reason instanceof ApiRequestError && reason.code?.startsWith("PRC_SUPPLY_") ? prcSupplyError(reason) : "PRC request details could not be loaded. Refresh to try again.");});
     return () => controller.abort();
   }, [principal, selected, revision, allowed]);
-  useEffect(() => {
-    if (!formOpen) return;
-    const frame = requestAnimationFrame(() => formArea.current?.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",block:"start"}));
-    return () => cancelAnimationFrame(frame);
-  }, [formOpen]);
   const visible = list.rows.filter(row => [...prcSupplyRows([row])[0], row.urgency, row.requestingInstitution.displayName, row.requestingInstitution.institutionId].some(value => value?.toLowerCase().includes(search.trim().toLowerCase())));
   const view = useTableView("prc-supply-requests", prcSupplyColumns, visible), show = view.isVisible;
   if (!allowed) return <p role="alert">PRC supply requests are not available to this account.</p>;
   const actions = detail ? prcAllowedActions(principal, detail) : [];
+  const showForm = formOpen && maySubmitPrc(principal);
+  const mutationFeedback = <>
+    {mutation.error && <p role="alert" className="prc-supply-message">{mutation.error}</p>}
+    {mutation.ambiguous && <button type="button" className="button compact" disabled={mutation.busy} onClick={mutation.retry}>Retry same attempt</button>}
+  </>;
   function refresh() {list.refresh();setRevision(value => value + 1);}
   async function exportPdf() {setExporting(true);setExportError("");try {await exportTablePdf({title:"PRC Supply Requests",scope:principal.institutionDisplayName+" · SIMULATION_ONLY · Off-chain",filters:`Loaded rows only; Search: ${search || "None"}; Sort: ${view.sortDescription}`,headers:prcSupplyHeaders,rows:prcSupplyRows(view.rows),filename:"prc-supply-requests"});} catch {setExportError("PDF export failed.");} finally {setExporting(false);}}
   return <div className={"prc-supply-workspace"+(embedded ? " prc-supply-embedded" : " page")}>
     {!embedded && <header className="page-head"><h1 className="page-title">PRC Supply Requests</h1></header>}
     <div className="prc-supply-toolbar"><span>SIMULATION_ONLY · Off-chain coordination</span><div className="bank-toolbar-actions">
-      {maySubmitPrc(principal) && <button className="button primary compact" disabled={mutation.locked} aria-expanded={formOpen} onClick={() => {setFormOpen(true); if(formOpen)formArea.current?.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",block:"start"});}}>+ Request PRC Supply</button>}
+      {maySubmitPrc(principal) && <button className="button primary compact" disabled={mutation.locked} aria-haspopup="dialog" onClick={() => setFormOpen(true)}>+ Request PRC Supply</button>}
       <button className="button compact" disabled={!visible.length || exporting} onClick={() => void exportPdf()}>Export PDF</button><RefreshButton busy={list.busy || mutation.busy} onRefresh={refresh}/>
     </div></div>
-    {mutation.error && <p role="alert" className="prc-supply-message">{mutation.error}</p>}{mutation.notice && <p role="status" className="prc-supply-message">{mutation.notice}</p>}
-    {mutation.ambiguous && <button className="button compact" disabled={mutation.busy} onClick={mutation.retry}>Retry same attempt</button>}
+    {!showForm && mutationFeedback}
+    {mutation.notice && <p role="status" className="prc-supply-message">{mutation.notice}</p>}
     {exportError && <p role="alert">{exportError}</p>}
-    {formOpen && maySubmitPrc(principal) && <div ref={formArea} className="bank-request-form-anchor"><PrcSupplyRequestForm onClose={() => setFormOpen(false)} enabled={list.ready && !list.error && !mutation.needsRefresh} busy={mutation.locked} onSubmit={draft => mutation.run("/api/v2/prc-supply-requests", correlationId => ({...draft,correlationId}))}/></div>}
     <section className="bank-record-card"><div className="bank-list-filters"><label>Search PRC requests<input type="search" placeholder="Search loaded references, products or status…" value={search} onChange={event => setSearch(event.target.value)}/></label><TableViewBar view={view}/></div>
       <PaginatedTable ready={list.ready} total={visible.length} label="PRC supply requests" resetKey={search + "|" + view.sortKey}><table className="data-table bank-prc-supply-table"><thead><tr>{prcSupplyHeaders.map(value => <SortableHeader key={value} view={view} id={value}>{value}</SortableHeader>)}</tr></thead><tbody>
         {view.rows.map(row => <tr key={row.requestId}>{show("Request ID")&&<td><button className="requester-record-link mono" title={row.requestId} aria-label={"Open PRC request "+row.requestId} disabled={mutation.busy} onClick={() => setSelected(row.requestId)}>{compactRecordReference(row.requestId)}</button>{principal.accountCategory === "PRC" && <small>{row.requestingInstitution.displayName ?? row.requestingInstitution.institutionId}</small>}</td>}{show("Product")&&<td><strong>{formatBloodType(row.bloodType)}</strong><small>{componentLabel(row.componentType)}</small></td>}{show("Units")&&<td>{prcUnits(row)}</td>}{show("Required By")&&<td>{formatManilaDateTime(row.requiredBy)}</td>}{show("PRC Reference")&&<td>{row.prcReference ?? "Awaiting PRC acknowledgement"}</td>}{show("Status")&&<td><span className={row.status==="CANCELLED"?"status neutral":statusClassName(row.status)}>{row.status}</span>{row.declineReason && <small>{row.declineReason}</small>}</td>}</tr>)}
@@ -90,5 +88,6 @@ export function PrcSupplyWorkspace({principal, embedded = false}: {principal: Pr
         <h3>Request history</h3><ol className="prc-request-history">{detail.history.map((entry, index) => <li key={index}><strong>{humanizeCode(entry.action)}</strong><span>{entry.priorStatus ?? "New request"} → {entry.resultingStatus}{entry.reasonCode ? " · "+entry.reasonCode : ""}</span><small>{entry.actor.displayName ?? "Display name unavailable"} · {formatManilaDateTime(entry.recordedAt)} · Off-chain</small></li>)}</ol>{!detail.history.length && <p>No request history returned.</p>}
       </>}
     </section>}
+    {showForm && <PrcSupplyRequestForm onClose={() => setFormOpen(false)} enabled={list.ready && !list.error && !mutation.needsRefresh} busy={mutation.locked} feedback={mutationFeedback} onSubmit={draft => mutation.run("/api/v2/prc-supply-requests", correlationId => ({...draft,correlationId}))}/>}
   </div>;
 }

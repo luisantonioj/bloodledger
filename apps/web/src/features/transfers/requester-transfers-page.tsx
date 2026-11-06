@@ -5,7 +5,7 @@ import { urgencyRank } from "../../services/api/transaction-reads";
 import { RefreshButton, RefreshIcon } from "../../components/ui/refresh-button";
 import { V2_BLOOD_TYPES, V2_COMPONENT_TYPES } from "../../services/api/v2";
 import { RequestFormHelp } from "./request-form-help";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { can, canAct, type Principal } from "../../auth/permissions";
 import { BloodTypeBadge } from "../../components/ui/aggregate-tables";
 import { formatBloodType, formatManilaDateTime, statusClassName } from "../../components/ui/display";
@@ -51,16 +51,7 @@ export function RequesterTransfersPage({ principal }: { principal: Principal }) 
   const [tab, setTab] = useState<"requests" | "transfers">(initial?.kind === "reservation" ? "transfers" : "requests");
   const [selected, setSelected] = useState<RecordSelection | undefined>(initial);
   const mayRequest = can(principal, "transfers:read") && (principal.accountId ? canAct(principal, "transfer:request") : can(principal, "transfers:write"));
-  const [formOpen, setFormOpen] = useState(mayRequest && new URLSearchParams(location.search).get("newRequest") === "1");
-  const requestForm = useRef<HTMLDivElement>(null);
-  function scrollToRequestForm() {
-    requestForm.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
-  }
-  useEffect(() => {
-    if (!formOpen) return;
-    const frame = window.requestAnimationFrame(scrollToRequestForm);
-    return () => window.cancelAnimationFrame(frame);
-  }, [formOpen]);
+  const [formOpen, setFormOpen] = useState(mayRequest && query.get("newRequest") === "1");
   const state = useLiveData<unknown>(can(principal, "transfers:read") ? "/api/v2/transfers" : null);
   let records: RequesterRecords | undefined, recordError = "";
   if (state.data) { try { records = parseRequesterRecords(state.data, principal); } catch (reason) { recordError = reason instanceof Error ? reason.message : "Requests unavailable."; } }
@@ -79,7 +70,7 @@ export function RequesterTransfersPage({ principal }: { principal: Principal }) 
   const timelineView = useTableView("requester-activity", timelineColumns, records?.timeline ?? []), showEvent = timelineView.isVisible;
   return <div className="page requester-transfers-page">
     <header className="page-head"><div><h1 className="page-title">Requests &amp; Transfers</h1></div>
-      <div className="requester-page-actions"><RefreshButton busy={state.busy} onRefresh={state.manual}/>{mayRequest && <button className="button primary compact" type="button" aria-expanded={formOpen} aria-controls="requester-new-request-form" onClick={() => {if (formOpen) scrollToRequestForm(); else setFormOpen(true);}}>+ New Blood Request</button>}</div>
+      <div className="requester-page-actions"><RefreshButton busy={state.busy} onRefresh={state.manual}/>{mayRequest && <button className="button primary compact" type="button" aria-haspopup="dialog" onClick={() => setFormOpen(true)}>+ New Blood Request</button>}</div>
     </header>
     <div className="requester-transfer-tabs" role="tablist" aria-label="Requests and transfers">
       <button type="button" id="requester-requests-tab" role="tab" aria-selected={tab === "requests"} aria-controls="requester-records-panel" tabIndex={tab === "requests" ? 0 : -1} onKeyDown={event => {if (["ArrowRight", "ArrowLeft", "End"].includes(event.key)) {event.preventDefault(); changeTab("transfers"); document.getElementById("requester-transfers-tab")?.focus();}}} onClick={() => changeTab("requests")}>Blood Requests <span>{count(records?.requests.length)}</span></button>
@@ -117,7 +108,7 @@ export function RequesterTransfersPage({ principal }: { principal: Principal }) 
         {selected && records ? <V2RecordExplorer key={selected.kind + selected.id} initial={selected} principal={principal} inline headerHelp={<RequestFormHelp label={tab === "requests" ? "Request Details" : "Transfer Details"}>{detailDescription}</RequestFormHelp>} onClose={() => setSelected(undefined)} onRefresh={state.manual}/> : <><header className="requester-records-heading"><h2>{tab === "requests" ? "Request Details" : "Transfer Details"}</h2><RequestFormHelp label={tab === "requests" ? "Request Details" : "Transfer Details"}>{detailDescription}</RequestFormHelp></header><div className="requester-records-empty"><strong>Select a {tab === "requests" ? "request" : "transfer"}</strong><span>Choose a record from the list to view its details.</span></div></>}
       </section>
     </div>
-    {formOpen && mayRequest && <div id="requester-new-request-form" ref={requestForm}><V2TransferRequest principal={principal} onRefresh={state.manual} requesterPresentation initialBloodType={initialBloodType} initialComponentType={initialComponentType} onCancel={() => setFormOpen(false)}/></div>}
+    {formOpen && mayRequest && <V2TransferRequest principal={principal} onRefresh={state.manual} requesterPresentation modal initialBloodType={initialBloodType} initialComponentType={initialComponentType} onCancel={() => setFormOpen(false)}/>}
     {records && records.timeline.length > 0 && <details className="requester-recorded-activity"><summary>Recorded activity</summary><PaginatedTable total={records.timeline.length} label="Recorded activity" resetKey={timelineView.sortKey} toolbar={<TableViewBar view={timelineView}/>}><table className="data-table"><thead><tr><SortableHeader view={timelineView} id="operation">Operation</SortableHeader><SortableHeader view={timelineView} id="status">Status</SortableHeader><SortableHeader view={timelineView} id="recorded">Recorded</SortableHeader><SortableHeader view={timelineView} id="ledger">Ledger reference</SortableHeader></tr></thead><tbody>{timelineView.rows.map(row => <tr key={row.command_id}>{showEvent("operation")&&<td>{readableCode(row.operation)}</td>}{showEvent("status")&&<td>{readableCode(row.status)}</td>}{showEvent("recorded")&&<td>{Number.isFinite(Date.parse(row.accepted_at)) ? formatManilaDateTime(row.accepted_at) : "Unavailable"}</td>}{showEvent("ledger")&&<td className="mono">{row.ledger_transaction_id ?? "Awaiting confirmation"}</td>}</tr>)}</tbody></table></PaginatedTable></details>}
   </div>;
 }

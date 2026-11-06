@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { ActionButton } from "../../components/ui/action-button";
 import { InformationHelp } from "../../components/ui/information-help";
 import { formatBloodType } from "../../components/ui/display";
@@ -9,13 +9,34 @@ import { componentLabel } from "./requester-transfer-data";
 
 export interface PrcSupplyDraft {bloodType: string; componentType: string; requestedQuantity: number; urgency: string; requiredBy: string}
 export const manilaLocalTime = (time: number) => new Date(time + 8 * 3600000).toISOString().slice(0, 16);
-export function PrcSupplyRequestForm({onClose, onSubmit, enabled = false, busy = false}: {onClose: () => void; onSubmit?: (draft: PrcSupplyDraft) => void; enabled?: boolean; busy?: boolean}) {
+export function PrcSupplyRequestForm({onClose, onSubmit, enabled = false, busy = false, feedback}: {onClose: () => void; onSubmit?: (draft: PrcSupplyDraft) => void; enabled?: boolean; busy?: boolean; feedback?: ReactNode}) {
   const [bloodType, setBloodType] = useState("O_POSITIVE"), [componentType, setComponentType] = useState("WHOLE_BLOOD");
   const [quantity, setQuantity] = useState("1"), [urgency, setUrgency] = useState("ROUTINE");
   const [required, setRequired] = useState(() => manilaLocalTime(Date.now() + 2 * 3600000)), [error, setError] = useState("");
-  return <section className="bank-prc-form" aria-label="New PRC Supply Request">
-    <header className="bank-section-heading"><h3>New PRC Supply Request</h3><InformationHelp label="PRC supply request">One product per request, 1–10 units, required 1 hour to 30 days ahead. Required By uses Asia/Manila and cannot be edited after submission; cancel and resubmit instead. Free-text notes are not collected in V1 to avoid patient or donor details. A ROLE-02 operator and PIN are required. This is off-chain coordination; supplied units enter only through ordinary OCR intake.</InformationHelp></header>
-    <form onSubmit={event => {event.preventDefault(); if (!enabled || busy || !onSubmit) return; try {const requestedQuantity = Number(quantity); if (!Number.isSafeInteger(requestedQuantity) || requestedQuantity < 1 || requestedQuantity > 10) throw Error("Choose 1–10 units."); const requiredBy = prcRequiredBy(required); setError(""); onSubmit({bloodType, componentType, requestedQuantity, urgency, requiredBy});} catch (reason) {setError(reason instanceof Error ? reason.message : "Check the request fields.");}}}>
+  const titleId = useId();
+  const closeButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const trigger = document.activeElement;
+    closeButton.current?.focus();
+    return () => {if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus({preventScroll:true});};
+  }, []);
+
+  function handleKeys(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      if (!busy) onClose();
+    }
+    if (event.key !== "Tab") return;
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button:enabled,select:enabled,input:enabled,[tabindex='0']"))
+      .filter(item => item.getClientRects().length > 0);
+    const first = items[0], last = items.at(-1);
+    if (event.shiftKey && event.target === first) {event.preventDefault();last?.focus();}
+    if (!event.shiftKey && event.target === last) {event.preventDefault();first?.focus();}
+  }
+
+  return <div className="preview-modal-backdrop"><section className="preview-modal blood-request-modal bank-prc-form" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={handleKeys}>
+    <header><div><h2 id={titleId}>New PRC Supply Request</h2></div><div className="record-detail-header-actions"><button ref={closeButton} type="button" aria-label="Close PRC request form" disabled={busy} onClick={onClose}>×</button><InformationHelp label="PRC supply request">One product per request, 1–10 units, required 1 hour to 30 days ahead. Required By uses Asia/Manila and cannot be edited after submission; cancel and resubmit instead. Free-text notes are not collected in V1 to avoid patient or donor details. A ROLE-02 operator and PIN are required. This is off-chain coordination; supplied units enter only through ordinary OCR intake.</InformationHelp></div></header>
+    <form className="preview-modal-body" onSubmit={event => {event.preventDefault(); if (!enabled || busy || !onSubmit) return; try {const requestedQuantity = Number(quantity); if (!Number.isSafeInteger(requestedQuantity) || requestedQuantity < 1 || requestedQuantity > 10) throw Error("Choose 1–10 units."); const requiredBy = prcRequiredBy(required); setError(""); onSubmit({bloodType, componentType, requestedQuantity, urgency, requiredBy});} catch (reason) {setError(reason instanceof Error ? reason.message : "Check the request fields.");}}}>
       <fieldset disabled={!enabled || busy}><div className="bank-prc-fields">
         <label>Blood Type<span className="requester-select"><select aria-label="Blood Type" value={bloodType} onChange={event => setBloodType(event.target.value)}>{V2_BLOOD_TYPES.map(value => <option key={value} value={value}>{formatBloodType(value)}</option>)}</select></span></label>
         <label>Component<span className="requester-select"><select aria-label="Component" value={componentType} onChange={event => setComponentType(event.target.value)}>{V2_COMPONENT_TYPES.map(value => <option key={value} value={value}>{componentLabel(value)}</option>)}</select></span></label>
@@ -24,7 +45,8 @@ export function PrcSupplyRequestForm({onClose, onSubmit, enabled = false, busy =
         <label className="bank-prc-required-time">Required By (Asia/Manila)<input type="datetime-local" value={required} onChange={event => setRequired(event.target.value)} required/></label>
       </div><div className="bank-prc-authorization"><strong>Operator authorization</strong><p>A ROLE-02 operator and PIN verification are required. Free-text notes are not collected in V1.</p></div></fieldset>
       {error && <p role="alert">{error}</p>}
+      {feedback}
       <footer><button type="button" className="button compact" disabled={busy} onClick={onClose}>Close form</button><ActionButton type="submit" className="button primary compact" disabled={!enabled || busy} unavailableReason={busy ? "Finish the current attempt before changing the request." : "The PRC service and an authorized ROLE-02 operator must be available before submission."}>Send to PRC</ActionButton></footer>
     </form>
-  </section>;
+  </section></div>;
 }
