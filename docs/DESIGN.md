@@ -558,7 +558,8 @@ Only values supported by the scoped API are populated. Missing summary metrics
 show a dash with an accessible Unavailable label; available units are never relabeled redistributable,
 and no expiry, stock threshold or compliance policy is inferred. Ledger-confirmed
 units remain the source of populated totals; uncommitted scans are not counted
-as inventory. The separate synchronization row is removed at Lat's request.
+as inventory. Expiring Soon (demo) displays the bank’s PA-TC-01 advisory count.
+A verified zero is displayed as 0; an unavailable advisory count displays a dash. The separate synchronization row is removed at Lat's request.
 A missing projection is not a confirmed zero. The
 confirmed/available chart uses only approved data. The duplicate Inventory
 Projection heading and aggregate table are omitted from the dashboard; detailed
@@ -717,7 +718,7 @@ displayed in Asia/Manila with enough context to avoid ambiguity.
 
 
 ### Requester Requests & Transfers reference alignment (2026-10-09)
-The requester-only `/transfers` presentation follows the supplied MetroLipa HTML structure: request/transfer tabs, a facility workflow strip, an expandable request form, a record list, and an inline verified detail panel. Dashboard Request Blood opens `/transfers?newRequest=1`; the sidebar opens the records view. Both use the existing page and canonical V2 request submission with its operator verification, stable retry keys, and command-status identity validation.
+The requester-only `/transfers` presentation follows the supplied MetroLipa HTML structure for the request/transfer tabs, facility workflow strip, record list and inline verified detail panel. Dashboard Request Blood opens `/transfers?newRequest=1`; the sidebar opens the records view. Both use the existing page and canonical V2 request submission with its operator verification, stable retry keys, and command-status identity validation.
 
 Requests are limited to the authenticated destination institution. Transfer rows represent linked TRANSFER reservations, excluding local releases; request states and reservation states remain independent. Records are read from the permission-scoped service, with explicit empty/unavailable/stale states. No sample rows are inserted. Inline details reuse the existing verified reader, leaving other account modal behavior unchanged.
 
@@ -1192,7 +1193,7 @@ summary no longer adds an API dependency to inventory refresh.
 server cursors when the Transactions screen opens or refreshes. Remove its loaded
 row footer and Load more control; keep local pagination and errors. A failed
 batch preserves fetched records and stops automatic loading until Refresh.
-Blood Requests uses the full content width, with selected details below. Show
+Blood Requests uses the full content width. Show
 only the request decision badge in one line; reservation state remains in the
 record details instead of a second status line.
 
@@ -1265,9 +1266,87 @@ to bank intake, outgoing transfer actions and incoming bank/requester receipts.
 
 ### Shared institutional blood request form — 2026-10-20
 
+New Blood Request opens the shared form in a centered, scrollable dialog for blood banks and requester hospitals. Dashboard shortcuts open the same dialog and carry the selected product into the form. Request PRC Supply opens its separate dialog over the PRC records table, with submission errors and retries inside the dialog. Close and Escape are available when the request is not being submitted or awaiting confirmation.
+
 User-authorized frontend alignment: blood-bank institution accounts with `transfer:request` reuse the expanded requester form when requesting blood from another bank. The shared form collects the same accepted synthetic requester, pickup, notes and document fields, uses the existing eligible-suppliers read, and retains PIN verification and frozen request retries. The destination comes from the signed-in institution; the supplier list excludes that institution. Patient / Case Reference remains unavailable under RQ-20. This changes presentation and wiring only; it adds no backend contract, permission, migration or live-write authorization. Existing legacy role-only fixture paths keep their basic presentation.
 
 
 ### Blood-request demonstration Fill Up — 2026-10-20
 
 The shared requester/blood-bank request form places a secondary `Fill Up` button immediately before Cancel and Submit request. Each click replaces only requester/clinical details, authorized pickup, notes and both supporting documents with fresh fictional values and readable synthetic PDFs. The manually chosen supplying bank, blood type, component, quantity and urgency remain unchanged. Required time is generated in the future and shown in Manila time; existing synthetic reference patterns apply. Patient / Case Reference stays disabled under RQ-20. Files remain in browser memory until the user submits; generated documents identify themselves as simulation-only and unverified. Fill Up makes no API mutation, skips no validation or PIN verification, and is disabled while the form is locked by a pending/accepted submission. Footer actions can wrap on narrow screens.
+
+Create Blood Request shows a short status notice below the form actions.
+It shows that the request is being sent until confirmation arrives, then tells
+the requester that the supplying bank can review it. Done closes the completed
+form. A delayed check or failed submission has its own message.
+
+
+### Thesis panel: exact inventory and reviewed transfer outcomes — 2026-11-04
+
+Lat frontend implementation against PA-REV-01/02 (ADR-053) and PA-REV-03,
+using `services/api/openapi-v2.json` as the contract. This entry supersedes the
+older blood-bank chart total/tooltip behavior only; other institutional scopes
+keep their existing authorized views.
+
+- Blood-bank bar heights and visible numbers use exact counts from
+  `DASHBOARD_EXACT_STOCK_V1`. The chart's Availability selector defaults to
+  Available and also offers Reserved. Demonstration stock bands apply only
+  to Available. Reserved uses neutral bars.
+  Blood types appear in the order A+, B+, AB+, O+, A−, B−, AB−, O−.
+  Hover/focus places the tooltip above the bar when space allows and exposes
+  all eight status counts, with Available, Reserved and
+  the two expiry counts first. Expired units are excluded from all chart
+  heights. The Total Blood Units card uses `totals.usable`. The Expired
+  (not usable) card adds confirmed expiry and label expiry pending evaluation.
+- Five blood-bank cards share one row where width permits, wrapping at smaller
+  widths. The component filter applies to the chart. Use the dashboard header’s
+  Refresh and Last updated display. Separately label pending commands, never
+  adding them to inventory. Unverified or unauthorized
+  exact reads do not fall back to old aggregate numbers. Stale/future evidence
+  has no available demonstration classification. Zero bars remain inspectable.
+- Blood Inventory places Availability next to Component. All units preserves
+  the record view. Available and Reserved each require a current label. The
+  result count covers every matching record across pages and supports a direct
+  comparison between the Available filter and the dashboard bars.
+- On the blood-bank dashboard, Network Blood Availability sums the selected
+  product from the city aggregate, excluding the signed-in bank. The label
+  identifies this as stock at other facilities.
+- Supplier approval has an approved quantity and an explicit partial reason.
+  Reconfirm after changing either; reserve only that FEFO prefix. Show the
+  requested/approved/closed-shortfall outcome in request and reservation details.
+  Historical null quantities stay not recorded rather than inferred.
+- Selecting a bank request opens a centered dialog with the table behind it.
+  The dialog contains the review and approval controls. Closing it returns
+  focus to the selected row's request button.
+- The bank request detail shows the request ID inside the Blood request card.
+  The decision badge appears in the request table. The Blood request and
+  Requester details cards share the same width and height when
+  side by side and stack in a narrow panel. Both use the same label and value
+  spacing and a divider under the heading. Supporting documents stay with
+  requester details and have a download icon beside each plain filename.
+  The visible requester-detail version is omitted.
+- Selecting a bank transfer opens the same centered record dialog. Transfer
+  summary and approved supply share the card grid, followed by transfer
+  progress, expandable reserved units and the permitted reservation actions.
+- Transfer actions emphasize the current step and show its confirmation
+  separately. Preparation evidence fields, location history and command
+  references are expandable. Phone verification shows the scan count and
+  plain-language pending and completed updates.
+- Receipt label mismatches expose Record discrepancy with PIN verification.
+  Unknown outcomes freeze the exact attempt and operator for explicit retry,
+  including when polling discovers its OPEN record. Open discrepancies block
+  receive. Counts-only status appears to permitted source and destination
+  viewers; a matching recount or compromise can resolve it under the API policy.
+- Committed command banners do not require dismissal before another authorized
+  action. Ambiguous and pending operations keep their existing locks. Requester
+  transfer rows open their reservation; receipt choices show supplying facility,
+  product, units and a compact reference. Request details retry only a current
+  authentication-context read, never a mutation or real unauthorized response.
+- BROA remains visibly SIMULATION_ONLY and advisory. Stock bands, forecast
+  surplus and human approval are separate. PIN forms default to six digits on
+  these hosts while honoring an explicit server-returned compatibility policy.
+
+The DOH PDF heading is unchanged until the team's current template is supplied.
+No API, database source, chaincode, account or clinical policy is changed by this
+frontend implementation. Evidence and remaining gates are recorded in
+`docs/frontend/PANEL-REVISIONS-LAT-2026-11-04.md`.

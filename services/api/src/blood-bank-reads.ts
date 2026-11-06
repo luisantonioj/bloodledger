@@ -3,6 +3,7 @@ import { ApiFailure } from "./errors.js";
 import { nullableIsoTimestamp } from "./time.js";
 import type { WebPrincipal } from "./session.js";
 import type { StockCountEvidence, StockCountRow } from "./dashboard-stock-counts.js";
+import { NEAR_EXPIRY_POLICY_VERSION, nearExpiryLeadParameter, nearExpiryLeadSql } from "./near-expiry-policy.js";
 
 // ADR-046 blood-bank completion reads. All are SIMULATION_ONLY, complete aggregates (never capped lists),
 // and carry their own read time. None changes inventory, request or ledger state.
@@ -25,11 +26,6 @@ function requireRoles(principal: WebPrincipal, roles: readonly string[], message
   if (!roles.includes(principal.roleId)) throw new ApiFailure(403, "AUTH_SCOPE_FORBIDDEN", message);
 }
 
-export function blockedExpiringSoon() {
-  // RQ-03: no approved near-expiry threshold. Display bands in the inventory table do not define this count.
-  return { availability: "POLICY_BLOCKED" as const, count: null, blocker: "RQ-03" };
-}
-
 export function assembleSummary(row: Record<string, unknown>, now: Date) {
   const count = (key: string) => Number(row[key] ?? 0);
   return {
@@ -47,7 +43,15 @@ export function assembleSummary(row: Record<string, unknown>, now: Date) {
       incomingAwaitingDecision: count("incoming_awaiting"),
       outgoingAwaitingDecision: count("outgoing_awaiting"),
     },
-    expiringSoon: blockedExpiringSoon(),
+    expiringSoon: {
+      availability: "POLICY_BLOCKED" as const,
+      count: null,
+      blocker: "RQ-03" as const,
+      // Additive advisory read. Older consumers can still read the clinical policy state.
+      ...(typeof row.near_expiry === "number" ? {
+        syntheticAdvisory: { policyVersion: NEAR_EXPIRY_POLICY_VERSION, count: row.near_expiry },
+      } : {}),
+    },
     policyVersion: BLOOD_BANK_SUMMARY_POLICY_VERSION,
     classification: "SIMULATION_ONLY" as const,
   };
@@ -113,9 +117,11 @@ export class PostgresBloodBankReader implements BloodBankReader {
       (SELECT count(*) FROM app.v2_components WHERE institution_id=$1 AND inventory_status='AVAILABLE' AND expires_at>$2)::int AS available,
       (SELECT count(*) FROM app.v2_components WHERE institution_id=$1 AND inventory_status='RESERVED' AND expires_at>$2)::int AS reserved,
       (SELECT count(*) FROM app.v2_components WHERE institution_id=$1 AND inventory_status IN ('AVAILABLE','RESERVED') AND expires_at<=$2)::int AS label_expired_pending,
+      (SELECT count(*) FROM app.v2_components c WHERE c.institution_id=$1 AND c.inventory_status IN ('AVAILABLE','RESERVED')
+        AND c.expires_at>$2 AND c.expires_at<=$2::timestamptz+${nearExpiryLeadSql("c.component_type", "$3")})::int AS near_expiry,
       (SELECT max(updated_at) FROM app.v2_components WHERE institution_id=$1) AS last_projected_at,
       (SELECT count(*) FROM app.v2_transfer_requests t WHERE t.source_institution_id=$1 AND t.status='PENDING' AND NOT EXISTS (SELECT 1 FROM app.v2_reservations r WHERE r.transfer_id=t.transfer_id))::int AS incoming_awaiting,
-      (SELECT count(*) FROM app.v2_transfer_requests t WHERE t.destination_institution_id=$1 AND t.status='PENDING' AND NOT EXISTS (SELECT 1 FROM app.v2_reservations r WHERE r.transfer_id=t.transfer_id))::int AS outgoing_awaiting`, [institutionId, now]);
+      (SELECT count(*) FROM app.v2_transfer_requests t WHERE t.destination_institution_id=$1 AND t.status='PENDING' AND NOT EXISTS (SELECT 1 FROM app.v2_reservations r WHERE r.transfer_id=t.transfer_id))::int AS outgoing_awaiting`, [institutionId, now, nearExpiryLeadParameter()]);
     return result.rows[0] as Record<string, unknown>;
   }
   async stockCounts(institutionId: string, now: Date): Promise<StockCountEvidence> {

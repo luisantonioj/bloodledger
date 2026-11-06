@@ -4,6 +4,8 @@ import {usePagedRead} from "../../hooks/use-paged-read";
 import {useValidatedRead} from "../../hooks/use-validated-read";
 import {parseReservationDetail,type ReservationDetail} from "../../services/api/v2-navigation";
 import {ReservationActions} from "../transfers/reservation-actions";
+import {compactRecordReference,humanizeCode} from "../../components/ui/display";
+import {facilityLabel} from "../transfers/requester-transfer-data";
 import type {ScanReview} from "./scan-review-data";
 const contractHeaders={"X-BloodLedger-Contract-Version":"V2.1"};
 function parseList(value:unknown,principal:Principal){
@@ -19,12 +21,12 @@ export function ScannerTransferActions({principal,review,onLockChange}:{principa
  const detail=useValidatedRead<ReservationDetail>(selected?"/api/v2/reservations/"+encodeURIComponent(selected):null,value=>{const reservation=parseReservationDetail(value,selected,principal);if(reservation.sourceInstitutionId!==principal.institutionId||reservation.purpose!=="TRANSFER")throw Error("Not an outgoing transfer");return reservation;},contractHeaders);
  const rows=list.rows.filter(row=>row.sourceInstitutionId===principal.institutionId&&row.purpose==="TRANSFER"&&["ACTIVE","DISPATCHED","IN_TRANSIT"].includes(row.status));
  return <section className="receipt-review-card scanner-transfer-actions"><header><h3>Outgoing transfer</h3></header>
- <div className="scanner-transfer-controls"><label>Approved outgoing transfer<span className="requester-select"><select aria-label="Approved outgoing transfer" value={selected} disabled={locked} onChange={event=>setSelected(event.target.value)}><option value="">Select a reservation</option>{rows.map(row=><option key={row.reservationId} value={row.reservationId}>{row.reservationId} · {row.status}</option>)}</select></span></label>
- <p className="receipt-preview-note">Choose the approved transfer, verify every reserved unit during Prepare, then dispatch through its current authorized action. A scan alone does not remove stock.</p>
+ <div className="scanner-transfer-controls"><label>Approved outgoing transfer<span className="requester-select"><select aria-label="Approved outgoing transfer" value={selected} disabled={locked} onChange={event=>setSelected(event.target.value)}><option value="">Select a transfer</option>{rows.map(row=><option key={row.reservationId} value={row.reservationId}>{typeof row.destinationInstitutionId==="string"?facilityLabel(row.destinationInstitutionId,principal):"Receiving facility unavailable"} · {row.status==="ACTIVE"?"Reserved":humanizeCode(row.status)} · {compactRecordReference(row.reservationId)}</option>)}</select></span></label>
+ <p className="receipt-preview-note">Choose a transfer to see its next step.</p>
  {list.nextCursor&&<button className="button compact" type="button" disabled={list.busy||locked} onClick={list.loadMore}>Load more outgoing transfers</button>}
  {(list.error||detail.error)&&<p role="status">Outgoing transfers could not be verified. Refresh before continuing.</p>}
  <button className="button compact" type="button" disabled={locked||list.busy||detail.busy} onClick={()=>{list.refresh();detail.manual();}}>Refresh outgoing transfers</button>
- {list.ready&&!rows.length&&<p className="receipt-preview-note">No eligible outgoing transfers in the loaded records.</p>}
+ {list.ready&&!rows.length&&<p className="receipt-preview-note">No outgoing transfers are ready for action.</p>}
  </div>
  {detail.data&&!detail.error&&<ReservationActions key={detail.data.reservationId+":"+detail.data.version} reservation={detail.data} principal={principal} scannedRecognition={review?.verified} onRefresh={()=>{detail.manual();list.refresh();}} onLockChange={notifyLock}/>}
  </section>;

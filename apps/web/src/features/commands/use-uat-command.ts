@@ -15,7 +15,8 @@ export function useUatCommand(onRefresh: () => void) {
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [requiresCorrection, setRequiresCorrection] = useState(false), [ambiguous, setAmbiguous] = useState(false);
   async function submit(build: (keys: MutationKeys) => Omit<Attempt, "keys">, send: (payload: Record<string, unknown>, keys: MutationKeys) => Promise<V2Command>) {
-    if (busy || status.command || requiresCorrection) return;
+    if (busy || status.command&&status.command.status!=="COMMITTED" || requiresCorrection) return;
+    if(status.command?.status==="COMMITTED")status.clear();
     setBusy(true); setError("");
     try {
       const keys = attempt.current?.keys ?? newMutationKeys();
@@ -49,5 +50,5 @@ export function useUatCommand(onRefresh: () => void) {
     } catch (reason) {if (mounted.current) setError(reason instanceof Error ? reason.message : "Command lookup unavailable. Nothing was resubmitted.");}
     finally {if (mounted.current) setBusy(false);}
   }
-  return { ...status, busy, error, requiresCorrection, ambiguous, submit, correct, recover, pendingKey: attempt.current?.keys.idempotencyKey, locked: busy || ambiguous || !!status.command };
+  return { ...status, busy, error, requiresCorrection, ambiguous, submit, correct, recover, pendingKey: attempt.current?.keys.idempotencyKey, locked: busy || ambiguous || Boolean(status.command&&status.command.status!=="COMMITTED") };
 }

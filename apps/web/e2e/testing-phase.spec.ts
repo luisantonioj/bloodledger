@@ -150,15 +150,17 @@ for (const terminal of ["FAILED", "CONFLICT"] as const) {
     await page.keyboard.press("Enter");
     await expect(page.getByRole("button", { name: "Retry same request", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Retry same request", exact: true }).click();
-    await expect(page.getByRole("heading", { name: terminal === "FAILED" ? "Failed" : "Conflict", exact: true })).toBeVisible();
+    const notice = page.locator(".blood-request-result");
+    await expect(notice.getByText("Blood request needs attention", { exact: true })).toBeVisible();
+    await expect(notice).toHaveAttribute("data-tone", "critical");
     expect(attempts).toHaveLength(2);
     expect(attempts[1]).toEqual(attempts[0]);
     expect(attempts[0]!.body).toMatchObject({ sourceInstitutionId: "INST_MEDIATRIX", destinationInstitutionId: "INST_LAT_RECIPIENT", quantity: 2, componentType: "CRYOPRECIPITATE" });
     expect(attempts[0]!.version).toBe("V2.1");
     expect(Object.keys(attempts[0]!.body).sort()).toEqual(["bloodType", "componentType", "correlationId", "destinationInstitutionId", "details", "eventTime", "quantity", "requestTime", "sourceInstitutionId", "transferId", "urgency"]);
-    await expect(page.getByRole("heading", { name: "Committed", exact: true })).toHaveCount(0);
-    await page.getByRole("button", { name: "Dismiss status", exact: true }).click();
-    await expect(page.locator(".v2-command-card")).toHaveCount(0);
+    await expect(notice.getByText("Blood request sent", { exact: true })).toHaveCount(0);
+    await notice.getByRole("button", { name: "Dismiss", exact: true }).click();
+    await expect(notice).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 }
@@ -173,10 +175,11 @@ test("TP-LAT-006 command poll rejects another resource identity", async ({ page 
   await page.goto("/transfers?newRequest=1");
   await fillRequester(page);
   await page.getByRole("button", { name: "Submit request", exact: true }).click();
-  await expect(page.getByText(/Status check delayed:/)).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Accepted and queued", exact: true })).toBeVisible();
+  const notice = page.locator(".blood-request-result");
+  await expect(notice.getByText("We’re still checking the status. You don’t need to submit again.", { exact: true })).toBeVisible();
+  await expect(notice.getByText("Sending your blood request", { exact: true })).toBeVisible();
   await expect(page.getByText("TRF_LAT_FOREIGN", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Committed", exact: true })).toHaveCount(0);
+  await expect(notice.getByText("Blood request sent", { exact: true })).toHaveCount(0);
 });
 
 test("TP-LAT-007 reporting describes available discovery and keeps exports gated", async ({ page }) => {

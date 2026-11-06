@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { retryAfterContextChange } from "../../services/api/client";
 import { ApiRequestError } from "../../services/api/client";
 import { newMutationKeys, type MutationKeys } from "../../services/api/mutation-keys";
 import { formatManilaDateTime } from "../../components/ui/display";
+import { ActionIcon } from "../../components/ui/action-icon";
 import { DOCUMENT_KIND_LABEL, DOCUMENT_KINDS, deleteRequestDocument, readDocumentFile, readRequestDetails, requestDocumentPath, updateRequestDetails, uploadRequestDocuments, utcToManilaLocal, type RequestDetailView, type RequestDocumentKind } from "../../services/api/request-details";
 import { EMPTY_REQUESTER_FIELDS, RequesterRequestFields, requesterDetails, type RequesterFields } from "./requester-request-fields";
 
@@ -24,7 +26,8 @@ export function RequestDetailPanel({ transferId }: { transferId: string }) {
   useEffect(() => {
     let active = true;
     setState("loading");
-    readRequestDetails(transferId).then(result => { if (active) { setView(result); setState("ready"); } })
+    setView(undefined);
+    retryAfterContextChange(()=>readRequestDetails(transferId),()=>active).then(result => { if (active) { setView(result); setState("ready"); } })
       .catch(reason => { if (active) setState(reason instanceof ApiRequestError && reason.status === 404 ? "none" : "failed"); });
     return () => { active = false; };
   }, [transferId, retry]);
@@ -58,7 +61,7 @@ export function RequestDetailPanel({ transferId }: { transferId: string }) {
   if (state === "failed" || !view) return <section className="request-detail-panel" aria-label="Requester details"><div role="alert"><p>Request details are unavailable.</p><button className="button compact" onClick={() => setRetry(value => value + 1)}>Retry details</button></div></section>;
   const canEdit = view.editable && view.viewerRole === "REQUESTER";
   return <section className="request-detail-panel" aria-labelledby="request-detail-heading">
-    <header><h3 id="request-detail-heading">Requester details</h3><span className="requester-placeholder-tag">Version {view.version}</span></header>
+    <header><h3 id="request-detail-heading">Requester details</h3></header>
     {editing ? <>
       <RequesterRequestFields fields={editing} disabled={busy} onChange={next => { setEditing({ ...next, files: {} }); setError(""); }} hideDocuments/>
       <div className="requester-submit-actions"><button className="button compact" type="button" disabled={busy} onClick={() => { setEditing(undefined); setError(""); }}>Cancel</button><button className="button primary compact" type="button" disabled={busy} onClick={() => void save()}>{busy ? "Saving…" : "Save details"}</button></div>
@@ -75,7 +78,11 @@ export function RequestDetailPanel({ transferId }: { transferId: string }) {
     {canEdit && !editing && <button className="button compact" type="button" disabled={busy} onClick={() => setEditing(fieldsFrom(view))}>Edit details</button>}
     <h4>Supporting documents</h4>
     {view.documents.length === 0 ? <p>No documents attached.</p> : <ul className="request-detail-documents">{view.documents.map(document => <li key={document.documentId}>
-      <a href={requestDocumentPath(view.transferId, document.documentId)} download={document.displayName}>{document.displayName}</a> <small>{DOCUMENT_KIND_LABEL[document.kind]} · {(document.sizeBytes / 1024).toFixed(0)} KB</small>
+      <a className="button compact request-detail-download" href={requestDocumentPath(view.transferId, document.documentId)} download={document.displayName} aria-label={`Download ${document.displayName}`} title={`Download ${document.displayName}`}><ActionIcon kind="download"/></a>
+      <div className="request-detail-document-info">
+        <span>{document.displayName}</span>
+        <small>{DOCUMENT_KIND_LABEL[document.kind]} · {(document.sizeBytes / 1024).toFixed(0)} KB</small>
+      </div>
       {canEdit && <button className="button compact" type="button" disabled={busy} onClick={() => void write(`delete:${document.documentId}`, keys => deleteRequestDocument(view.transferId, document.documentId, keys))}>Remove {document.displayName}</button>}
     </li>)}</ul>}
     {canEdit && view.documents.length < 3 && <div className="request-detail-attach">{DOCUMENT_KINDS.map(kind => <label key={kind} className="button compact">Add {DOCUMENT_KIND_LABEL[kind]}<input className="sr-only" type="file" accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg" disabled={busy} onChange={event => { void attach(kind, event.target.files?.[0]); event.target.value = ""; }}/></label>)}</div>}

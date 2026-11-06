@@ -68,16 +68,16 @@ export function OutboundVerification({reservation,onVerified,onLockChange,scanne
   }
   return <section className="bank-record-card outbound-label-verification" aria-label="Outbound label verification">
     <h4>Scan reserved units</h4>
-    {reservation.components.length>50&&<p role="status">This reservation exceeds the contract’s 50-label verification limit. Ask Jopia to review the supported workflow; labels cannot be split into partial verification attempts.</p>}
-    {!enabled&&<p role="status">Outbound verification is disabled for this host. Migration and runtime readiness must be confirmed before enabling it. Existing reviewed preparation evidence remains supported.</p>}
+    {reservation.components.length>50&&<p role="status">This transfer has more than 50 units and can’t be verified here. Contact your administrator.</p>}
+    {!enabled&&<p role="status">Label verification is unavailable here. You can use existing preparation evidence if you already have it.</p>}
     <fieldset disabled={!enabled||locked||done}>
       <div className="receipt-camera-stage">{cameraOpen?<CameraPhotoCapture onCapture={changeImage} onClose={()=>setCameraOpen(false)}/>:imageUrl?<img src={imageUrl} alt="Selected reserved-unit label preview"/>:<><strong>Capture a reserved-unit label</strong><span>Take a photo with this device or choose an image.</span></>}</div>
       <input ref={chooser} type="file" accept="image/png,image/jpeg" hidden aria-label="Reserved-unit label image" disabled={reading} onChange={event=>{changeImage(event.target.files?.[0]);event.target.value="";}}/>
       <div className="receipt-capture-actions receipt-auto-capture-actions"><button className="button primary compact" type="button" disabled={reading||cameraOpen} onClick={()=>{setConfirmed(false);setCameraOpen(true);}}>Take photo</button><button className="button compact" type="button" disabled={reading} onClick={()=>{setCameraOpen(false);chooser.current?.click();}}>Choose image</button>{image&&<button className="button compact" type="button" onClick={()=>changeImage()}>Clear image</button>}</div>
       {reading&&<p className="receipt-preview-note" role="status">Reading label · {progress}%</p>}
-      {recognition&&!componentMatches&&<p role="alert">The OCR-read component does not match this reservation. Rescan the correct component; this unit has not been added.</p>}
-      {recognition&&componentMatches&&<><p>Five label fields passed OCR checks. The label value is not displayed or persisted.</p><label><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)}/>I checked the recognized label against this reserved unit.</label><button className="button compact" type="button" disabled={!confirmed||labels.length>=Math.min(50,reservation.components.length)} onClick={add}>Add scanned unit</button></>}
-      <p>{done?"All reserved units verified · Off-chain evidence returned":`${labels.length} of ${reservation.components.length} reserved units scanned`}</p>
+      {recognition&&!componentMatches&&<p role="alert">The label’s component doesn’t match this transfer. Scan the correct unit.</p>}
+      {recognition&&componentMatches&&<div className="transfer-scan-review"><p>Label read. Check it against the reserved unit.</p><label><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)}/>I checked the recognized label against this reserved unit.</label><button className="button compact" type="button" disabled={!confirmed||labels.length>=Math.min(50,reservation.components.length)} onClick={add}>Add scanned unit</button></div>}
+      <p className="transfer-scan-count" role="status">{done?"All reserved units verified":`${labels.length} of ${reservation.components.length} reserved units scanned`}</p>
       {!!labels.length&&<button className="button compact" type="button" onClick={()=>{setLabels([]);setError("");}}>Clear scans</button>}
     </fieldset>
     <button className="button compact primary" type="button" disabled={!enabled||busy||reading||done||(!ambiguous&&(!labels.length||labels.length!==reservation.components.length||labels.length>50))} onClick={()=>void verify()}>{busy?"Verifying…":ambiguous?"Retry same verification":"Verify scanned units"}</button>

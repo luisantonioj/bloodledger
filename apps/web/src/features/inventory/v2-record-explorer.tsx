@@ -1,3 +1,4 @@
+import {ReservationOutcome,LinkedReservationOutcome} from "../transfers/reservation-outcome";
 import { retryAfterContextChange } from "../../services/api/client";
 import { labelText } from "../../services/api/label-identity";
 import { PaginatedTable } from "../../components/ui/record-pagination";
@@ -21,7 +22,7 @@ const memberColumns: TableColumn<ReservationDetail["components"][number]>[] = [
 import { CommandRecovery } from "../commands/command-recovery";
 import { RequestDetailPanel } from "../transfers/request-detail-panel";
 
-export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline = false, showRecovery = true, navigationLocked: externalNavigationLocked = false, onActionLockChange, headerHelp, renderExtra, renderBody}: {initial: RecordSelection; principal: Principal; onClose: () => void; onRefresh?: () => void; inline?: boolean; showRecovery?: boolean; navigationLocked?: boolean; onActionLockChange?:(locked:boolean)=>void; headerHelp?: React.ReactNode; renderBody?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode; renderExtra?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode}) {
+export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline = false, className, showRecovery = true, navigationLocked: externalNavigationLocked = false, onActionLockChange, headerHelp, renderExtra, renderBody}: {initial: RecordSelection; principal: Principal; onClose: () => void; onRefresh?: () => void; inline?: boolean; className?: string; showRecovery?: boolean; navigationLocked?: boolean; onActionLockChange?:(locked:boolean)=>void; headerHelp?: React.ReactNode; renderBody?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode; renderExtra?: (record: SelectedRecord, open: (kind: RecordSelection["kind"], id: string) => void) => React.ReactNode}) {
   const [actionLocked,setActionLocked]=useState(false);
   const navigationLocked=externalNavigationLocked||actionLocked;
   useEffect(()=>{onActionLockChange?.(actionLocked);return()=>onActionLockChange?.(false);},[actionLocked,onActionLockChange]);
@@ -47,7 +48,7 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
   function keyDown(event: React.KeyboardEvent) {
     if (event.key === "Escape") {event.stopPropagation(); if(!navigationLocked)onClose();}
     if (event.key !== "Tab" || inline) return;
-    const items = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],select,input,[tabindex="0"]') ?? []);
+    const items = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:enabled,a[href],select:enabled,input:enabled,textarea:enabled,details>summary,[tabindex="0"]') ?? []).filter(item => item.getClientRects().length > 0);
     const first = items[0], last = items[items.length - 1];
     if (event.shiftKey && document.activeElement === first) {event.preventDefault(); last?.focus();}
     else if (!event.shiftKey && document.activeElement === last) {event.preventDefault(); first?.focus();}
@@ -57,8 +58,9 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
   const request = record?.kind === "request" ? record.value : undefined;
   const members = useTableView("reservation-members", memberColumns, reservation?.components ?? []), showMember = members.isVisible;
   const refresh = () => {setRetry(value => value + 1); onRefresh?.();};
-  return <div className={inline ? "requester-inline-detail" : "preview-modal-backdrop"}><section ref={panel} className={inline ? "requester-record-detail" : "preview-modal record-explorer-modal"} role={inline ? "region" : "dialog"} aria-modal={inline ? undefined : true} aria-labelledby="record-explorer-title" onKeyDown={keyDown}>
-    <header><div><h2 id="record-explorer-title">{selected.kind === "component" ? "Component details" : selected.kind === "reservation" ? (renderExtra ? "Transfer details" : "Reservation details") : (renderExtra ? "Request details" : "Transfer request details")}</h2>{(!renderBody || selected.kind === "component") && <p className="mono">{selected.id}</p>}</div>{reservation && !renderBody && <span className={statusClassName(reservation.status)}>{humanizeCode(reservation.status)}</span>}<button ref={closeButton} aria-label="Close record details" disabled={navigationLocked} onClick={onClose}>×</button>{headerHelp}</header>
+  const close = <button ref={closeButton} type="button" aria-label="Close record details" disabled={navigationLocked} onClick={onClose}>×</button>;
+  return <div className={inline ? "requester-inline-detail" : "preview-modal-backdrop"}><section ref={panel} className={[inline ? "requester-record-detail" : "preview-modal record-explorer-modal", className].filter(Boolean).join(" ")} role={inline ? "region" : "dialog"} aria-modal={inline ? undefined : true} aria-labelledby="record-explorer-title" onKeyDown={keyDown}>
+    <header><div><h2 id="record-explorer-title">{selected.kind === "component" ? "Component details" : selected.kind === "reservation" ? (renderExtra ? "Transfer details" : "Reservation details") : (renderExtra ? "Request details" : "Transfer request details")}</h2>{(!renderBody || selected.kind === "component") && <p className="mono">{selected.id}</p>}</div>{reservation && !renderBody && <span className={statusClassName(reservation.status)}>{humanizeCode(reservation.status)}</span>}{inline || headerHelp ? <div className="record-detail-header-actions">{close}{headerHelp}</div> : <>{close}{headerHelp}</>}</header>
     <div className="preview-modal-body">
       {history.length > 1 && <button className="button compact" disabled={navigationLocked} onClick={() => {setRecord(undefined); setBusy(true); setHistory(rows => rows.slice(0, -1));}}>Back to previous record</button>}
       {busy && <p role="status">Loading current authorized record…</p>}
@@ -72,7 +74,7 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
         <dt>Inventory version</dt><dd>{component.inventoryVersion}</dd><dt>Reservation version</dt><dd>{component.reservationVersion ?? "Not reserved"}</dd>
       </dl>{component.reservationId ? <button className="button" onClick={() => open("reservation", component.reservationId!)}>Open linked reservation</button> : <p>No linked reservation.</p>}<p>Dates describe this unit. Near-expiry alerts remain disabled.</p></>}
       {selected.kind === "component" && <ExpiryEvaluation key={"expiry:" + selected.id} component={component} principal={principal} onRefresh={() => {setRetry(value => value + 1); onRefresh?.();}}/>}
-      {reservation && !renderBody && <>
+      {reservation && !renderBody && <><ReservationOutcome reservation={reservation}/>
         <dl className="reservation-facts">
           <div><dt>Purpose</dt><dd>{reservation.purpose === "TRANSFER" ? "Transfer" : "Local release"}</dd></div>
           <div><dt>Version</dt><dd>{reservation.version}</dd></div>
@@ -90,9 +92,10 @@ export function V2RecordExplorer({initial, principal, onClose, onRefresh, inline
           </tbody></table></PaginatedTable>
         </section>
       </>}
+      {request?.reservation_id&&!renderBody&&<LinkedReservationOutcome reservationId={request.reservation_id} principal={principal}/>}
       {request && !renderBody && <dl><dt>Source</dt><dd>{facilityLabel(request.source_institution_id, principal)}</dd><dt>Destination</dt><dd>{facilityLabel(request.destination_institution_id, principal)}</dd>{renderExtra ? <><dt>Blood type</dt><dd>{formatBloodType(request.blood_type)}</dd><dt>Component</dt><dd>{componentLabel(request.component_type)}</dd></> : <><dt>Blood / component</dt><dd>{humanizeCode(request.blood_type)} / {humanizeCode(request.component_type)}</dd></>}<dt>Requested units</dt><dd>{request.quantity}</dd><dt>Request state</dt><dd>{humanizeCode(request.status)}</dd><dt>Ledger reference</dt><dd className="mono">{request.ledger_transaction_id ?? "Pending — no commitment"}</dd></dl>}
       {record && renderBody?.(record, open)}
-      {request && <RequestDetailPanel key={request.transfer_id} transferId={request.transfer_id}/>}
+      {request && !renderBody && <RequestDetailPanel key={request.transfer_id} transferId={request.transfer_id}/>}
       {record && renderExtra?.(record, open)}
       {selected.kind === "reservation" && <ReservationActions key={"actions:" + selected.id} reservation={reservation} principal={principal} onRefresh={refresh} onLockChange={setActionLocked} scanOnPhone/>}
       {selected.kind === "component" && <ReconciliationHold key={"hold:" + selected.id} component={component} principal={principal} onRefresh={refresh}/>}

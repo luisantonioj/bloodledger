@@ -21,7 +21,7 @@ function StandardDashboardPage({ principal }: { principal: Principal }) {
   const hasRequests = requester;
   const requests = useLiveData<RequesterRequests>(hasRequests && can(principal, "transfers:read") ? "/api/v2/transfers" : null);
   const busy = state.busy || (hasRequests && requests.busy);
-  const refresh = () => { state.manual(); if (hasRequests) requests.manual(); };
+  const refresh = () => { window.dispatchEvent(new Event("bloodledger:dashboard-refresh")); state.manual(); if (hasRequests) requests.manual(); };
 
   return <div className="page">
     <header className="page-head">

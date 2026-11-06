@@ -32,5 +32,5 @@ export function reservationActions(row: ReservationDetail, principal: Principal)
   if (row.purpose === "TRANSFER" && ["DISPATCHED", "IN_TRANSIT"].includes(row.status)) candidates.push("delay");
   if (row.purpose === "TRANSFER" && row.status === "DELAYED") candidates.push("resume");
   if (["DISPATCHED", "IN_TRANSIT", "DELAYED", "RECEIVED"].includes(row.status)) candidates.push("compromise");
-  return candidates.filter(capable);
+  return candidates.filter(action=>(action!=="receive"||row.receiptDiscrepancy?.status!=="OPEN")&&capable(action));
 }

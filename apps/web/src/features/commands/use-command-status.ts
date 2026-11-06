@@ -10,6 +10,7 @@ export function useCommandStatus(onTerminal?: () => void) {
   callback.current = onTerminal;
   const accept = useCallback((next: V2Command) => {
     setCommand(next);
+    if(next.status==="COMMITTED")window.dispatchEvent(new Event("bloodledger:command-committed"));
     setPollError("");
   }, []);
   const clear = useCallback(() => {
@@ -40,6 +41,7 @@ export function useCommandStatus(onTerminal?: () => void) {
         failures = 0;
         setPollError("");
         setCommand(next);
+        if(next.status==="COMMITTED")window.dispatchEvent(new Event("bloodledger:command-committed"));
         if (COMMAND_PRESENTATION[next.status].terminal) callback.current?.();
         if (!COMMAND_PRESENTATION[next.status].terminal) timer = setTimeout(() => void poll(), 2_000);
       } catch (error) {

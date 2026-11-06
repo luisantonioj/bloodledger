@@ -241,7 +241,7 @@
 @media(max-width:760px){.requester-workflow{grid-template-columns:minmax(0,1fr) auto}.requester-workflow>ol{grid-column:1/-1;grid-row:2}.requester-workflow>.request-form-help{grid-column:2;grid-row:1}.requester-workflow ol{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.requester-request-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.requester-page-actions{width:100%}}
 @media(max-width:480px){.requester-request-fields{grid-template-columns:minmax(0,1fr)}}
 
-.requester-request-form{padding:18px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface)}.requester-request-form h3{margin:0;font:500 20px/1.25 var(--font-serif)}.requester-request-form header p{margin:6px 0 0;font-size:11px;line-height:1.5;color:var(--ink-muted)}.requester-record-detail>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line-subtle)}.requester-record-detail>header p{margin:8px 0 0;font-size:10px;color:var(--ink-muted);overflow-wrap:anywhere}.requester-record-detail>header>button{padding:0 5px;border:0;background:transparent;color:var(--ink-secondary);font-size:22px;cursor:pointer}
+.requester-request-form{padding:18px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface)}.requester-request-form>header h3{margin:0;padding:0;border:0;font:500 20px/1.25 var(--font-serif)}.requester-request-form header p{margin:6px 0 0;font-size:11px;line-height:1.5;color:var(--ink-muted)}.requester-record-detail>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line-subtle)}.requester-record-detail>header p{margin:8px 0 0;font-size:10px;color:var(--ink-muted);overflow-wrap:anywhere}.record-detail-header-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}.record-detail-header-actions>button{display:grid;place-items:center;width:24px;height:24px;padding:0;border:0;background:transparent;color:var(--ink-secondary);font-size:20px;line-height:1;cursor:pointer}.record-detail-header-actions .request-form-help{margin:0}
 
 .requester-request-fields select{min-height:37px;padding:8px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px var(--font-sans)}
 
@@ -264,7 +264,6 @@
 .requester-records-card>.requester-records-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.requester-record-detail>header>div:first-child{flex:1;min-width:0}.requester-record-detail>header>.request-form-help{margin-left:0;align-self:flex-start}.requester-records-card .request-form-help-tooltip{width:min(320px,calc(100vw - 120px))}
 
 /* Opening a new request reveals the form below the records, clear of the fixed review bar. */
-#requester-new-request-form{margin-top:18px;scroll-margin-top:110px}@media(max-width:760px){#requester-new-request-form{scroll-margin-top:150px}}
 
 .requester-workflow-help-intro,.requester-workflow-help-step{display:block}.requester-workflow-help-step{margin-top:10px}.requester-workflow-help-step strong{font-weight:600}.requester-workflow .request-form-help-tooltip{width:min(360px,calc(100vw - 100px))}
 
@@ -336,7 +335,7 @@
 .institution-staff-frame{margin-top:0}.institution-staff-header{display:flex;align-items:center;justify-content:space-between;gap:12px}.institution-staff-header .page-title{margin:0}.institution-staff-header>.button{flex-shrink:0}
 
 /* Blood-bank operational pages: scoped records, mockup-inspired controls. */
-.bank-page-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px;flex-wrap:wrap}.bank-toolbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.bank-page-toolbar .requester-transfer-tabs{margin:0}.bank-view-options{position:relative;font-size:11px;color:var(--ink-muted)}.bank-view-options summary,.bank-operation-history summary,.bank-workflow-availability summary{cursor:pointer;font-size:12px;font-weight:500;padding:10px 0}.bank-view-options>div{display:grid;gap:12px;padding:14px 0}.bank-view-options label{display:grid;gap:7px}.bank-view-options select,.bank-list-filters select{padding:9px 32px 9px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px var(--font-sans);width:100%;appearance:none}.bank-filter-panel{padding:18px;display:grid;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);margin-bottom:18px}.bank-filter-row{display:flex;align-items:flex-start;gap:14px}.bank-filter-row>strong{width:80px;flex-shrink:0;padding-top:9px;color:var(--ink-muted);font-size:10px;font-weight:600}.bank-filter-chips{display:flex;flex-wrap:wrap;gap:7px;min-width:0}.bank-search{display:grid;gap:7px;margin:0;color:var(--ink-muted);font-size:11px;font-weight:500;min-width:0}.bank-search input{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px var(--font-sans);min-width:0}.bank-section-heading{display:flex;align-items:center;gap:12px;padding:17px 18px;border-bottom:1px solid var(--line);background:var(--surface);border-radius:var(--radius-md) var(--radius-md) 0 0}.bank-section-heading h2,.bank-section-heading h3{font:500 18px var(--font-serif);margin:0;padding:0;border:0;flex:1;min-width:0}.bank-section-heading>span:not(.request-form-help){font-size:10px;color:var(--ink-muted)}.bank-section-heading .request-form-help{flex-shrink:0}.blood-bank-inventory .v2-intake-status{margin:18px 0;border:1px solid var(--line);border-radius:var(--radius-md);overflow:visible}.blood-bank-inventory .v2-intake-status>header{align-items:center;gap:12px}.blood-bank-inventory .v2-intake-status h3{flex:1;margin:0;font:500 17px var(--font-serif)}.blood-bank-inventory .transfer-table-head{border:0}.blood-bank-inventory .inventory-table{min-width:800px}.blood-bank-inventory .inventory-table td:first-child{max-width:220px}.blood-bank-inventory .unit-reference{max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left}.blood-bank-inventory .v2-secondary-id{overflow-wrap:anywhere}.blood-bank-transfers,.blood-bank-audit{min-width:0}.bank-record-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:18px;align-items:start}.bank-record-card,.bank-detail-card,.bank-operation-history,.bank-workflow-availability{border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);min-width:0}.bank-list-filters{padding:14px 18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,.5fr);gap:12px;border-bottom:1px solid var(--line)}.bank-list-filters>label{display:grid;gap:7px;margin:0;color:var(--ink-muted);font-size:11px}.bank-record-layout .data-table{min-width:640px}.bank-record-layout .data-table td:first-child{max-width:190px}.bank-record-layout .requester-record-link{overflow-wrap:anywhere;white-space:normal;text-align:left}.bank-record-layout .mono{overflow-wrap:anywhere}.bank-record-layout tr.selected{background:var(--surface-subtle)}.bank-detail-card .requester-record-detail{border:0}.bank-detail-card .requester-inline-detail{height:auto}.bank-detail-card .preview-modal-body{min-width:0;overflow-wrap:anywhere}.bank-operation-history{margin-top:18px}.bank-operation-history>summary,.bank-workflow-availability>summary{padding:15px 18px}.bank-operation-history summary span{margin-left:8px;color:var(--ink-muted);font-size:10px}.bank-reference{max-width:230px;overflow-wrap:anywhere}.blood-bank-transfers .v2-operations{margin-top:20px;border:1px solid var(--line);border-radius:var(--radius-md);overflow:visible}.blood-bank-transfers .v2-operation-card{border-top:0;border-radius:var(--radius-md);background:var(--surface)}.blood-bank-transfers .v2-operation-card>header{align-items:center;background:var(--surface);gap:12px;border-radius:var(--radius-md) var(--radius-md) 0 0}.blood-bank-transfers .v2-operation-card>header h3{flex:1;margin:0}.blood-bank-transfers .v2-operation-form{grid-template-columns:repeat(5,minmax(0,1fr))}.blood-bank-transfers .v2-operation-form .v2-submit{grid-column:1/-1;justify-items:end}.blood-bank-transfers .v2-operation-form select{appearance:none;padding-right:32px}.blood-bank-transfers .v2-operation-form .requester-select{display:block}.blood-bank-transfers .v2-operation-form .requester-select select{font-size:12px}.blood-bank-transfers .bank-workflow-availability{margin:14px 18px;border-color:var(--line-subtle)}.blood-bank-transfers .v2-blocked-workflow{border:0;background:var(--surface-subtle);margin:0;padding:14px 18px}.blood-bank-audit .audit-summary{margin:0 0 18px}.blood-bank-audit .bank-filter-panel{border:0;border-radius:0;border-bottom:1px solid var(--line);margin:0}.blood-bank-audit .audit-table{min-width:850px}.bank-loaded-count{color:var(--ink-muted);font-size:11px}.blood-bank-audit .evidence-reference{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bank-record-card .table-wrap{border-radius:0 0 var(--radius-md) var(--radius-md)}
+.bank-page-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px;flex-wrap:wrap}.bank-toolbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.bank-page-toolbar .requester-transfer-tabs{margin:0}.bank-view-options{position:relative;font-size:11px;color:var(--ink-muted)}.bank-view-options summary,.bank-operation-history summary,.bank-workflow-availability summary{cursor:pointer;font-size:12px;font-weight:500;padding:10px 0}.bank-view-options>div{display:grid;gap:12px;padding:14px 0}.bank-view-options label{display:grid;gap:7px}.bank-view-options select,.bank-list-filters select{padding:9px 32px 9px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px var(--font-sans);width:100%;appearance:none}.bank-filter-panel{padding:18px;display:grid;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);margin-bottom:18px}.bank-filter-row{display:flex;align-items:flex-start;gap:14px}.bank-filter-row>strong{width:80px;flex-shrink:0;padding-top:9px;color:var(--ink-muted);font-size:10px;font-weight:600}.bank-filter-chips{display:flex;flex-wrap:wrap;gap:7px;min-width:0}.bank-search{display:grid;gap:7px;margin:0;color:var(--ink-muted);font-size:11px;font-weight:500;min-width:0}.bank-search input{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);color:var(--ink);font:400 12px var(--font-sans);min-width:0}.bank-section-heading{display:flex;align-items:center;gap:12px;padding:17px 18px;border-bottom:1px solid var(--line);background:var(--surface);border-radius:var(--radius-md) var(--radius-md) 0 0}.bank-section-heading h2,.bank-section-heading h3{font:500 18px var(--font-serif);margin:0;padding:0;border:0;flex:1;min-width:0}.bank-section-heading>span:not(.request-form-help){font-size:10px;color:var(--ink-muted)}.bank-section-heading .request-form-help{flex-shrink:0}.blood-bank-inventory .v2-intake-status{margin:18px 0;border:1px solid var(--line);border-radius:var(--radius-md);overflow:visible}.blood-bank-inventory .v2-intake-status>header{align-items:center;gap:12px}.blood-bank-inventory .v2-intake-status h3{flex:1;margin:0;font:500 17px var(--font-serif)}.blood-bank-inventory .transfer-table-head{border:0}.blood-bank-inventory .inventory-table{min-width:800px}.blood-bank-inventory .inventory-table td:first-child{max-width:220px}.blood-bank-inventory .unit-reference{max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left}.blood-bank-inventory .v2-secondary-id{overflow-wrap:anywhere}.blood-bank-transfers,.blood-bank-audit{min-width:0}.bank-record-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:18px;align-items:start}.bank-record-card,.bank-detail-card,.bank-operation-history,.bank-workflow-availability{border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);min-width:0}.bank-list-filters{padding:14px 18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,.5fr);gap:12px;border-bottom:1px solid var(--line)}.bank-list-filters>label{display:grid;gap:7px;margin:0;color:var(--ink-muted);font-size:11px}.bank-record-layout .data-table{min-width:640px}.bank-record-layout .data-table td:first-child{max-width:190px}.bank-record-layout .requester-record-link{overflow-wrap:anywhere;white-space:normal;text-align:left}.bank-record-layout .mono{overflow-wrap:anywhere}.bank-record-layout tr.selected{background:var(--surface-subtle)}.bank-detail-card .requester-record-detail{border:0}.bank-detail-card .requester-inline-detail{height:auto}.bank-detail-card .preview-modal-body{min-width:0;overflow-wrap:anywhere}.bank-operation-history{margin-top:18px}.bank-operation-history>summary,.bank-workflow-availability>summary{padding:15px 18px}.bank-operation-history summary span{margin-left:8px;color:var(--ink-muted);font-size:10px}.bank-reference{max-width:230px;overflow-wrap:anywhere}.blood-bank-transfers .v2-operations{margin-top:20px;border:1px solid var(--line);border-radius:var(--radius-md);overflow:visible}.v2-operations:has(>.requester-request-form){border:0}.blood-bank-transfers .v2-operation-card{border-top:0;border-radius:var(--radius-md);background:var(--surface)}.blood-bank-transfers .v2-operation-card>header{align-items:center;background:var(--surface);gap:12px;border-radius:var(--radius-md) var(--radius-md) 0 0}.blood-bank-transfers .v2-operation-card>header h3{flex:1;margin:0}.blood-bank-transfers .v2-operation-form{grid-template-columns:repeat(5,minmax(0,1fr))}.blood-bank-transfers .v2-operation-form .v2-submit{grid-column:1/-1;justify-items:end}.blood-bank-transfers .v2-operation-form select{appearance:none;padding-right:32px}.blood-bank-transfers .v2-operation-form .requester-select{display:block}.blood-bank-transfers .v2-operation-form .requester-select select{font-size:12px}.blood-bank-transfers .bank-workflow-availability{margin:14px 18px;border-color:var(--line-subtle)}.blood-bank-transfers .v2-blocked-workflow{border:0;background:var(--surface-subtle);margin:0;padding:14px 18px}.blood-bank-audit .audit-summary{margin:0 0 18px}.blood-bank-audit .bank-filter-panel{border:0;border-radius:0;border-bottom:1px solid var(--line);margin:0}.blood-bank-audit .audit-table{min-width:850px}.bank-loaded-count{color:var(--ink-muted);font-size:11px}.blood-bank-audit .evidence-reference{display:block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bank-record-card .table-wrap{border-radius:0 0 var(--radius-md) var(--radius-md)}
 @media(max-width:1050px){.bank-record-layout{grid-template-columns:1fr}.blood-bank-transfers .v2-operation-form{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.bank-filter-row{flex-direction:column;gap:7px}.bank-filter-row>strong{width:auto;padding:0}.bank-list-filters{grid-template-columns:1fr}.bank-section-heading{padding:14px;flex-wrap:wrap}.bank-section-heading>span:not(.request-form-help){display:none}.blood-bank-transfers .v2-operation-form{grid-template-columns:1fr}.bank-page-toolbar .requester-transfer-tabs{gap:6px}.bank-page-toolbar .requester-transfer-tabs button{padding:7px 9px;font-size:11px}.bank-toolbar-actions{justify-content:flex-end;margin-left:auto}}
 
@@ -344,7 +343,7 @@
 
 .blood-bank-transfers .v2-operation-card>header{flex-direction:row;text-align:left}.blood-bank-transfers .v2-operation-card>header>div{min-width:0}.blood-bank-transfers .v2-operation-card>header>.request-form-help{flex-shrink:0}.blood-bank-transfers .v2-operation-card>header h3{font:500 18px var(--font-serif)}
 
-.blood-unit-transactions-page{min-width:0}.transaction-history-table{min-width:1000px}.transaction-history-table td.mono{max-width:200px;overflow-wrap:anywhere}.bank-scanner-phone{width:390px;max-width:calc(100vw - 24px);height:850px;max-height:94vh;border:8px solid var(--chrome);border-radius:32px;background:var(--surface);overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow-sm)}.bank-scanner-phone>header{padding:14px 16px;display:flex;align-items:center;gap:12px;justify-content:space-between}.bank-scanner-phone>header strong{font-size:12px;font-weight:500}.bank-scanner-phone>header button{border:0;background:transparent;color:var(--ink);font-size:24px;cursor:pointer}.bank-scanner-phone iframe{width:100%;flex:1;border:0;min-height:0;background:var(--canvas)}.bank-request-form-anchor{scroll-margin-top:20px}.inventory-intake-options{margin:18px 0;font-size:11px;color:var(--ink-muted)}.inventory-intake-options>summary{cursor:pointer}.blood-bank-inventory .page-head{align-items:center}.blood-bank-inventory .bank-page-toolbar{margin:0 0 12px}.blood-bank-inventory .bank-filter-panel{display:flex;flex-wrap:wrap;gap:14px}.blood-bank-inventory .bank-filter-row{flex-wrap:wrap;gap:8px}.blood-bank-inventory .bank-filter-row>strong{width:auto;margin-right:3px}.blood-bank-inventory .bank-filter-chips{gap:5px}.blood-bank-inventory .bank-search{flex:1;min-width:200px}.blood-bank-inventory .alert-filter-chip{padding:6px 9px;font-size:11px}.blood-bank-inventory .bank-section-heading{background:var(--surface);border:1px solid var(--line);border-bottom:0}.blood-bank-inventory>.page-head .bank-toolbar-actions{gap:8px}.blood-bank-inventory .inventory-table td{font-size:12px}.blood-bank-inventory .inventory-table .v2-secondary-id{display:none}.blood-bank-inventory .table-wrap{border:1px solid var(--line);border-radius:var(--radius-md)}.blood-bank-inventory .v2-freshness{background:transparent;border-top:0}.blood-bank-transfers .requester-workflow-card{margin:0 0 18px}.requester-dashboard-card header>.request-form-help{flex-shrink:0}.requester-dashboard-card header .requester-dashboard-link{margin-left:auto}.blood-unit-transactions-page .receipt-launch-card{margin-bottom:20px}.blood-unit-transactions-page .page-head{flex-wrap:wrap}.bank-scanner-phone iframe{color-scheme:light}
+.blood-unit-transactions-page{min-width:0}.transaction-history-table{min-width:1000px}.transaction-history-table td.mono{max-width:200px;overflow-wrap:anywhere}.bank-scanner-phone{width:390px;max-width:calc(100vw - 24px);height:850px;max-height:94vh;border:8px solid var(--chrome);border-radius:32px;background:var(--surface);overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow-sm)}.bank-scanner-phone>header{padding:14px 16px;display:flex;align-items:center;gap:12px;justify-content:space-between}.bank-scanner-phone>header strong{font-size:12px;font-weight:500}.bank-scanner-phone>header button{border:0;background:transparent;color:var(--ink);font-size:24px;cursor:pointer}.bank-scanner-phone iframe{width:100%;flex:1;border:0;min-height:0;background:var(--canvas)}.inventory-intake-options{margin:18px 0;font-size:11px;color:var(--ink-muted)}.inventory-intake-options>summary{cursor:pointer}.blood-bank-inventory .page-head{align-items:center}.blood-bank-inventory .bank-page-toolbar{margin:0 0 12px}.blood-bank-inventory .bank-filter-panel{display:flex;flex-wrap:wrap;gap:14px}.blood-bank-inventory .bank-filter-row{flex-wrap:wrap;gap:8px}.blood-bank-inventory .bank-filter-row>strong{width:auto;margin-right:3px}.blood-bank-inventory .bank-filter-chips{gap:5px}.blood-bank-inventory .bank-search{flex:1;min-width:200px}.blood-bank-inventory .alert-filter-chip{padding:6px 9px;font-size:11px}.blood-bank-inventory .bank-section-heading{background:var(--surface);border:1px solid var(--line);border-bottom:0}.blood-bank-inventory>.page-head .bank-toolbar-actions{gap:8px}.blood-bank-inventory .inventory-table td{font-size:12px}.blood-bank-inventory .inventory-table .v2-secondary-id{display:none}.blood-bank-inventory .table-wrap{border:1px solid var(--line);border-radius:var(--radius-md)}.blood-bank-inventory .v2-freshness{background:transparent;border-top:0}.blood-bank-transfers .requester-workflow-card{margin:0 0 18px}.requester-dashboard-card header>.request-form-help{flex-shrink:0}.requester-dashboard-card header .requester-dashboard-link{margin-left:auto}.blood-unit-transactions-page .receipt-launch-card{margin-bottom:20px}.blood-unit-transactions-page .page-head{flex-wrap:wrap}.bank-scanner-phone iframe{color-scheme:light}
 @media(max-width:700px){.blood-bank-inventory .page-head{align-items:stretch}.blood-bank-inventory .page-head .bank-toolbar-actions{justify-content:flex-start;margin:0}.blood-bank-inventory .bank-filter-panel{display:grid}.blood-bank-inventory .bank-filter-row{flex-direction:row}.blood-bank-inventory .bank-search{min-width:0}.blood-unit-transactions-page .receipt-launch-card{flex-wrap:wrap}.blood-unit-transactions-page .receipt-launch-card>.request-form-help{margin-left:auto}}
 
 .bank-toolbar-actions a.button{color:var(--ink-secondary);text-decoration:none}.bank-toolbar-actions a.button.primary{color:var(--on-primary)}.bank-supplier-workflow{margin-bottom:18px}.blood-unit-transactions-page .receipt-launch-card>.request-form-help{flex-shrink:0}.transaction-history-table td:last-child{white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis}.blood-unit-transactions-page .page-head{align-items:center}
@@ -372,7 +371,7 @@
 
 /* Bank request and transfer detail controls and PRC supply requirements. */
 .bank-record-layout tbody tr:has(.requester-record-link){cursor:pointer}.bank-record-layout tbody tr:has(.requester-record-link):hover{background:var(--surface-subtle)}
-.bank-detail-actions{display:grid;gap:14px;margin-top:18px}.bank-detail-actions>header{display:flex;align-items:center;justify-content:space-between;gap:10px}.bank-detail-actions h3{margin:0;font-size:12px;font-weight:600}.bank-detail-action-buttons{display:flex;flex-wrap:wrap;gap:8px}.bank-action-note,.bank-extra-requirements p{margin:0;color:var(--ink-muted);font-size:11px;line-height:1.6}.bank-extra-requirements summary{font-size:12px;cursor:pointer}.bank-extra-requirements dl{margin:14px 0}.bank-prc-channel{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);margin-bottom:18px}.bank-prc-channel>div{display:grid;gap:7px;min-width:0}.bank-prc-channel strong{font-size:12px;line-height:1.5}.bank-prc-channel span{color:var(--ink-muted);font-size:11px}.bank-prc-channel>.button{flex-shrink:0}.bank-prc-form{margin:0 0 18px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface)}.bank-prc-form form{padding:14px 18px}.bank-prc-form fieldset{border:0;padding:0;margin:0 0 12px;min-width:0}.bank-prc-fields{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.bank-prc-fields label{display:grid;gap:5px;font-size:11px;color:var(--ink-secondary);min-width:0}.bank-prc-fields input,.bank-prc-fields select,.bank-prc-fields textarea{width:100%;min-width:0;box-sizing:border-box;padding:9px 11px;font:400 12px var(--font-sans);border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-subtle)}.bank-prc-fields select{appearance:none;padding-right:32px}.bank-prc-required-time{grid-column:auto}.bank-prc-note{grid-column:1/-1}.bank-prc-fields textarea{min-height:64px;resize:vertical}.bank-prc-authorization{padding-top:12px;font-size:11px;color:var(--ink-muted)}.bank-prc-authorization p{margin:4px 0 0;line-height:1.5}.bank-prc-form>.bank-section-heading{padding-top:12px;padding-bottom:12px}.bank-prc-authorization strong{font-weight:500}.bank-prc-form footer{display:flex;justify-content:flex-end;gap:8px}
+.bank-detail-actions{display:grid;gap:14px;margin-top:18px}.bank-detail-actions>header{display:flex;align-items:center;justify-content:space-between;gap:10px}.bank-detail-actions h3{margin:0;font-size:12px;font-weight:600}.bank-detail-action-buttons{display:flex;flex-wrap:wrap;gap:8px}.bank-action-note,.bank-extra-requirements p{margin:0;color:var(--ink-muted);font-size:11px;line-height:1.6}.bank-extra-requirements summary{font-size:12px;cursor:pointer}.bank-extra-requirements dl{margin:14px 0}.bank-prc-channel{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface);margin-bottom:18px}.bank-prc-channel>div{display:grid;gap:7px;min-width:0}.bank-prc-channel strong{font-size:12px;line-height:1.5}.bank-prc-channel span{color:var(--ink-muted);font-size:11px}.bank-prc-channel>.button{flex-shrink:0}.bank-prc-form fieldset{border:0;padding:0;margin:0 0 12px;min-width:0}.bank-prc-fields{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.bank-prc-fields label{display:grid;gap:5px;font-size:11px;color:var(--ink-secondary);min-width:0}.bank-prc-fields input,.bank-prc-fields select,.bank-prc-fields textarea{width:100%;min-width:0;box-sizing:border-box;padding:9px 11px;font:400 12px var(--font-sans);border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-subtle)}.bank-prc-fields select{appearance:none;padding-right:32px}.bank-prc-required-time{grid-column:auto}.bank-prc-note{grid-column:1/-1}.bank-prc-fields textarea{min-height:64px;resize:vertical}.bank-prc-authorization{padding-top:12px;font-size:11px;color:var(--ink-muted)}.bank-prc-authorization p{margin:4px 0 0;line-height:1.5}.bank-prc-authorization strong{font-weight:500}.bank-prc-form footer{display:flex;justify-content:flex-end;gap:8px}
 @media(min-width:761px) and (max-width:1100px){.bank-prc-fields{grid-template-columns:repeat(3,minmax(0,1fr))}.bank-prc-required-time{grid-column:span 2}}
 @media(max-width:760px){.bank-prc-channel{align-items:flex-start;flex-direction:column}.bank-prc-fields{grid-template-columns:minmax(0,1fr)}.bank-prc-required-time{grid-column:auto}}
 
@@ -675,7 +674,7 @@
 .stock-threshold-segment{position:absolute;left:0;right:0;width:100%;min-height:0;margin:0;padding:0;border:0;border-radius:0;cursor:help;box-shadow:inset 0 1px rgba(255,255,255,.4)}
 .stock-threshold-segment.segment-critical{background:var(--critical)}.stock-threshold-segment.segment-low{background:var(--warning)}.stock-threshold-segment.segment-adequate{background:var(--success)}.stock-threshold-segment.segment-surplus{background:var(--information)}.stock-threshold-segment.segment-unknown{background:var(--ink-muted)}
 .stock-threshold-segment:hover,.stock-threshold-segment:focus-visible{filter:brightness(1.12);outline:2px solid var(--ink);outline-offset:-2px;z-index:1}
-.stock-threshold-tooltip{position:fixed;z-index:10000;display:grid;gap:5px;width:272px;padding:10px 12px;border-radius:6px;background:var(--chrome);color:var(--on-chrome);box-shadow:0 4px 14px rgba(0,0,0,.2);font:12px/1.4 var(--font-sans);pointer-events:none}
+.stock-threshold-tooltip{position:fixed;z-index:10000;display:grid;gap:5px;box-sizing:border-box;width:296px;max-width:calc(100vw - 16px);padding:10px 12px;border:1px solid var(--chrome);border-radius:6px;background:color-mix(in srgb,var(--chrome) 75%,transparent);color:var(--on-chrome);box-shadow:0 4px 14px rgba(0,0,0,.2);font:12px/1.4 var(--font-sans);pointer-events:none}
 .stock-threshold-tooltip strong{font-size:12px}.stock-threshold-tooltip small{font-size:11px;color:var(--on-chrome-muted)}
 
 /* Plot, component names, status labels and blood-group names have separate rows. */
@@ -736,11 +735,6 @@
 .redistribution-summary-copy > span, .redistribution-summary-copy small, .redistribution-auto-status { font-size: 12px; color: var(--ink-muted); }
 .redistribution-summary > a { flex-shrink: 0; text-decoration: none; }
 @media(max-width:600px) { .redistribution-summary { flex-wrap: wrap; } }
-.redistribution-review select { padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); min-width: 0; width: 100%; }
-.redistribution-review .redistribution-confirm { display: flex; align-items: center; gap: 10px; margin: 0; }
-.redistribution-review .redistribution-confirm input { width: auto; flex: 0 0 auto; margin: 0; }
-.redistribution-review .dashboard-redistribution-body > button, .redistribution-review .dashboard-redistribution-body > a { justify-self: start; }
-.redistribution-review .data-table td { overflow-wrap: anywhere; }
 
 .redistribution-readonly-fields { display: grid; grid-template-columns: minmax(0, 1fr) 80px; gap: 12px; align-items: end; }
 .redistribution-readonly-fields label { margin: 0; min-width: 0; font-size: 12px; }
@@ -1054,27 +1048,49 @@
 .analytics-recorded-context > header h2 { border: 0; padding: 0; }
 .analytics-recorded-context a { color: var(--primary); text-underline-offset: 3px; }
 
-/* Redistribution is reviewed in the matching Blood Request, without an extra tab. */
-/* Keep transfer approval compact inside the selected request details. */
-.bank-request-approval { min-width: 0; }
-.bank-request-approval > .bank-section-heading { padding: 0 0 10px; border: 0; }
-.bank-request-approval .bank-section-heading h3 { font: 600 15px var(--font-sans); margin: 0; }
-.bank-request-approval > .dashboard-redistribution-body { padding: 0; gap: 16px; font-size: 12px; }
-.bank-request-approval .dashboard-redistribution-body > strong { font-size: 13px; line-height: 1.5; }
-.bank-request-approval .approval-intro { color: var(--ink-muted); line-height: 1.65; margin: 0; }
-.approval-allocation { min-width: 0; display: grid; gap: 10px; }
-.approval-allocation-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.approval-allocation-heading strong { font-size: 12px; line-height: 1.5; }
-.bank-request-approval .approval-units { table-layout: fixed; width: 100%; min-width: 0; }
-.bank-request-approval .approval-units th, .bank-request-approval .approval-units td { padding: 10px 6px; font-size: 11px; white-space: normal; vertical-align: middle; overflow-wrap: anywhere; }
-.bank-request-approval .approval-units th { font-size: 10px; letter-spacing: .06em; }
-.bank-request-approval .approval-units th:first-child { width: 40%; }
-.bank-request-approval .approval-units th:last-child { width: 22%; text-align: right; white-space: nowrap; }
-.bank-request-approval .approval-units td:last-child { text-align: right; }
-.bank-request-approval .redistribution-confirm { align-items: start; font-size: 12px; font-weight: 400; line-height: 1.6; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-subtle); }
-.bank-request-approval .redistribution-confirm input { margin-top: 3px; }
-.bank-request-approval .dashboard-redistribution-body > .button.primary { justify-self: stretch; }
-.bank-request-approval .dashboard-redistribution-body > small { color: var(--ink-muted); font-size: 11px; line-height: 1.6; }
+/* Transfer approval inside Request details. */
+.bank-request-approval { display: grid; gap: 16px; min-width: 0; font-size: 12px; }
+.bank-request-approval .approval-heading h3 { margin: 0; font: 600 16px/1.4 var(--font-sans); }
+.approval-heading p { margin: 3px 0 0; color: var(--ink-muted); }
+.approval-quantity-panel, .approval-allocation, .approval-confirmation {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+.approval-quantities { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.approval-quantity { display: grid; grid-template-rows: auto 34px; gap: 5px; align-items: center; align-content: start; margin: 0; padding: 12px 14px; color: var(--ink-secondary); font-size: 12px; font-weight: 500; line-height: 1.35; }
+.approval-quantity + .approval-quantity { border-inline-start: 1px solid var(--line-subtle); }
+.approval-quantity strong { font-size: 20px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.approval-quantity strong[data-shortfall="true"] { color: var(--warning); }
+.approval-quantity input, .approval-partial select, .approval-partial textarea { width: 100%; min-width: 0; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--ink); background: var(--surface); }
+.approval-quantity input { width: min(100%, 100px); height: 34px; font-size: 15px; font-weight: 600; }
+.approval-partial { display: grid; grid-template-columns: minmax(0, 270px) minmax(0, 1fr); align-items: start; gap: 12px 16px; padding: 12px 14px; border-top: 1px solid var(--line-subtle); }
+.approval-partial label { display: grid; min-width: 0; gap: 5px; margin: 0; font-weight: 500; }
+.approval-comment { display: grid; min-width: 0; gap: 5px; }
+.approval-partial textarea { resize: vertical; font: inherit; font-weight: 400; }
+.approval-quantity small, .approval-partial small { color: var(--ink-muted); font-size: 11px; font-weight: 400; }
+.approval-allocation-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; padding: 12px 14px; }
+.approval-allocation-heading h4 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; font: 600 13px/1.4 var(--font-sans); }
+.approval-allocation-heading p { margin: 2px 0 0; color: var(--ink-muted); }
+.bank-request-approval .approval-units { table-layout: fixed; width: 100%; min-width: 0; border-top: 1px solid var(--line-subtle); }
+.bank-request-approval .approval-units th, .bank-request-approval .approval-units td { padding: 8px 14px; font-size: 11px; white-space: normal; vertical-align: middle; overflow-wrap: anywhere; }
+.bank-request-approval .approval-units tr:last-child td { border-bottom: 0; }
+.approval-confirmation { display: grid; gap: 12px; padding: 12px 14px; background: var(--surface-subtle); }
+.approval-confirmation label { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-weight: 500; }
+.approval-confirmation input { flex: 0 0 auto; width: auto; margin: 3px 0 0; }
+.approval-submit-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; }
+.approval-submit-row small { flex: 1 1 220px; color: var(--ink-muted); font-size: 11px; }
+.approval-notice { margin: 0; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--surface-subtle); color: var(--ink-secondary); }
+.approval-notice[role="alert"] { background: var(--critical-container); color: var(--critical); }
+.approval-allocation > .approval-notice { margin: 8px 14px 12px; }
+.bank-request-approval > .button { justify-self: start; }
+@media(max-width: 480px) {
+  .approval-quantity { padding-inline: 9px; }
+  .approval-partial { grid-template-columns: minmax(0, 1fr); }
+  .approval-submit-row .button { width: 100%; }
+}
 
 .status.neutral { color: var(--ink-muted); background: var(--surface-subtle); }
 
@@ -1240,10 +1256,11 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .bank-list-filters:has(>.table-view-bar)>label:first-child{flex:1;min-width:180px}
 .bank-list-filters>.table-view-bar,.bank-filter-panel>.table-view-bar,.institution-operator-filters>.table-view-bar,.compliance-filters>.table-view-bar{padding:0;align-self:end;margin-left:auto}
 .table-view-bar .table-column-picker>summary{min-height:38px;box-sizing:border-box;padding:8px 12px;white-space:nowrap;gap:8px}
-.blood-bank-inventory .inventory-filter-controls:has(>.table-view-bar){grid-template-columns:minmax(130px,.7fr) minmax(150px,.85fr) minmax(180px,1.6fr) auto}
+.blood-bank-inventory .inventory-filter-controls:has(>.table-view-bar){grid-template-columns:minmax(105px,.7fr) minmax(145px,.85fr) minmax(108px,.7fr) minmax(150px,1.6fr) auto}
 .blood-bank-audit .audit-filter-controls:has(>.table-view-bar){grid-template-columns:minmax(140px,.8fr) minmax(140px,.8fr) minmax(180px,1.4fr) auto}
-@media(max-width:1000px){.blood-bank-inventory .inventory-filter-controls:has(>.table-view-bar),.blood-bank-audit .audit-filter-controls:has(>.table-view-bar){grid-template-columns:repeat(2,minmax(0,1fr))}.inventory-filter-controls:has(>.table-view-bar) .bank-search{grid-column:auto}}
-@media(max-width:480px){.blood-bank-inventory .inventory-filter-controls:has(>.table-view-bar),.blood-bank-audit .audit-filter-controls:has(>.table-view-bar){grid-template-columns:minmax(0,1fr)}.bank-filter-panel>.table-view-bar{justify-self:end}}
+.inventory-match-count{margin:0;padding:8px 20px;color:var(--ink-secondary);font-size:12px;font-weight:500}
+@media(max-width:1000px){.blood-bank-inventory .inventory-filter-controls:has(>.table-view-bar){grid-template-columns:repeat(3,minmax(0,1fr))}.blood-bank-inventory .inventory-filter-controls:has(>.table-view-bar) .bank-search{grid-column:span 2}.blood-bank-audit .audit-filter-controls:has(>.table-view-bar){grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.blood-bank-inventory .inventory-filter-controls:has(>.table-view-bar),.blood-bank-audit .audit-filter-controls:has(>.table-view-bar){grid-template-columns:minmax(0,1fr)}.blood-bank-inventory .inventory-filter-controls:has(>.table-view-bar) .bank-search{grid-column:auto}.bank-filter-panel>.table-view-bar{justify-self:end}}
 
 /* Compact, aligned column choices override surrounding filter-input sizing. */
 .table-column-picker .table-column-picker-menu label{display:flex;align-items:center;justify-content:space-between;gap:24px;min-height:28px;width:100%;padding:2px 0;box-sizing:border-box;font:400 12px var(--font-sans);color:var(--ink)}
@@ -1296,12 +1313,11 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .dashboard-alert-summary p { margin: 8px 0 0; font-size: 13px; }
 .dashboard-alert-summary strong { font-size: 20px; color: var(--critical); }
 /* GAP-09 / PA-REQ-01..04 requester detail panel */
-.request-detail-panel{display:grid;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line-subtle);min-width:0}.request-detail-panel>header{display:flex;justify-content:space-between;align-items:center;gap:12px}.request-detail-panel h3,.request-detail-panel h4{margin:0;font:600 13px/1.4 var(--font-sans)}.request-detail-panel dl{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);gap:6px 16px;margin:0}.request-detail-panel dd{margin:0;min-width:0;overflow-wrap:anywhere}.request-detail-notes{white-space:pre-wrap}.request-detail-documents{display:grid;gap:8px;margin:0;padding:0;list-style:none}.request-detail-documents li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}.request-detail-documents a{overflow-wrap:anywhere}.request-detail-attach{display:flex;flex-wrap:wrap;gap:8px}.request-detail-panel .requester-placeholder-fields{grid-template-columns:minmax(0,1fr)}
+.request-detail-panel{display:grid;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line-subtle);min-width:0}.request-detail-panel>header{display:flex;justify-content:space-between;align-items:center;gap:12px}.request-detail-panel h3,.request-detail-panel h4{margin:0;font:600 13px/1.4 var(--font-sans)}.request-detail-panel dl{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);gap:6px 16px;margin:0}.request-detail-panel dd{margin:0;min-width:0;overflow-wrap:anywhere}.request-detail-notes{white-space:pre-wrap}.request-detail-documents{display:grid;gap:8px;margin:0;padding:0;list-style:none}.request-detail-documents li{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;min-width:0;padding:8px 10px;border:1px solid var(--line-subtle);border-radius:var(--radius-sm)}.request-detail-documents .request-detail-download{display:grid;place-items:center;flex:0 0 32px;height:32px;padding:0;text-decoration:none}.request-detail-document-info{display:grid;gap:2px;flex:1 1 120px;min-width:0;font-size:11px;overflow-wrap:anywhere}.request-detail-document-info small{color:var(--ink-muted);font-size:10px}.request-detail-documents li>button{max-width:100%;white-space:normal;overflow-wrap:anywhere}.request-detail-attach{display:flex;flex-wrap:wrap;gap:8px}.request-detail-panel .requester-placeholder-fields{grid-template-columns:minmax(0,1fr)}
 
 /* Keep requester details usable within narrow inline record panels. */
 .request-detail-panel>*{min-width:0;max-width:100%}
 .request-detail-panel>header h3{min-width:0}
-.request-detail-panel>header .requester-placeholder-tag{flex-shrink:0}
 .request-detail-panel .requester-placeholder-fields label{display:grid;gap:7px;margin:0;min-width:0;font-size:11px;color:var(--ink-secondary)}
 .request-detail-panel .requester-placeholder-fields input,.request-detail-panel textarea{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
 .request-detail-panel .requester-submit-actions{min-width:0;max-width:100%;flex-wrap:wrap}
@@ -1310,6 +1326,12 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 @media(max-width:600px){.request-detail-panel dl{grid-template-columns:minmax(0,1fr);gap:4px}.request-detail-panel dd{margin-bottom:8px}}
 
 .requester-submit-footer .requester-submit-actions{flex-wrap:wrap;max-width:100%}
+.blood-request-result{margin:16px 0 0}
+.blood-request-result .requester-notice-icon{align-self:center;font-size:16px;font-weight:700}
+.blood-request-result[data-tone="success"]{background:var(--success-container)}
+.blood-request-result[data-tone="success"] .requester-notice-icon{color:var(--success)}
+.blood-request-result[data-tone="critical"]{background:var(--critical-container)}
+.blood-request-result[data-tone="critical"] .requester-notice-icon{color:var(--critical)}
 
 /* Outbound uses the scanner's compact card, field and button styling. */
 .scanner-transfer-actions .scanner-transfer-controls{padding:0;gap:10px}
@@ -1329,19 +1351,22 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .outbound-label-verification>fieldset>label{display:flex;align-items:flex-start;gap:8px;font:400 12px/1.5 var(--font-sans)}
 .outbound-label-verification>.button{margin-top:10px}
 
+/* Request and transfer detail cards share a row when the window is wide enough. */
+.bank-detail-overview{container-type:inline-size}
+.bank-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.bank-detail-summary{display:grid;align-content:start;gap:14px;font-size:11px;line-height:1.6}
+.bank-detail-grid>.request-detail-panel{align-content:start}.bank-detail-grid>.request-detail-panel>.button{justify-self:start}
+@container (max-width:620px){.bank-detail-grid{grid-template-columns:minmax(0,1fr)}}
+
 /* Request and transfer details: one calm reading rhythm inside the bank detail card. */
 .bank-detail-card .request-detail-panel{gap:14px;margin-top:18px;padding-top:16px;font-size:11px;line-height:1.6}
 .bank-detail-card .request-detail-panel h3,.bank-detail-card .request-detail-panel h4{font:500 12px/1.4 var(--font-sans);color:var(--ink)}
 .bank-detail-card .request-detail-panel h4{margin-top:4px}
-.bank-detail-card .request-detail-panel dl{grid-template-columns:135px minmax(0,1fr);gap:12px 14px}
+.bank-detail-card :is(.request-detail-panel,.bank-detail-summary)>dl:not(.bank-review-kv){display:grid;grid-template-columns:135px minmax(0,1fr);gap:12px 14px;margin:0}
+.bank-detail-summary>dl>dd{margin:0;min-width:0;overflow-wrap:anywhere}
 .bank-detail-card .request-detail-panel dt{color:var(--ink-muted)}
 .bank-detail-card .request-detail-panel dd small{color:var(--ink-muted);font-size:10px}
-.bank-detail-card .request-detail-panel .requester-placeholder-tag{font-size:10px;color:var(--ink-muted)}
 .bank-detail-card .request-detail-documents{gap:6px}
-.bank-detail-card .request-detail-documents li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:8px 10px;border:1px solid var(--line-subtle);border-radius:var(--radius-sm)}
-.bank-detail-card .request-detail-documents a{font-size:11px;color:var(--ink);text-underline-offset:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bank-detail-card .request-detail-documents small{font-size:10px;color:var(--ink-muted)}
-.bank-detail-card .request-detail-documents li>.button{grid-column:2;grid-row:1/span 2;align-self:center}
 .bank-detail-card .request-detail-panel>p{margin:0;color:var(--ink-muted)}
 .bank-detail-card .v2-operation-card{margin-top:18px;padding:16px 0 0;border:0;border-top:1px solid var(--line-subtle);background:transparent;font:400 11px/1.6 var(--font-sans)}
 .bank-detail-card .v2-operation-card>h3{margin:0 0 14px;font:500 12px/1.4 var(--font-sans);color:var(--ink)}
@@ -1351,7 +1376,67 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .bank-detail-card .reservation-location-audit .data-table{width:100%;font-size:11px}
 .bank-detail-card .reservation-location-audit .data-table th{font-size:9px;padding:6px 8px}
 .bank-detail-card .reservation-location-audit .data-table td{padding:6px 8px}
-@media(max-width:760px){.bank-detail-card .request-detail-panel dl{grid-template-columns:125px minmax(0,1fr);gap:10px}.bank-detail-card .reservation-location-audit{overflow-x:auto}}
+@media(max-width:760px){.bank-detail-card :is(.request-detail-panel,.bank-detail-summary)>dl:not(.bank-review-kv){grid-template-columns:125px minmax(0,1fr);gap:10px}.bank-detail-card .reservation-location-audit{overflow-x:auto}}
+
+.bank-detail-summary,.bank-detail-grid>.request-detail-panel{min-width:0;margin:0;padding:16px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface)}
+.bank-detail-grid>section>header{padding-bottom:10px;border-bottom:1px solid var(--line-subtle)}
+.bank-detail-card .bank-detail-grid>section h3{margin:0;padding:0;border:0;font:600 13px/1.4 var(--font-sans)}
+.bank-transfer-row{cursor:pointer}
+.bank-transfer-units{margin-top:16px;border:1px solid var(--line);border-radius:var(--radius-md)}
+.bank-transfer-units>summary{padding:10px 14px;font-weight:600;cursor:pointer}
+.bank-transfer-units>summary>span{margin-left:8px;color:var(--ink-muted);font-weight:400}
+.bank-transfer-units>ul,.bank-transfer-units>p{margin:0;padding:0 14px 12px}
+.bank-transfer-units>.bank-review-members{gap:0;padding-bottom:4px}
+.bank-transfer-units .bank-review-members li{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;padding:8px 0;border-top:1px solid var(--line-subtle)}
+.bank-transfer-units .bank-review-link{min-width:0}
+.bank-transfer-units .bank-review-members small{flex:0 0 auto;max-width:55%;text-align:right}
+.bank-record-modal{width:min(1040px,100%);max-height:calc(100dvh - 48px)}
+.bank-record-modal>header{border-bottom:1px solid var(--line-subtle)}
+.bank-record-modal>header>.record-detail-header-actions{flex:0 0 auto}
+.bank-record-modal .preview-modal-body{padding-top:16px;overscroll-behavior:contain}
+.bank-record-modal .bank-review-progress{margin-top:14px;gap:12px}
+.bank-record-modal .reservation-actions.v2-operation-card{padding:14px;border:1px solid var(--line);border-radius:var(--radius-md)}
+.bank-record-modal .reservation-actions>h3{font-weight:600}
+.bank-record-modal .reservation-actions .bank-detail-action-buttons{justify-content:flex-start;flex-wrap:wrap}
+.bank-record-modal .reservation-actions .scan-on-phone-note{width:100%;max-width:none}
+.reservation-actions .transfer-action-form{display:grid;gap:12px;margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--surface-subtle)}
+.reservation-actions .transfer-action-form>fieldset{display:grid;gap:10px;min-width:0;margin:0;padding:0;border:0}
+.transfer-action-form legend{padding:0 0 8px;font-weight:600}
+.transfer-action-form p{margin:0;color:var(--ink-secondary)}
+.transfer-action-form>.button{justify-self:end}
+.transfer-action-form .transfer-action-confirm{display:flex;align-items:flex-start;gap:8px;margin:0}
+.transfer-action-confirm input{flex:0 0 auto;margin:3px 0 0}
+.transfer-evidence-fields,.transfer-update-notice>details{margin-top:8px;min-width:0;overflow-wrap:anywhere;color:var(--ink-secondary)}
+.transfer-evidence-fields>summary,.transfer-update-notice summary{cursor:pointer;font-weight:500}
+.transfer-evidence-fields>label{display:grid;gap:4px;margin-top:8px}
+.transfer-evidence-fields>p{margin-top:8px}
+.transfer-update-notice{display:grid;gap:6px;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--information-container);overflow-wrap:anywhere}
+.transfer-update-notice[data-tone="success"]{background:var(--success-container)}
+.transfer-update-notice[data-tone="critical"]{background:var(--critical-container)}
+.transfer-update-notice>h3,.transfer-update-notice>p{margin:0}
+.transfer-update-notice>.button{justify-self:start;margin-top:4px}
+.transfer-update-notice dl{display:grid;gap:6px;margin:8px 0}
+.transfer-update-notice dd{margin:0}
+.scanner-transfer-actions .transfer-receipt-verification{min-width:0;margin-top:12px;padding:12px}
+.transfer-receipt-verification>h4{margin:0 0 10px;font-size:13px}
+.transfer-receipt-verification fieldset{display:grid;gap:8px;min-width:0;margin:0 0 10px;padding:0;border:0}
+.transfer-receipt-verification input[type="file"]{display:block;width:100%;margin-top:4px}
+.transfer-receipt-verification button{justify-self:start}
+.transfer-scan-review{display:grid;gap:8px;margin:8px 0;padding:10px;border-radius:var(--radius-sm);background:var(--surface-subtle)}
+.transfer-scan-review p{margin:0}
+.transfer-scan-review label{display:flex;align-items:flex-start;gap:8px;margin:0}
+.transfer-scan-review button{justify-self:start}
+.transfer-scan-count{margin:10px 0;padding:7px 9px;border-radius:var(--radius-sm);background:var(--information-container);color:var(--ink-secondary);font-weight:500}
+@media(max-width:480px){
+  .transfer-action-form>.button{width:100%}
+}
+.blood-request-modal{width:min(1040px,100%);max-height:calc(100dvh - 48px);grid-template-rows:auto minmax(0,1fr);margin:0;padding:0}
+.blood-request-modal>header{align-items:center;gap:12px;margin:0;padding:14px 20px;border-bottom:1px solid var(--line-subtle);background:var(--surface)}
+.blood-request-modal>header h2{border-bottom:0}
+.blood-request-modal>header>.record-detail-header-actions{flex:0 0 auto}
+.blood-request-modal .preview-modal-body{min-width:0;overscroll-behavior:contain;scrollbar-width:thin}
+@media(max-width:620px){.blood-request-modal{max-height:calc(100dvh - 20px)}.blood-request-modal>header,.blood-request-modal .preview-modal-body{padding:14px}}
+@media(max-width:620px){.bank-record-modal{max-height:calc(100dvh - 20px)}}
 
 /* Phone scanner-only screen (scans happen on the phone; laptops show a pointer note). */
 .phone-scanner-shell{min-height:100dvh;display:grid;grid-template-rows:auto auto minmax(0,1fr);background:var(--surface)}
@@ -1378,3 +1463,8 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .prc-supply-detail .prc-request-history strong{font:500 12px/1.4 var(--font-sans);text-transform:lowercase;display:block}
 .prc-supply-detail .prc-request-history strong::first-letter{text-transform:uppercase}
 .prc-supply-detail .prc-request-history li>span,.prc-supply-detail .prc-request-history li>small{margin-top:2px;font-size:11px}
+
+/* Thesis panel revisions: precise stock evidence and compact partial approval. */
+.panel-stock-pending{padding:0 18px;color:var(--ink-muted);font-size:12px;font-weight:500}.exact-stock-tooltip-counts{display:grid;gap:4px}.stock-threshold-tooltip:has(.exact-stock-tooltip-counts){width:324px;max-height:80vh;overflow:auto}.zero-stock-inspect{position:absolute;bottom:0!important;left:0;right:0;height:24px!important;background:transparent!important;border:0;cursor:help}.zero-stock-inspect:focus-visible{outline:2px solid var(--primary);outline-offset:2px}.receipt-discrepancy{padding:14px;border:1px solid var(--warning);border-radius:var(--radius-md);background:var(--warning-container);margin:12px 0}.receipt-discrepancy dl{display:grid;grid-template-columns:1fr 1fr;gap:6px}.receipt-discrepancy dd{margin:0;font-weight:600}
+
+.bank-dashboard-stats{grid-template-columns:repeat(5,minmax(0,1fr))}.exact-stock-card .inventory-overview-link{margin-left:auto}@media(max-width:1100px){.bank-dashboard-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:700px){.bank-dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:420px){.bank-dashboard-stats{grid-template-columns:1fr}}

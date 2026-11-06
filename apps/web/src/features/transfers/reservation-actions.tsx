@@ -14,25 +14,56 @@ import { DELAY_REASONS, reservationActions, RESERVATION_ACTION_LABELS, reservati
 import { ReservationLocationAudit } from "./reservation-location-audit";
 import { captureCheckpointLocation, locationLabel, type CheckpointLocation } from "./checkpoint-location";
 
+const actionGuidance: Partial<Record<ReservationAction, string>> = {
+  dispatch: "Confirm the units are ready to leave your facility.",
+  transit: "Record that the shipment is on its way to the receiving facility.",
+  receive: "Confirm the shipment arrived. The units stay out of usable stock until reviewed.",
+  compromise: "This records quarantine pending manual review.",
+  resume: "Resume the transfer from where it was before the delay.",
+  cancel: "This releases the reserved units. Expired labels still need review.",
+};
+const confirmationLabels: Partial<Record<ReservationAction, string>> = {
+  prepare: "I checked the reserved units and they are ready for handover.",
+  dispatch: "I confirm these units are being handed over.",
+  transit: "I confirm the shipment is on its way.",
+  receive: "I confirm the shipment arrived at this facility.",
+  compromise: "I confirm the units need to be quarantined for review.",
+};
+const completedLabels: Record<ReservationAction, string> = {
+  prepare: "Transfer prepared",
+  dispatch: "Transfer dispatched",
+  transit: "Transfer in transit",
+  receive: "Transfer received",
+  cancel: "Reservation cancelled",
+  "local-release-complete": "Local release recorded",
+  compromise: "Compromise recorded",
+  delay: "Delay recorded",
+  resume: "Transfer resumed",
+};
+
 export function ReservationActions({ reservation, principal, onRefresh, onLockChange, scannedRecognition, scanOnPhone = false }: { scanOnPhone?: boolean; scannedRecognition?:ReceiptRecognition; onLockChange?:(locked:boolean)=>void; reservation?: ReservationDetail; principal: Principal; onRefresh: () => void }) {
   const command = useUatCommand(onRefresh);
   const [action, setAction] = useState<ReservationAction>(), [reason, setReason] = useState(""), [confirmed, setConfirmed] = useState(false);
+  const [submittedAction, setSubmittedAction] = useState<ReservationAction>();
   const [evidenceId, setEvidenceId] = useState(""), [digest, setDigest] = useState(""), [preparedAt, setPreparedAt] = useState("");
   const [verificationLocked,setVerificationLocked]=useState(false);
   const [location,setLocation]=useState<CheckpointLocation>(),[locating,setLocating]=useState(false);
   const closeLocked=command.busy||command.ambiguous||verificationLocked||Boolean(command.command&&!COMMAND_PRESENTATION[command.command.status].terminal);
   useEffect(()=>{onLockChange?.(closeLocked);return()=>onLockChange?.(false);},[closeLocked,onLockChange]);
   const actions = reservation ? reservationActions(reservation, principal) : [];
+  const nextStep = actions.find(item => ["prepare", "dispatch", "transit", "receive"].includes(item));
   useEffect(() => { if (!command.locked) { setAction(undefined); setConfirmed(false); setReason(""); setEvidenceId(""); setDigest(""); setPreparedAt(""); command.correct(); } }, [reservation?.version]);
   const prepareValid = action !== "prepare" || (/^EVD_[A-Z0-9_-]+$/.test(evidenceId) && /^[a-f0-9]{64}$/.test(digest) && /(Z|[+-]\d{2}:\d{2})$/.test(preparedAt) && Number.isFinite(Date.parse(preparedAt)) && Date.parse(preparedAt) <= Date.now());
   const ready = action && actions.includes(action) && prepareValid && confirmed && (action !== "compromise" || !!reason) && (action !== "delay" || !!reason) && ((action !== "dispatch" && action !== "receive") || !!location);
   function choose(next: ReservationAction) {
+    if(command.command?.status==="COMMITTED")command.clear();
     if(next !== action)command.correct(); setAction(next); setReason(""); setConfirmed(false); setLocation(undefined);
     // One reading per checkpoint, taken when the user opens dispatch or receipt.
     if (next === "dispatch" || next === "receive") { setLocating(true); void captureCheckpointLocation().then(value => { setLocation(value); setLocating(false); }); }
   }
   async function submit() {
     if (verificationLocked || !reservation || !action || (!ready && !command.ambiguous)) return;
+    setSubmittedAction(action);
     await command.submit(keys => {
       const eventTime = new Date().toISOString();
       return { resourceType: "TRANSFER", resourceId: reservation.reservationId, payload: {
@@ -43,32 +74,33 @@ export function ReservationActions({ reservation, principal, onRefresh, onLockCh
       } };
     }, (payload, keys) => submitReservationAction(reservation.reservationId, action, payload, keys, "V2.1"));
   }
-  return <section className="v2-operation-card" aria-label="Reservation actions"><h3>Reservation actions</h3>
-    {reservation && reservation.purpose === "TRANSFER" && ["DISPATCHED", "IN_TRANSIT", "DELAYED", "RECEIVED", "COMPROMISED"].includes(reservation.status) && <ReservationLocationAudit reservationId={reservation.reservationId} version={reservation.version}/>}
-    {reservation?.status === "DELAYED" && <p role="status">Delayed — follow up with the other facility. Units stay in custody transit until received.</p>}
-    {reservation?.status === "RECEIVED" && <p>Stock is RECEIVED. It is not usable inventory; manual disposition remains required (RQ-10).</p>}
-    {!actions.length && !command.command && <p>No authorized action is available in the current reservation state.</p>}
-    <div className="bank-detail-action-buttons">{actions.map(item => <button type="button" className="button compact" key={item} disabled={command.locked||verificationLocked} onClick={() => choose(item)}>{RESERVATION_ACTION_LABELS[item]}</button>)}</div>
+  return <section className="v2-operation-card reservation-actions" aria-label="Reservation actions"><h3>Transfer actions</h3>
+    {reservation?.receiptDiscrepancy?.status==="OPEN"&&<p role="alert">Recount and verify the units before confirming receipt.</p>}
+    {reservation?.status === "DELAYED" && <p role="status">Delayed — follow up with the other facility.</p>}
+    {reservation?.status === "RECEIVED" && <p>Received units are awaiting review before they can be used.</p>}
+    {!actions.length && !command.command && reservation?.status !== "RECEIVED" && <p>No actions are available for your account at this step.</p>}
+    {actions.length>0&&<div className="bank-detail-action-buttons">{actions.map(item => <button type="button" className={"button compact"+(item===nextStep?" primary":"")} key={item} aria-pressed={item===action} disabled={command.locked||verificationLocked} onClick={() => choose(item)}>{RESERVATION_ACTION_LABELS[item]}</button>)}</div>}
     {action === "prepare" && scanOnPhone && <p className="scan-on-phone-note" role="note">Preparing requires scanning every reserved unit. {SCAN_ON_PHONE_NOTE} Choose Outbound, then this transfer.</p>}
-    {action && !(action === "prepare" && scanOnPhone) && <form onSubmit={event => { event.preventDefault(); void submit(); }}><fieldset disabled={command.locked}>
+    {action && !(action === "prepare" && scanOnPhone) && <form className="transfer-action-form" onSubmit={event => { event.preventDefault(); void submit(); }}><fieldset disabled={command.locked}>
       <legend>{RESERVATION_ACTION_LABELS[action]}</legend>
-      {action === "prepare" && <>{reservation&&<OutboundVerification scannedRecognition={scannedRecognition} key={reservation.reservationId+":"+reservation.version} reservation={reservation} onLockChange={setVerificationLocked} onVerified={result=>{setEvidenceId(result.evidenceId);setDigest(result.evidenceDigest);setPreparedAt(result.verifiedAt);setConfirmed(false);command.correct();}}/>}<p>Use the reviewed synthetic preparation evidence. Dates must include a timezone; no evidence is generated by this form.</p>
-        <label>Preparation evidence ID<input required pattern="EVD_[A-Z0-9_-]+" value={evidenceId} onChange={event => {setEvidenceId(event.target.value); command.correct();}}/></label>
-        <label>Preparation evidence SHA-256<input required pattern="[a-f0-9]{64}" value={digest} onChange={event => {setDigest(event.target.value); command.correct();}}/></label>
-        <label>Prepared at (ISO 8601 with timezone)<input required value={preparedAt} onChange={event => {setPreparedAt(event.target.value); command.correct();}}/></label>
+      {actionGuidance[action]&&<p>{actionGuidance[action]}</p>}
+      {action === "prepare" && <>{reservation&&<OutboundVerification scannedRecognition={scannedRecognition} key={reservation.reservationId+":"+reservation.version} reservation={reservation} onLockChange={setVerificationLocked} onVerified={result=>{setEvidenceId(result.evidenceId);setDigest(result.evidenceDigest);setPreparedAt(result.verifiedAt);setConfirmed(false);command.correct();}}/>}
+        <details className="transfer-evidence-fields"><summary>Use existing preparation evidence</summary>
+          <p>Verified scans fill these fields automatically. Enter the recorded values if you already have evidence.</p>
+          <label>Preparation evidence ID<input required pattern="EVD_[A-Z0-9_-]+" value={evidenceId} onChange={event => {setEvidenceId(event.target.value); command.correct();}}/></label>
+          <label>Preparation evidence SHA-256<input required pattern="[a-f0-9]{64}" value={digest} onChange={event => {setDigest(event.target.value); command.correct();}}/></label>
+          <label>Prepared at (ISO 8601 with timezone)<input required value={preparedAt} onChange={event => {setPreparedAt(event.target.value); command.correct();}}/></label>
+        </details>
       </>}
-      {action === "compromise" && <><p>This records quarantine pending manual review.</p><ReasonSelector kind="compromise" value={reason} onChange={value => {setReason(value); setConfirmed(false); command.correct();}} disabled={command.locked}/></>}
-      {action === "receive" && <p>Receipt records RECEIVED stock. It does not make the units usable.</p>}
-      {(action === "dispatch" || action === "receive") && <p className="checkpoint-location" role="status">{locating ? "Capturing checkpoint location…" : location ? locationLabel(location) : "Location unavailable"}. Only this checkpoint is recorded; the exact point stays off-chain for 30 days.</p>}
+      {action === "compromise" && <ReasonSelector kind="compromise" value={reason} onChange={value => {setReason(value); setConfirmed(false); command.correct();}} disabled={command.locked}/>}
+      {(action === "dispatch" || action === "receive") && <p className="checkpoint-location" role="status">{locating ? "Checking handover location…" : location ? locationLabel(location) : "Location unavailable"}. Exact locations are retained privately for 30 days.</p>}
       {action === "delay" && <label>Delay reason<select required value={reason} onChange={event => {setReason(event.target.value); setConfirmed(false); command.correct();}}><option value="">Select a reason</option>{DELAY_REASONS.map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></label>}
-      {action === "resume" && <p>Resume returns the transfer to its state before the delay.</p>}
-      {action === "cancel" && <p>Cancellation releases this active reservation. Expired labels still require expiry evaluation.</p>}
-      <label><input type="checkbox" checked={confirmed} onChange={event => {setConfirmed(event.target.checked);}}/>I confirm {action === "compromise" ? "quarantine pending manual review" : RESERVATION_ACTION_LABELS[action].toLowerCase()} for this reservation.</label>
-      <p>Expected reservation version: {reservation?.version ?? "Loading current record…"}</p>
+      <label className="transfer-action-confirm"><input type="checkbox" checked={confirmed} onChange={event => {setConfirmed(event.target.checked);}}/>{confirmationLabels[action]??`I confirm this action: ${RESERVATION_ACTION_LABELS[action]}.`}</label>
     </fieldset><button className="button primary" type="submit" data-testid={action === "dispatch" ? "outbound-confirm-transaction" : "reservation-action-submit"} disabled={verificationLocked || command.busy || !!command.command || command.requiresCorrection || (!ready && !command.ambiguous)}>{reservationSubmitLabel(action, command)}</button></form>}
     {command.error && <p role="alert">{command.error}</p>}
-    {command.ambiguous && <div><p>Saved request key: <code>{command.pendingKey}</code></p><button className="button" disabled={command.busy} onClick={() => void command.recover()}>Recover this attempt without resubmitting</button></div>}
+    {command.ambiguous && <div><button className="button" disabled={command.busy} onClick={() => void command.recover()}>Recover this attempt without resubmitting</button><details className="transfer-evidence-fields"><summary>Attempt reference</summary><code>{command.pendingKey}</code></details></div>}
     {command.requiresCorrection && <button className="button refresh-icon-button" onClick={onRefresh}><RefreshIcon/>Refresh reservation before continuing</button>}
-    {command.command && <CommandStatusCard command={command.command} pollError={command.pollError} onClear={() => {command.clear(); setAction(undefined); onRefresh();}}/>}
+    {command.command && <CommandStatusCard command={command.command} pollError={command.pollError} summary={{complete:submittedAction?completedLabels[submittedAction]:"Transfer updated"}} onClear={() => {command.clear(); setAction(undefined); onRefresh();}}/>}
+    {reservation && reservation.purpose === "TRANSFER" && ["DISPATCHED", "IN_TRANSIT", "DELAYED", "RECEIVED", "COMPROMISED"].includes(reservation.status) && <details className="transfer-evidence-fields"><summary>Handover and receipt locations</summary><ReservationLocationAudit reservationId={reservation.reservationId} version={reservation.version}/></details>}
   </section>;
 }

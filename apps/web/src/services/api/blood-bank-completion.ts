@@ -3,7 +3,19 @@ import {V2_BLOOD_TYPES,V2_COMPONENT_TYPES} from "./v2";
 import {URGENCIES} from "./transaction-reads";
 export const count=(value:unknown)=>{if(!Number.isSafeInteger(value)||Number(value)<0)throw invalidRead();return Number(value);};
 function envelope(value:unknown,policy:string,scope:string){const row=object(value);if(row.policyVersion!==policy||row.classification!=="SIMULATION_ONLY"||row.scope!==scope)throw invalidRead();return row;}
-export function parseBankSummary(value:unknown){const row=envelope(value,"BLOOD_BANK_SUMMARY_V1","INSTITUTION"),inventory=object(row.inventory),requests=object(row.requests),expiry=object(row.expiringSoon);if(expiry.availability!=="POLICY_BLOCKED"||expiry.count!==null||expiry.blocker!=="RQ-03")throw invalidRead();return {asOf:timestamp(row.asOf),inventory:{available:count(inventory.available),reserved:count(inventory.reserved),labelExpiredPendingEvaluation:count(inventory.labelExpiredPendingEvaluation),lastProjectedAt:nullableTimestamp(inventory.lastProjectedAt)},requests:{incomingAwaitingDecision:count(requests.incomingAwaitingDecision),outgoingAwaitingDecision:count(requests.outgoingAwaitingDecision)},blocker:"RQ-03"};}
+export function parseBankSummary(value:unknown){
+ const row=envelope(value,"BLOOD_BANK_SUMMARY_V1","INSTITUTION"),inventory=object(row.inventory),requests=object(row.requests),expiry=object(row.expiringSoon);
+ if(expiry.availability!=="POLICY_BLOCKED"||expiry.count!==null||expiry.blocker!=="RQ-03")throw invalidRead();
+ const advisory=expiry.syntheticAdvisory===undefined?null:object(expiry.syntheticAdvisory);
+ if(advisory&&advisory.policyVersion!=="SYNTHETIC_NEAR_EXPIRY_V1")throw invalidRead();
+ return {
+  asOf:timestamp(row.asOf),
+  inventory:{available:count(inventory.available),reserved:count(inventory.reserved),labelExpiredPendingEvaluation:count(inventory.labelExpiredPendingEvaluation),lastProjectedAt:nullableTimestamp(inventory.lastProjectedAt)},
+  requests:{incomingAwaitingDecision:count(requests.incomingAwaitingDecision),outgoingAwaitingDecision:count(requests.outgoingAwaitingDecision)},
+  expiringSoon:advisory?count(advisory.count):null,
+  blocker:"RQ-03",
+ };
+}
 export function parseNetworkAvailability(value:unknown){const row=envelope(value,"NETWORK_AVAILABILITY_V1","CITY_AGGREGATE");if(!Array.isArray(row.rows))throw invalidRead();const rows=row.rows.map(value=>{const r=object(value);return {institutionId:text(r.institutionId),institutionDisplayName:text(r.institutionDisplayName),bloodType:choice(r.bloodType,V2_BLOOD_TYPES),componentType:choice(r.componentType,V2_COMPONENT_TYPES),availableUnits:integer(r.availableUnits),lastProjectedAt:nullableTimestamp(r.lastProjectedAt)};});if(new Set(rows.map(r=>[r.institutionId,r.bloodType,r.componentType].join('|'))).size!==rows.length)throw invalidRead();return {asOf:timestamp(row.asOf),rows};}
 export function dateOnly(value:unknown){const s=text(value);if(!/^\d{4}-\d{2}-\d{2}$/.test(s)||!Number.isFinite(Date.parse(s+'T00:00:00Z'))||new Date(s+'T00:00:00Z').toISOString().slice(0,10)!==s)throw invalidRead();return s;}
 export function historyChunks(from:string,to:string){dateOnly(from);dateOnly(to);if(from>to)throw invalidRead();const chunks:{from:string;to:string}[]=[];for(let start=Date.parse(from+'T00:00:00Z');start<=Date.parse(to+'T00:00:00Z');){const end=Math.min(Date.parse(to+'T00:00:00Z'),start+365*86400000);chunks.push({from:new Date(start).toISOString().slice(0,10),to:new Date(end).toISOString().slice(0,10)});start=end+86400000;}return chunks;}
