@@ -1,0 +1,12 @@
+# Optional WSL systemd user timer; see docs/LOCAL-DEVELOPMENT.md section 3.3.
+# Docker Desktop can restart without restarting the WSL distribution, so the
+# idempotent recovery check also repeats while the distribution is running.
+[Unit]
+Description=Periodic BloodLedger peer Docker-socket boot recovery
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

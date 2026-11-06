@@ -42,6 +42,15 @@ if [[ "${1:-}" == version ]]; then echo '29.6.1'; exit 0; fi
 if [[ "${1:-}" == ps ]]; then exit 0; fi
 if [[ "${1:-}" == network && "${2:-}" == inspect ]]; then exit 1; fi
 if [[ "${1:-}" == container && "${2:-}" == rm ]]; then exit 0; fi
+if [[ "${1:-}" == start ]]; then
+  # FAKE_PEER_START_FAILURES socket-mount failures precede a successful start.
+  attempts_file="${FAKE_STATE_DIR}/peer-start-attempts"
+  attempts=$(($(cat "${attempts_file}" 2>/dev/null || echo 0) + 1))
+  echo "${attempts}" >"${attempts_file}"
+  ((attempts > ${FAKE_PEER_START_FAILURES:-0})) || exit 1
+  touch "${FAKE_STATE_DIR}/peer-started"
+  exit 0
+fi
 if [[ "${1:-}" == volume ]]; then
   case "${2:-}" in
     ls)
@@ -71,9 +80,19 @@ if [[ "${1:-}" == inspect ]]; then
       echo "${*: -1}" | sed 's/^fake-//'
     fi
   elif [[ "$*" == *State.Running* ]]; then
-    [[ "${FAKE_PEER_SOCKET_STALE:-}" == 1 ]] && echo false || echo true
+    if [[ -n "${FAKE_PEER_STOPPED_ERROR+set}${FAKE_PEER_SOCKET_STALE:-}" && ! -e "${FAKE_STATE_DIR}/peer-started" ]]; then
+      echo false
+    else
+      echo true
+    fi
   elif [[ "$*" == *State.Error* ]]; then
-    [[ "${FAKE_PEER_SOCKET_STALE:-}" == 1 ]] && echo 'error mounting "/run/desktop/docker.sock" to rootfs at "/var/run/docker.sock"' || echo ''
+    if [[ -n "${FAKE_PEER_STOPPED_ERROR+set}" ]]; then
+      echo "${FAKE_PEER_STOPPED_ERROR}"
+    elif [[ "${FAKE_PEER_SOCKET_STALE:-}" == 1 ]]; then
+      echo 'error mounting "/run/desktop/docker.sock" to rootfs at "/var/run/docker.sock"'
+    else
+      echo ''
+    fi
   elif [[ "$*" == *State.Status* ]]; then
     echo running
   elif [[ "$*" == *State.Health* ]]; then
@@ -104,7 +123,7 @@ if [[ "${1:-}" == compose ]]; then
       ;;
     ps)
       service="${*: -1}"
-      echo "fake-${service}"
+      [[ "${FAKE_PEER_ABSENT:-}" == 1 && "${service}" == peer0-mediatrix ]] || echo "fake-${service}"
       ;;
     exec)
       [[ "$*" == *'SELECT current_database()'* ]] && echo bloodledger_dev
@@ -143,8 +162,20 @@ COMPONENT
   chmod +x "${test_root}/network/scripts/${script}"
 done
 
+fake_state_dir="${temporary_root}/state"
+mkdir -p "${fake_state_dir}"
+fake_socket="${temporary_root}/docker.sock"
+python3 -c 'import socket, sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' "${fake_socket}"
+
 run_command() {
-  PATH="${fake_bin}:${PATH}" "${test_root}/scripts/bloodledger-dev.sh" "$@"
+  PATH="${fake_bin}:${PATH}" FAKE_STATE_DIR="${fake_state_dir}" \
+    BLOODLEDGER_DOCKER_SOCKET="${BLOODLEDGER_DOCKER_SOCKET:-${fake_socket}}" \
+    BLOODLEDGER_PEER_RETRY_SECONDS=0 BLOODLEDGER_DOCKER_WAIT_SECONDS="${BLOODLEDGER_DOCKER_WAIT_SECONDS:-0}" \
+    "${test_root}/scripts/bloodledger-dev.sh" "$@"
+}
+
+reset_fake_peer() {
+  rm -f "${fake_state_dir}/peer-start-attempts" "${fake_state_dir}/peer-started" "${docker_log}"
 }
 
 expect_failure() {
@@ -211,11 +242,48 @@ if grep -Fq -- '--force-recreate' "${docker_log}"; then
   echo "A healthy peer must not be recreated" >&2
   exit 1
 fi
-stale_start="$(FAKE_PEER_SOCKET_STALE=1 FAKE_DOCKER_LOG="${docker_log}" run_command start)"
+# Boot race: the socket mount fails until WSL integration is ready, then a
+# plain start succeeds and the peer is not recreated.
+reset_fake_peer
+race_start="$(FAKE_PEER_SOCKET_STALE=1 FAKE_PEER_START_FAILURES=2 FAKE_DOCKER_LOG="${docker_log}" run_command start)"
+grep -Fq 'started on attempt 3' <<<"${race_start}"
+grep -Fq 'BloodLedger development infrastructure is healthy' <<<"${race_start}"
+[[ "$(grep -c '^start fake-peer0-mediatrix$' "${docker_log}")" == 3 ]]
+! grep -Fq -- '--force-recreate' "${docker_log}"
+# Moved bind path: every plain start fails, so only the peer is recreated.
+reset_fake_peer
+stale_start="$(FAKE_PEER_SOCKET_STALE=1 FAKE_PEER_START_FAILURES=99 FAKE_DOCKER_LOG="${docker_log}" \
+  BLOODLEDGER_PEER_START_ATTEMPTS=3 run_command start)"
 grep -Fq 'stale Docker socket mount' <<<"${stale_start}"
 grep -Fq 'BloodLedger development infrastructure is healthy' <<<"${stale_start}"
+[[ "$(grep -c '^start fake-peer0-mediatrix$' "${docker_log}")" == 3 ]]
 grep -Eq -- ' up --detach --wait --no-deps --force-recreate peer0-mediatrix$' "${docker_log}"
 [[ "$(grep -c -- '--force-recreate' "${docker_log}")" == 1 ]]
+
+# recover-peer: no-op when running, never touches a deliberately stopped peer,
+# never deletes volumes, and waits for the socket and engine.
+reset_fake_peer
+noop="$(FAKE_DOCKER_LOG="${docker_log}" run_command recover-peer)"
+grep -Fq 'already running; nothing changed' <<<"${noop}"
+reset_fake_peer
+stopped="$(FAKE_PEER_STOPPED_ERROR='' FAKE_DOCKER_LOG="${docker_log}" run_command recover-peer)"
+grep -Fq 'without a Docker socket mount failure; left unchanged' <<<"${stopped}"
+! grep -Eq '^start |--force-recreate' "${docker_log}"
+reset_fake_peer
+recovered="$(FAKE_PEER_SOCKET_STALE=1 FAKE_PEER_START_FAILURES=1 FAKE_DOCKER_LOG="${docker_log}" run_command recover-peer)"
+grep -Fq 'started on attempt 2' <<<"${recovered}"
+grep -Fq 'peer0-mediatrix: healthy' <<<"${recovered}"
+! grep -Eq 'volume rm|container rm| down|--force-recreate' "${docker_log}"
+[[ "$(grep -c '^start ' "${docker_log}")" == 2 ]]
+reset_fake_peer
+other="$(FAKE_PEER_STOPPED_ERROR='exec: "peer": executable file not found' run_command recover-peer)"
+grep -Fq 'left unchanged' <<<"${other}"
+BLOODLEDGER_DOCKER_SOCKET="${temporary_root}/absent.sock" expect_failure 'was not ready after 0s' recover-peer
+FAKE_DOCKER_DOWN=1 expect_failure 'was not ready after 0s' recover-peer
+FAKE_UNHEALTHY=starting BLOODLEDGER_PEER_HEALTH_WAIT_SECONDS=0 expect_failure 'peer0-mediatrix: starting after 0s' recover-peer
+expect_failure 'recover-peer accepts no arguments' recover-peer extra
+absent="$(FAKE_PEER_ABSENT=1 run_command recover-peer)"
+grep -Fq 'container is absent' <<<"${absent}"
 FAKE_UNHEALTHY=unhealthy expect_failure 'ca-mediatrix: unhealthy' status
 FAKE_CHANNEL_FAILURE=1 expect_failure 'Channel membership' status
 FAKE_HEALTH_FAILURE=1 expect_failure 'Health contract lifecycle' status
@@ -227,4 +295,4 @@ run_command stop | grep -Fq 'preserved'
 FAKE_UNRELATED=1 \
   expect_failure 'not owned by project bloodledger' reset-fabric --dry-run
 
-echo "Operational help, failure, health, stop, reset-intent, preview, preservation, and path-safety behavior passed"
+echo "Operational help, failure, health, peer socket recovery, stop, reset-intent, preview, preservation, and path-safety behavior passed"

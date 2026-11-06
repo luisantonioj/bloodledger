@@ -23,6 +23,7 @@ Commands:
   doctor                       Inspect prerequisites, versions, configuration, and ports
   bootstrap                    Create or validate the Sprint 1 infrastructure baseline
   start                        Start an existing bootstrapped environment and prove health
+  recover-peer                 After a Docker Desktop restart, start only a peer that failed on its Docker socket mount
   status                       Inspect all required layers without changing infrastructure
   logs [SERVICE]               Follow logs for all or one approved project service
   stop                         Stop project services without deleting state
@@ -315,19 +316,86 @@ bootstrap() {
   status
 }
 
-# Docker Desktop can move its WSL socket bind path across restarts, so a stopped
-# peer cannot start again. Recreating only the peer keeps its named volumes and
-# bind-mounted identities; no other service, volume, or generated file changes.
+# Docker Desktop can start the peer (restart policy unless-stopped) before WSL
+# integration publishes /var/run/docker.sock, or can move that bind path across
+# restarts; either way the peer exits 127 on its socket mount and Docker does not
+# retry. Only that failure is recovered: a plain start is retried first, and only
+# if the socket error persists is the peer recreated. Named volumes, identities,
+# and every other service are left unchanged. A peer stopped for any other reason
+# (including a deliberate stop) is not touched.
+readonly peer_start_attempts="${BLOODLEDGER_PEER_START_ATTEMPTS:-10}"
+readonly peer_retry_seconds="${BLOODLEDGER_PEER_RETRY_SECONDS:-6}"
+readonly docker_wait_seconds="${BLOODLEDGER_DOCKER_WAIT_SECONDS:-180}"
+readonly peer_health_wait_seconds="${BLOODLEDGER_PEER_HEALTH_WAIT_SECONDS:-120}"
+readonly docker_socket_path="${BLOODLEDGER_DOCKER_SOCKET:-/var/run/docker.sock}"
+
+peer_socket_failure() {
+  local container="$1" running error
+  running="$(docker inspect --format '{{.State.Running}}' "${container}")"
+  [[ "${running}" == false ]] || return 1
+  error="$(docker inspect --format '{{.State.Error}}' "${container}")"
+  [[ "${error}" == *"/var/run/docker.sock"* ]]
+}
+
 recover_stale_peer_socket() {
-  local container running error
+  local container attempt
   container="$(compose_command ps --all --quiet peer0-mediatrix)"
   [[ -n "${container}" ]] || return 0
-  running="$(docker inspect --format '{{.State.Running}}' "${container}")"
-  [[ "${running}" == false ]] || return 0
-  error="$(docker inspect --format '{{.State.Error}}' "${container}")"
-  [[ "${error}" == *"/var/run/docker.sock"* ]] || return 0
-  printf 'peer0-mediatrix has a stale Docker socket mount; recreating only that container with its volumes preserved\n'
+  peer_socket_failure "${container}" || return 0
+  printf 'peer0-mediatrix last failed on its Docker socket mount; starting the existing container\n'
+  for ((attempt = 1; attempt <= peer_start_attempts; attempt++)); do
+    if docker start "${container}" >/dev/null 2>&1; then
+      printf 'peer0-mediatrix started on attempt %d with its existing container and volumes\n' "${attempt}"
+      return 0
+    fi
+    peer_socket_failure "${container}" || fail "peer0-mediatrix failed to start for a reason other than its Docker socket mount"
+    ((attempt < peer_start_attempts)) && sleep "${peer_retry_seconds}"
+  done
+  printf 'peer0-mediatrix still has a stale Docker socket mount; recreating only that container with its volumes preserved\n'
   compose_command up --detach --wait --no-deps --force-recreate peer0-mediatrix
+}
+
+wait_for_docker() {
+  local waited=0
+  until [[ -S "${docker_socket_path}" ]] && docker info >/dev/null 2>&1; do
+    ((waited < docker_wait_seconds)) || fail "Docker socket ${docker_socket_path} or engine was not ready after ${docker_wait_seconds}s"
+    sleep 2
+    waited=$((waited + 2))
+  done
+}
+
+wait_for_peer_health() {
+  local container="$1" health waited=0
+  while :; do
+    health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}unavailable{{end}}' "${container}")"
+    [[ "${health}" == healthy ]] && return 0
+    ((waited < peer_health_wait_seconds)) || fail "peer0-mediatrix: ${health} after ${peer_health_wait_seconds}s"
+    sleep 3
+    waited=$((waited + 3))
+  done
+}
+
+recover_peer() {
+  wait_for_docker
+  load_environment
+  validate_compose
+  local container
+  container="$(compose_command ps --all --quiet peer0-mediatrix)"
+  if [[ -z "${container}" ]]; then
+    printf 'peer0-mediatrix container is absent (stopped with stop, or never bootstrapped); nothing to recover\n'
+    return 0
+  fi
+  if [[ "$(docker inspect --format '{{.State.Running}}' "${container}")" == true ]]; then
+    printf 'peer0-mediatrix is already running; nothing changed\n'
+  elif ! peer_socket_failure "${container}"; then
+    printf 'peer0-mediatrix is stopped without a Docker socket mount failure; left unchanged\n'
+    return 0
+  else
+    recover_stale_peer_socket
+    container="$(compose_command ps --all --quiet peer0-mediatrix)"
+  fi
+  wait_for_peer_health "${container}"
+  printf 'peer0-mediatrix: healthy\n'
 }
 
 start() {
@@ -575,6 +643,7 @@ case "${command_name}" in
   doctor) [[ "$#" -eq 0 ]] || fail "doctor accepts no arguments"; doctor ;;
   bootstrap) [[ "$#" -eq 0 ]] || fail "bootstrap accepts no arguments"; bootstrap ;;
   start) [[ "$#" -eq 0 ]] || fail "start accepts no arguments"; start ;;
+  recover-peer) [[ "$#" -eq 0 ]] || fail "recover-peer accepts no arguments"; recover_peer ;;
   status) [[ "$#" -eq 0 ]] || fail "status accepts no arguments"; status ;;
   logs) logs "$@" ;;
   stop) [[ "$#" -eq 0 ]] || fail "stop accepts no arguments"; stop_services ;;
