@@ -12,12 +12,14 @@ import { MemoryRepository } from "./test-support.js";
 // ADR-046/047 blood-bank completion contracts; synthetic values only.
 const now = new Date("2026-10-15T08:00:00.000Z");
 
-test("BLOOD_BANK_SUMMARY_V1 keeps counts complete, separates label-expired stock and blocks Expiring Soon on RQ-03", () => {
-  const summary = assembleSummary({ available: 489, reserved: 33, label_expired_pending: 0, last_projected_at: new Date("2026-10-15T07:59:00.250Z"), incoming_awaiting: 4, outgoing_awaiting: 0 }, now);
+test("BLOOD_BANK_SUMMARY_V1 keeps label-expired stock and the synthetic near-expiry count separate", () => {
+  const summary = assembleSummary({ available: 489, reserved: 33, label_expired_pending: 0, last_projected_at: new Date("2026-10-15T07:59:00.250Z"), incoming_awaiting: 4, outgoing_awaiting: 0, near_expiry: 204 }, now);
   assert.equal(summary.scope, "INSTITUTION");
   assert.deepEqual(summary.inventory, { available: 489, reserved: 33, labelExpiredPendingEvaluation: 0, lastProjectedAt: "2026-10-15T07:59:00.250Z" });
   assert.deepEqual(summary.requests, { incomingAwaitingDecision: 4, outgoingAwaitingDecision: 0 });
-  assert.deepEqual(summary.expiringSoon, { availability: "POLICY_BLOCKED", count: null, blocker: "RQ-03" });
+  assert.deepEqual(summary.expiringSoon, { availability: "POLICY_BLOCKED", count: null, blocker: "RQ-03", syntheticAdvisory: { policyVersion: "SYNTHETIC_NEAR_EXPIRY_V1", count: 204 } });
+  assert.equal(assembleSummary({ near_expiry: 0 }, now).expiringSoon.syntheticAdvisory?.count, 0);
+  assert.equal(assembleSummary({}, now).expiringSoon.syntheticAdvisory, undefined);
   // A genuine zero stays zero; an unprojected institution has a null projection time.
   assert.equal(assembleSummary({ available: 0, reserved: 0, label_expired_pending: 0, last_projected_at: null, incoming_awaiting: 0, outgoing_awaiting: 0 }, now).inventory.lastProjectedAt, null);
 });

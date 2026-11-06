@@ -8739,7 +8739,7 @@
       },
       "BloodBankSummary": {
         "type": "object",
-        "description": "BLOOD_BANK_SUMMARY_V1 (ADR-046). Complete own-institution counts from the ledger projection at asOf; never a capped list. inventory.available/reserved count units whose printed label expiry is after asOf; labelExpiredPendingEvaluation counts AVAILABLE/RESERVED units whose label has expired but which have not been ledger-evaluated (not usable stock). requests.*AwaitingDecision count PENDING requests with no reservation (the ledger request stays PENDING after approval; approval records its single reservation). expiringSoon is POLICY_BLOCKED until RQ-03 approves a near-expiry threshold. Low Stock is derived by the client from SYNTHETIC_STOCK_CLASSIFICATION_V1, not served here.",
+        "description": "BLOOD_BANK_SUMMARY_V1 (ADR-046). Complete own-institution counts from the ledger projection at asOf; never a capped list. inventory.available/reserved count units whose printed label expiry is after asOf; labelExpiredPendingEvaluation counts AVAILABLE/RESERVED units whose label has expired but which have not been ledger-evaluated (not usable stock). requests.*AwaitingDecision count PENDING requests with no reservation (the ledger request stays PENDING after approval; approval records its single reservation). expiringSoon retains the RQ-03 policy blocker and may include a separate simulation-only advisory count under PA-TC-01. Low Stock is derived by the client from SYNTHETIC_STOCK_CLASSIFICATION_V1, not served here.",
         "required": [
           "scope",
           "asOf",
@@ -8826,6 +8826,16 @@
               },
               "blocker": {
                 "const": "RQ-03"
+              },
+              "syntheticAdvisory": {
+                "type": "object",
+                "description": "Complete count of this bank's label-current AVAILABLE or RESERVED units within the component-specific advisory window at asOf. Absent when this advisory read is unsupported.",
+                "required": ["policyVersion", "count"],
+                "additionalProperties": false,
+                "properties": {
+                  "policyVersion": { "const": "SYNTHETIC_NEAR_EXPIRY_V1" },
+                  "count": { "type": "integer", "minimum": 0 }
+                }
               }
             }
           },

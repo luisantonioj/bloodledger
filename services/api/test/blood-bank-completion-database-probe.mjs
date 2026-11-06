@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { PostgresOutboundVerification } from '../build/src/outbound-verification.js';
 import { donationLookupHmac } from '../build/src/donation-crypto.js';
+import { PostgresBloodBankReader } from '../build/src/blood-bank-reads.js';
 
 export async function probeBloodBankCompletion({ admin, runtime, app, sessions }) {
   let assertions = 0;
@@ -12,13 +13,19 @@ export async function probeBloodBankCompletion({ admin, runtime, app, sessions }
   const read = (cookie, url) => app.inject({ method: 'GET', url, headers: { cookie } });
   const scalar = async (sql, params = []) => Number(Object.values((await admin.query(sql, params)).rows[0])[0]);
 
-  // Summary: complete own-institution counts; label-expired stock separate; Expiring Soon policy-blocked.
+  // Summary: complete own-institution counts; label-expired stock and simulation-only near expiry separate.
   const summary = (await read(sessions.INST_MEDIATRIX, '/api/v2/dashboard/summary')).json();
   check(summary.policyVersion, 'BLOOD_BANK_SUMMARY_V1'); check(summary.scope, 'INSTITUTION');
   check(summary.inventory.available, await scalar("SELECT count(*) FROM app.v2_components WHERE institution_id='INST_MEDIATRIX' AND inventory_status='AVAILABLE' AND expires_at>now()"));
   check(summary.inventory.reserved, await scalar("SELECT count(*) FROM app.v2_components WHERE institution_id='INST_MEDIATRIX' AND inventory_status='RESERVED' AND expires_at>now()"));
   check(summary.requests.incomingAwaitingDecision, await scalar("SELECT count(*) FROM app.v2_transfer_requests t WHERE source_institution_id='INST_MEDIATRIX' AND status='PENDING' AND NOT EXISTS (SELECT 1 FROM app.v2_reservations r WHERE r.transfer_id=t.transfer_id)"));
-  assert.deepEqual(summary.expiringSoon, { availability: 'POLICY_BLOCKED', count: null, blocker: 'RQ-03' }); assertions++;
+  const nearExpiryCount = await scalar(`SELECT count(*) FROM app.v2_components
+    WHERE institution_id='INST_MEDIATRIX' AND inventory_status IN ('AVAILABLE','RESERVED')
+      AND expires_at>$1 AND expires_at<=$1::timestamptz+CASE component_type
+        WHEN 'WHOLE_BLOOD' THEN interval '12 hours' WHEN 'PACKED_RED_BLOOD_CELLS' THEN interval '12 hours'
+        WHEN 'PLATELETS' THEN interval '6 hours' WHEN 'FRESH_FROZEN_PLASMA' THEN interval '24 hours'
+        WHEN 'CRYOPRECIPITATE' THEN interval '24 hours' END`, [summary.asOf]);
+  assert.deepEqual(summary.expiringSoon, { availability: 'POLICY_BLOCKED', count: null, blocker: 'RQ-03', syntheticAdvisory: { policyVersion: 'SYNTHETIC_NEAR_EXPIRY_V1', count: nearExpiryCount } }); assertions++;
   for (const denied of [sessions.DOH, sessions.PRC, sessions.REQUESTOR]) check((await read(denied, '/api/v2/dashboard/summary')).statusCode, 403);
 
   // Network availability: hospital roles only; complete city aggregate of label-current AVAILABLE units.
@@ -44,12 +51,24 @@ export async function probeBloodBankCompletion({ admin, runtime, app, sessions }
   // Outbound verification on a disposable LOCAL_RELEASE reservation with two synthetic labels.
   const keyring = { encryptionKey: randomBytes(32), lookupKey: randomBytes(32), encryptionKeyVersion: 'v1' };
   const labels = ['MM26-10-9901', 'MM26-10-9902'], reservationId = 'RES_OUTBOUND_PROBE', correlation = 'CORR_' + 'B'.repeat(32);
+  const reader = new PostgresBloodBankReader(runtime);
+  const expiresAt = new Date(Date.now() + 4 * 86_400_000);
+  const windowStart = expiresAt.getTime() - 6 * 3_600_000;
+  const countAt = async (institutionId, time) => (await reader.summary(institutionId, new Date(time))).near_expiry;
+  const nearExpiryCases = [
+    { institution: 'INST_MEDIATRIX', time: windowStart - 1, added: 0 },
+    { institution: 'INST_MEDIATRIX', time: windowStart, added: 2 },
+    { institution: 'INST_MEDIATRIX', time: expiresAt.getTime(), added: 0 },
+    { institution: 'INST_SYNTH_MEDIX', time: windowStart, added: 0 },
+  ];
+  for (const entry of nearExpiryCases) entry.before = await countAt(entry.institution, entry.time);
   await admin.query("INSERT INTO app.v2_reservations(reservation_id,purpose,local_release_id,institution_id,status,correlation_id,version,classification) VALUES($1,'LOCAL_RELEASE','REL_OUTBOUND_PROBE','INST_MEDIATRIX','ACTIVE',$2,1,'SIMULATION_ONLY')", [reservationId, correlation]);
   for (const [index, label] of labels.entries()) {
     const hmac = donationLookupHmac(label, keyring), donation = `DON_OUTBOUND_PROBE_${index}`;
     await admin.query("INSERT INTO app.v2_donations(donation_id,issuer_institution_id,donation_number_ciphertext,donation_number_nonce,donation_number_auth_tag,donation_number_key_version,donation_number_lookup_hmac,created_by_user_id,created_at,updated_at,classification) VALUES($1,'INST_MEDIATRIX','FABRICATED_TEST_CIPHERTEXT',repeat('a',32),repeat('b',32),'TEST_ONLY',$2,'USR_SYNTH_REVIEW_ROLE01',now(),now(),'SIMULATION_ONLY')", [donation, hmac]);
-    await admin.query("INSERT INTO app.v2_components(component_id,donation_id,issuer_institution_id,donation_number_lookup_hmac,component_type,blood_type,collected_at,expires_at,institution_id,inventory_status,reservation_purpose,reservation_id,ledger_version,ledger_transaction_id,correlation_id,policy_version,created_at,updated_at,classification) VALUES($1,$2,'INST_MEDIATRIX',$3,'PLATELETS','O_NEGATIVE',now()-interval '1 day',now()+interval '4 days','INST_MEDIATRIX','RESERVED','LOCAL_RELEASE',$4,2,$5,$6,'PERSISTENT_DEVELOPMENT_CORE_V1',now(),now(),'SIMULATION_ONLY')", [`COMP_OUTBOUND_PROBE_${index}`, donation, hmac, reservationId, 'e'.repeat(64), correlation]);
+    await admin.query("INSERT INTO app.v2_components(component_id,donation_id,issuer_institution_id,donation_number_lookup_hmac,component_type,blood_type,collected_at,expires_at,institution_id,inventory_status,reservation_purpose,reservation_id,ledger_version,ledger_transaction_id,correlation_id,policy_version,created_at,updated_at,classification) VALUES($1,$2,'INST_MEDIATRIX',$3,'PLATELETS','O_NEGATIVE',now()-interval '1 day',$7,'INST_MEDIATRIX','RESERVED','LOCAL_RELEASE',$4,2,$5,$6,'PERSISTENT_DEVELOPMENT_CORE_V1',now(),now(),'SIMULATION_ONLY')", [`COMP_OUTBOUND_PROBE_${index}`, donation, hmac, reservationId, 'e'.repeat(64), correlation, expiresAt]);
   }
+  for (const {institution, time, added, before} of nearExpiryCases) check(await countAt(institution, time), before + added, 'Only own, label-current platelets at or within the six-hour window count');
   const service = new PostgresOutboundVerification(runtime, keyring);
   const operator = { userId: 'USR_SYNTH_REVIEW_ROLE02', displayName: 'Synthetic Operator', institutionId: 'INST_MEDIATRIX', institutionDisplayName: 'Synthetic Mediatrix', institutionCategory: 'HOSPITAL', roleId: 'ROLE-02', roleDisplayName: 'Verified operator', permissions: [], classification: 'SIMULATION_ONLY' };
   const body = (scannedLabels, expectedVersion = 1) => ({ expectedVersion, correlationId: 'CORR_' + randomBytes(16).toString('hex').toUpperCase(), scannedLabels });
