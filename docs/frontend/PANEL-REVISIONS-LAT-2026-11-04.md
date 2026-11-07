@@ -14,13 +14,18 @@ isolated worktree `/home/yuri/.codex/worktrees/lat-panel-revisions/bloodledger-c
 
 ## Delivery status
 
+The [November 7 host continuation](PANEL-HOST-CONTINUATION-2026-11-07.md)
+supersedes the earlier migration preflight below. The retained database now
+has 44 applied migrations and zero pending. Existing partial approval,
+discrepancy and transaction-history screens were captured on the sample host.
+
 | Item | Frontend implementation and evidence | Remaining gate |
 |---|---|---|
 | a | The separate sample host shows 2 expired units per bank from exact stock totals. Expiring Soon (demo) shows 0 per bank, matching Alerts under PA-TC-01 | Retained-host verification after deployment |
-| b | Approved quantity/reason, FEFO selection and requested/approved/closed-shortfall details. Lat reported approving a sample request and reaching Transfer details | Verify the same recorded quantities and reason from both hospitals and capture both views. The optional comment is a temporary review draft; the API saves the coded reason |
+| b | Jopia verified 3/2/1 on his host. Lat captured matching 5/3/2 and OTHER_OPERATIONAL from both sample hospital accounts | Select screenshots for the paper. The optional comment is a temporary review draft; the API saves the coded reason |
 | c | Current export heading preserved | Team's current DOH template missing; do not invent its heading |
-| d | Synthetic inbound/outbound history checks for Mediatrix, Medix and N.L. Villa | Capture final paper evidence from the sample system |
-| e | Counts-only discrepancy, PIN, actor-bound frozen retry, receive blocking and recount resolution tested with browser fixtures | Run and capture a bounded sample mismatch and matching recount |
+| d | Inbound and outbound history verified and captured for all three banks on the sample host | Select and assemble the paper figures |
+| e | Existing OPEN and RESOLVED/RECOUNT_MATCHED sample records verified in the actual UI; receipt blocking visible on the phone | A fresh bounded mismatch/recount execution remains separate from these read-only captures |
 | f | Committed banner unlocks next authorized action; current-context supplier detail read retry; requester transfer-row navigation; readable receipt options | Supplier details absent in historical records remain honestly not recorded |
 | g | BROA simulation/advisory disclosure restored following review of dda543b | No forecast/model activation or allocation authority change |
 | h | Synthetic figure panels and history captures prepared through the browser evidence switch | Composite Figs 15–19 not all replaced; DOH template and final paper selection still needed |
@@ -106,7 +111,7 @@ test initially had 506 pass / 1 fail because the existing generic capability
 helper returns an unmatched GET capability name; the corrected test asserts
 that GET selects no authorized operator. Final unit result is 507/0/0.
 
-## Host preflight — migration NOT applied
+## November 4 host preflight — superseded on November 7
 
 Read-only status on Lat's retained database: **42 applied / 2 pending**:
 
