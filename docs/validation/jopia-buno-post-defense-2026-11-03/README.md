@@ -26,3 +26,31 @@ still has the 8-candidate Table 10 and the Discussion sentence that a simple mea
 "outperformed more complex candidates". **Franze #1 is not yet reflected in the final
 manuscript**; Buno should confirm which document was edited and carry the changes into
 the final IMRAD.
+
+## Update 2026-11-09: manuscript suggestions verified
+
+Buno added her edits to the final IMRAD (`1--PKwbC…`) on 2026-11-05 as **22 open suggestions**, alongside Jopia's
+20 suggestions from 2026-11-04. The verifier read all 22 suggestions in full and checked them against the
+branch's evidence (`POST-DEFENSE-FORECASTING-RESULTS.md`, `-DATA-AUDIT.md`, `-PROTOCOL.md` at `46f79d7`).
+
+| Check | Result |
+|---|---|
+| Table 10a (22 candidates × 5 values) | All 22 rows, all values and the order match the results table exactly |
+| Results text: WAPE 68.67% → 60.85% (−7.82 pp), MAE 0.5889, RMSE 1.2924, bias +0.0791 → −0.1677, underpredicted 1077.13 → 1392 (+29.23%), 14/20 zero medians, PRBC 56.66% / PC 60.67%, confusion 2288/152/288/952, 88.04 / 86.23 / 76.77 / 81.23 / 85.27, original recall 87.50% | All match the evidence |
+| Data audit (955 rows, 229 / 21 dates, 14 release rows, 400 stock observations, 20% outpatient anchor, V4 Scenario_Rates) | Match `POST-DEFENSE-DATA-AUDIT.md` |
+| Boosting settings (100 iterations, learning rate .05, minimum 30 per leaf, L2 = 1, seed 20261101), folds, 7,300 series-days, refit through 2025-06-30 | Match the protocol and results |
+| "Original V5" relabelling of Tables 10–12 and their paragraphs; Teunter et al. (2011) reference in alphabetical position | Present |
+| Overlap with Jopia's suggestions | None: different paragraphs (fourth-problem Discussion paragraph, Conclusion, first Recommendations paragraph, ML definition, analytics Scope paragraph) |
+
+**Findings for Buno:**
+1. **The ML definition is not changed.** Suggestion `suggest.c1esurt79qs6` re-inserts the same text, and the
+   separate "Add" suggestion was rejected. The definition still says "forecast of blood consumption … based on
+   historical stock submission data … designed to progressively improve in accuracy". That contradicts the
+   Methodology (next-day *requested* units, frozen per-series model, no automatic retraining), although the
+   linked comment says it was corrected.
+2. The Reproducibility paragraph cites "the research branch's" results files. The branch has no PR yet. Open one
+   into `codex/panel-revisions-integration`, so the paper can cite the project repository.
+3. `docs/research/POST-DEFENSE-MANUSCRIPT-CHANGES.md` records the manuscript edits as completed on 2026-11-02;
+   the suggestions were made on 2026-11-05. Correct the record.
+4. Optional: the first Recommendations paragraph's new text drops the opening sentence about resolving the
+   study's other open decisions. Keep it if that was not intended.
