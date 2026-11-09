@@ -256,6 +256,18 @@ Do not relax the limit or alter dates. Fault-injection options
 `--stop-after`, `--pause-after-submit` and `--pause-after-commit` additionally
 require privately reviewed `validationFaultInjection=true`.
 
+### Successor baselines (TP-JOP-D19)
+
+V1 was reviewed against exactly nine Mediatrix units. A successor scenario
+(V2 and later) is reviewed against the live target its preview inspects: the
+preview seals every current Mediatrix row in any state, the target hash and
+all-table fingerprints, and acceptance expects that sealed baseline plus
+486 AVAILABLE and 36 RESERVED units. Baseline rows, including label-expired
+units, must stay unchanged and are never re-dated; FEFO already skips
+label-expired stock. Terminal `FAILED`/`CONFLICT` commands that never reached
+the ledger do not count as competing writers. Stop the worker and its expiry
+evaluator before preview.
+
 ## Durable recovery and acceptance
 
 `operational_stock_runs` holds immutable hashes, private scenario/backend ID
