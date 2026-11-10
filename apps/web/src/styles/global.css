@@ -1489,3 +1489,9 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .panel-stock-pending{padding:0 18px;color:var(--ink-muted);font-size:12px;font-weight:500}.exact-stock-tooltip-counts{display:grid;gap:4px}.stock-threshold-tooltip:has(.exact-stock-tooltip-counts){width:324px;max-height:80vh;overflow:auto}.zero-stock-inspect{position:absolute;bottom:0!important;left:0;right:0;height:24px!important;background:transparent!important;border:0;cursor:help}.zero-stock-inspect:focus-visible{outline:2px solid var(--primary);outline-offset:2px}.receipt-discrepancy{padding:14px;border:1px solid var(--warning);border-radius:var(--radius-md);background:var(--warning-container);margin:12px 0}.receipt-discrepancy dl{display:grid;grid-template-columns:1fr 1fr;gap:6px}.receipt-discrepancy dd{margin:0;font-weight:600}
 
 .bank-dashboard-stats{grid-template-columns:repeat(5,minmax(0,1fr))}.exact-stock-card .inventory-overview-link{margin-left:auto}@media(max-width:1100px){.bank-dashboard-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:700px){.bank-dashboard-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:420px){.bank-dashboard-stats{grid-template-columns:1fr}}
+/* Columns picker placed in a card header row */
+.table-header-slot{display:contents}
+.table-view-bar.table-view-bar-header{padding:0;margin-left:auto;flex:0 0 auto}
+.table-view-bar-header .table-column-picker>summary{min-height:32px;padding:6px 10px}
+.table-view-bar-header~.request-form-help,.table-header-slot:has(.table-view-bar)~.request-form-help{margin-left:0}
+.requester-dashboard-card>header>div+.table-view-bar-header{margin-left:0}

@@ -138,9 +138,10 @@ export function ColumnPicker<T>({ view }: { view: TableView<T> }) {
 }
 
 // Omitted when fewer than two columns can be hidden; header sort still applies.
-export function TableViewBar<T>({ view }: { view: TableView<T> }) {
+// placement="header" sits inside a card header row instead of taking its own row.
+export function TableViewBar<T>({ view, placement }: { view: TableView<T>; placement?: "header" }) {
   if (view.columns.filter(column => column.hideable !== false).length < 2) return null;
-  return <div className="table-view-bar"><ColumnPicker view={view}/></div>;
+  return <div className={"table-view-bar" + (placement === "header" ? " table-view-bar-header" : "")}><ColumnPicker view={view}/></div>;
 }
 
 // Columns for tables that already have PDF export headers/rows: each column sorts
