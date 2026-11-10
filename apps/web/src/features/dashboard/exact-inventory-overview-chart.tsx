@@ -11,6 +11,7 @@ import type {ExactStockRow,STOCK_STATUS_FIELDS} from "../../services/api/panel-r
 const availabilityOptions = {
  AVAILABLE: {label:"Available", axis:"Available units", count:(row:ExactStockRow)=>row.available},
  RESERVED: {label:"Reserved", axis:"Reserved units", count:(row:ExactStockRow)=>row.reserved},
+ EXPIRED: {label:"Expired", axis:"Expired units", count:(row:ExactStockRow)=>row.expired},
 };
 type Availability = keyof typeof availabilityOptions;
 

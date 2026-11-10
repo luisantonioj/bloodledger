@@ -85,7 +85,7 @@ export function useTableView<T>(tableId: string, columns: TableColumn<T>[], rows
       if (!columns.some(column => column.id === id && column.sortValue)) return;
       if (sortColumn?.id !== id) update({ ...view, sortId: id, direction: "asc" });
       else if (direction === "asc") update({ ...view, sortId: id, direction: "desc" });
-      else update({ ...view, sortId: id, direction: "asc" });
+      else update({ ...view, sortId: undefined, direction: undefined });
     },
     setHidden: (id, hide) => {
       const next = hide ? [...new Set([...view.hidden, id])] : view.hidden.filter(entry => entry !== id);
@@ -103,7 +103,7 @@ export function SortableHeader<T>({ view, id, children, className }: { view: Tab
   const active = view.sortId === id;
   const ariaSort = active ? (view.direction === "asc" ? "ascending" : "descending") : undefined;
   if (!column?.sortValue) return <th className={className}>{children}</th>;
-  const next = !active ? "ascending" : view.direction === "asc" ? "descending" : "ascending";
+  const next = !active ? "ascending" : view.direction === "asc" ? "descending" : "default order";
   return <th className={className} aria-sort={ariaSort}><button type="button" className="table-sort-button" title={`Sort by ${column.label}: ${next}`} onClick={() => view.toggleSort(id)}>{children}<svg className="table-sort-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path className="sort-up" d="m1 6 3-3 3 3M4 3v10"/><path className="sort-down" d="m9 10 3 3 3-3M12 13V3"/></svg></button></th>;
 }
 

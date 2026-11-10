@@ -14,13 +14,22 @@ export function reservationSubmitLabel(action: ReservationAction | undefined, st
 export const DELAY_REASONS = [["VEHICLE_DELAY", "Vehicle delay"], ["TRAFFIC", "Traffic"], ["WEATHER", "Weather"], ["HANDOVER_PENDING", "Handover pending"], ["OTHER_OPERATIONAL", "Other operational delay"]] as const;
 export type ReservationAction = keyof typeof RESERVATION_ACTION_LABELS;
 export function reservationActions(row: ReservationDetail, principal: Principal): ReservationAction[] {
-  // Local release is retired from the frontend; existing records remain readable.
-  if (row.purpose === "LOCAL_RELEASE") return [];
   const source = row.sourceInstitutionId === principal.institutionId;
   const recipient = row.purpose === "TRANSFER" && row.destinationInstitutionId === principal.institutionId;
   const capable = (action: ReservationAction) => principal.operators?.some(operator =>
     operator.actionCapabilities?.includes(action === "local-release-complete" ? "inventory:local-release" : "transfer:" + action) &&
     ((source && ["ROLE-01", "ROLE-02"].includes(operator.roleId) && action !== "receive") || (recipient && operator.roleId === "ROLE-03" && ["receive", "cancel", "compromise", "delay"].includes(action)))) ?? false;
+  if (row.purpose === "LOCAL_RELEASE") {
+    if (!source) return [];
+    const candidates: ReservationAction[] = [];
+    if (row.status === "ACTIVE") {
+      if (!row.preparedEvidencePresent) candidates.push("prepare");
+      if (row.preparedEvidencePresent) candidates.push("local-release-complete");
+      candidates.push("cancel");
+    }
+    if (["DISPATCHED", "IN_TRANSIT", "DELAYED", "RECEIVED"].includes(row.status)) candidates.push("compromise");
+    return candidates.filter(capable);
+  }
   const candidates: ReservationAction[] = [];
   if (row.status === "ACTIVE") {
     if (!row.preparedEvidencePresent) candidates.push("prepare");

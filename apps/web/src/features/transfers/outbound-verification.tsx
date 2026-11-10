@@ -1,5 +1,4 @@
 import {useEffect,useRef,useState} from "react";
-import {CameraPhotoCapture} from "../receipts/camera-photo-capture";
 import {ApiRequestError,requestJson} from "../../services/api/client";
 import {newMutationKeys} from "../../services/api/mutation-keys";
 import {parseOutboundVerification} from "../../services/api/blood-bank-completion";
@@ -30,20 +29,18 @@ export function outboundFailure(reason:unknown){
 export function OutboundVerification({reservation,onVerified,onLockChange,scannedRecognition}:{scannedRecognition?:ReceiptRecognition;reservation:ReservationDetail;onVerified:(result:ReturnType<typeof parseOutboundVerification>)=>void;onLockChange:(locked:boolean)=>void}){
   // Operations must explicitly enable this after the separately approved host migration.
   const enabled=import.meta.env.VITE_BLOODLEDGER_OUTBOUND_VERIFICATION_READY==="true";
-  const [cameraOpen,setCameraOpen]=useState(false),[imageUrl,setImageUrl]=useState<string>(),[progress,setProgress]=useState(0);
-  const chooser=useRef<HTMLInputElement>(null);
+  const [progress,setProgress]=useState(0);
+  const chooser=useRef<HTMLInputElement>(null),cameraChooser=useRef<HTMLInputElement>(null);
   const [image,setImage]=useState<File>(),[recognition,setRecognition]=useState<ReceiptRecognition>(),[labels,setLabels]=useState<ScannedLabel[]>([]),[confirmed,setConfirmed]=useState(false),[reading,setReading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[done,setDone]=useState(false),[ambiguous,setAmbiguous]=useState(false);
-  const active=useRef(true),controller=useRef<AbortController|null>(null),attempt=useRef<{keys:ReturnType<typeof newMutationKeys>;body:{policyVersion:"OUTBOUND_LABEL_VERIFICATION_V2";expectedVersion:number;correlationId:string;scannedLabels:ScannedLabel[]}}|null>(null);
+  const active=useRef(true),controller=useRef<AbortController|null>(null),attempt=useRef<{keys:ReturnType<typeof newMutationKeys>;body:{policyVersion:"OUTBOUND_LABEL_VERIFICATION_V2";expectedVersion:number;correlationId:string;scannedLabels:ScannedLabel[]}}|null>(null),verifyRef=useRef<()=>void>(()=>{});
   useEffect(()=>{active.current=true;return()=>{active.current=false;controller.current?.abort();};},[]);
   const locked=busy||ambiguous;
-  useEffect(()=>()=>{if(imageUrl)URL.revokeObjectURL(imageUrl);},[imageUrl]);
-  useEffect(()=>{if(locked||done)setCameraOpen(false);},[locked,done]);
   useEffect(()=>{if(!image)return;void ocr(image);return()=>controller.current?.abort();},[image]);
   function changeImage(file?:File){
-    if(locked||done)return;controller.current?.abort();setReading(false);setCameraOpen(false);setRecognition(undefined);setConfirmed(false);setError("");setImage(undefined);setImageUrl(undefined);setProgress(0);
+    if(locked||done)return;controller.current?.abort();setReading(false);setRecognition(undefined);setConfirmed(false);setError("");setImage(undefined);setProgress(0);
     if(!file)return;
     if(!["image/png","image/jpeg"].includes(file.type)||file.size>10*1024*1024){setError("Choose a JPG or PNG image up to 10 MB.");return;}
-    setImage(file);setImageUrl(URL.createObjectURL(file));
+    setImage(file);
   }
   const componentMatches=outboundComponentMatches(recognition,reservation);
   useEffect(()=>{if(!locked&&!done){controller.current?.abort();setReading(false);setRecognition(scannedRecognition);setConfirmed(false);setError("");}},[scannedRecognition]);
@@ -54,7 +51,7 @@ export function OutboundVerification({reservation,onVerified,onLockChange,scanne
     catch{if(active.current&&!abort.signal.aborted)setError("The label could not be read confidently. Use a clear image of the supported five-field label.");}
     finally{if(active.current&&controller.current===abort)setReading(false);}
   }
-  function add(){if(!recognition||!confirmed||locked||!outboundComponentMatches(recognition,reservation))return;const label={donationNumber:recognition.label.donationNumber,componentType:recognition.label.componentType};if(labels.some(entry=>entry.donationNumber===label.donationNumber&&entry.componentType===label.componentType)){setError("This label has already been added.");return;}setLabels([...labels,label]);setRecognition(undefined);setImage(undefined);setImageUrl(undefined);setConfirmed(false);setError("");}
+  function add(){if(!recognition||!confirmed||locked||!outboundComponentMatches(recognition,reservation))return;const label={donationNumber:recognition.label.donationNumber,componentType:recognition.label.componentType};if(labels.some(entry=>entry.donationNumber===label.donationNumber&&entry.componentType===label.componentType)){setError("This label has already been added.");return;}setLabels([...labels,label]);setRecognition(undefined);setImage(undefined);setConfirmed(false);setError("");}
   async function verify(){
     if(!enabled||busy||done||(!ambiguous&&labels.length!==reservation.components.length))return;
     if(!attempt.current){const keys=newMutationKeys();attempt.current={keys,body:{policyVersion:"OUTBOUND_LABEL_VERIFICATION_V2",expectedVersion:reservation.version,correlationId:keys.correlationId,scannedLabels:[...labels]}};}
@@ -66,21 +63,23 @@ export function OutboundVerification({reservation,onVerified,onLockChange,scanne
     }catch(reason){if(active.current){setError(outboundFailure(reason));const uncertain=!(reason instanceof ApiRequestError)||reason.status>=500;setAmbiguous(uncertain);if(!uncertain)attempt.current=null;}}
     finally{if(active.current)setBusy(false);}
   }
+  verifyRef.current=()=>void verify();
+  useEffect(()=>{if(enabled&&!done&&!busy&&!ambiguous&&labels.length>0&&labels.length===reservation.components.length&&labels.length<=50)verifyRef.current();},[labels,done,busy,ambiguous,enabled,reservation.components.length]);
   return <section className="bank-record-card outbound-label-verification" aria-label="Outbound label verification">
     <h4>Scan reserved units</h4>
     {reservation.components.length>50&&<p role="status">This transfer has more than 50 units and can’t be verified here. Contact your administrator.</p>}
     {!enabled&&<p role="status">Label verification is unavailable here. You can use existing preparation evidence if you already have it.</p>}
     <fieldset disabled={!enabled||locked||done}>
-      <div className="receipt-camera-stage">{cameraOpen?<CameraPhotoCapture onCapture={changeImage} onClose={()=>setCameraOpen(false)}/>:imageUrl?<img src={imageUrl} alt="Selected reserved-unit label preview"/>:<><strong>Capture a reserved-unit label</strong><span>Take a photo with this device or choose an image.</span></>}</div>
+      <input ref={cameraChooser} type="file" accept="image/*" capture="environment" hidden aria-label="Reserved-unit label camera" disabled={reading} onChange={event=>{changeImage(event.target.files?.[0]);event.target.value="";}}/>
       <input ref={chooser} type="file" accept="image/png,image/jpeg" hidden aria-label="Reserved-unit label image" disabled={reading} onChange={event=>{changeImage(event.target.files?.[0]);event.target.value="";}}/>
-      <div className="receipt-capture-actions receipt-auto-capture-actions"><button className="button primary compact" type="button" disabled={reading||cameraOpen} onClick={()=>{setConfirmed(false);setCameraOpen(true);}}>Take photo</button><button className="button compact" type="button" disabled={reading} onClick={()=>{setCameraOpen(false);chooser.current?.click();}}>Choose image</button>{image&&<button className="button compact" type="button" onClick={()=>changeImage()}>Clear image</button>}</div>
+      <div className="bank-scanner-direction-options receipt-scan-options"><button className="bank-scanner-direction-option" type="button" disabled={reading} onClick={()=>{setConfirmed(false);cameraChooser.current?.click();}}><span aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span><strong>Take photo</strong><small>Open camera</small></button><button className="bank-scanner-direction-option" type="button" disabled={reading} onClick={()=>{chooser.current?.click();}}><span aria-hidden="true"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span><strong>Choose image</strong><small>Browse gallery</small></button></div>
+      {image&&<div className="receipt-capture-actions"><button className="button compact" type="button" onClick={()=>changeImage()}>Clear image</button></div>}
       {reading&&<p className="receipt-preview-note" role="status">Reading label · {progress}%</p>}
       {recognition&&!componentMatches&&<p role="alert">The label’s component doesn’t match this transfer. Scan the correct unit.</p>}
       {recognition&&componentMatches&&<div className="transfer-scan-review"><p>Label read. Check it against the reserved unit.</p><label><input type="checkbox" checked={confirmed} onChange={event=>setConfirmed(event.target.checked)}/>I checked the recognized label against this reserved unit.</label><button className="button compact" type="button" disabled={!confirmed||labels.length>=Math.min(50,reservation.components.length)} onClick={add}>Add scanned unit</button></div>}
-      <p className="transfer-scan-count" role="status">{done?"All reserved units verified":`${labels.length} of ${reservation.components.length} reserved units scanned`}</p>
       {!!labels.length&&<button className="button compact" type="button" onClick={()=>{setLabels([]);setError("");}}>Clear scans</button>}
     </fieldset>
-    <button className="button compact primary" type="button" disabled={!enabled||busy||reading||done||(!ambiguous&&(!labels.length||labels.length!==reservation.components.length||labels.length>50))} onClick={()=>void verify()}>{busy?"Verifying…":ambiguous?"Retry same verification":"Verify scanned units"}</button>
+    <div className="transfer-scan-row"><p className="transfer-scan-count" role="status">{done?"All reserved units verified":busy?"Verifying…":`${labels.length} of ${reservation.components.length} reserved units scanned`}</p>{ambiguous&&<button className="button compact primary" type="button" disabled={busy} onClick={()=>void verify()}>Retry verification</button>}</div>
     {error&&<p role="alert">{error}</p>}
   </section>;
 }

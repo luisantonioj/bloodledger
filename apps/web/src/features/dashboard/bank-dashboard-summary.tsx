@@ -9,6 +9,6 @@ export function BankDashboardSummary({principal}:{principal:Principal}){
  const low=counts?stockClassificationPolicy.series.filter(row=>["critical","low"].includes(classifyStock(row.bloodType,row.componentType,counts!.get(row.bloodType+":"+row.componentType)??0)??"")).length:null;
  const totals=stock.data?.totals;
  const expired=totals?totals.expired+totals.labelExpiredPendingEvaluation:null;
- const cards=[{label:"Total Blood Units",value:totals?.usable??null},{label:"Expired (not usable)",value:expired},{label:"Expiring Soon (demo)",value:summary.data?.expiringSoon??null},{label:"Low Stock",value:low},{label:"Pending Requests",value:summary.data?.requests.incomingAwaitingDecision??null}];
+ const cards=[{label:"Total Blood Units",value:totals?.usable??null},{label:"Expired",value:expired},{label:"Expiring Soon",value:summary.data?.expiringSoon??null},{label:"Low Stock",value:low},{label:"Pending Requests",value:summary.data?.requests.incomingAwaitingDecision??null}];
  return <><div className="stats dashboard-stats bank-dashboard-stats">{cards.map(card=><article key={card.label}><span>{card.label}</span><strong aria-label={card.value===null?"Unavailable":undefined}>{card.value??"—"}</strong></article>)}</div>{summary.error&&<p role="status">Dashboard summary unavailable. {summary.error}</p>}</>;
 }

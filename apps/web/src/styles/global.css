@@ -676,6 +676,10 @@
 .stock-threshold-segment:hover,.stock-threshold-segment:focus-visible{filter:brightness(1.12);outline:2px solid var(--ink);outline-offset:-2px;z-index:1}
 .stock-threshold-tooltip{position:fixed;z-index:10000;display:grid;gap:5px;box-sizing:border-box;width:296px;max-width:calc(100vw - 16px);padding:10px 12px;border:1px solid var(--chrome);border-radius:6px;background:color-mix(in srgb,var(--chrome) 75%,transparent);color:var(--on-chrome);box-shadow:0 4px 14px rgba(0,0,0,.2);font:12px/1.4 var(--font-sans);pointer-events:none}
 .stock-threshold-tooltip strong{font-size:12px}.stock-threshold-tooltip small{font-size:11px;color:var(--on-chrome-muted)}
+.tooltip-title-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:18px;font-weight:600;line-height:1.3}
+.tooltip-title-row strong{font-size:inherit;font-weight:inherit}
+.tooltip-meta-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tooltip-meta-row+.exact-stock-tooltip-counts,.tooltip-title-row+.exact-stock-tooltip-counts{margin-top:6px}
 
 /* Plot, component names, status labels and blood-group names have separate rows. */
 .inventory-overview-chart{--overview-plot-height:292px;--overview-component-height:44px;--overview-status-height:0px;--overview-group-height:32px;height:calc(var(--overview-plot-height) + var(--overview-component-height) + var(--overview-status-height) + var(--overview-group-height))}
@@ -1447,6 +1451,23 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .phone-scanner-header .receipt-eyebrow{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .phone-scanner-header .sign-out{flex-shrink:0;color:var(--ink)}
 .phone-scanner-content{padding:16px;min-width:0;overflow-y:auto}
+.phone-scanner-shell .receipt-input-card{border:0;background:transparent;border-radius:0;padding:0}
+.phone-scanner-shell .bank-scanner-back{border-color:transparent;background:transparent}
+.phone-scanner-shell .request-form-help{display:none}
+.phone-scanner-shell .bank-scanner-input-heading{position:relative;justify-content:center}
+.phone-scanner-shell .bank-scanner-input-heading .bank-scanner-back{position:absolute;left:0}
+.phone-scanner-shell .reservation-actions>h3{display:none}
+.phone-scanner-shell .reservation-actions .bank-detail-action-buttons{display:none}
+.phone-scanner-shell .reservation-actions .transfer-action-form{border:0;background:transparent;padding:0;margin-top:0}
+.phone-scanner-shell .reservation-actions .transfer-action-form legend{display:none}
+.phone-scanner-shell .outbound-label-verification{border:0;background:transparent;padding:0;border-radius:0}
+.phone-scanner-shell .scan-on-phone-note{display:none}
+.transfer-scan-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.transfer-scan-row .transfer-scan-count{margin:0;flex:1;min-width:0}
+.scanner-icon-btn{display:grid;place-items:center;width:32px;height:32px;padding:0;border:1px solid transparent;border-radius:var(--radius-sm);background:transparent;color:var(--ink-secondary);cursor:pointer;flex-shrink:0}
+.scanner-icon-btn:hover{border-color:var(--line);background:var(--surface-subtle);color:var(--ink)}
+.scanner-icon-btn:disabled{opacity:.45;cursor:default}
+.receipt-scan-options{padding:8px 0 4px}
 .scan-on-phone-note{margin:0;padding:8px 10px;border-radius:var(--radius-sm);background:var(--information-container);color:var(--ink-secondary);font-size:11px;line-height:1.6;max-width:420px}
 
 /* PRC supply request details: identity + status, compact facts, timeline history. */

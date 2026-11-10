@@ -7,7 +7,7 @@ export function StockThresholdSegment({ segment, total, product,exact,stockBand,
   const [anchor, setAnchor] = useState<HTMLButtonElement>();
   const tooltip = useRef<HTMLSpanElement>(null);
   const label = segment.band === "unknown" ? "Unclassified" : segment.band[0].toUpperCase()+segment.band.slice(1);
-  const heading = countSummary ?? (exact ? "Demo band " + stockBand : label);
+  const bandLabel = !countSummary && stockBand && stockBand !== "unavailable" ? stockBand[0].toUpperCase()+stockBand.slice(1) : null;
 
   useLayoutEffect(() => {
     const bubble = tooltip.current;
@@ -53,9 +53,15 @@ export function StockThresholdSegment({ segment, total, product,exact,stockBand,
       onFocus={event=>setAnchor(event.currentTarget)} onBlur={()=>setAnchor(undefined)}
       onClick={event=>setAnchor(event.currentTarget)} onKeyDown={event=>{if(event.key==="Escape"){setAnchor(undefined);event.stopPropagation();}}}/>
     {anchor && createPortal(<span ref={tooltip} id={id} role="tooltip" className="stock-threshold-tooltip">
-      <strong>{product} · {heading}</strong>
-      {exact&&<span className="exact-stock-tooltip-counts">{exact.map(([key,value])=><span key={key}>{key}: <b>{value}</b></span>)}</span>}
-      {!countSummary&&<><span className="stock-threshold-range-row"><span>{segment.range} units</span>{segment.band === "surplus" && <span>Surplus: {segment.end-segment.start} units</span>}</span><small>{segment.explanation}</small></>}
+      <span className="tooltip-title-row">
+        <strong>{product}</strong>
+        {bandLabel && <span>{bandLabel}</span>}
+      </span>
+      {!countSummary && <span className="tooltip-meta-row">
+        <span>{segment.range} units{segment.band === "surplus" ? ` · Surplus: ${segment.end-segment.start}` : ""}</span>
+        <small>{segment.explanation}</small>
+      </span>}
+      {exact && <span className="exact-stock-tooltip-counts">{exact.map(([key,value])=><span key={key}>{key}: <b>{value}</b></span>)}</span>}
     </span>,document.body)}
   </>;
 }

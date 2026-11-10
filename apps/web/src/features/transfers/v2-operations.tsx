@@ -17,12 +17,13 @@ import {
   V2_BLOOD_TYPES,
   V2_COMPONENT_TYPES,
   submitV2Transfer,
+  submitV2LocalRelease,
   type V2Command,
   type V2BloodType,
   type V2ComponentType,
 } from "../../services/api/v2";
 
-function resourceId(prefix: "TRF_WEB_", keys: MutationKeys): string {
+function resourceId(prefix: "TRF_WEB_" | "REL_WEB_", keys: MutationKeys): string {
   return prefix + keys.correlationId.slice("CORR_".length);
 }
 
@@ -210,10 +211,105 @@ export function V2TransferRequest({ principal, onRefresh, requesterPresentation 
   </div>;
 }
 
+export function V2LocalRelease({ principal, onRefresh, modal = false, onCancel }: { principal: Principal; onRefresh: () => void; modal?: boolean; onCancel?: () => void }) {
+  const [bloodType, setBloodType] = useState<V2BloodType>("A_POSITIVE");
+  const [componentType, setComponentType] = useState<V2ComponentType>("PACKED_RED_BLOOD_CELLS");
+  const [quantity, setQuantity] = useState(1);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [requiresCorrection, setRequiresCorrection] = useState(false);
+  const timeRejections = useRef(0);
+  const attempt = useRef<{ keys: MutationKeys; payload: Record<string, unknown> & { componentType: V2ComponentType } } | undefined>(undefined);
+  const status = useCommandStatus(onRefresh);
+  const locked = busy || status.command !== undefined;
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
+  const closeDisabled = busy || Boolean(status.command && !COMMAND_PRESENTATION[status.command.status].terminal);
+  useEffect(() => {
+    if (!modal) return;
+    const trigger = document.activeElement;
+    closeButton.current?.focus();
+    return () => { if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus({ preventScroll: true }); };
+  }, [modal]);
+
+  function changed(action: () => void) {
+    action();
+    attempt.current = undefined;
+    status.clear();
+    setError("");
+    setRequiresCorrection(false);
+  }
+
+  function handleModalKeys(event: React.KeyboardEvent<HTMLElement>) {
+    if (event.key === "Escape") { event.stopPropagation(); if (!closeDisabled) onCancel?.(); }
+    if (event.key !== "Tab") return;
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button:enabled,a[href],select:enabled,input:enabled,textarea:enabled,[tabindex='0']")).filter(item => item.getClientRects().length > 0);
+    const first = items[0], last = items[items.length - 1];
+    if (event.shiftKey && event.target === first) { event.preventDefault(); last?.focus(); }
+    if (!event.shiftKey && event.target === last) { event.preventDefault(); first?.focus(); }
+  }
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (locked || requiresCorrection) return;
+    setBusy(true);
+    setError("");
+    const current = attempt.current ?? (() => {
+      const keys = newMutationKeys();
+      const eventTime = new Date().toISOString();
+      return { keys, payload: { releaseId: resourceId("REL_WEB_", keys), bloodType, componentType, quantity, eventTime, correlationId: keys.correlationId } };
+    })();
+    attempt.current = current;
+    try {
+      status.accept(await submitV2LocalRelease(current.payload as object & { componentType: V2ComponentType }, current.keys));
+      attempt.current = undefined;
+      timeRejections.current = 0;
+    } catch (reason) {
+      const failure = mutationError(reason, timeRejections.current);
+      if (failure.timeRejected) timeRejections.current++;
+      if (failure.discardAttempt) attempt.current = undefined;
+      setRequiresCorrection(failure.requiresCorrection);
+      setError(failure.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const help = <InformationHelp label="Local release">Reserve available stock for internal patient use at this facility. Units are selected by earliest expiry (FEFO). Complete the reservation after bags are prepared. This is not a clinical dispensing order.</InformationHelp>;
+  const content = <>
+    <form className="v2-operation-form" onSubmit={(event) => void submit(event)}>
+      <label>Blood type<RequestDropdown styled={true}><select disabled={locked} value={bloodType} onChange={(event) => changed(() => setBloodType(event.target.value as V2BloodType))}>{V2_BLOOD_TYPES.map((value) => <option key={value} value={value}>{formatBloodType(value)}</option>)}</select></RequestDropdown></label>
+      <label>Component<RequestDropdown styled={true}><select disabled={locked} value={componentType} onChange={(event) => changed(() => setComponentType(event.target.value as V2ComponentType))}>{V2_COMPONENT_TYPES.map((value) => <option key={value} value={value}>{componentLabel(value)}</option>)}</select></RequestDropdown></label>
+      <label>Quantity<input disabled={locked} type="number" min="1" value={quantity} onChange={(event) => changed(() => setQuantity(Number(event.target.value)))}/></label>
+      <div className="v2-submit">
+        <div className="requester-submit-actions">
+          {onCancel && <button className="button compact" type="button" disabled={locked} onClick={onCancel}>Cancel</button>}
+          <ActionButton className="button primary compact" disabled={locked || requiresCorrection} unavailableReason={requiresCorrection ? "Correct the form before submitting again." : busy ? "The release is being submitted. Please wait." : "This release already has an accepted command. Review its status before starting another."}>
+            {busy ? "Submitting…" : status.command ? "Command accepted" : requiresCorrection ? "Correct before submitting" : error && attempt.current ? "Retry same release" : "Submit local release"}
+          </ActionButton>
+        </div>
+        {error && <span role="alert">{error}</span>}
+      </div>
+    </form>
+    {status.command && <CommandStatusCard command={status.command} pollError={status.pollError} onClear={() => { status.clear(); onRefresh(); }}/>}
+  </>;
+
+  if (!modal) return <section className="v2-operation-card"><header><div><h3>Local release</h3></div>{help}</header>{content}</section>;
+  return <div className="preview-modal-backdrop">
+    <section className="v2-operation-card preview-modal blood-request-modal" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={handleModalKeys}>
+      <header><div><h2 id={titleId}>Local release</h2></div><div className="record-detail-header-actions"><button ref={closeButton} type="button" aria-label="Close local release form" disabled={closeDisabled} onClick={onCancel}>×</button></div></header>
+      <div className="preview-modal-body">{content}</div>
+    </section>
+  </div>;
+}
+
 export function V2Operations({ principal, onRefresh, showRequest=true, onCancelRequest, initialBloodType, initialComponentType }: { principal: Principal; onRefresh: () => void;showRequest?:boolean;onCancelRequest?:()=>void;initialBloodType?:V2BloodType;initialComponentType?:V2ComponentType }) {
   const recipient = principal.accountId ? canAct(principal, "transfer:request") : principal.roleId === "ROLE-03";
-  if (!recipient || !showRequest) return null;
+  const canLocalRelease = principal.accountCategory === "BLOOD_BANK";
+  const showTransferRequest = showRequest && recipient;
+  if (!showTransferRequest && !canLocalRelease) return null;
   return <div className="v2-operations">
-    <V2TransferRequest principal={principal} requesterPresentation={Boolean(principal.accountId) && principal.accountCategory === "BLOOD_BANK"} onRefresh={onRefresh} onCancel={onCancelRequest} initialBloodType={initialBloodType} initialComponentType={initialComponentType}/>
+    {showTransferRequest && <V2TransferRequest principal={principal} requesterPresentation={Boolean(principal.accountId) && principal.accountCategory === "BLOOD_BANK"} onRefresh={onRefresh} onCancel={onCancelRequest} initialBloodType={initialBloodType} initialComponentType={initialComponentType}/>}
+    {canLocalRelease && <V2LocalRelease principal={principal} onRefresh={onRefresh}/>}
   </div>;
 }

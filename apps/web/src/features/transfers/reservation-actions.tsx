@@ -53,6 +53,11 @@ export function ReservationActions({ reservation, principal, onRefresh, onLockCh
   const actions = reservation ? reservationActions(reservation, principal) : [];
   const nextStep = actions.find(item => ["prepare", "dispatch", "transit", "receive"].includes(item));
   useEffect(() => { if (!command.locked) { setAction(undefined); setConfirmed(false); setReason(""); setEvidenceId(""); setDigest(""); setPreparedAt(""); command.correct(); } }, [reservation?.version]);
+  useEffect(() => {
+    if (!scanOnPhone || !reservation) return;
+    const nextActions = reservationActions(reservation, principal);
+    if (nextActions.includes("prepare")) setAction("prepare");
+  }, [reservation?.reservationId, reservation?.version, scanOnPhone]);
   const prepareValid = action !== "prepare" || (/^EVD_[A-Z0-9_-]+$/.test(evidenceId) && /^[a-f0-9]{64}$/.test(digest) && /(Z|[+-]\d{2}:\d{2})$/.test(preparedAt) && Number.isFinite(Date.parse(preparedAt)) && Date.parse(preparedAt) <= Date.now());
   const ready = action && actions.includes(action) && prepareValid && confirmed && (action !== "compromise" || !!reason) && (action !== "delay" || !!reason) && ((action !== "dispatch" && action !== "receive") || !!location);
   function choose(next: ReservationAction) {
@@ -81,7 +86,7 @@ export function ReservationActions({ reservation, principal, onRefresh, onLockCh
     {!actions.length && !command.command && reservation?.status !== "RECEIVED" && <p>No actions are available for your account at this step.</p>}
     {actions.length>0&&<div className="bank-detail-action-buttons">{actions.map(item => <button type="button" className={"button compact"+(item===nextStep?" primary":"")} key={item} aria-pressed={item===action} disabled={command.locked||verificationLocked} onClick={() => choose(item)}>{RESERVATION_ACTION_LABELS[item]}</button>)}</div>}
     {action === "prepare" && scanOnPhone && <p className="scan-on-phone-note" role="note">Preparing requires scanning every reserved unit. {SCAN_ON_PHONE_NOTE} Choose Outbound, then this transfer.</p>}
-    {action && !(action === "prepare" && scanOnPhone) && <form className="transfer-action-form" onSubmit={event => { event.preventDefault(); void submit(); }}><fieldset disabled={command.locked}>
+    {action && <form className="transfer-action-form" onSubmit={event => { event.preventDefault(); void submit(); }}><fieldset disabled={command.locked}>
       <legend>{RESERVATION_ACTION_LABELS[action]}</legend>
       {actionGuidance[action]&&<p>{actionGuidance[action]}</p>}
       {action === "prepare" && <>{reservation&&<OutboundVerification scannedRecognition={scannedRecognition} key={reservation.reservationId+":"+reservation.version} reservation={reservation} onLockChange={setVerificationLocked} onVerified={result=>{setEvidenceId(result.evidenceId);setDigest(result.evidenceDigest);setPreparedAt(result.verifiedAt);setConfirmed(false);command.correct();}}/>}
