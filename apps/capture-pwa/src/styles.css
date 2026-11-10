@@ -186,3 +186,6 @@ body:has(.receipt-capture){background:var(--surface);min-height:0}.receipt-captu
 .capture-brand-logo,.capture-unit-logo{display:block;object-fit:contain;border-radius:6px;flex-shrink:0}
 .capture-brand-logo{width:32px;height:32px}
 .capture-unit-logo{width:40px;height:40px}
+
+/* No rubber-band bounce or swipe-to-navigate overscroll on the page, horizontally or vertically. */
+html,body{overscroll-behavior:none}

@@ -12,16 +12,20 @@ export function checkpointRecord(rows:CensusSnapshot[],institutionId:string,date
   });
   return {record:matches.length===1?matches[0]:undefined,ambiguous:matches.length>1};
 }
-// PA-DEF-07 automatic checkpoints record four components; cryo is absent and shown as zero in the clipboard matrix.
+// PA-DEF-07 checkpoint V1 records four components (no cryoprecipitate). Checkpoint V2 and the
+// V2.1 policies record all five. The clipboard always has five product columns so the DOH sheet
+// layout never shifts; a component the record never captured is left blank, never written as 0.
 export const CHECKPOINT_COMPONENTS=V2_COMPONENT_TYPES.filter(type=>type!=="CRYOPRECIPITATE");
-export function checkpointComponents(_policy:string){return V2_COMPONENT_TYPES;}
+export const recordsCryo=(policy:string)=>policy.endsWith("V2_1")||policy==="SYNTHETIC_STOCK_CHECKPOINT_V2";
+export function checkpointComponents(policy:string):readonly string[]{return recordsCryo(policy)?V2_COMPONENT_TYPES:CHECKPOINT_COMPONENTS;}
 export function checkpointClipboard(value:unknown,selected:CensusSnapshot){
   const groups=parseComplianceStock(value,selected);
-  if(CHECKPOINT_COMPONENTS.some(type=>!groups.some(group=>group.componentType===type)))throw Error("The saved checkpoint component coverage is incomplete.");
+  const recorded=checkpointComponents(selected.reportPolicyVersion);
+  if(groups.length!==recorded.length||recorded.some(type=>!groups.some(group=>group.componentType===type)))throw Error("The saved checkpoint component coverage is incomplete.");
   const rows=CENSUS_ORDER.map(type=>{
-    const counts=V2_COMPONENT_TYPES.map(component=>groups.find(group=>group.componentType===component)?.bloodTypes.find(row=>row.bloodType===type)?.reportableCount??0);
-    const total=counts.reduce((sum,count)=>sum+count,0);if(!Number.isSafeInteger(total))throw Error("Report total is invalid.");
-    return [formatBloodType(type),...counts.map(String),String(total)].join("\t");
+    const counts=V2_COMPONENT_TYPES.map(component=>recorded.includes(component)?groups.find(group=>group.componentType===component)!.bloodTypes.find(row=>row.bloodType===type)!.reportableCount:null);
+    const total=counts.reduce<number>((sum,count)=>sum+(count??0),0);if(!Number.isSafeInteger(total))throw Error("Report total is invalid.");
+    return [formatBloodType(type),...counts.map(count=>count===null?"":String(count)),String(total)].join("\t");
   });
   return [["Blood type",...V2_COMPONENT_TYPES.map(componentLabel),"Total"].join("\t"),...rows].join("\r\n")+"\r\n";
 }

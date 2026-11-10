@@ -1495,3 +1495,29 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 .table-view-bar-header .table-column-picker>summary{min-height:32px;padding:6px 10px}
 .table-view-bar-header~.request-form-help,.table-header-slot:has(.table-view-bar)~.request-form-help{margin-left:0}
 .requester-dashboard-card>header>div+.table-view-bar-header{margin-left:0}
+/* PRC inventory overview filters follow the blood-bank dashboard: filters side by side, legend at the right. */
+.prc-network-filters>.prc-network-legend{font-size:11px}
+.prc-network-filters+.consortium-chart-scroll{padding-top:16px}
+/* PRC overview plot follows the blood-bank overview: rotated axis title, tick scale and continuous gridlines. */
+.prc-network-overview{--prc-plot-height:346px}
+.prc-network-scroll{padding:16px 18px 8px}
+.prc-network-frame{display:grid;grid-template-columns:32px 32px minmax(680px,1fr);gap:4px;min-width:760px;padding-top:38px}
+.prc-network-frame>.inventory-overview-axis-title{transform:none;rotate:180deg;writing-mode:vertical-rl;align-self:start;height:var(--prc-plot-height);display:flex;align-items:center;justify-content:center}
+.prc-network-axis{height:var(--prc-plot-height);position:relative;font-size:11px;line-height:1;color:var(--ink-muted);text-align:right}
+.prc-network-axis>span{position:absolute;right:0;top:calc(var(--tick-index) * 20%);transform:translateY(-50%)}
+.prc-network-frame>.consortium-chart{min-width:0;padding:0;align-items:start;background:repeating-linear-gradient(to bottom,var(--line-subtle) 0,var(--line-subtle) 1px,transparent 1px,transparent calc(var(--prc-plot-height) / 5));background-size:100% calc(var(--prc-plot-height) + 1px);background-repeat:no-repeat}
+.prc-network-frame .prc-network-column{padding:0 4px 8px;gap:8px;border-radius:0}
+.prc-network-frame .consortium-bar-area{position:relative;height:var(--prc-plot-height);background:none;border-bottom:0}
+.prc-network-frame .consortium-bar{position:relative}
+.prc-network-frame .consortium-chart-value{position:absolute;left:50%;bottom:calc(100% + 7px);transform:translateX(-50%);z-index:2;text-align:center;line-height:1;white-space:nowrap;color:var(--ink)}
+.prc-network-compare .consortium-chart-value{font-size:12px;font-weight:600}
+
+/* PRC dashboard tables: secondary detail (requesting bank, component) sits on its own line. */
+.prc-dashboard-card td small{display:block;margin-top:3px;color:var(--ink-muted);font-size:11px;font-weight:400}
+.prc-replenishment-placeholder-table .requester-request-reference{white-space:nowrap}
+/* PRC Reports: saved stock records follow the blood-bank Report Details matrix. */
+.saved-stock-filters{grid-template-columns:minmax(180px,280px) minmax(180px,240px);align-items:end}
+@media(max-width:700px){.saved-stock-filters{grid-template-columns:1fr}}
+
+/* No rubber-band bounce or swipe-to-navigate overscroll on the page, horizontally or vertically. */
+html,body{overscroll-behavior:none}

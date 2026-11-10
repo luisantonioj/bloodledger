@@ -1350,3 +1350,11 @@ The DOH PDF heading is unchanged until the team's current template is supplied.
 No API, database source, chaincode, account or clinical policy is changed by this
 frontend implementation. Evidence and remaining gates are recorded in
 `docs/frontend/PANEL-REVISIONS-LAT-2026-11-04.md`.
+
+2026-11-10 stock-record copy with cryo: under `SYNTHETIC_STOCK_CHECKPOINT_V2`
+the saved matrix includes cryoprecipitate, so Report Details shows five product
+columns and Copy pastes the recorded cryo counts. The clipboard always has the
+same five product columns (Whole Blood, PRBC, FFP, Platelets, Cryo, then Total)
+so the DOH sheet layout never shifts. Older V1 records never captured cryo:
+Report Details shows their four recorded products and Copy leaves their Cryo
+cells blank instead of writing zero.

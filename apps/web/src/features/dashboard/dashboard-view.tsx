@@ -9,19 +9,21 @@ import type { Principal } from "../../auth/permissions";
 import { isRequester } from "./requester-dashboard-data";
 import { RequesterDashboard, type RequesterRequestsState } from "./requester-dashboard";
 import { dashboardSummary } from "./dashboard-summary";
+import { openSupplyCount, usePrcSupplyRequests } from "./use-open-supply-requests";
 
 export function DashboardView({data,principal,refreshError,onRetry,requests,loading=false}:{data:Dashboard;principal:Principal;refreshError:string;onRetry:()=>void;requests:RequesterRequestsState;loading?:boolean}) {
+  const supply = usePrcSupplyRequests(principal), openSupplyRequests = openSupplyCount(supply.rows);
   if(data.composition==="ADMINISTRATIVE")return <div className="empty dashboard-empty"><img className="bloodledger-logo empty-logo" src="/bloodledger-logo-updated.png" alt=""/><strong>Non-clinical workspace</strong>This account has no inventory, custody, transfer, or regulatory dashboard authority.</div>;
   const hasProjection = data.lastSuccessfulProjectionAt !== null;
   return <>
     {principal.accountCategory==="BLOOD_BANK"?<BankDashboardSummary principal={principal}/>:<div className="stats dashboard-stats">
-      {dashboardSummary(data, principal).map(card => <article key={card.label}>
+      {dashboardSummary(data, principal, {requests: requests.data, openSupplyRequests}).map(card => <article key={card.label}>
         <span>{card.label}</span><strong aria-label={card.value === null ? "Unavailable" : undefined}>{card.value ?? "—"}</strong>
       </article>)}
     </div>}
     {refreshError&&<DashboardReadState error={refreshError} retained={hasProjection} onRetry={onRetry}/>}
     {principal.accountCategory === "DOH" && <DohDashboardPlaceholder principal={principal}/>}
-    {principal.accountCategory === "PRC" && <PrcDashboardPlaceholder data={data} loading={loading}/>}
+    {principal.accountCategory === "PRC" && <PrcDashboardPlaceholder data={data} loading={loading} principal={principal} supply={supply}/>}
     {isRequester(principal) && <RequesterDashboard data={data} principal={principal} requests={requests}/>}
     {!isRequester(principal) && data.composition === "OPERATIONAL" && hasProjection && data.inventory.length > 0 && (
       principal.accountCategory!=="BLOOD_BANK"&&<InventoryOverviewChart items={data.inventory} institutionId={undefined} />

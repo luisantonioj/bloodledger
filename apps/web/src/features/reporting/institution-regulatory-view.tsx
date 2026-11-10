@@ -5,6 +5,8 @@ import {useLiveData} from "../../hooks/use-live-data";
 import type {Dashboard} from "../../services/api/types";
 import {AggregateTable} from "../../components/ui/aggregate-tables";
 import {formatBloodType,formatManilaDateTime,humanizeCode} from "../../components/ui/display";
+import type {Principal} from "../../auth/permissions";
+import {SavedStockRecordsView} from "./saved-stock-records-view";
 interface Snapshot {snapshotId:string;institutionId:string;capturedAt:string;scheduledFor:string}
 interface Census {snapshotId:string;capturedAt:string;groups:{componentType:string;bloodTypes:{bloodType:string;availableCount:number;reservedCount:number;reportableCount:number}[]}[]}
 type CensusRow = Census["groups"][number]["bloodTypes"][number] & {component:string};
@@ -15,7 +17,11 @@ const censusColumns:TableColumn<CensusRow>[]=[
   {id:"reserved",label:"Reserved",sortValue:row=>row.reservedCount},
   {id:"reportable",label:"Reportable",sortValue:row=>row.reportableCount},
 ];
-export function InstitutionRegulatoryView({report=false}:{report?:boolean}) {
+export function InstitutionRegulatoryView({report=false,principal}:{report?:boolean;principal?:Principal}) {
+  if(report&&principal?.roleId==="ROLE-04")return <SavedStockRecordsView principal={principal}/>;
+  return <LegacyRegulatoryView report={report}/>;
+}
+function LegacyRegulatoryView({report=false}:{report?:boolean}) {
   const dashboard=useLiveData<Dashboard>(report ? null : "/api/v2/dashboard");
   const list=useLiveData<{snapshots:Snapshot[];reportAvailability:string}>(report ? "/api/v2/reports/doh-census" : null);
   const [selected,setSelected]=useState("");

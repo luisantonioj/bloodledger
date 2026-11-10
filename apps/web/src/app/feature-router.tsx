@@ -29,7 +29,7 @@ export function FeatureRouter({path,canAcknowledge=false,canSubmitTransfer=false
   const state=useLiveData<FeatureResponse>(principal?.accountId && ["/consortium","/reporting"].includes(path) ? null : endpoint[path]??null);
   if(path==="/consortium"&&principal)return <HospitalNetworkView key={principal.institutionId} principal={principal}/>;
   if(path==="/reporting"&&principal&&["BLOOD_BANK","DOH"].includes(principal.accountCategory??""))return <ComplianceReports key={principal.institutionId} principal={principal}/>;
-  if(principal?.accountId && ["/consortium","/reporting"].includes(path))return <InstitutionRegulatoryView report={path==="/reporting"}/>;
+  if(principal?.accountId && ["/consortium","/reporting"].includes(path))return <InstitutionRegulatoryView report={path==="/reporting"} principal={principal}/>;
   if(path==="/transfers"&&principal&&(principal.accountId||["ROLE-01","ROLE-02","ROLE-03"].includes(principal.roleId)))return <V2TransferEvidenceView principal={principal}/>;
   if(path==="/accounts"&&principal)return principal.accountId ? <InstitutionAccountsView principal={principal}/> : <AccountsParityPreview principal={principal}/>;
   if(path==="/analytics"&&principal&&canViewRegulatoryAnalytics(principal))return <RegulatorAnalytics key={principal.institutionId} principal={principal}/>;

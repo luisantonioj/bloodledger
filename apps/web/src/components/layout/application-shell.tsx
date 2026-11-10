@@ -22,8 +22,8 @@ const iconPaths: Record<string, string> = {
 };
 
 const sectionFor = (href: string) => href === "/" ? "Overview"
-  : ["/inventory", "/transactions", "/receipts", "/transfers", "/prc-supply", "/alerts", "/audit"].includes(href) ? "Operations"
-    : ["/redistribution", "/analytics", "/consortium", "/reporting"].includes(href) ? "Insights"
+  : ["/inventory", "/transactions", "/receipts", "/transfers", "/prc-supply", "/alerts"].includes(href) ? "Operations"
+    : ["/redistribution", "/analytics", "/consortium", "/reporting", "/audit"].includes(href) ? "Insights"
       : "Account Management";
 
 function NavigationIcon({ href }: { href: string }) {

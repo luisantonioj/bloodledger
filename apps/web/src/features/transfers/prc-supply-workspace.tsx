@@ -7,6 +7,8 @@ import { PagedReadControls } from "../../components/ui/paged-read-controls";
 import { PaginatedTable } from "../../components/ui/record-pagination";
 import { SortableHeader, TableViewBar, columnsFromExport, timeValue, useTableView } from "../../components/ui/table-view";
 import { compactRecordReference, formatBloodType, formatManilaDateTime, humanizeCode, statusClassName } from "../../components/ui/display";
+import { RefreshButton } from "../../components/ui/refresh-button";
+import { exportTablePdf } from "../../services/pdf/table-report";
 import { componentLabel } from "./requester-transfer-data";
 import { PrcSupplyRequestForm } from "./prc-supply-request-form";
 import { usePrcMutation } from "./use-prc-mutation";
@@ -42,6 +44,7 @@ export function PrcSupplyWorkspace({principal, embedded = false, viewRef, action
   const list = usePagedRead(allowed ? "/api/v2/prc-supply-requests" : null, parser, "requestId", principal.accountCategory + "|" + principal.institutionId);
   const [search, setSearch] = useState(""), [formOpen, setFormOpen] = useState(false), [selected, setSelected] = useState(()=>new URLSearchParams(location.search).get("prcRequestId")??"");
   const [revision, setRevision] = useState(0), [detail, setDetail] = useState<PrcSupplyDetail>(), [detailError, setDetailError] = useState("");
+  const [exporting, setExporting] = useState(false), [exportError, setExportError] = useState("");
   const mutation = usePrcMutation(principal, row => {setFormOpen(false); setSelected(row.requestId); setRevision(value => value + 1); list.refresh();});
   useEffect(() => {
     setDetail(undefined); setDetailError("");
@@ -64,10 +67,16 @@ export function PrcSupplyWorkspace({principal, embedded = false, viewRef, action
     {mutation.ambiguous && <button type="button" className="button compact" disabled={mutation.busy} onClick={mutation.retry}>Retry same attempt</button>}
   </>;
   function refresh() {list.refresh();setRevision(value => value + 1);}
+  // The standalone /prc-supply page has no parent toolbar, so it keeps its own actions.
+  async function exportPdf() {setExporting(true);setExportError("");try {await exportTablePdf({title:"PRC Supply Requests",scope:principal.institutionDisplayName+" · SIMULATION_ONLY · Off-chain",filters:`Loaded rows only; Search: ${search || "None"}; Sort: ${view.sortDescription}`,headers:prcSupplyHeaders,rows:prcSupplyRows(view.rows),filename:"prc-supply-requests"});} catch {setExportError("PDF export failed.");} finally {setExporting(false);}}
   if (actionsRef) actionsRef.current = {openForm: () => setFormOpen(true), refresh};
   if (viewRef) viewRef.current = {rows: view.rows, search, sortDescription: view.sortDescription};
   return <div className={"prc-supply-workspace"+(embedded ? " prc-supply-embedded" : " page")}>
-    {!embedded && <header className="page-head"><h1 className="page-title">PRC Supply Requests</h1></header>}
+    {!embedded && <header className="page-head"><h1 className="page-title">PRC Supply Requests</h1><div className="bank-toolbar-actions">
+      {maySubmitPrc(principal) && <button className="button primary compact" disabled={mutation.locked} aria-haspopup="dialog" onClick={() => setFormOpen(true)}>+ Request PRC Supply</button>}
+      <button className="button compact" disabled={!visible.length || exporting} onClick={() => void exportPdf()}>{exporting ? "Exporting…" : "Export PDF"}</button><RefreshButton busy={list.busy || mutation.busy} onRefresh={refresh}/>
+    </div></header>}
+    {!embedded && exportError && <p role="alert">{exportError}</p>}
     {!showForm && mutationFeedback}
     {mutation.notice && <p role="status" className="prc-supply-message">{mutation.notice}</p>}
     <section className="bank-record-card"><div className="bank-list-filters"><label>Search PRC requests<input type="search" placeholder="Search loaded references, products or status…" value={search} onChange={event => setSearch(event.target.value)}/></label><TableViewBar view={view}/></div>

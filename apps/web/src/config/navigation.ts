@@ -19,10 +19,10 @@ export const navigation: NavigationItem[] = [
   { href: "/transfers", label: "Requests & Transfers", permission: "transfers:read" },
   { href: "/prc-supply", label: "PRC Supply Requests", when: p => canReadPrcSupply(p) && (p.accountCategory === "PRC" || !can(p, "transfers:read")) },
   { href: "/alerts", label: "Alerts", permission: "alerts:read" },
-  { href: "/audit", label: "Activity History", when: p => can(p,"audit:read") || (p.accountCategory === "REQUESTOR" || !p.accountCategory && p.roleId === "ROLE-03") && can(p,"transfers:read") },
   { href: "/analytics", label: "Analytics", when: canViewAnalyticsPage },
   { href: "/consortium", label: "Network view", permission: "consortium:read", when: p => p.accountCategory !== "PRC" },
   { href: "/reporting", label: "Reports", when: p => p.accountCategory === "BLOOD_BANK" || can(p, "reports:read") },
+  { href: "/audit", label: "Activity History", when: p => can(p,"audit:read") || (p.accountCategory === "REQUESTOR" || !p.accountCategory && p.roleId === "ROLE-03") && can(p,"transfers:read") },
   { href: "/profile", label: "Profile", permission: "profile:read" },
   { href: "/accounts", label: "Staff Accounts", when: p => p.accountId ? p.accountCategory === "PRC" || (p.operators ?? []).some(o => o.capabilityProfile === "INSTITUTION_ADMIN") : ["ROLE-05", "ROLE-06"].includes(p.roleId) },
 ];

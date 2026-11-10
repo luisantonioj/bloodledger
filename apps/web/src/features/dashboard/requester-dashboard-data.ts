@@ -13,6 +13,10 @@ export interface RequesterRequest {
   urgency: string;
   status: string;
   ledger_transaction_id: string | null;
+  // Present on V2 reads: the linked reservation and the derived supplier decision state.
+  reservation_id?: string | null;
+  reservation_status?: string | null;
+  decision_state?: string | null;
 }
 export interface RequesterRequests { requests: RequesterRequest[]; classification: "SIMULATION_ONLY" }
 
