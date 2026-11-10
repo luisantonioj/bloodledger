@@ -55,7 +55,8 @@ function columnWidths(doc: { getTextWidth: (text: string) => number }, headers: 
     const widths = cells.map(cell => doc.getTextWidth(cell)).sort((a, b) => a - b);
     const typical = widths.length ? widths[Math.floor((widths.length - 1) * 0.9)] : 0;
     // Ordinary words (statuses, names) never split; very long IDs (over 90 pt) may wrap.
-    const minimum = Math.min(Math.max(longestWord(header), ...cells.map(longestWord)), 90) + padding;
+    // Headers stay on one line where they fit (bold header text is ~10% wider than body text).
+    const minimum = Math.min(Math.max(doc.getTextWidth(header) * 1.1, ...cells.map(longestWord)), 90) + padding;
     return { minimum, desired: Math.max(minimum, Math.min(typical + padding, 190)) };
   });
   const minimumTotal = columns.reduce((sum, column) => sum + column.minimum, 0), desiredTotal = columns.reduce((sum, column) => sum + column.desired, 0);

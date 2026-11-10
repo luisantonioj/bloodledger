@@ -39,5 +39,5 @@ export const readableCode = (value: string) => value.toLowerCase().replaceAll("_
 export const componentLabel = (value: string) => ({PACKED_RED_BLOOD_CELLS:"PRBC",FRESH_FROZEN_PLASMA:"FFP",WHOLE_BLOOD:"Whole Blood",PLATELETS:"Platelets",CRYOPRECIPITATE:"Cryo"} as Record<string,string>)[value] ?? readableCode(value);
 export function facilityLabel(id: string, principal: Principal): string {
   if (id === principal.institutionId) return principal.institutionDisplayName;
-  return ({INST_MEDIATRIX:"Mary Mediatrix",INST_SYNTH_MEDIX:"Lipa Medix",INST_SYNTH_NLVILLA:"N.L. Villa"} as Record<string,string>)[id] ?? id;
+  return ({INST_MEDIATRIX:"Mary Mediatrix",INST_SYNTH_MEDIX:"Lipa Medix",INST_SYNTH_NLVILLA:"N.L. Villa",INST_SYNTH_METROLIPA:"Metro Lipa"} as Record<string,string>)[id] ?? id;
 }

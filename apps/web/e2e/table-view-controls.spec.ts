@@ -29,10 +29,10 @@ test("inventory header sort cycles, column choice persists and the PDF keeps eve
  expect(filterBox).not.toBeNull();expect(columnsBox).not.toBeNull();expect(Math.abs(filterBox!.y-columnsBox!.y)).toBeLessThanOrEqual(2);
  const table=page.locator(".inventory-table"),unitHeader=table.getByRole("columnheader",{name:"Unit ID",exact:true});
  await expect(table.locator("tbody tr")).toHaveCount(3);
- await expect(table.getByRole("columnheader")).toHaveText(["Unit ID","Blood type","Component","Expiration date","Time remaining","Status"]);
+ await expect(table.getByRole("columnheader")).toHaveText(["Unit ID","Blood type","Component","Collected date","Expiration date","Time remaining","Status"]);
  expect(await unitOrder(page)).toEqual(["SYNTH-MIKE-0002","SYNTH-ZULU-0003","SYNTH-ALPHA-0001"]);
  await expect(table.locator("th[aria-sort]")).toHaveCount(0);
- await expect(table.locator(".table-sort-icon")).toHaveCount(6);
+ await expect(table.locator(".table-sort-icon")).toHaveCount(7);
  const expiryHeader=table.getByRole("columnheader",{name:"Expiration date",exact:true});
  await expiryHeader.getByRole("button").click();
  await expect(expiryHeader).toHaveAttribute("aria-sort","ascending");
@@ -51,7 +51,7 @@ test("inventory header sort cycles, column choice persists and the PDF keeps eve
  expect(await unitOrder(page)).toEqual(["SYNTH-ZULU-0003","SYNTH-MIKE-0002","SYNTH-ALPHA-0001"]);
  const pending=page.waitForEvent("download");await page.getByRole("button",{name:"Export PDF",exact:true}).click();
  const pdf=await readPdfText((await (await pending).path())!);
- for(const header of ["Unit ID","Blood type","Component","Expiration date","Time remaining","Status"])expect(pdf).toContain(header);
+ for(const header of ["Unit ID","Blood type","Component","Collected date","Expiration date","Time remaining","Status"])expect(pdf).toContain(header);
  expect(pdf).toContain("Unit ID descending");
  expect(pdf.indexOf("SYNTH-ZULU-0003")).toBeLessThan(pdf.indexOf("SYNTH-MIKE-0002"));expect(pdf.indexOf("SYNTH-MIKE-0002")).toBeLessThan(pdf.indexOf("SYNTH-ALPHA-0001"));
  await page.getByRole("group",{name:"Visible columns"}).waitFor({state:"detached"});
@@ -62,16 +62,16 @@ test("inventory header sort cycles, column choice persists and the PDF keeps eve
  await page.screenshot({path:"/tmp/lat-compact-column-picker.png"});
 
  await menu.getByLabel("Blood type",{exact:true}).uncheck();
- await expect(table.getByRole("columnheader")).toHaveText(["Unit ID","Component","Expiration date","Time remaining","Status"]);
- await expect(table.locator("tbody tr").first().locator("td")).toHaveCount(5);
+ await expect(table.getByRole("columnheader")).toHaveText(["Unit ID","Component","Collected date","Expiration date","Time remaining","Status"]);
+ await expect(table.locator("tbody tr").first().locator("td")).toHaveCount(6);
  await page.keyboard.press("Escape");await expect(menu).toHaveCount(0);
  await page.reload();
- await expect(table.getByRole("columnheader")).toHaveText(["Unit ID","Component","Expiration date","Time remaining","Status"]);
+ await expect(table.getByRole("columnheader")).toHaveText(["Unit ID","Component","Collected date","Expiration date","Time remaining","Status"]);
  await expect(unitHeader).toHaveAttribute("aria-sort","descending");
  expect(await unitOrder(page)).toEqual(["SYNTH-ZULU-0003","SYNTH-MIKE-0002","SYNTH-ALPHA-0001"]);
  await page.getByLabel("Choose visible columns (customized)",{exact:true}).click();
  await menu.getByRole("button",{name:"Reset view",exact:true}).click();
- await expect(table.getByRole("columnheader")).toHaveCount(6);await expect(table.locator("th[aria-sort]")).toHaveCount(0);
+ await expect(table.getByRole("columnheader")).toHaveCount(7);await expect(table.locator("th[aria-sort]")).toHaveCount(0);
  expect(await unitOrder(page)).toEqual(["SYNTH-MIKE-0002","SYNTH-ZULU-0003","SYNTH-ALPHA-0001"]);
  await page.mouse.click(5,5);await expect(menu).toHaveCount(0);
  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

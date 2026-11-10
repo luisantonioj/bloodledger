@@ -1521,3 +1521,17 @@ html:has(.bank-scanner-backdrop)::-webkit-scrollbar-button,
 
 /* No rubber-band bounce or swipe-to-navigate overscroll on the page, horizontally or vertically. */
 html,body{overscroll-behavior:none}
+/* Redistribution: Refresh, then the advisory info icon at the far right of the header. */
+.requester-dashboard-card>header>.redistribution-actions{display:flex;flex:0 0 auto;align-items:center;gap:10px;margin-left:auto}
+.redistribution-actions .request-form-help{margin-left:0}
+.redistribution-readonly-fields.redistribution-match-only{grid-template-columns:minmax(0,1fr)}
+/* Blood Inventory filters: one row, equal-width controls, then Clear dates (when set) and Columns last. */
+.blood-bank-inventory .inventory-filter-controls.inventory-filters-one-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px}
+.inventory-filters-one-row>label{display:grid;flex:1 1 0;min-width:0}
+.inventory-filters-one-row>.bank-search{flex:1 1 0;min-width:0}
+.inventory-filters-one-row>.inventory-date-clear,.inventory-filters-one-row>.table-view-bar{flex:0 0 auto;min-height:38px}
+.inventory-filters-one-row>.table-view-bar{margin-left:0}
+.inventory-filters-one-row input[type=date]{padding-right:8px}
+.inventory-filters-one-row>.inventory-date-error{flex:1 0 100%;margin:0;color:var(--critical);font-size:11px}
+@media(max-width:1000px){.inventory-filters-one-row>label,.inventory-filters-one-row>.bank-search{flex:1 1 calc(33% - 14px)}}
+@media(max-width:600px){.inventory-filters-one-row>label,.inventory-filters-one-row>.bank-search{flex:1 1 calc(50% - 14px)}}
