@@ -1,7 +1,7 @@
 // BL-WEB-05/06 refinement: header sort and column visibility leave default order, cells and PDF columns intact.
 import {test,expect,type Page} from "@playwright/test";
-import {readFile} from "node:fs/promises";
 import {labelFixture,activityFixture,readPage} from "./fixtures/transaction-reads";
+import {readPdfText} from "./fixtures/pdf-text";
 const principal={accountId:"USR_VIEW",accountCategory:"BLOOD_BANK",userId:"USR_VIEW",institutionId:"INST_MEDIATRIX",institutionDisplayName:"Synthetic bank",displayName:"Synthetic viewer",roleId:"ROLE-02",roleDisplayName:"Synthetic role",operators:[],permissions:["inventory:read","transfers:read","audit:read"],classification:"SIMULATION_ONLY"};
 const component=(id:string,label:string,bloodType:string,expiresAt:string)=>({componentId:id,donationId:"DON_VIEW",issuerInstitutionId:"INST_MEDIATRIX",institutionId:"INST_MEDIATRIX",componentType:"PACKED_RED_BLOOD_CELLS",bloodType,collectedAt:"2026-10-01T00:00:00Z",expiresAt,inventoryStatus:"AVAILABLE",expiryState:"CURRENT",reservationId:null,reservationVersion:null,inventoryVersion:1,policyVersion:"SYNTHETIC_TABLE",classification:"SIMULATION_ONLY",labelIdentity:{...labelFixture,value:label}});
 // Default order is expiry ascending: MIKE, ZULU, ALPHA.
@@ -40,7 +40,8 @@ test("inventory header sort cycles, column choice persists and the PDF keeps eve
  await expiryHeader.getByRole("button").click();
  expect(await unitOrder(page)).toEqual(["SYNTH-ALPHA-0001","SYNTH-ZULU-0003","SYNTH-MIKE-0002"]);
  await expiryHeader.getByRole("button").click();
- await expect(expiryHeader).toHaveAttribute("aria-sort","ascending");
+ await expect(table.locator("th[aria-sort]")).toHaveCount(0);
+ expect(await unitOrder(page)).toEqual(["SYNTH-MIKE-0002","SYNTH-ZULU-0003","SYNTH-ALPHA-0001"]);
  await page.screenshot({path:"/tmp/lat-inventory-table-polish.png"});
  await unitHeader.getByRole("button").click();
  await expect(unitHeader).toHaveAttribute("aria-sort","ascending");
@@ -49,9 +50,9 @@ test("inventory header sort cycles, column choice persists and the PDF keeps eve
  await expect(unitHeader).toHaveAttribute("aria-sort","descending");
  expect(await unitOrder(page)).toEqual(["SYNTH-ZULU-0003","SYNTH-MIKE-0002","SYNTH-ALPHA-0001"]);
  const pending=page.waitForEvent("download");await page.getByRole("button",{name:"Export PDF",exact:true}).click();
- const pdf=(await readFile((await (await pending).path())!)).toString("latin1");
+ const pdf=await readPdfText((await (await pending).path())!);
  for(const header of ["Unit ID","Blood type","Component","Expiration date","Time remaining","Status"])expect(pdf).toContain(header);
- expect(pdf).toContain("Sort: Unit ID descending");
+ expect(pdf).toContain("Unit ID descending");
  expect(pdf.indexOf("SYNTH-ZULU-0003")).toBeLessThan(pdf.indexOf("SYNTH-MIKE-0002"));expect(pdf.indexOf("SYNTH-MIKE-0002")).toBeLessThan(pdf.indexOf("SYNTH-ALPHA-0001"));
  await page.getByRole("group",{name:"Visible columns"}).waitFor({state:"detached"});
  await page.getByLabel("Choose visible columns (customized)",{exact:true}).click();

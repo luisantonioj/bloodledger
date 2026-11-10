@@ -1,6 +1,6 @@
 import {test,expect,type Page} from "@playwright/test";
-import {readFile} from "node:fs/promises";
 import {activityFixture,prcActivityFixture,readPage} from "./fixtures/transaction-reads";
+import {readPdfText} from "./fixtures/pdf-text";
 async function setup(page:Page,mode="v2"){
  const calls:string[]=[];let secondFailure=true;
  await page.route("**/api/**",async route=>{
@@ -22,7 +22,7 @@ async function setup(page:Page,mode="v2"){
 test("ADR-045 mixed activity includes PRC by default with filtering, search, link and eight-column PDF",async({page})=>{
  const calls=await setup(page);await page.goto("/audit");await expect(page.locator(".audit-table tbody tr")).toHaveCount(2);await expect(page.locator(".audit-table th")).toHaveCount(8);await expect(page.getByRole("link",{name:prcActivityFixture.links.prcSupplyRequestId,exact:true})).toHaveAttribute("href",/tab=prc&prcRequestId=PRCSR_/);await expect(page.locator(".audit-table")).toContainText("INST_SYNTH_PRC");
  await page.getByLabel("Event source",{exact:true}).selectOption("PRC");await expect(page.locator(".audit-table tbody tr")).toHaveCount(1);await expect(page.locator(".audit-table tbody tr td").nth(4)).toHaveText("—");await expect(page.locator(".audit-table tbody tr td").nth(6)).toHaveText("Off-chain");await page.getByLabel("Search activity",{exact:true}).fill(prcActivityFixture.links.prcSupplyRequestId);
- const pending=page.waitForEvent("download");await page.getByRole("button",{name:"Export PDF",exact:true}).click();const pdf=await pending;const bytes=await readFile((await pdf.path())!,"latin1");expect(bytes).toContain("SIMULATION_ONLY");expect(bytes).toContain("Off-chain");expect(bytes).not.toContain("PRC Request ID");
+ const pending=page.waitForEvent("download");await page.getByRole("button",{name:"Export PDF",exact:true}).click();const pdf=await pending;const bytes=await readPdfText((await pdf.path())!);expect(bytes).toContain("SIMULATION_ONLY");expect(bytes).toContain("Off-chain");expect(bytes).not.toContain("PRC Request ID");
  await page.getByLabel("Search activity",{exact:true}).fill("");await page.getByRole("button",{name:"Next page",exact:true}).click();await expect(page.getByRole("alert")).toContainText("unavailable");await expect(page.locator(".audit-table tbody tr")).toHaveCount(1);await page.getByRole("button",{name:"Next page",exact:true}).click();await expect(page.getByText("1–2 of 2 records",{exact:true})).toBeVisible();await expect(page.getByRole("button",{name:"Load more",exact:true})).toHaveCount(0);await expect(page.locator(".audit-table tbody tr")).toHaveCount(2);expect(calls.every(query=>new URLSearchParams(query).get("contract")==="ACTIVITY_HISTORY_READ_V2")).toBe(true);
 });
 test("unsupported V2 alone falls back to V1 with an explicit history notice",async({page})=>{const calls=await setup(page,"fallback");await page.goto("/audit");await expect(page.locator(".audit-table")).toContainText("REGISTER INBOUND COMPONENT");await expect(page.getByRole("status")).toContainText("each PRC supply request’s history");expect(calls.some(q=>q.includes("ACTIVITY_HISTORY_READ_V1"))).toBe(true);});

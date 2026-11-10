@@ -17,9 +17,9 @@ describe("FR-05/12 PR35 reservation lifecycle visibility", () => {
     expect(reservationActions(reservation, source)).toEqual(["prepare", "cancel"]);
     expect(reservationActions({...reservation, requestedQuantity:null,approvedQuantity:null,shortfallQuantity:null,partialApproval:null,receiptDiscrepancy:null,preparedEvidencePresent:true}, source)).toEqual(["dispatch", "cancel"]);
   });
-  it("local-release records expose no frontend mutations even with capability", () => {
-    expect(reservationActions({...reservation, purpose:"LOCAL_RELEASE", requestedQuantity:null,approvedQuantity:null,shortfallQuantity:null,partialApproval:null,receiptDiscrepancy:null,preparedEvidencePresent:true}, source)).toEqual([]);
-    expect(reservationActions({...reservation, purpose:"LOCAL_RELEASE"}, source)).toEqual([]);
+  it("local-release reservations require preparation before completion, for source staff only", () => {
+    expect(reservationActions({...reservation, purpose:"LOCAL_RELEASE", requestedQuantity:null,approvedQuantity:null,shortfallQuantity:null,partialApproval:null,receiptDiscrepancy:null,preparedEvidencePresent:true}, source)).toEqual(["local-release-complete", "cancel"]);
+    expect(reservationActions({...reservation, purpose:"LOCAL_RELEASE"}, source)).toEqual(["prepare", "cancel"]);
     expect(reservationActions({...reservation, purpose:"LOCAL_RELEASE"}, recipient)).toEqual([]);
   });
   it("transit and receipt follow source and ROLE-03 destination authorization", () => {

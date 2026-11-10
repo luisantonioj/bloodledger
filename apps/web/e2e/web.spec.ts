@@ -14,9 +14,9 @@ const permissions = {
 
 const navigation: Record<RoleId, string[]> = {
   "ROLE-01": ["Dashboard", "Blood Inventory", "Blood Unit Transactions", "Requests & Transfers", "Alerts", "Analytics", "Profile"],
-  "ROLE-02": ["Dashboard", "Blood Inventory", "Blood Unit Transactions", "Requests & Transfers", "Alerts", "Activity History", "Analytics", "Profile"],
-  "ROLE-03": ["Dashboard", "Blood Unit Receipt", "Requests & Transfers", "Alerts", "Activity History", "Analytics", "Profile"],
-  "ROLE-04": ["Dashboard", "Blood Inventory", "Requests & Transfers", "Alerts", "Activity History", "Network view", "Reports", "Profile"],
+  "ROLE-02": ["Dashboard", "Blood Inventory", "Blood Unit Transactions", "Requests & Transfers", "Alerts", "Analytics", "Activity History", "Profile"],
+  "ROLE-03": ["Dashboard", "Blood Unit Receipt", "Requests & Transfers", "Alerts", "Analytics", "Activity History", "Profile"],
+  "ROLE-04": ["Dashboard", "Blood Inventory", "Requests & Transfers", "Alerts", "Network view", "Reports", "Activity History", "Profile"],
   "ROLE-05": ["Dashboard", "Profile", "Staff Accounts"],
   "ROLE-06": ["Dashboard", "Profile", "Staff Accounts"],
 };
