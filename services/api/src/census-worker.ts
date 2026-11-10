@@ -6,6 +6,15 @@ import { V2_1_COMPONENT_TYPES, V2_COMPONENT_TYPES, buildCensusSnapshot, censusTs
 // PA-DEF-07 SYNTHETIC_STOCK_CHECKPOINT_V1: blood-bank stock is recorded at 09:00 and 16:00 Asia/Manila, only while a
 // slot's capture window is open. A missed slot stays missing: current stock is never labelled with a past slot time.
 export const STOCK_CHECKPOINT_POLICY_VERSION = "SYNTHETIC_STOCK_CHECKPOINT_V1";
+// SYNTHETIC_STOCK_CHECKPOINT_V2: same 09:00/16:00 schedule and window, but the matrix also records
+// cryoprecipitate (all five V2.1 components). V1 records keep their original four components.
+export const STOCK_CHECKPOINT_V2_POLICY_VERSION = "SYNTHETIC_STOCK_CHECKPOINT_V2";
+export const STOCK_CHECKPOINT_POLICY_VERSIONS: readonly string[] = [STOCK_CHECKPOINT_POLICY_VERSION, STOCK_CHECKPOINT_V2_POLICY_VERSION];
+export const isStockCheckpointPolicy = (version: string) => STOCK_CHECKPOINT_POLICY_VERSIONS.includes(version);
+/** Components recorded under a report policy: V2.1 policies and checkpoint V2 include cryoprecipitate. */
+export function censusComponentTypes(version: string): readonly V2ComponentType[] {
+  return version.endsWith("V2_1") || version === STOCK_CHECKPOINT_V2_POLICY_VERSION ? V2_1_COMPONENT_TYPES : V2_COMPONENT_TYPES;
+}
 export const STOCK_CHECKPOINT_HOURS = [9, 16] as const;
 export const STOCK_CHECKPOINT_WINDOW_MS = 30 * 60_000;
 
@@ -47,7 +56,7 @@ export class PostgresCensusStore implements CensusStore {
   constructor(private readonly pool: Pool, private readonly reportPolicyVersion: string, private readonly bloodTypeOrder?: readonly V2BloodType[]) {}
   async capture(institutionId: string, scheduledFor: Date, triggerType: "SCHEDULED" | "MANUAL", now: Date): Promise<CensusSnapshot> {
     if (!this.bloodTypeOrder) throw new Error("DISABLED_UNAPPROVED_REPORT_FORMAT");
-    const checkpoint = this.reportPolicyVersion === STOCK_CHECKPOINT_POLICY_VERSION;
+    const checkpoint = isStockCheckpointPolicy(this.reportPolicyVersion);
     if (checkpoint && !checkpointWindowOpen(scheduledFor, now)) throw new Error("CHECKPOINT_WINDOW_CLOSED");
     const id = snapshotId(institutionId, scheduledFor, this.reportPolicyVersion);
     const client = await this.pool.connect();
@@ -60,8 +69,7 @@ export class PostgresCensusStore implements CensusStore {
         return (await this.get(id, institutionId)) as CensusSnapshot;
       }
       const rows = await client.query<Record<string, unknown>>(`SELECT component_type,blood_type,inventory_status,COUNT(*)::int AS count,COUNT(*) FILTER (WHERE expires_at > $2)::int AS forecast_eligible_count FROM app.v2_components WHERE institution_id=$1 AND inventory_status IN ('AVAILABLE','RESERVED') AND ($3::boolean IS FALSE OR expires_at > $2) GROUP BY component_type,blood_type,inventory_status`, [institutionId, now.toISOString(), checkpoint]);
-      const useV21 = this.reportPolicyVersion.endsWith("V2_1");
-      const snapshot = buildCensusSnapshot({ snapshotId: id, scheduledFor: scheduledFor.toISOString(), capturedAt: now.toISOString(), reportPolicyVersion: this.reportPolicyVersion, componentTypes: useV21 ? V2_1_COMPONENT_TYPES : V2_COMPONENT_TYPES, bloodTypeOrder: this.bloodTypeOrder, rows: rows.rows.map((row) => ({ componentType: String(row.component_type) as CensusInventoryRow["componentType"], bloodType: String(row.blood_type) as CensusInventoryRow["bloodType"], inventoryStatus: String(row.inventory_status), count: Number(row.count), forecastEligibleCount: Number(row.forecast_eligible_count) })) });
+      const snapshot = buildCensusSnapshot({ snapshotId: id, scheduledFor: scheduledFor.toISOString(), capturedAt: now.toISOString(), reportPolicyVersion: this.reportPolicyVersion, componentTypes: censusComponentTypes(this.reportPolicyVersion), bloodTypeOrder: this.bloodTypeOrder, rows: rows.rows.map((row) => ({ componentType: String(row.component_type) as CensusInventoryRow["componentType"], bloodType: String(row.blood_type) as CensusInventoryRow["bloodType"], inventoryStatus: String(row.inventory_status), count: Number(row.count), forecastEligibleCount: Number(row.forecast_eligible_count) })) });
       const inserted = await client.query(`INSERT INTO app.v2_census_snapshots(snapshot_id,institution_id,scheduled_for,captured_at,timezone,report_policy_version,trigger_type,classification,source_projection_digest) VALUES($1,$2,$3,$4,'Asia/Manila',$5,$6,'SIMULATION_ONLY',$7) ON CONFLICT(institution_id,scheduled_for,report_policy_version) DO NOTHING RETURNING snapshot_id`, [id, institutionId, scheduledFor.toISOString(), now.toISOString(), this.reportPolicyVersion, triggerType, snapshot.sourceProjectionDigest]);
       if (inserted.rowCount === 0) {
         const existing = await client.query<Record<string, unknown>>("SELECT source_projection_digest FROM app.v2_census_snapshots WHERE snapshot_id=$1 AND institution_id=$2", [id, institutionId]);
@@ -79,7 +87,7 @@ export class PostgresCensusStore implements CensusStore {
     const counts = await this.pool.query<Record<string, unknown>>("SELECT component_type,blood_type,available_count,reserved_count,forecast_eligible_available_count,reportable_count FROM app.v2_census_counts WHERE snapshot_id=$1 ORDER BY component_type,blood_type", [snapshotIdValue]);
     const rows: CensusInventoryRow[] = counts.rows.map((item) => ({ componentType: String(item.component_type) as CensusInventoryRow["componentType"], bloodType: String(item.blood_type) as CensusInventoryRow["bloodType"], inventoryStatus: "AVAILABLE", count: Number(item.available_count), forecastEligibleCount: Number(item.forecast_eligible_available_count) }));
     for (const item of counts.rows) rows.push({ componentType: String(item.component_type) as CensusInventoryRow["componentType"], bloodType: String(item.blood_type) as CensusInventoryRow["bloodType"], inventoryStatus: "RESERVED", count: Number(item.reserved_count) });
-    return buildCensusSnapshot({ snapshotId: String(row.snapshot_id), scheduledFor: (row.scheduled_for instanceof Date ? row.scheduled_for : new Date(String(row.scheduled_for))).toISOString(), capturedAt: (row.captured_at instanceof Date ? row.captured_at : new Date(String(row.captured_at))).toISOString(), reportPolicyVersion: String(row.report_policy_version), sourceProjectionDigest: row.source_projection_digest ? String(row.source_projection_digest) : undefined, componentTypes: String(row.report_policy_version).endsWith("V2_1") ? V2_1_COMPONENT_TYPES : V2_COMPONENT_TYPES, bloodTypeOrder: this.bloodTypeOrder, rows });
+    return buildCensusSnapshot({ snapshotId: String(row.snapshot_id), scheduledFor: (row.scheduled_for instanceof Date ? row.scheduled_for : new Date(String(row.scheduled_for))).toISOString(), capturedAt: (row.captured_at instanceof Date ? row.captured_at : new Date(String(row.captured_at))).toISOString(), reportPolicyVersion: String(row.report_policy_version), sourceProjectionDigest: row.source_projection_digest ? String(row.source_projection_digest) : undefined, componentTypes: censusComponentTypes(String(row.report_policy_version)), bloodTypeOrder: this.bloodTypeOrder, rows });
   }
   async copyRow(snapshotIdValue: string, componentType: V2ComponentType, institutionId?: string): Promise<string | null> { const snapshot = await this.get(snapshotIdValue, institutionId); return snapshot ? censusTsv(snapshot, componentType) : null; }
   async list(institutionId: string | undefined, limit: number, cursor?: string): Promise<{ snapshots: CensusSnapshotSummary[]; nextCursor: string | null; exportAvailable: boolean }> {

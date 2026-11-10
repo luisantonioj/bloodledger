@@ -55,3 +55,12 @@ test("PA-DEF-07 the store refuses a closed or non-slot time before touching the 
   // An open window passes the policy check and reaches the database.
   await assert.rejects(store.capture("INST_MEDIATRIX", at("2026-10-20T01:00:00.000Z"), "SCHEDULED", at("2026-10-20T01:05:00.000Z")), /database must not be reached/);
 });
+
+import { STOCK_CHECKPOINT_V2_POLICY_VERSION, censusComponentTypes, isStockCheckpointPolicy } from "../src/census-worker.js";
+test("checkpoint V2 keeps the V1 schedule and also records cryoprecipitate; V1 records stay four components", () => {
+  assert.equal(isStockCheckpointPolicy(STOCK_CHECKPOINT_POLICY_VERSION), true);
+  assert.equal(isStockCheckpointPolicy(STOCK_CHECKPOINT_V2_POLICY_VERSION), true);
+  assert.equal(isStockCheckpointPolicy("INTERVIEW_REPORT_PENDING"), false);
+  assert.equal(censusComponentTypes(STOCK_CHECKPOINT_POLICY_VERSION).includes("CRYOPRECIPITATE" as never), false);
+  assert.deepEqual([...censusComponentTypes(STOCK_CHECKPOINT_V2_POLICY_VERSION)], ["WHOLE_BLOOD", "PACKED_RED_BLOOD_CELLS", "FRESH_FROZEN_PLASMA", "PLATELETS", "CRYOPRECIPITATE"]);
+});

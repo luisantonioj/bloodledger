@@ -1,8 +1,8 @@
-import { CensusWorker, STOCK_CHECKPOINT_POLICY_VERSION, STOCK_CHECKPOINT_WINDOW_MS, type CensusStore } from "./census-worker.js";
+import { CensusWorker, STOCK_CHECKPOINT_WINDOW_MS, isStockCheckpointPolicy, type CensusStore } from "./census-worker.js";
 import type { DohReportPolicy } from "./report-policy.js";
 
 export function requireStockCheckpointPolicy(policy: DohReportPolicy): void {
-  if (!policy.copyModeEnabled || policy.version !== STOCK_CHECKPOINT_POLICY_VERSION) throw new Error("STOCK_CHECKPOINT_POLICY_DISABLED");
+  if (!policy.copyModeEnabled || !isStockCheckpointPolicy(policy.version)) throw new Error("STOCK_CHECKPOINT_POLICY_DISABLED");
 }
 
 /** Off-chain only. Discover active banks every tick; one bank's failure must not skip the others. */

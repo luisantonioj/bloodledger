@@ -6,7 +6,7 @@ import { FabricGatewayInterviewCore } from "./fabric.js";
 import { PostgresV2CommandStore } from "./v2-command.js";
 import { PostgresV2Projector } from "./database-v2.js";
 import { V2CommandWorker } from "./v2-worker.js";
-import { CensusWorker, PostgresCensusStore, STOCK_CHECKPOINT_POLICY_VERSION, STOCK_CHECKPOINT_WINDOW_MS, checkpointInstitutionIds } from "./census-worker.js";
+import { CensusWorker, PostgresCensusStore, STOCK_CHECKPOINT_WINDOW_MS, checkpointInstitutionIds, isStockCheckpointPolicy } from "./census-worker.js";
 import { readDohReportPolicy } from "./report-policy.js";
 import { ScheduledExpiryEvaluator } from "./expiry-evaluator.js";
 import { PostgresReservationLocation } from "./reservation-location.js";
@@ -30,7 +30,7 @@ process.on("SIGTERM", () => { stopping = true; });
 
 // PA-DEF-07: 09:00/16:00 Asia/Manila stock checkpoints run only under the approved simulation report policy.
 const reportPolicy = readDohReportPolicy();
-const checkpoints = process.env.BLOODLEDGER_STOCK_CHECKPOINT_WORKER_MODE !== "dedicated" && reportPolicy.copyModeEnabled && reportPolicy.version === STOCK_CHECKPOINT_POLICY_VERSION
+const checkpoints = process.env.BLOODLEDGER_STOCK_CHECKPOINT_WORKER_MODE !== "dedicated" && reportPolicy.copyModeEnabled && isStockCheckpointPolicy(reportPolicy.version)
   ? new PostgresCensusStore(pool, reportPolicy.version, reportPolicy.bloodTypeOrder) : null;
 let nextCheckpointCheck = 0;
 async function runCheckpoints(now: Date): Promise<void> {
